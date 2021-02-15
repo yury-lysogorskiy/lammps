@@ -12,52 +12,22 @@
  *
  *
  * See the LICENSE file.
+ * This FILENAME is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 // Created by Lysogorskiy Yury on 28.04.2020.
 
 #include "ace_abstract_basis.h"
-
-//embedding function
-//case nemb = 1 only implementation
-//F = sign(x)*(  ( ( 1 - exp(-w*x**2) )*abs(x) )^m +  m*exp(-w*x**2)*abs(x) )
-// !! no prefactor wpre
-// d exp(-w*x**2)/dx = -2*w*x*exp(-w*x**2) *
-//void Fexp(DOUBLE_TYPE x, DOUBLE_TYPE m, DOUBLE_TYPE &F, DOUBLE_TYPE &DF) {
-//    DOUBLE_TYPE w = 10.0;
-//    DOUBLE_TYPE eps = 1e-15;
-//
-//    if (abs(x) > eps) {
-//        DOUBLE_TYPE g, a, omg, y1, y2, delta = 1e-20;
-//        DOUBLE_TYPE wx2 = w * x * x;
-//        DOUBLE_TYPE sign_factor = (signbit(x) ? -1 : 1);
-//        if (wx2 > 30.0)
-//            g = 0;
-//        else
-//            g = exp(-wx2);
-//
-//        omg = 1. - g;
-//        a = abs(x);
-//        y1 = pow(omg * a, m); //+delta
-//        y2 = m * g * a;
-//        F = sign_factor * (y1 + y2);
-//
-//        DOUBLE_TYPE dg, da, dy, dy1, dy2;
-//        dg = -2.0 * w * x * g;
-//        da = sign_factor;
-//        if (abs(y1) < eps) dy = 0.;
-//        else
-//            dy = m * y1 / (omg * a); // + delta
-//
-//        dy1 = dy * (-dg * a + omg * da);
-//        dy2 = m * (dg * a + g * da);
-//        DF = sign_factor * (dy1 + dy2);
-//
-//    } else {
-//        F = m * x;
-//        DF = m;
-//    }
-//}
 
 ////embedding function
 ////case nemb = 1 only implementation
