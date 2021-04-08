@@ -564,3 +564,4 @@ void SplineInterpolator::calcSplines(DOUBLE_TYPE r, SHORT_INT_TYPE func_ind) {
         derivatives(func_ind) = 0;
     }
 }
+

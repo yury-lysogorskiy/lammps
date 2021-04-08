@@ -110,7 +110,7 @@ struct ACEAbstractBasisFunction {
      * Always copy the dynamic memory, even if the source is a proxy object
      * @param other
      */
-    virtual void _copy_from(const ACEAbstractBasisFunction &other) {
+    void _copy_from(const ACEAbstractBasisFunction &other) {
         rank = other.rank;
         ndensity = other.ndensity;
         mu0 = other.mu0;
@@ -249,3 +249,4 @@ struct ACECTildeBasisFunction : public ACEAbstractBasisFunction {
 };
 
 #endif //ACE_C_BASISFUNCTION_H
+
