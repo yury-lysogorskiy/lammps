@@ -146,6 +146,14 @@ endforeach ()
 ##### USER-PACE ######
 # for debugging
 #add_definitions(-DMULTIARRAY_INDICES_CHECK)
+set(YAML_PATH ${LAMMPS_LIB_SOURCE_DIR}/user-pace/yaml-cpp)
+set(YAML_INCLUDE_PATH ${YAML_PATH}/include)
+FILE(GLOB YAML_SRC ${YAML_PATH}/src/*.cpp)
+#include(${YAML_PATH}/CMakeLists.txt)
+add_library(yaml-cpp STATIC ${YAML_SRC})
+set_target_properties(yaml-cpp PROPERTIES LINKER_LANGUAGE CXX)
+
+include_directories(${YAML_INCLUDE_PATH})
 ######################################################
 # download and unpack support binaries for compilation
 # of windows binaries.
@@ -578,6 +586,7 @@ endif()
 if (BUILD_EXE)
   add_executable(lmp ${LMP_SOURCES} ${PACE_CPP} ${PACE_PAIR_STYLE_CPP})
   target_include_directories(lmp PUBLIC ${PACE_INCLUDE})
+  target_link_libraries(lmp yaml-cpp)
   if (BUILD_LIB)
     target_link_libraries(lmp lammps)
   else ()

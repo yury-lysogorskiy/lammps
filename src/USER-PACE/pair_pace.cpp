@@ -277,17 +277,15 @@ void PairPACE::settings(int narg, char **arg) {
         error->all(FLERR, "or\n\tpair_style pace ");
         error->all(FLERR, PRODUCT_KEYWORD);
     }
-    recursive = true; // default evaluator style: RECURSIVE
+    recursive = false; // default evaluator style: RECURSIVE
     if (narg > 0) {
-        if (strcmp(arg[0], RECURSIVE_KEYWORD) == 0)
-            recursive = true;
-        else if (strcmp(arg[0], PRODUCT_KEYWORD) == 0) {
+        if (strcmp(arg[0], PRODUCT_KEYWORD) == 0) {
             recursive = false;
         } else {
             error->all(FLERR,
                        "Illegal pair_style command: pair_style pace ");
             error->all(FLERR, arg[0]);
-            error->all(FLERR, "\nCorrect form:\n\tpair_style pace\nor\n\tpair_style pace recursive");
+            error->all(FLERR, "\nCorrect form:\n\tpair_style pace product\n");
         }
     }
 
@@ -347,7 +345,11 @@ void PairPACE::coeff(int narg, char **arg) {
         if (screen) fprintf(screen, "Loading %s\n", potential_file_name);
         if (logfile) fprintf(logfile, "Loading %s\n", potential_file_name);
     }
-    basis_set->load(potential_file_name);
+    try {
+        basis_set->load(potential_file_name);
+    } catch (...) {
+        basis_set->load_yaml(potential_file_name);
+    }
 
     if (comm->me == 0) {
         if (screen) fprintf(screen, "Total number of basis functions\n");
@@ -365,8 +367,8 @@ void PairPACE::coeff(int narg, char **arg) {
     // map[i] = which element the Ith atom type is, -1 if not mapped
     // map[0] is not used
 
-    ace = new ACERecursiveEvaluator();
-    ace->set_recursive(recursive);
+    ace = new ACECTildeEvaluator();
+//    ace->set_recursive(recursive);
     ace->element_type_mapping.init(atom->ntypes + 1);
 
     for (int i = 1; i <= atom->ntypes; i++) {
@@ -416,7 +418,7 @@ void PairPACE::coeff(int narg, char **arg) {
 
     if (count == 0) error->all(FLERR, "Incorrect args for pair coefficients");
 
-    ace->set_basis(*basis_set, 1);
+    ace->set_basis(*basis_set);
 }
 
 /* ----------------------------------------------------------------------

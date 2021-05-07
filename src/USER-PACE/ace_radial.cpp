@@ -36,20 +36,23 @@ const DOUBLE_TYPE pi = 3.14159265358979323846264338327950288419; // pi
 
 ACERadialFunctions::ACERadialFunctions(NS_TYPE nradb, LS_TYPE lmax, NS_TYPE nradial, DOUBLE_TYPE deltaSplineBins,
                                        SPECIES_TYPE nelements,
-                                       DOUBLE_TYPE cutoff, string radbasename) {
-    init(nradb, lmax, nradial, deltaSplineBins, nelements, cutoff, radbasename);
+                                       vector<vector<string>> radbasename) {
+    init(nradb, lmax, nradial, deltaSplineBins, nelements, radbasename);
 }
 
 void ACERadialFunctions::init(NS_TYPE nradb, LS_TYPE lmax, NS_TYPE nradial, DOUBLE_TYPE deltaSplineBins,
-                              SPECIES_TYPE nelements,
-                              DOUBLE_TYPE cutoff, string radbasename) {
+                              SPECIES_TYPE nelements, vector<vector<string>> radbasename) {
     this->nradbase = nradb;
     this->lmax = lmax;
     this->nradial = nradial;
     this->deltaSplineBins = deltaSplineBins;
     this->nelements = nelements;
-    this->cutoff = cutoff;
-    this->radbasename = radbasename;
+    this->radbasenameij = radbasename;
+    auto shape = this->radbasenameij.get_shape();
+    if (shape.size() != 2 || shape.at(0) != nelements || shape.at(1) != nelements) {
+        throw std::invalid_argument("`radbasename` array has wrong shape. It must be of shape (nelements, nelements)");
+    }
+
 
     gr.init(nradbase, "gr");
     dgr.init(nradbase, "dgr");
@@ -111,7 +114,7 @@ void ACERadialFunctions::calcCheb(NS_TYPE n, DOUBLE_TYPE x) {
     dcheb(0) = 0.;
     cheb2(0) = 1.;
 
-    if (nradbase > 1) {
+    if (nradbase >= 1) {
         cheb(1) = x;
         cheb2(1) = twox;
     }
@@ -136,7 +139,8 @@ Function that computes radial basis.
 
 @returns gr, dgr
 */
-void ACERadialFunctions::radbase(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcut, DOUBLE_TYPE r) {
+void
+ACERadialFunctions::radbase(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcut, string radbasename, DOUBLE_TYPE r) {
     /*lam is given by the formula (24), that contains cut */
 
     if (r < cut) {
@@ -146,6 +150,8 @@ void ACERadialFunctions::radbase(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE d
             chebPow(lam, cut, dcut, r);
         } else if (radbasename == "ChebLinear") {
             chebLinear(lam, cut, dcut, r);
+        } else if (radbasename.rfind("TEST_", 0) == 0) {
+            test_zero_func(lam,cut,dcut,r);
         } else {
             throw invalid_argument("Unknown radial basis function name: " + radbasename);
         }
@@ -172,7 +178,7 @@ ACERadialFunctions::chebExpCos(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcu
     x = 1.0 - 2.0 * ((y1 - y2) / (1 - y2));
     dx = 2 * (lam / cut) * (y1 / (1 - y2));
     /* calculation of Chebyshev polynomials from the recursion */
-    calcCheb(nradbase - 1, x);
+    calcCheb(nradbase, x);
     gr(0) = cheb(0);
     dgr(0) = dcheb(0) * dx;
     for (NS_TYPE n = 2; n <= nradbase; n++) {
@@ -248,6 +254,18 @@ ACERadialFunctions::chebLinear(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcu
 }
 
 /**
+ * Stub zero function (for testing purposes mostly), called when radbasename starts with "TEST_"
+ * @param lam
+ * @param cut
+ * @param dcut
+ * @param r
+ */
+void ACERadialFunctions::test_zero_func(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcut, DOUBLE_TYPE r) {
+    gr.fill(0);
+    dgr.fill(0);
+}
+
+/**
 Function that computes radial functions.
 
 @param nradbase, nelements, elei, elej
@@ -276,7 +294,7 @@ void ACERadialFunctions::all_radfunc(SPECIES_TYPE mu_i, SPECIES_TYPE mu_j, DOUBL
     DOUBLE_TYPE r_cut = cut(mu_i, mu_j);
     DOUBLE_TYPE dr_cut = dcut(mu_i, mu_j);
     // set up radial functions
-    radbase(lam, r_cut, dr_cut, r); //update gr, dgr
+    radbase(lam, r_cut, dr_cut, radbasenameij(mu_i, mu_j), r); //update gr, dgr
     radfunc(mu_i, mu_j); // update fr(nr, l),  dfr(nr, l)
 }
 
@@ -285,6 +303,7 @@ void ACERadialFunctions::setuplookupRadspline() {
     using namespace std::placeholders;
     DOUBLE_TYPE lam, r_cut, dr_cut;
     DOUBLE_TYPE cr_c, dcr_c, pre, lamhc;
+    string radbasename;
 
     // at r = rcut + eps the function and its derivatives is zero
     for (SPECIES_TYPE elei = 0; elei < nelements; elei++) {
@@ -293,28 +312,30 @@ void ACERadialFunctions::setuplookupRadspline() {
             lam = lambda(elei, elej);
             r_cut = cut(elei, elej);
             dr_cut = dcut(elei, elej);
+            radbasename = radbasenameij(elei, elej);
 
             splines_gk(elei, elej).setupSplines(gr.get_size(),
                                                 std::bind(&ACERadialFunctions::radbase, this, lam, r_cut, dr_cut,
+                                                          radbasename,
                                                           _1),//update gr, dgr
                                                 gr.get_data(),
-                                                dgr.get_data(), deltaSplineBins, cutoff);
+                                                dgr.get_data(), deltaSplineBins, r_cut);
 
             splines_rnl(elei, elej).setupSplines(fr.get_size(),
                                                  std::bind(&ACERadialFunctions::all_radfunc, this, elei, elej,
                                                            _1), // update fr(nr, l),  dfr(nr, l)
                                                  fr.get_data(),
-                                                 dfr.get_data(), deltaSplineBins, cutoff);
+                                                 dfr.get_data(), deltaSplineBins, r_cut);
 
 
             pre = prehc(elei, elej);
             lamhc = lambdahc(elei, elej);
 //            radcore(r, pre, lamhc, cutoff, cr_c, dcr_c);
             splines_hc(elei, elej).setupSplines(1,
-                                                std::bind(&ACERadialFunctions::radcore, _1, pre, lamhc, cutoff,
+                                                std::bind(&ACERadialFunctions::radcore, _1, pre, lamhc, r_cut,
                                                           std::ref(cr_c), std::ref(dcr_c)),
                                                 &cr_c,
-                                                &dcr_c, deltaSplineBins, cutoff);
+                                                &dcr_c, deltaSplineBins, r_cut);
         }
     }
 

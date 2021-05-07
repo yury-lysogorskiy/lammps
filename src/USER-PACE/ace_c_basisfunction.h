@@ -30,10 +30,14 @@
 #ifndef ACE_C_BASISFUNCTION_H
 #define ACE_C_BASISFUNCTION_H
 
+#include <algorithm>
 #include <cstring>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <vector>
+
+#include "yaml-cpp/yaml.h"
 
 #include "ace_types.h"
 
@@ -142,7 +146,45 @@ struct ACEAbstractBasisFunction {
         ms_combs = nullptr;
     }
 
+    std::vector<SPECIES_TYPE> get_unique_species() const {
+        std::vector<SPECIES_TYPE> unique_species;
+        unique_species.emplace_back(this->mu0);
+        for (int r = 0; r < this->rank; r++) {
+            if (std::find(unique_species.begin(), unique_species.end(), this->mus[r])
+                == unique_species.end()) {
+                /* v does not contain x */
+                unique_species.emplace_back(this->mus[r]);
+            }
+        }
+        return unique_species;
+    }
+
+    std::string to_string() const {
+        std::stringstream ss;
+        ss << "(" << (int) this->mu0 << "|";
+        ss << "mus=(";
+        for (int r = 0; r < this->rank; r++)
+            ss << (int) this->mus[r] << ",";
+        ss << "), ";
+
+        ss << "ns=(";
+        for (int r = 0; r < this->rank; r++)
+            ss << (int) this->ns[r] << ",";
+        ss << "), ";
+
+        ss << "ls=(";
+        for (int r = 0; r < this->rank; r++)
+            ss << (int) this->ls[r] << ",";
+        ss << "), ";
+
+        ss << this->num_ms_combs << " ms_combs, ";
+        ss << "ndens=" << this->ndensity;
+        ss << ")";
+
+        return ss.str();
+    }
 };
+
 
 /**
  * Representation of C-tilde basis function, i.e. the function that is summed up over a group of B-functions
@@ -246,6 +288,39 @@ struct ACECTildeBasisFunction : public ACEAbstractBasisFunction {
             cout << "half_ms_basis";
         cout << "}" << endl;
     }
+
+    YAML::Node to_YAML() const {
+        YAML::Node ctilde_yaml;
+        ctilde_yaml.SetStyle(YAML::EmitterStyle::Flow);
+        ctilde_yaml["mu0"] = (int) this->mu0;
+        ctilde_yaml["rank"] = (int) this->rank;
+        ctilde_yaml["ndensity"] = this->ndensity;
+        ctilde_yaml["num_ms_combs"] = this->num_ms_combs;
+
+        std::vector<int> int_vec;
+        int_vec.assign(this->mus, this->mus + this->rank);
+        ctilde_yaml["mus"] = int_vec;
+
+        int_vec.assign(this->ns, this->ns + this->rank);
+        ctilde_yaml["ns"] = int_vec;
+
+        int_vec.assign(this->ls, this->ls + this->rank);
+        ctilde_yaml["ls"] = int_vec;
+
+        //this->ms_combs; //[num_ms_combs * rank]
+        int_vec.assign(this->ms_combs, this->ms_combs + this->num_ms_combs * this->rank);
+        ctilde_yaml["ms_combs"] = int_vec;
+
+
+        std::vector<DOUBLE_TYPE> double_vec;
+        // this->ctildes; //[num_of_ms_combs * ndensity]
+        double_vec.assign(this->ctildes, this->ctildes + this->num_ms_combs * this->ndensity);
+        ctilde_yaml["ctildes"] = double_vec;
+
+
+        return ctilde_yaml;
+    }
+
 };
 
 #endif //ACE_C_BASISFUNCTION_H
