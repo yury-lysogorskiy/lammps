@@ -158,8 +158,8 @@ void PairPACE::compute(int eflag, int vflag) {
 
     if (inum != nlocal) {
         char str[128];
-        snprintf(str,128,"inum: %d nlocal: %d are different",inum, nlocal);
-        error->all(FLERR,str);
+        snprintf(str, 128, "inum: %d nlocal: %d are different", inum, nlocal);
+        error->all(FLERR, str);
     }
 
 
@@ -220,9 +220,9 @@ void PairPACE::compute(int eflag, int vflag) {
             dely = x[j][1] - ytmp;
             delz = x[j][2] - ztmp;
 
-            fij[0] = scale[itype][jtype]*ace->neighbours_forces(jj, 0);
-            fij[1] = scale[itype][jtype]*ace->neighbours_forces(jj, 1);
-            fij[2] = scale[itype][jtype]*ace->neighbours_forces(jj, 2);
+            fij[0] = scale[itype][jtype] * ace->neighbours_forces(jj, 0);
+            fij[1] = scale[itype][jtype] * ace->neighbours_forces(jj, 1);
+            fij[2] = scale[itype][jtype] * ace->neighbours_forces(jj, 2);
 
 
             f[i][0] += fij[0];
@@ -242,7 +242,7 @@ void PairPACE::compute(int eflag, int vflag) {
         // tally energy contribution
         if (eflag) {
             // evdwl = energy of atom I
-            evdwl = scale[1][1]*ace->e_atom;
+            evdwl = scale[1][1] * ace->e_atom;
             ev_tally_full(i, 2.0 * evdwl, 0.0, 0.0, 0.0, 0.0, 0.0);
         }
     }
@@ -262,7 +262,7 @@ void PairPACE::allocate() {
     memory->create(setflag, n + 1, n + 1, "pair:setflag");
     memory->create(cutsq, n + 1, n + 1, "pair:cutsq");
     memory->create(map, n + 1, "pair:map");
-    memory->create(scale, n + 1, n + 1,"pair:scale");
+    memory->create(scale, n + 1, n + 1, "pair:scale");
 }
 
 /* ----------------------------------------------------------------------
@@ -277,15 +277,17 @@ void PairPACE::settings(int narg, char **arg) {
         error->all(FLERR, "or\n\tpair_style pace ");
         error->all(FLERR, PRODUCT_KEYWORD);
     }
-    recursive = false; // default evaluator style: RECURSIVE
+    recursive = true; // default evaluator style: RECURSIVE
     if (narg > 0) {
         if (strcmp(arg[0], PRODUCT_KEYWORD) == 0) {
             recursive = false;
+        } else if (strcmp(arg[0], RECURSIVE_KEYWORD) == 0) {
+            recursive = true;
         } else {
             error->all(FLERR,
                        "Illegal pair_style command: pair_style pace ");
             error->all(FLERR, arg[0]);
-            error->all(FLERR, "\nCorrect form:\n\tpair_style pace product\n");
+            error->all(FLERR, "\nCorrect form:\n\tpair_style pace product\nor\n\tpair_style pace recursive\n");
         }
     }
 
@@ -367,8 +369,8 @@ void PairPACE::coeff(int narg, char **arg) {
     // map[i] = which element the Ith atom type is, -1 if not mapped
     // map[0] is not used
 
-    ace = new ACECTildeEvaluator();
-//    ace->set_recursive(recursive);
+    ace = new ACERecursiveEvaluator();
+    ace->set_recursive(recursive);
     ace->element_type_mapping.init(atom->ntypes + 1);
 
     for (int i = 1; i <= atom->ntypes; i++) {
@@ -451,10 +453,9 @@ double PairPACE::init_one(int i, int j) {
 /* ---------------------------------------------------------------------- 
     extract method for extracting value of scale variable
  ---------------------------------------------------------------------- */
-void *PairPACE::extract(const char *str, int &dim)
-{
+void *PairPACE::extract(const char *str, int &dim) {
     dim = 2;
-    if (strcmp(str,"scale") == 0) return (void *) scale;
+    if (strcmp(str, "scale") == 0) return (void *) scale;
     return NULL;
 }
 

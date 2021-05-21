@@ -496,6 +496,9 @@ void SplineInterpolator::setupSplines(int num_of_functions, RadialFunctions func
     if (dvalues == nullptr & num_of_functions > 0)
         throw invalid_argument("SplineInterpolator::setupSplines: dvalues could not be null");
 
+    if (num_of_functions==0)
+        return;
+
     for (int n = nlut; n >= 1; n--) {
         r = invrscalelookup * DOUBLE_TYPE(n);
         func(r); //populate values and dvalues arrays
