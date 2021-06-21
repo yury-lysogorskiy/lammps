@@ -468,6 +468,9 @@ void SplineInterpolator::setupSplines(int num_of_functions, RadialFunctions func
                                       DOUBLE_TYPE *dvalues, DOUBLE_TYPE deltaSplineBins, DOUBLE_TYPE cutoff) {
 
     this->deltaSplineBins = deltaSplineBins;
+    if(!deltaSplineBins>0) {
+        throw invalid_argument("deltaSplineBins should be positive");
+    }
     this->cutoff = cutoff;
     this->ntot = static_cast<int>(cutoff / deltaSplineBins);
 

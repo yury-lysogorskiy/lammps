@@ -106,8 +106,8 @@ void ACEAbstractBasisSet::FS_values_and_derivatives(Array1D<DOUBLE_TYPE> &rhos, 
     DENSITY_TYPE ndensity = map_embedding_specifications.at(mu_i).ndensity;
     for (int p = 0; p < ndensity; p++) {
 
-        wpre = map_embedding_specifications.at(mu_i).FS_parameters.at(p * ndensity + 0);
-        mexp = map_embedding_specifications.at(mu_i).FS_parameters.at(p * ndensity + 1);
+        wpre = map_embedding_specifications.at(mu_i).FS_parameters.at(p * 2 + 0);
+        mexp = map_embedding_specifications.at(mu_i).FS_parameters.at(p * 2 + 1);
         string npoti = map_embedding_specifications.at(mu_i).npoti;
 
         if (npoti == "FinnisSinclair")
