@@ -2,14 +2,14 @@
 
 `mkdir build; cd build`
 
-`cmake -DPKG_USER-PACE=ON ../cmake`
+`cmake -DCMAKE_BUILD_TYPE=Release -D BUILD_MPI=ON -DPKG_USER-PACE=ON -DPKG_MANYBODY=ON ../cmake`
 
-`make -j`
+`cmake --build .`
 
 NOTE: If there are compilation error messages regarding C++11 standards, run 
 `cmake ../cmake -DPKG_USER-PACE=ON -D CMAKE_CXX_FLAGS="-std=c++11"`
 
-# Compilation with `make`
+# Compilation with `make` (NOT YET SUPPORTED FOR MULTISPECIES)
 
 `cd src`
 
