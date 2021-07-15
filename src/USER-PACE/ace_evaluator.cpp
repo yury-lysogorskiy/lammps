@@ -203,8 +203,7 @@ ACECTildeEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *typ
     //TODO: nradbase -> nradbasei (get per-species type)
     const NS_TYPE nradbasei = basis_set->nradbase;
 
-    //TODO: get per-species type number of densities
-    const DENSITY_TYPE ndensity= basis_set->ndensitymax;
+    const DENSITY_TYPE ndensity = basis_set->map_embedding_specifications[mu_i].ndensity;
 
     neighbours_forces.resize(jnum, 3);
     neighbours_forces.fill(0);
@@ -219,7 +218,9 @@ ACECTildeEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *typ
 
 #ifdef EXTRA_C_PROJECTIONS
     basis_projections_rank1.init(total_basis_size_rank1, ndensity, "c_projections_rank1");
+    basis_projections_rank1.fill(0);
     basis_projections.init(total_basis_size, ndensity, "c_projections");
+    basis_projections.fill(0);
 #endif
 
     //proxy references to spherical harmonics and radial functions arrays
@@ -456,11 +457,11 @@ ACECTildeEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *typ
 
 
     // energy cutoff
-    rho_cut = basis_set->rho_core_cutoffs(mu_i);
-    drho_cut = basis_set->drho_core_cutoffs(mu_i);
+    rho_cut = basis_set->map_embedding_specifications.at(mu_i).rho_core_cutoff;
+    drho_cut = basis_set->map_embedding_specifications.at(mu_i).drho_core_cutoff;
 
     basis_set->inner_cutoff(rho_core, rho_cut, drho_cut, fcut, dfcut);
-    basis_set->FS_values_and_derivatives(rhos, evdwl, dF_drho, ndensity);
+    basis_set->FS_values_and_derivatives(rhos, evdwl, dF_drho, mu_i);
 
     dF_drho_core = evdwl * dfcut + 1;
     for (DENSITY_TYPE p = 0; p < ndensity; ++p)
