@@ -99,15 +99,22 @@ void ACEAbstractBasisSet::inner_cutoff(DOUBLE_TYPE rho_core, DOUBLE_TYPE rho_cut
 }
 
 void ACEAbstractBasisSet::FS_values_and_derivatives(Array1D<DOUBLE_TYPE> &rhos, DOUBLE_TYPE &value,
-                                                    Array1D<DOUBLE_TYPE> &derivatives, DENSITY_TYPE ndensity) {
+                                                    Array1D<DOUBLE_TYPE> &derivatives,
+                                                    SPECIES_TYPE mu_i
+) {
     DOUBLE_TYPE F, DF = 0, wpre, mexp;
+    DENSITY_TYPE ndensity = map_embedding_specifications.at(mu_i).ndensity;
     for (int p = 0; p < ndensity; p++) {
-        wpre = FS_parameters.at(p * ndensity + 0);
-        mexp = FS_parameters.at(p * ndensity + 1);
-        if (this->npoti == "FinnisSinclair")
+
+        wpre = map_embedding_specifications.at(mu_i).FS_parameters.at(p * 2 + 0);
+        mexp = map_embedding_specifications.at(mu_i).FS_parameters.at(p * 2 + 1);
+        string npoti = map_embedding_specifications.at(mu_i).npoti;
+
+        if (npoti == "FinnisSinclair")
             Fexp(rhos(p), mexp, F, DF);
-        else if (this->npoti == "FinnisSinclairShiftedScaled")
+        else if (npoti == "FinnisSinclairShiftedScaled")
             FexpShiftedScaled(rhos(p), mexp, F, DF);
+
         value += F * wpre; // * weight (wpre)
         derivatives(p) = DF * wpre;// * weight (wpre)
     }
@@ -144,8 +151,9 @@ ACEAbstractBasisSet::~ACEAbstractBasisSet() {
 
 void ACEAbstractBasisSet::_copy_scalar_memory(const ACEAbstractBasisSet &src) {
     deltaSplineBins = src.deltaSplineBins;
-    FS_parameters = src.FS_parameters;
-    npoti = src.npoti;
+
+    map_bond_specifications = src.map_bond_specifications;
+    map_embedding_specifications = src.map_embedding_specifications;
 
     nelements = src.nelements;
     rankmax = src.rankmax;
@@ -157,8 +165,8 @@ void ACEAbstractBasisSet::_copy_scalar_memory(const ACEAbstractBasisSet &src) {
 
     spherical_harmonics = src.spherical_harmonics;
 
-    rho_core_cutoffs = src.rho_core_cutoffs;
-    drho_core_cutoffs = src.drho_core_cutoffs;
+//    rho_core_cutoffs = src.rho_core_cutoffs;
+//    drho_core_cutoffs = src.drho_core_cutoffs;
 
 
     E0vals = src.E0vals;
@@ -182,3 +190,51 @@ SPECIES_TYPE ACEAbstractBasisSet::get_species_index_by_name(const string &elemna
     }
     return -1;
 }
+
+bool compare(const ACEAbstractBasisFunction &b1, const ACEAbstractBasisFunction &b2) {
+    if (b1.rank < b2.rank) return true;
+    else if (b1.rank > b2.rank) return false;
+    //now b1.rank==b2.rank
+
+
+//    if (b1.rankL < b2.rankL) return true;
+//    else if (b1.rankL > b2.rankL) return false;
+    //now b1.rankL==b2.rankL
+
+    if (b1.mu0 < b2.mu0) return true;
+    else if (b1.mu0 > b2.mu0) return false;
+
+    for (RANK_TYPE r = 0; r < b1.rank; r++)
+        if (b1.mus[r] < b2.mus[r]) return true;
+        else if (b1.mus[r] > b2.mus[r]) return false;
+    // now mus are checked to be equal
+
+    for (RANK_TYPE r = 0; r < b1.rank; r++)
+        if (b1.ns[r] < b2.ns[r]) return true;
+        else if (b1.ns[r] > b2.ns[r]) return false;
+    // now ns are checked to be equal
+
+    for (RANK_TYPE r = 0; r < b1.rank; r++)
+        if (b1.ls[r] < b2.ls[r]) return true;
+        else if (b1.ls[r] > b2.ls[r]) return false;
+    // now ls are checked to be equal
+
+//    for (RANK_TYPE r = 0; r < b1.rankL; r++)
+//        if (b1.LS[r] < b2.LS[r]) return true;
+//        else if (b1.LS[r] > b2.LS[r]) return false;
+    // now LS are checked to be equal
+
+    if (b1.num_ms_combs < b2.num_ms_combs) return true;
+    else if (b1.num_ms_combs > b2.num_ms_combs) return false;
+    // now num_ms_combs are checked to be equal
+
+    // ms_combs:
+    // size =  num_ms_combs * rank,
+    // effective shape: [num_ms_combs][rank]
+    for (SHORT_INT_TYPE i = 0; i < b1.num_ms_combs * b1.rank; i++)
+        if (b1.ms_combs[i] < b2.ms_combs[i]) return true;
+        else if (b1.ms_combs[i] > b2.ms_combs[i]) return false;
+
+    return false; // ! b1<b2
+}
+

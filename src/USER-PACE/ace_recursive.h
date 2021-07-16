@@ -181,16 +181,17 @@ class ACERecursiveEvaluator : public ACEEvaluator {
     void init(ACECTildeBasisSet *basis_set, int heuristic);
 
     /* convert the PACE to the ACE.jl format to prepare for DAG construction*/
-    Array2D<int> jl_Aspec;
-    Array2D<int> jl_AAspec;
-    Array1D<int> jl_AAspec_flat;
-    Array1D<int> jl_orders;
-    Array2D<DOUBLE_TYPE> jl_coeffs; 
-    void acejlformat();
+
+    vector<Array2D<int>> jl_Aspec; // TODO: conversion to multispecies: make as vector<Array{N}D<int>> with [mu_0] axis
+    vector<Array2D<int>> jl_AAspec;// TODO: conversion to multispecies: make as vector<Array{N}D<int>> with [mu_0] axis
+    vector<Array1D<int>> jl_AAspec_flat;// TODO: conversion to multispecies: make as vector<Array{N}D<int>> with [mu_0] axis
+    vector<Array1D<int>> jl_orders;// TODO: conversion to multispecies: make as vector<Array{N}D<int>> with [mu_0] axis
+    vector<Array2D<DOUBLE_TYPE>> jl_coeffs; // TODO: conversion to multispecies: make as vector<Array{N}D<int>> with [mu_0] axis
+    void acejlformat(SPECIES_TYPE mu0);
 
     /* the main event : the computational graph */
-    ACEDAG dag; 
-
+//    ACEDAG dag;  // TODO: conversion to multispecies: make as vector<ACEDAG> with [mu_0] axis
+    vector<ACEDAG> species_dags;
     bool recursive = true;
 
 public:
@@ -231,11 +232,16 @@ public:
     /******* public functions related to recursive evaluator ********/
     
     // print out the DAG for visual inspection
-    void print_dag() {dag.print();}
+    void print_dag() {
+        for(SPECIES_TYPE mu0 = 0; mu0<basis_set->nelements; mu0++) {
+            cout<<"Specie "<<mu0<<endl;
+            species_dags[mu0].print();
+        }
+    }
     
     // print out the jl format for visual inspection
     // should be converted into a proper test 
-    void test_acejlformat(); 
+    void test_acejlformat(SPECIES_TYPE mu0);
 
     void set_recursive(bool tf) { recursive = tf; }
 
@@ -245,3 +251,4 @@ public:
 
 
 #endif //ACE_RECURSIVE_H
+

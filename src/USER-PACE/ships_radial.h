@@ -125,8 +125,7 @@ public:
     bool has_pair(); 
 
     void init(NS_TYPE nradb, LS_TYPE lmax, NS_TYPE nradial, DOUBLE_TYPE deltaSplineBins, SPECIES_TYPE nelements,
-              DOUBLE_TYPE cutoff,
-              string radbasename) override;
+              vector<vector<string>> radbasename) override;
 
     void
     evaluate(DOUBLE_TYPE r, NS_TYPE nradbase_c, NS_TYPE nradial_c, SPECIES_TYPE mu_i, SPECIES_TYPE mu_j,
@@ -156,3 +155,4 @@ public:
 
 
 #endif
+

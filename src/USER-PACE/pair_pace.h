@@ -68,7 +68,7 @@ namespace LAMMPS_NS {
     protected:
         ACECTildeBasisSet *basis_set = nullptr;
 
-        ACERecursiveEvaluator *ace = nullptr;
+        ACERecursiveEvaluator* ace = nullptr;
 
         char *potential_file_name;
 

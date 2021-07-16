@@ -26,14 +26,25 @@
  */
 
 // Created by Yury Lysogorskiy on 1.04.20.
+#include <fstream>
 
 #include "ace_c_basis.h"
 #include "ships_radial.h"
 
 using namespace std;
 
+inline bool ends_with(std::string const &value, std::string const &ending) {
+    if (ending.size() > value.size()) return false;
+    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
+
 ACECTildeBasisSet::ACECTildeBasisSet(string filename) {
-    load(filename);
+    if (ends_with(filename, ".ace"))
+        load(filename);
+    else if (ends_with(filename, ".yace"))
+        load_yaml(filename);
+    else
+        throw invalid_argument("Unrecognized file type of '" + filename + "'. Accept only .ace or .yace");
 }
 
 ACECTildeBasisSet::ACECTildeBasisSet(const ACECTildeBasisSet &other) {
@@ -287,18 +298,27 @@ void ACECTildeBasisSet::save(const string &filename) {
 
     fprintf(fptr, "lmax=%d\n\n", lmax);
 
-    fprintf(fptr, "embedding-function: %s\n", npoti.c_str());
+//    fprintf(fptr, "embedding-function: %s\n", npoti.c_str());
+    fprintf(fptr, "embedding-function: %s\n", map_embedding_specifications[0].npoti.c_str());
 
-    fprintf(fptr, "%ld FS parameters: ", FS_parameters.size());
-    for (int i = 0; i < FS_parameters.size(); ++i) {
-        fprintf(fptr, " %f", FS_parameters.at(i));
+//    fprintf(fptr, "%ld FS parameters: ", FS_parameters.size());
+//    for (int i = 0; i < FS_parameters.size(); ++i) {
+//        fprintf(fptr, " %f", FS_parameters.at(i));
+//    }
+
+    //TODO: hardcoded for single species
+    fprintf(fptr, "%ld FS parameters: ", map_embedding_specifications[0].FS_parameters.size());
+    for (int i = 0; i < map_embedding_specifications[0].FS_parameters.size(); ++i) {
+        fprintf(fptr, " %f", map_embedding_specifications[0].FS_parameters.at(i));
     }
     fprintf(fptr, "\n");
 
     //hard-core energy cutoff repulsion
     fprintf(fptr, "core energy-cutoff parameters: ");
-    for (SPECIES_TYPE mu_i = 0; mu_i < nelements; ++mu_i)
-        fprintf(fptr, "%.18f %.18f\n", rho_core_cutoffs(mu_i), drho_core_cutoffs(mu_i));
+    for (SPECIES_TYPE mu_i = 0; mu_i < nelements; ++mu_i) {
+        fprintf(fptr, "%.18f %.18f\n", map_embedding_specifications.at(mu_i).rho_core_cutoff,
+                map_embedding_specifications.at(mu_i).drho_core_cutoff);
+    }
 
     // save E0 values 
     fprintf(fptr, "E0:");
@@ -310,7 +330,7 @@ void ACECTildeBasisSet::save(const string &filename) {
     fprintf(fptr, "\n");
 
 
-    fprintf(fptr, "radbasename=%s\n", radial_functions->radbasename.c_str());
+    fprintf(fptr, "radbasename=%s\n", radial_functions->radbasenameij(0, 0).c_str());//TODO-single species
     fprintf(fptr, "nradbase=%d\n", nradbase);
     fprintf(fptr, "nradmax=%d\n", nradmax);
 
@@ -521,8 +541,16 @@ void ACECTildeBasisSet::load(const string filename) {
         throw invalid_argument("Could not open file " + filename);
 
     //read number of elements
-    res = fscanf(fptr, " nelements=");
-    res = fscanf(fptr, "%s", buffer);
+    res = fscanf(fptr, " nelements=%s\n", buffer);
+    //try to read the buffer one more time
+    char *rr;
+    while (res != 1) {
+        rr = fgets(buffer, 1024, fptr);
+        if (!rr)
+            break;
+        res = fscanf(fptr, " nelements=%s\n", buffer);
+    }
+
     if (res != 1)
         throw_error(filename, "nelements", "nelements=[number]");
     nelements = stoi_err(buffer, filename, "nelements", "nelements=[number]");
@@ -536,7 +564,10 @@ void ACECTildeBasisSet::load(const string filename) {
             throw_error(filename, "elements", "elements: Ele1 Ele2 ...");
         elements_name[mu] = buffer;
     }
-
+    // initialize embedding_specifications
+    for (SPECIES_TYPE mu_i = 0; mu_i < nelements; ++mu_i) {
+        map_embedding_specifications[mu_i] = ACEEmbeddingSpecification();
+    }
     // load angular basis - only need spherical harmonics parameter 
     res = fscanf(fptr, " lmax=%s\n", buffer);
     if (res != 1)
@@ -550,18 +581,26 @@ void ACECTildeBasisSet::load(const string filename) {
     res = fscanf(fptr, " embedding-function: %s", buffer);
     if (res == 0) {
         //throw_error(filename, "E0", " E0: E0-species1 E0-species2 ...");
-        this->npoti = "FinnisSinclair"; // default values
+//        this->npoti = "FinnisSinclair"; // default values
+        map_embedding_specifications[0].npoti = "FinnisSinclair"; // default values
         //printf("Warning! No embedding-function is specified, embedding-function: FinnisSinclair would be assumed\n");
         is_embedding_function_specified = false;
     } else {
-        this->npoti = buffer;
+//        this->npoti = buffer;
+        map_embedding_specifications[0].npoti = buffer;
         is_embedding_function_specified = true;
     }
+    //TODO: hard-coded for single-species case
+//    this->map_embedding_specifications.at(0).npoti = this->npoti;
+
+
     int parameters_size;
     res = fscanf(fptr, "%s FS parameters:", buffer);
     if (res != 1)
         throw_error(filename, "FS parameters size", "[number] FS parameters: par1 par2 ...");
     parameters_size = stoi_err(buffer, filename, "FS parameters size", "[number] FS parameters");
+
+    vector<DOUBLE_TYPE> FS_parameters;
     FS_parameters.resize(parameters_size);
     for (int i = 0; i < FS_parameters.size(); ++i) {
         res = fscanf(fptr, "%s", buffer);
@@ -569,6 +608,10 @@ void ACECTildeBasisSet::load(const string filename) {
             throw_error(filename, "FS parameter", "[number] FS parameters: [par1] [par2] ...");
         FS_parameters[i] = stod_err(buffer, filename, "FS parameter", "[number] FS parameters: [par1] [par2] ...");
     }
+
+    //TODO: hard-coded for single-species case
+    this->map_embedding_specifications.at(0).FS_parameters = FS_parameters;
+//    this->map_embedding_specifications.at(0).npoti = this->npoti;
 
     if (!is_embedding_function_specified) {
         // assuming non-linear potential, and embedding function type is important
@@ -586,17 +629,19 @@ void ACECTildeBasisSet::load(const string filename) {
     if (res != 0)
         throw_error(filename, "core energy-cutoff parameters", "core energy-cutoff parameters: [par1] [par2]");
 
-    rho_core_cutoffs.init(nelements, "rho_core_cutoffs");
-    drho_core_cutoffs.init(nelements, "drho_core_cutoffs");
+//    rho_core_cutoffs.init(nelements, "rho_core_cutoffs");
+//    drho_core_cutoffs.init(nelements, "drho_core_cutoffs");
     for (SPECIES_TYPE mu_i = 0; mu_i < nelements; ++mu_i) {
         res = fscanf(fptr, "%s %s", buffer, buffer2);
         if (res != 2)
             throw_error(filename, "core energy-cutoff parameters",
                         "core energy-cutoff parameters: [rho_core_cut] [drho_core_cutoff] ...");
-        rho_core_cutoffs(mu_i) = stod_err(buffer, filename, "rho core cutoff",
-                                          "core energy-cutoff parameters: [rho_core_cut] [drho_core_cutoff] ...");
-        drho_core_cutoffs(mu_i) = stod_err(buffer2, filename, "drho_core_cutoff",
-                                           "core energy-cutoff parameters: [rho_core_cut] [drho_core_cutoff] ...");
+        DOUBLE_TYPE rho_core_cutoff = stod_err(buffer, filename, "rho core cutoff",
+                                               "core energy-cutoff parameters: [rho_core_cut] [drho_core_cutoff] ...");
+        DOUBLE_TYPE drho_core_cutoff = stod_err(buffer2, filename, "drho_core_cutoff",
+                                                "core energy-cutoff parameters: [rho_core_cut] [drho_core_cutoff] ...");
+        map_embedding_specifications.at(mu_i).rho_core_cutoff = rho_core_cutoff;
+        map_embedding_specifications.at(mu_i).drho_core_cutoff = drho_core_cutoff;
     }
 
     // atom energy shift E0 (energy of isolated atom)
@@ -652,7 +697,10 @@ void ACECTildeBasisSet::load(const string filename) {
         throw_error(filename, "ndensitymax", "ndensitymax=[number]");
     ndensitymax = stoi_err(buffer, filename, "ndensitymax", "ndensitymax=[number]");
 
-    // read the list of correlations to be put into the basis 
+    //TODO: hardcoded for single-species case
+    this->map_embedding_specifications.at(0).ndensity = ndensitymax;
+
+    // read the list of correlations to be put into the basis
     //num_c_tilde_max
     res = fscanf(fptr, " num_c_tilde_max=");
     res = fscanf(fptr, "%s\n", buffer);
@@ -664,7 +712,6 @@ void ACECTildeBasisSet::load(const string filename) {
     res = fscanf(fptr, "%s", buffer);
     if (res != 1)
         throw_error(filename, "num_ms_combinations_max", "num_ms_combinations_max=[number]");
-//        throw invalid_argument(("File '" + filename + "': couldn't read num_ms_combinations_max").c_str());
     num_ms_combinations_max = stol_err(buffer, filename, "num_ms_combinations_max", "num_ms_combinations_max=[number]");
 
     //read total_basis_size_rank1
@@ -834,6 +881,13 @@ void ACECTildeBasisSet::flatten_basis(C_tilde_full_basis_vector2d &mu0_ctilde_ba
 void ACECTildeBasisSet::_load_radial_ACERadial(FILE *fptr,
                                                const string filename,
                                                const string radbasename) {
+    //initialize map_bond_specifications
+    for (SPECIES_TYPE mu_i = 0; mu_i < nelements; mu_i++)
+        for (SPECIES_TYPE mu_j = 0; mu_j < nelements; mu_j++) {
+            ACEBondSpecification bondSpecification;
+            map_bond_specifications[make_pair(mu_i, mu_j)] = bondSpecification;
+        }
+
     int res;
     char buffer[1024], buffer2[1024];
 
@@ -841,14 +895,17 @@ void ACECTildeBasisSet::_load_radial_ACERadial(FILE *fptr,
     res = fscanf(fptr, "%s", buffer);
     if (res != 1)
         throw_error(filename, "nradbase", "nradbase=[number]");
-//        throw invalid_argument(("File '" + filename + "': couldn't read nradbase").c_str());
     nradbase = stoi_err(buffer, filename, "nradbase", "nradbase=[number]");
+    //WARNING! hardcoded for single specie
+    map_bond_specifications[make_pair(0, 0)].nradbasemax = nradbase;
 
     res = fscanf(fptr, " nradmax=");
     res = fscanf(fptr, "%s", buffer);
     if (res != 1)
         throw_error(filename, "nradmax", "nradmax=[number]");
     nradmax = stoi_err(buffer, filename, "nradmax", "nradmax=[number]");
+    //WARNING! hardcoded for single specie
+    map_bond_specifications[make_pair(0, 0)].nradmax = nradmax;
 
     res = fscanf(fptr, " cutoffmax=");
     res = fscanf(fptr, "%s", buffer);
@@ -861,27 +918,28 @@ void ACECTildeBasisSet::_load_radial_ACERadial(FILE *fptr,
     res = fscanf(fptr, "%s", buffer);
     if (res != 1)
         throw_error(filename, "deltaSplineBins", "deltaSplineBins=[spline density, Angstroms]");
-//        throw invalid_argument(("File '" + filename + "': couldn't read ntot").c_str());
     deltaSplineBins = stod_err(buffer, filename, "deltaSplineBins", "deltaSplineBins=[spline density, Angstroms]");
 
+    //WARNING! hardcoded for single specie
+    map_bond_specifications[make_pair(0, 0)].lmax = lmax;
+    map_bond_specifications[make_pair(0, 0)].radbasename = radbasename;
 
     if (radial_functions == nullptr)
         radial_functions = new ACERadialFunctions(nradbase, lmax, nradmax,
                                                   deltaSplineBins,
                                                   nelements,
-                                                  cutoffmax, radbasename);
+                                                  {{radbasename}});
     else
         radial_functions->init(nradbase, lmax, nradmax,
                                deltaSplineBins,
                                nelements,
-                               cutoffmax, radbasename);
+                               {{radbasename}});
 
 
     //hard-core repulsion
     res = fscanf(fptr, " core repulsion parameters:");
     if (res != 0)
         throw_error(filename, "core repulsion parameters", "core repulsion parameters: [prehc lambdahc] ...");
-//        throw invalid_argument(("File '" + filename + "': couldn't read core repulsion parameters").c_str());
 
     for (SPECIES_TYPE mu_i = 0; mu_i < nelements; ++mu_i)
         for (SPECIES_TYPE mu_j = 0; mu_j < nelements; ++mu_j) {
@@ -892,6 +950,9 @@ void ACECTildeBasisSet::_load_radial_ACERadial(FILE *fptr,
                                                            "core repulsion parameters: [prehc lambdahc] ...");
             radial_functions->lambdahc(mu_i, mu_j) = stod_err(buffer2, filename, "core repulsion parameters",
                                                               "core repulsion parameters: [prehc lambdahc] ...");
+
+            map_bond_specifications[make_pair(mu_i, mu_j)].prehc = radial_functions->prehc(mu_i, mu_j);
+            map_bond_specifications[make_pair(mu_i, mu_j)].lambdahc = radial_functions->lambdahc(mu_i, mu_j);
         }
 
 
@@ -905,6 +966,7 @@ void ACECTildeBasisSet::_load_radial_ACERadial(FILE *fptr,
                 throw_error(filename, "radparameter", "radparameter=[param_ele1] [param_ele2]");
             radial_functions->lambda(mu_i, mu_j) = stod_err(buffer, filename, "radparameter",
                                                             "radparameter=[param_ele1] [param_ele2]");
+            map_bond_specifications[make_pair(mu_i, mu_j)].radparameters = {radial_functions->lambda(mu_i, mu_j)};
         }
 
 
@@ -916,6 +978,8 @@ void ACECTildeBasisSet::_load_radial_ACERadial(FILE *fptr,
                 throw_error(filename, "cutoff", "cutoff=[param_ele1] [param_ele2]");
             radial_functions->cut(mu_i, mu_j) = stod_err(buffer, filename, "cutoff",
                                                          "cutoff=[param_ele1] [param_ele2]");
+
+            map_bond_specifications[make_pair(mu_i, mu_j)].rcut = radial_functions->cut(mu_i, mu_j);
         }
 
 
@@ -926,12 +990,14 @@ void ACECTildeBasisSet::_load_radial_ACERadial(FILE *fptr,
             if (res != 1)
                 throw_error(filename, "dcut", "dcut=[param_ele1] [param_ele2]");
             radial_functions->dcut(mu_i, mu_j) = stod_err(buffer, filename, "dcut", "dcut=[param_ele1] [param_ele2]");
+            map_bond_specifications[make_pair(mu_i, mu_j)].dcut = radial_functions->dcut(mu_i, mu_j);
         }
 
 
     res = fscanf(fptr, " crad=");
     for (SPECIES_TYPE mu_i = 0; mu_i < nelements; ++mu_i)
-        for (SPECIES_TYPE mu_j = 0; mu_j < nelements; ++mu_j)
+        for (SPECIES_TYPE mu_j = 0; mu_j < nelements; ++mu_j) {
+            Array3D<DOUBLE_TYPE> radcoefficients(nradmax, lmax + 1, nradbase);
             for (NS_TYPE k = 0; k < nradbase; k++)
                 for (NS_TYPE n = 0; n < nradmax; n++)
                     for (LS_TYPE l = 0; l <= lmax; l++) {
@@ -940,7 +1006,11 @@ void ACECTildeBasisSet::_load_radial_ACERadial(FILE *fptr,
                             throw_error(filename, "crad", "crad=[crad_]...[crad_knl]: nradbase*nrad*(l+1) times");
                         radial_functions->crad(mu_i, mu_j, n, l, k) = stod_err(buffer, filename, "crad",
                                                                                "crad=[crad_]...[crad_knl]: nradbase*nrad*(l+1) times");
+                        radcoefficients(n, l, k) = radial_functions->crad(mu_i, mu_j, n, l, k);
                     }
+
+            map_bond_specifications[make_pair(mu_i, mu_j)].radcoefficients = radcoefficients.to_vector();
+        }
 }
 
 void ACECTildeBasisSet::_load_radial_SHIPsBasic(FILE *fptr,
@@ -962,7 +1032,7 @@ void ACECTildeBasisSet::_load_radial_SHIPsBasic(FILE *fptr,
     ships_radial_functions->init(nradbase, lmax, nradmax,
                                  deltaSplineBins,
                                  nelements,
-                                 cutoffmax, radbasename);
+                                 {{radbasename}});
 
 
     if (radial_functions) delete radial_functions;
@@ -978,3 +1048,348 @@ void ACECTildeBasisSet::_load_radial_SHIPsBasic(FILE *fptr,
     radial_functions->crad.fill(0);
 
 }
+
+vector<vector<SPECIES_TYPE>> ACECTildeBasisSet::get_all_coeffs_mask() const {
+    //TODO: implement
+    vector<vector<SPECIES_TYPE>> all_coeffs_mask;
+    return all_coeffs_mask;
+}
+
+vector<DOUBLE_TYPE> ACECTildeBasisSet::get_all_coeffs() const {
+    auto coeffs = radial_functions->crad.to_flatten_vector();
+
+    for (SPECIES_TYPE mu = 0; mu < nelements; mu++) {
+        for (SHORT_INT_TYPE func_ind = 0; func_ind < total_basis_size_rank1[mu]; func_ind++) {
+            auto ndens = basis_rank1[mu][func_ind].ndensity;
+            for (SHORT_INT_TYPE ms_ind = 0; ms_ind < basis_rank1[mu][func_ind].num_ms_combs; ms_ind++) {
+                for (DENSITY_TYPE p = 0; p < ndens; p++)
+                    coeffs.emplace_back(basis_rank1[mu][func_ind].ctildes[ms_ind * ndens + p]);
+            }
+        }
+
+        for (SHORT_INT_TYPE func_ind = 0; func_ind < total_basis_size[mu]; func_ind++) {
+            auto ndens = basis[mu][func_ind].ndensity;
+            for (SHORT_INT_TYPE ms_ind = 0; ms_ind < basis[mu][func_ind].num_ms_combs; ms_ind++) {
+                for (DENSITY_TYPE p = 0; p < ndens; p++)
+                    coeffs.emplace_back(basis[mu][func_ind].ctildes[ms_ind * ndens + p]);
+            }
+        }
+    }
+
+    return coeffs;
+}
+
+void ACECTildeBasisSet::set_all_coeffs(const vector<DOUBLE_TYPE> &coeffs) {
+    size_t crad_size = radial_functions->crad.get_size();
+    vector<DOUBLE_TYPE> crad_flatten_vector(coeffs.begin(), coeffs.begin() + crad_size);
+    vector<DOUBLE_TYPE> basis_coeffs_vector(coeffs.begin() + crad_size, coeffs.end());
+
+    radial_functions->crad = crad_flatten_vector;
+    radial_functions->setuplookupRadspline();
+
+    size_t coeffs_ind = 0;
+    for (SPECIES_TYPE mu = 0; mu < nelements; mu++) {
+        for (SHORT_INT_TYPE func_ind = 0; func_ind < total_basis_size_rank1[mu]; func_ind++) {
+            auto ndens = basis_rank1[mu][func_ind].ndensity;
+            for (SHORT_INT_TYPE ms_ind = 0; ms_ind < basis_rank1[mu][func_ind].num_ms_combs; ms_ind++) {
+                for (DENSITY_TYPE p = 0; p < ndens; p++, coeffs_ind++) {
+                    basis_rank1[mu][func_ind].ctildes[ms_ind * ndens + p] = basis_coeffs_vector[coeffs_ind];
+                }
+            }
+        }
+
+        for (SHORT_INT_TYPE func_ind = 0; func_ind < total_basis_size[mu]; func_ind++) {
+            auto ndens = basis[mu][func_ind].ndensity;
+            for (SHORT_INT_TYPE ms_ind = 0; ms_ind < basis[mu][func_ind].num_ms_combs; ms_ind++) {
+                for (DENSITY_TYPE p = 0; p < ndens; p++, coeffs_ind++) {
+                    basis[mu][func_ind].ctildes[ms_ind * ndens + p] = basis_coeffs_vector[coeffs_ind];
+                }
+            }
+        }
+    }
+}
+
+void ACECTildeBasisSet::save_yaml(const string &yaml_file_name) const {
+    YAML::Node ctilde_basis_yaml;
+
+    vector<string> elements_name_vec;
+    elements_name_vec.assign(this->elements_name, this->elements_name + this->nelements);
+    ctilde_basis_yaml["elements"] = elements_name_vec;
+    ctilde_basis_yaml["elements"].SetStyle(YAML::EmitterStyle::Flow);
+
+    ctilde_basis_yaml["E0"] = E0vals.to_vector();
+    ctilde_basis_yaml["E0"].SetStyle(YAML::EmitterStyle::Flow);
+
+    ctilde_basis_yaml["deltaSplineBins"] = this->deltaSplineBins;
+
+    map<int, YAML::Node> yaml_map_embedding_specifications;
+    for (const auto &p: this->map_embedding_specifications)
+        yaml_map_embedding_specifications[p.first] = p.second.to_YAML();
+    ctilde_basis_yaml["embeddings"] = yaml_map_embedding_specifications;
+
+    map<vector<int>, YAML::Node> yaml_map_bond_specifications;
+    for (const auto &p: this->map_bond_specifications) {
+        vector<int> bond_pair = {(int) p.first.first, (int) p.first.second};
+        YAML::Node bond_yaml;
+        bond_yaml = bond_pair;
+        bond_yaml.SetStyle(YAML::EmitterStyle::Flow);
+        yaml_map_bond_specifications[bond_pair] = p.second.to_YAML();
+    }
+    ctilde_basis_yaml["bonds"] = yaml_map_bond_specifications;
+
+    //iterate over keys and make them in Flow style
+    for (YAML::detail::iterator_value p: ctilde_basis_yaml["bonds"]) {
+        p.first.SetStyle(YAML::EmitterStyle::Flow);
+    }
+
+    map<int, vector<YAML::Node>> acebbasisfunc_map;
+    for (SPECIES_TYPE mu = 0; mu < this->nelements; mu++) {
+        vector<YAML::Node> acebbasisfunc_vec;
+        for (size_t ind = 0; ind < this->total_basis_size_rank1[mu]; ind++)
+            acebbasisfunc_vec.emplace_back(this->basis_rank1[mu][ind].to_YAML());
+
+        for (size_t ind = 0; ind < this->total_basis_size[mu]; ind++)
+            acebbasisfunc_vec.emplace_back(this->basis[mu][ind].to_YAML());
+
+        acebbasisfunc_map[mu] = acebbasisfunc_vec;
+    }
+
+    ctilde_basis_yaml["functions"] = acebbasisfunc_map;
+
+    YAML::Emitter yaml_emitter;
+    yaml_emitter << ctilde_basis_yaml;
+
+    std::ofstream fout(yaml_file_name);
+    fout << yaml_emitter.c_str() << endl;
+}
+
+void ACECTildeBasisSet::load_yaml(const string &yaml_file_name) {
+    //set the input file - first thing to do
+    ifstream f(yaml_file_name.c_str());
+    if (!f.good()) {
+        stringstream s;
+        s << "Potential file " << yaml_file_name << " doesn't exists";
+        cerr << "Exception: " << s.str();
+        throw invalid_argument(s.str());
+    }
+
+    //load the file with yaml
+    YAML::Node ctilde_basis_yaml = YAML::LoadFile(yaml_file_name);
+
+    //reading elements and mapping
+    auto elements_yaml = ctilde_basis_yaml["elements"];
+    auto elements_name_vec = elements_yaml.as<vector<string>>();
+    this->nelements = elements_name_vec.size();
+    if (this->elements_name != nullptr)
+        delete[] this->elements_name;
+    this->elements_name = new string[nelements];
+    for (int mu = 0; mu < nelements; mu++) {
+        this->elements_name[mu] = elements_name_vec.at(mu);
+        this->elements_to_index_map[elements_name_vec.at(mu)] = mu;
+    }
+
+    //reading E0vals
+    auto e0_vec = ctilde_basis_yaml["E0"].as<vector<DOUBLE_TYPE >>();
+    E0vals.init(nelements);
+    E0vals.fill(0);
+    E0vals = e0_vec;
+
+    //reading embeddings
+    auto yaml_map_embedding_specifications = ctilde_basis_yaml["embeddings"].as<map<int, YAML::Node>>();
+    this->ndensitymax = 0;
+    for (auto p: yaml_map_embedding_specifications) {
+        SPECIES_TYPE mu_i = p.first;
+        if (mu_i > nelements - 1)
+            throw invalid_argument("yace::embeddings has species type key larger than nelements");
+
+        auto &emb_yaml = p.second;
+        ACEEmbeddingSpecification embeddingSpecification;
+
+        embeddingSpecification.ndensity = emb_yaml["ndensity"].as<DENSITY_TYPE>();
+        embeddingSpecification.FS_parameters = emb_yaml["FS_parameters"].as<vector<DOUBLE_TYPE>>();
+        embeddingSpecification.npoti = emb_yaml["npoti"].as<string>();
+        embeddingSpecification.rho_core_cutoff = emb_yaml["rho_core_cutoff"].as<DOUBLE_TYPE>();
+        embeddingSpecification.drho_core_cutoff = emb_yaml["drho_core_cutoff"].as<DOUBLE_TYPE>();
+
+        map_embedding_specifications[mu_i] = embeddingSpecification;
+
+        if (embeddingSpecification.ndensity > this->ndensitymax)
+            this->ndensitymax = embeddingSpecification.ndensity;
+    }
+
+    //reading bonds
+    auto yaml_map_bond_specifications = ctilde_basis_yaml["bonds"].as<map<vector<int>, YAML::Node>>();
+    this->lmax = 0;
+    this->nradmax = 0;
+    this->nradbase = 0;
+    this->cutoffmax = 0;
+    vector<vector<string>> radbasename_ij(nelements, vector<string>(nelements));
+    for (const auto &p: yaml_map_bond_specifications) {
+        pair<SPECIES_TYPE, SPECIES_TYPE> bond_pair = make_pair(p.first[0], p.first[1]);
+        if (bond_pair.first > nelements - 1 || bond_pair.second > nelements - 1)
+            throw invalid_argument("yace::bonds has species type key larger than nelements");
+
+        auto bond_yaml = p.second;
+        ACEBondSpecification bondSpec;
+        bondSpec.nradmax = bond_yaml["nradmax"].as<NS_TYPE>();
+        bondSpec.lmax = bond_yaml["lmax"].as<LS_TYPE>();
+        bondSpec.nradbasemax = bond_yaml["nradbasemax"].as<NS_TYPE>();
+        bondSpec.radbasename = bond_yaml["radbasename"].as<string>();
+        bondSpec.radparameters = bond_yaml["radparameters"].as<vector<DOUBLE_TYPE>>();
+        bondSpec.radcoefficients = bond_yaml["radcoefficients"].as<vector<vector<vector<DOUBLE_TYPE>>>>();
+        bondSpec.prehc = bond_yaml["prehc"].as<DOUBLE_TYPE>();
+        bondSpec.lambdahc = bond_yaml["lambdahc"].as<DOUBLE_TYPE>();
+        bondSpec.rcut = bond_yaml["rcut"].as<DOUBLE_TYPE>();
+        bondSpec.dcut = bond_yaml["dcut"].as<DOUBLE_TYPE>();
+        map_bond_specifications[bond_pair] = bondSpec;
+
+        radbasename_ij.at(bond_pair.first).at(bond_pair.second) = bondSpec.radbasename;
+
+        //update lmax, nradbase max, ...
+        if (bondSpec.nradmax > this->nradmax)
+            this->nradmax = bondSpec.nradmax;
+
+        if (bondSpec.lmax > this->lmax)
+            this->lmax = bondSpec.lmax;
+
+        if (bondSpec.nradbasemax > this->nradbase)
+            this->nradbase = bondSpec.nradbasemax;
+
+        if (bondSpec.rcut > this->cutoffmax)
+            this->cutoffmax = bondSpec.rcut;
+
+    }
+    this->deltaSplineBins = ctilde_basis_yaml["deltaSplineBins"].as<DOUBLE_TYPE>();
+
+    //setup radialBasis
+    spherical_harmonics.init(lmax);
+
+    //TODO: implement SHIPs support
+
+    if (radial_functions == nullptr)
+        radial_functions = new ACERadialFunctions(nradbase, lmax, nradmax,
+                                                  deltaSplineBins,
+                                                  nelements,
+                                                  radbasename_ij);
+    else
+        radial_functions->init(nradbase, lmax, nradmax,
+                               deltaSplineBins,
+                               nelements,
+                               radbasename_ij);
+
+    for (SPECIES_TYPE mu_i = 0; mu_i < nelements; ++mu_i) {
+        for (SPECIES_TYPE mu_j = 0; mu_j < nelements; ++mu_j) {
+            auto bond = make_pair(mu_i, mu_j);
+            const auto &bondSpec = map_bond_specifications[bond];
+            radial_functions->cut(mu_i, mu_j) = bondSpec.rcut;
+            radial_functions->dcut(mu_i, mu_j) = bondSpec.dcut;
+            radial_functions->prehc(mu_i, mu_j) = bondSpec.prehc;
+            radial_functions->lambdahc(mu_i, mu_j) = bondSpec.lambdahc;
+            radial_functions->lambda(mu_i, mu_j) = bondSpec.radparameters.at(0);
+
+            //setup crad
+            for (NS_TYPE n = 0; n < bondSpec.nradmax; n++)
+                for (LS_TYPE l = 0; l <= bondSpec.lmax; l++)
+                    for (NS_TYPE k = 0; k < bondSpec.nradbasemax; k++) {
+                        radial_functions->crad(mu_i, mu_j, n, l, k) = bondSpec.radcoefficients.at(n).at(l).at(k);
+                    }
+        }
+    }
+
+    //reading ACECTildeBasisFunctions
+    //TODO:setup rankmax
+    map<int, vector<YAML::Node>> acebbasisfunc_map = ctilde_basis_yaml["functions"].as<map<int, vector<YAML::Node> >>();
+
+    vector<int> int_vec;
+    vector<DOUBLE_TYPE> double_vec;
+
+    total_basis_size_rank1 = new SHORT_INT_TYPE[nelements];
+    basis_rank1 = new ACECTildeBasisFunction *[nelements];
+
+    total_basis_size = new SHORT_INT_TYPE[nelements];
+    basis = new ACECTildeBasisFunction *[nelements];
+
+    this->rankmax = 0;
+
+    for (const auto &p: acebbasisfunc_map) {
+        SPECIES_TYPE mu = p.first;
+        if (mu > nelements - 1)
+            throw invalid_argument("yace::functions has species type key larger than nelements");
+
+        total_basis_size_rank1[mu] = 0;
+        total_basis_size[mu] = 0;
+
+        auto ctildefunc_vec_yaml = p.second;
+
+        vector<ACECTildeBasisFunction> ctildefunc_vec;//TODO: read write is_half_ms_basis
+        for (const auto &ctildefunc_yaml: ctildefunc_vec_yaml) {
+
+            ACECTildeBasisFunction ctildefunc;
+
+            ctildefunc.mu0 = ctildefunc_yaml["mu0"].as<SHORT_INT_TYPE>();
+            ctildefunc.rank = ctildefunc_yaml["rank"].as<SHORT_INT_TYPE>();
+            ctildefunc.ndensity = ctildefunc_yaml["ndensity"].as<SHORT_INT_TYPE>();
+            ctildefunc.num_ms_combs = ctildefunc_yaml["num_ms_combs"].as<SHORT_INT_TYPE>();
+
+            int_vec = ctildefunc_yaml["mus"].as<vector<int>>();
+            ctildefunc.mus = new SPECIES_TYPE[ctildefunc.rank];
+            for (int r = 0; r < ctildefunc.rank; r++)
+                ctildefunc.mus[r] = int_vec.at(r);
+
+            int_vec = ctildefunc_yaml["ns"].as<vector<int>>();
+            ctildefunc.ns = new NS_TYPE[ctildefunc.rank];
+            for (int r = 0; r < ctildefunc.rank; r++)
+                ctildefunc.ns[r] = int_vec.at(r);
+
+
+            int_vec = ctildefunc_yaml["ls"].as<vector<int>>();
+            ctildefunc.ls = new LS_TYPE[ctildefunc.rank];
+            for (int r = 0; r < ctildefunc.rank; r++)
+                ctildefunc.ls[r] = int_vec.at(r);
+
+            //this->ms_combs; //[num_ms_combs * rank]
+            int_vec = ctildefunc_yaml["ms_combs"].as<vector<int>>();
+            ctildefunc.ms_combs = new MS_TYPE[ctildefunc.rank * ctildefunc.num_ms_combs];
+            for (int r = 0; r < ctildefunc.rank * ctildefunc.num_ms_combs; r++)
+                ctildefunc.ms_combs[r] = int_vec.at(r);
+
+
+            // this->ctildes; //[num_of_ms_combs * ndensity]
+            double_vec = ctildefunc_yaml["ctildes"].as<vector<DOUBLE_TYPE >>();
+            ctildefunc.ctildes = new DOUBLE_TYPE[ctildefunc.ndensity * ctildefunc.num_ms_combs];
+            for (int r = 0; r < ctildefunc.ndensity * ctildefunc.num_ms_combs; r++)
+                ctildefunc.ctildes[r] = double_vec.at(r);
+
+            ctildefunc_vec.emplace_back(ctildefunc);
+
+            if (ctildefunc.rank == 1)
+                total_basis_size_rank1[mu]++;
+            else
+                total_basis_size[mu]++;
+
+        } // end for over ctildefunc_vec_yaml
+
+//        cout << "total_basis_size_rank1[mu]=" << total_basis_size_rank1[mu] << endl;
+//        cout << "total_basis_size[mu]=" << total_basis_size[mu] << endl;
+
+        basis_rank1[mu] = new ACECTildeBasisFunction[total_basis_size_rank1[mu]];
+        basis[mu] = new ACECTildeBasisFunction[total_basis_size[mu]];
+        size_t func_ind_rank1 = 0, func_ind = 0;
+        for (const ACECTildeBasisFunction ctildefunc: ctildefunc_vec) {
+            if (ctildefunc.rank == 1) {
+                basis_rank1[mu][func_ind_rank1] = ctildefunc;
+                func_ind_rank1++;
+            } else {
+                basis[mu][func_ind] = ctildefunc;
+                func_ind++;
+            }
+            //aggregate rankmax
+            if (this->rankmax < ctildefunc.rank)
+                this->rankmax = ctildefunc.rank;
+        }
+    }
+
+    radial_functions->setuplookupRadspline();
+    pack_flatten_basis();
+}
+

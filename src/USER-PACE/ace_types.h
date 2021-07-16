@@ -39,7 +39,8 @@ typedef short int DENSITY_TYPE;
 
 typedef short int MS_TYPE;
 
-typedef short int SHORT_INT_TYPE;
+typedef int SHORT_INT_TYPE;
 typedef double DOUBLE_TYPE;
 
 #endif
+

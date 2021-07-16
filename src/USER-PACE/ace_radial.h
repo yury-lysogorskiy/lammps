@@ -35,7 +35,7 @@
 using namespace std;
 
 //typedef void (*RadialFunctions)(DOUBLE_TYPE x);
-typedef  std::function<void(DOUBLE_TYPE)> RadialFunctions;
+typedef std::function<void(DOUBLE_TYPE)> RadialFunctions;
 
 /**
  * Class that implement spline interpolation and caching for radial functions
@@ -97,21 +97,13 @@ public:
     SPECIES_TYPE nelements = 0; ///< number of elements
     Array2D<DOUBLE_TYPE> cut = Array2D<DOUBLE_TYPE>("cut"); ///< cutoffs, shape: [nelements][nelements]
     Array2D<DOUBLE_TYPE> dcut = Array2D<DOUBLE_TYPE>("dcut"); ///< decay of cutoff, shape: [nelements][nelements]
-    DOUBLE_TYPE cutoff = 0; ///< cutoff
 
-//    int ntot = 10000; ///< Number of bins for look-up tables.
     DOUBLE_TYPE deltaSplineBins;
     LS_TYPE lmax = 0; ///< maximum value of `l`
     NS_TYPE nradial = 0;  ///< maximum number `n` of radial functions \f$ R_{nl}(r) \f$
     NS_TYPE nradbase = 0; ///< number of radial basis functions \f$ g_k(r) \f$
 
-    // Arrays for look-up tables.
-    Array2D<SplineInterpolator> splines_gk; ///< array of spline interpolator to store g_k, shape: [nelements][nelements]
-    Array2D<SplineInterpolator> splines_rnl; ///< array of spline interpolator to store R_nl, shape: [nelements][nelements]
-    Array2D<SplineInterpolator> splines_hc; ///< array of spline interpolator to store R_nl shape: [nelements][nelements]
-    //--------------------------------------------------------------------------
-
-    string radbasename = "ChebExpCos"; ///< type of radial basis functions \f$ g_{k}(r) \f$ (default="ChebExpCos")
+    Array2D<string> radbasenameij;///< type of radial basis functions \f$ g_{k}(r) \f$ [nelements][nelements]
 
     /**
    Arrays to store radial functions.
@@ -127,13 +119,12 @@ public:
             "d2fr"); ///< derivatives of R_nl(r) functions, shape: [nradial][lmax+1]
 
 
-
     DOUBLE_TYPE cr; ///< hard-core repulsion
     DOUBLE_TYPE dcr; ///< derivative of hard-core repulsion
     DOUBLE_TYPE d2cr; ///< derivative of hard-core repulsion
 
     Array5D<DOUBLE_TYPE> crad = Array5D<DOUBLE_TYPE>(
-            "crad"); ///< expansion coefficients of radial functions into radial basis function, see Eq. (27) of PRB, shape:  [nelements][nelements][lmax + 1][nradial][nradbase]
+            "crad"); ///< expansion coefficients of radial functions into radial basis function, see Eq. (27) of PRB, shape:  [nelements][nelements][nradial][lmax + 1][nradbase]
     Array2D<DOUBLE_TYPE> lambda = Array2D<DOUBLE_TYPE>(
             "lambda"); ///< distance scaling parameter Eq.(24) of PRB,  shape: [nelements][nelements]
 
@@ -148,8 +139,7 @@ public:
 
     virtual void
     init(NS_TYPE nradb, LS_TYPE lmax, NS_TYPE nradial, DOUBLE_TYPE deltaSplineBins, SPECIES_TYPE nelements,
-         DOUBLE_TYPE cutoff,
-         string radbasename = "ChebExpCos") = 0;
+         vector<vector<string>> radbasenameij) = 0;
 
     /**
     * Function that sets up the look-up tables for spline-representation of radial functions.
@@ -168,6 +158,10 @@ Class to store radial functions and their associated functions. \n
 class ACERadialFunctions final : public AbstractRadialBasis {
 public:
 
+    // Arrays for look-up tables.
+    Array2D<SplineInterpolator> splines_gk;
+    Array2D<SplineInterpolator> splines_rnl;
+    Array2D<SplineInterpolator> splines_hc;
     //--------------------------------------------------------------------------
 
     /**
@@ -208,7 +202,7 @@ public:
      */
     ACERadialFunctions(NS_TYPE nradb, LS_TYPE lmax, NS_TYPE nradial, DOUBLE_TYPE deltaSplineBins,
                        SPECIES_TYPE nelements,
-                       DOUBLE_TYPE cutoff, string radbasename = "ChebExpCos");
+                       vector<vector<string>> radbasename);
 
     /**
      * Initialize arrays for given parameters
@@ -222,8 +216,7 @@ public:
      * @param radbasename  type of radial basis function \f$ g_k(r) \f$ (default: "ChebExpCos")
      */
     void init(NS_TYPE nradb, LS_TYPE lmax, NS_TYPE nradial, DOUBLE_TYPE deltaSplineBins, SPECIES_TYPE nelements,
-              DOUBLE_TYPE cutoff,
-              string radbasename = "ChebExpCos") final;
+              vector<vector<string>> radbasename) final;
 
     /**
      * Destructor
@@ -250,7 +243,7 @@ public:
      *
      * @return  function fills gr and dgr arrays
      */
-    void radbase(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcut, DOUBLE_TYPE r);
+    void radbase(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcut, string radbasename, DOUBLE_TYPE r);
 
     /**
      *   Function that computes radial core repulsion \$f f_{core} = pre \exp( - \lambda r^2 ) / r \$f,
@@ -307,6 +300,8 @@ public:
 
     void chebLinear(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcut, DOUBLE_TYPE r);
 
+    void test_zero_func(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcut, DOUBLE_TYPE r);
+
     /**
      * Setup all radial functions for element pair mu_i-mu_j and distance r
      * @param mu_i first specie type
@@ -319,6 +314,8 @@ public:
     ACERadialFunctions *clone() const override {
         return new ACERadialFunctions(*this);
     };
+
 };
 
 #endif
+

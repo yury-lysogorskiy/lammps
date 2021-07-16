@@ -98,7 +98,7 @@ public:
     /**
      * Clean contiguous arrays (full_c_tildes_rank1, full_c_tildes) and those of base class
      */
-    void _clean_contiguous_arrays() override ;
+    void _clean_contiguous_arrays() override;
 
     /**
      * Save potential to .ace file
@@ -112,6 +112,15 @@ public:
      */
     void load(const string filename) override;
 
+
+    /**
+     * Save potential to YAML .yace file
+     * @param filename .yace file name
+     */
+    void save_yaml(const string &yaml_file_name) const;
+
+    void load_yaml(const string &filename);
+
     /**
      * Load the ACE type radial basis
      */
@@ -119,9 +128,9 @@ public:
                                 const string filename,
                                 const string radbasename);
 
-    void _load_radial_SHIPsBasic(FILE * fptr, 
-                                 const string filename, 
-                                 const string radbasename ); 
+    void _load_radial_SHIPsBasic(FILE *fptr,
+                                 const string filename,
+                                 const string radbasename);
 
     /**
      * Re-pack the constituent dynamic arrays of all basis functions in contiguous arrays
@@ -133,7 +142,7 @@ public:
      * @param basis_rank1 two-dimensional array of first-rank ACECTildeBasisFunctions
      * @param basis two-dimensional array of higher-rank ACECTildeBasisFunctions
      */
-    void compute_array_sizes(ACECTildeBasisFunction** basis_rank1, ACECTildeBasisFunction** basis);
+    void compute_array_sizes(ACECTildeBasisFunction **basis_rank1, ACECTildeBasisFunction **basis);
 
     /**
      * Clean basis arrays  'basis_rank1' and  'basis'
@@ -144,12 +153,22 @@ public:
      * Pack two-dimensional vector of ACECTildeBasisFunction into 1D dynami array with all basis functions
      * @param mu0_ctilde_basis_vector vector<vector<ACECTildeBasisFunction>>
      */
-    void flatten_basis(C_tilde_full_basis_vector2d& mu0_ctilde_basis_vector);
+    void flatten_basis(C_tilde_full_basis_vector2d &mu0_ctilde_basis_vector);
 
     /**
      * Empty stub implementation
      */
-    void flatten_basis() override{};
+    void flatten_basis() override {};
+
+
+    vector<DOUBLE_TYPE> get_all_coeffs() const override;
+
+    vector<vector<SPECIES_TYPE>> get_all_coeffs_mask() const override;
+
+    void set_all_coeffs(const vector<DOUBLE_TYPE> &coeffs) override;
+
+
 };
 
 #endif //ACE_C_BASIS_H
+

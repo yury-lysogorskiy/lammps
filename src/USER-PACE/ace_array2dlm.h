@@ -492,6 +492,7 @@ public:
     }
 
 #ifdef MULTIARRAY_INDICES_CHECK
+
     /**
      * Check if indices (i0, l,m) are within array
      */
@@ -519,10 +520,12 @@ public:
 
         size_t ii = i0 * s[0] + i1 * s[1] + l * (l + 1) + m;
         if (ii >= size) {
-            fprintf(stderr, "%s: index = %ld out of range %ld\n", array_name.c_str(), ii, size);
+            fprintf(stderr, "%s: index = %ld (i0=%ld, i1=%ld, l=%d, m=%d) out of range %ld\n", array_name.c_str(), ii, i0,
+                    i1, l, m, size);
             exit(EXIT_FAILURE);
         }
     }
+
 #endif
 
     /**
@@ -577,3 +580,4 @@ public:
 };
 
 #endif //ACE_ARRAY2DLM_H
+
