@@ -32,6 +32,8 @@
 #include "ace_types.h"
 #include <functional>
 
+#define sqr(x) ((x)*(x))
+
 using namespace std;
 
 //typedef void (*RadialFunctions)(DOUBLE_TYPE x);
@@ -299,6 +301,8 @@ public:
     void chebPow(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcut, DOUBLE_TYPE r);
 
     void chebLinear(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcut, DOUBLE_TYPE r);
+
+    void simplified_bessel(DOUBLE_TYPE cut, DOUBLE_TYPE r);
 
     void test_zero_func(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcut, DOUBLE_TYPE r);
 
