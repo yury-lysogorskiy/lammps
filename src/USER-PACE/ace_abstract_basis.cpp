@@ -28,6 +28,7 @@
 // Created by Lysogorskiy Yury on 28.04.2020.
 
 #include "ace_abstract_basis.h"
+#include "ace_radial.h"
 
 ////embedding function
 ////case nemb = 1 only implementation
@@ -93,8 +94,12 @@ void ACEAbstractBasisSet::inner_cutoff(DOUBLE_TYPE rho_core, DOUBLE_TYPE rho_cut
         fcut = 1;
         dfcut = 0;
     } else {
-        fcut = 0.5 * (1 + cos(M_PI * (rho_core - rho_low) / drho_cut));
-        dfcut = -0.5 * sin(M_PI * (rho_core - rho_low) / drho_cut) * M_PI / drho_cut;
+//        fcut = 0.5 * (1 + cos(M_PI * (rho_core - rho_low) / drho_cut));
+//        dfcut = -0.5 * sin(M_PI * (rho_core - rho_low) / drho_cut) * M_PI / drho_cut;
+
+        cutoff_func_poly(rho_core, rho_low,drho_cut, fcut, dfcut);
+        fcut=1-fcut;
+        dfcut=-dfcut;
     }
 }
 
@@ -164,10 +169,6 @@ void ACEAbstractBasisSet::_copy_scalar_memory(const ACEAbstractBasisSet &src) {
     cutoffmax = src.cutoffmax;
 
     spherical_harmonics = src.spherical_harmonics;
-
-//    rho_core_cutoffs = src.rho_core_cutoffs;
-//    drho_core_cutoffs = src.drho_core_cutoffs;
-
 
     E0vals = src.E0vals;
 }

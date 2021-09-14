@@ -1231,6 +1231,7 @@ void ACECTildeBasisSet::load_yaml(const string &yaml_file_name) {
 
         auto bond_yaml = p.second;
         ACEBondSpecification bondSpec;
+        //TODO: refactor implement ACEBondSpecification::from_YAML
         bondSpec.nradmax = bond_yaml["nradmax"].as<NS_TYPE>();
         bondSpec.lmax = bond_yaml["lmax"].as<LS_TYPE>();
         bondSpec.nradbasemax = bond_yaml["nradbasemax"].as<NS_TYPE>();
@@ -1241,6 +1242,11 @@ void ACECTildeBasisSet::load_yaml(const string &yaml_file_name) {
         bondSpec.lambdahc = bond_yaml["lambdahc"].as<DOUBLE_TYPE>();
         bondSpec.rcut = bond_yaml["rcut"].as<DOUBLE_TYPE>();
         bondSpec.dcut = bond_yaml["dcut"].as<DOUBLE_TYPE>();
+
+        if (bond_yaml["rcut_in"]) bondSpec.rcut_in = bond_yaml["rcut_in"].as<DOUBLE_TYPE>();
+        if (bond_yaml["dcut_in"]) bondSpec.dcut_in = bond_yaml["dcut_in"].as<DOUBLE_TYPE>();
+        if (bond_yaml["inner_cutoff_type"]) bondSpec.inner_cutoff_type = bond_yaml["inner_cutoff_type"].as<string>();
+
         map_bond_specifications[bond_pair] = bondSpec;
 
         radbasename_ij.at(bond_pair.first).at(bond_pair.second) = bondSpec.radbasename;
@@ -1286,6 +1292,10 @@ void ACECTildeBasisSet::load_yaml(const string &yaml_file_name) {
             radial_functions->prehc(mu_i, mu_j) = bondSpec.prehc;
             radial_functions->lambdahc(mu_i, mu_j) = bondSpec.lambdahc;
             radial_functions->lambda(mu_i, mu_j) = bondSpec.radparameters.at(0);
+
+            radial_functions->cut_in(mu_i, mu_j) = bondSpec.rcut_in;
+            radial_functions->dcut_in(mu_i, mu_j) = bondSpec.dcut_in;
+            radial_functions->inner_cutoff_type = bondSpec.inner_cutoff_type;
 
             //setup crad
             for (NS_TYPE n = 0; n < bondSpec.nradmax; n++)

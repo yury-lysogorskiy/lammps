@@ -32,8 +32,8 @@
 #define ACE_VERSION_H
 
 #define VERSION_YEAR 2021
-#define VERSION_MONTH 6
-#define VERSION_DAY 21
+#define VERSION_MONTH 8
+#define VERSION_DAY 23
 
 #endif //ACE_VERSION_Hls
 

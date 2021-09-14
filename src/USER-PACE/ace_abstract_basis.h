@@ -94,12 +94,18 @@ struct ACEBondSpecification {
     DOUBLE_TYPE rcut;
     DOUBLE_TYPE dcut;
 
+    //inner cutoff
+    DOUBLE_TYPE rcut_in = 0;
+    DOUBLE_TYPE dcut_in = 0;
+    string inner_cutoff_type = "density";
+
     bool operator==(const ACEBondSpecification &another) const {
         return (nradbasemax == another.nradbasemax) && (lmax == another.lmax) &&
                (nradbasemax == another.nradbasemax) && (radbasename == another.radbasename) &&
                (radparameters == another.radparameters) && (radcoefficients == another.radcoefficients) &&
                (prehc == another.prehc) && (lambdahc == another.lambdahc) && (rcut == another.rcut) &&
-               (dcut == another.dcut);
+               (dcut == another.dcut) && (rcut_in == another.rcut_in) && (dcut_in == another.dcut_in) &&
+               (inner_cutoff_type == another.inner_cutoff_type);
     }
 
     bool operator!=(const ACEBondSpecification &another) const {
@@ -112,6 +118,8 @@ struct ACEBondSpecification {
            << ", radbasename=" <<
            radbasename << ", crad=(" << radcoefficients.at(0).at(0).at(0) << "...), ";
         ss << "rcut=" << rcut << ", dcut=" << dcut;
+        ss << ", rcut_in=" << rcut_in << ", dcut_in=" << dcut_in;
+        ss << ", inner_cutoff_type=" << inner_cutoff_type;
         if (prehc > 0)
             ss << ", core-rep: [prehc=" << prehc << ", lambdahc=" << lambdahc << "]";
         ss << ")";
@@ -133,6 +141,10 @@ struct ACEBondSpecification {
         bond_yaml["lambdahc"] = this->lambdahc;
         bond_yaml["rcut"] = this->rcut;
         bond_yaml["dcut"] = this->dcut;
+
+        bond_yaml["rcut_in"] = this->rcut_in;
+        bond_yaml["dcut_in"] = this->dcut_in;
+        bond_yaml["inner_cutoff_type"] = this->inner_cutoff_type;
 
         return bond_yaml;
     }

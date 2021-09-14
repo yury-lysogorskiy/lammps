@@ -32,7 +32,6 @@
 #include "ace_types.h"
 #include <functional>
 
-#define sqr(x) ((x)*(x))
 
 using namespace std;
 
@@ -106,6 +105,11 @@ public:
     NS_TYPE nradbase = 0; ///< number of radial basis functions \f$ g_k(r) \f$
 
     Array2D<string> radbasenameij;///< type of radial basis functions \f$ g_{k}(r) \f$ [nelements][nelements]
+
+    Array2D<DOUBLE_TYPE> cut_in = Array2D<DOUBLE_TYPE>("cut_in"); ///< inner cutoffs, shape: [nelements][nelements]
+    Array2D<DOUBLE_TYPE> dcut_in = Array2D<DOUBLE_TYPE>("dcut_in"); ///< decay of inner cutoff, shape: [nelements][nelements]
+
+    string inner_cutoff_type = "density"; //density (old) or distance(new)
 
     /**
    Arrays to store radial functions.
@@ -218,7 +222,7 @@ public:
      * @param radbasename  type of radial basis function \f$ g_k(r) \f$ (default: "ChebExpCos")
      */
     void init(NS_TYPE nradb, LS_TYPE lmax, NS_TYPE nradial, DOUBLE_TYPE deltaSplineBins, SPECIES_TYPE nelements,
-              vector<vector<string>> radbasename) final;
+              vector<vector<string>> radbasename);
 
     /**
      * Destructor
@@ -245,7 +249,8 @@ public:
      *
      * @return  function fills gr and dgr arrays
      */
-    void radbase(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcut, string radbasename, DOUBLE_TYPE r);
+    void radbase(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcut, string radbasename, DOUBLE_TYPE r,
+                 DOUBLE_TYPE cut_in = 0, DOUBLE_TYPE dcut_in = 0);
 
     /**
      *   Function that computes radial core repulsion \$f f_{core} = pre \exp( - \lambda r^2 ) / r \$f,
@@ -258,8 +263,8 @@ public:
      * @param cr  (out) hard core repulsion
      * @param dcr (out) derivative of hard core repulsion
      */
-    static void radcore(DOUBLE_TYPE r, DOUBLE_TYPE pre, DOUBLE_TYPE lambda, DOUBLE_TYPE cutoff, DOUBLE_TYPE &cr,
-                        DOUBLE_TYPE &dcr);
+    void radcore(DOUBLE_TYPE r, DOUBLE_TYPE pre, DOUBLE_TYPE lambda, DOUBLE_TYPE cutoff, DOUBLE_TYPE &cr,
+                        DOUBLE_TYPE &dcr, DOUBLE_TYPE cut_in = 0, DOUBLE_TYPE dcut_in = 0);
 
     /**
      * Function that sets up the look-up tables for spline-representation of radial functions.
@@ -321,5 +326,6 @@ public:
 
 };
 
+void cutoff_func_poly(DOUBLE_TYPE r, DOUBLE_TYPE r_in, DOUBLE_TYPE delta_in, DOUBLE_TYPE &fc, DOUBLE_TYPE &dfc);
 #endif
 
