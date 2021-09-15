@@ -97,7 +97,7 @@ struct ACEBondSpecification {
     //inner cutoff
     DOUBLE_TYPE rcut_in = 0;
     DOUBLE_TYPE dcut_in = 0;
-    string inner_cutoff_type = "density";
+    string inner_cutoff_type = "distance"; // new behaviour is default
 
     bool operator==(const ACEBondSpecification &another) const {
         return (nradbasemax == another.nradbasemax) && (lmax == another.lmax) &&

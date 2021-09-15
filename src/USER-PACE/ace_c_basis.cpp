@@ -923,6 +923,7 @@ void ACECTildeBasisSet::_load_radial_ACERadial(FILE *fptr,
     //WARNING! hardcoded for single specie
     map_bond_specifications[make_pair(0, 0)].lmax = lmax;
     map_bond_specifications[make_pair(0, 0)].radbasename = radbasename;
+    map_bond_specifications[make_pair(0, 0)].inner_cutoff_type="density"; // default, for backward compatibility
 
     if (radial_functions == nullptr)
         radial_functions = new ACERadialFunctions(nradbase, lmax, nradmax,
@@ -1245,7 +1246,10 @@ void ACECTildeBasisSet::load_yaml(const string &yaml_file_name) {
 
         if (bond_yaml["rcut_in"]) bondSpec.rcut_in = bond_yaml["rcut_in"].as<DOUBLE_TYPE>();
         if (bond_yaml["dcut_in"]) bondSpec.dcut_in = bond_yaml["dcut_in"].as<DOUBLE_TYPE>();
-        if (bond_yaml["inner_cutoff_type"]) bondSpec.inner_cutoff_type = bond_yaml["inner_cutoff_type"].as<string>();
+        if (bond_yaml["inner_cutoff_type"])
+            bondSpec.inner_cutoff_type = bond_yaml["inner_cutoff_type"].as<string>();
+        else
+            bondSpec.inner_cutoff_type = "density"; // default value to read for backward compatibility
 
         map_bond_specifications[bond_pair] = bondSpec;
 
