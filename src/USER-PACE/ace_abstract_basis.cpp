@@ -94,12 +94,7 @@ void ACEAbstractBasisSet::inner_cutoff(DOUBLE_TYPE rho_core, DOUBLE_TYPE rho_cut
         fcut = 1;
         dfcut = 0;
     } else {
-//        fcut = 0.5 * (1 + cos(M_PI * (rho_core - rho_low) / drho_cut));
-//        dfcut = -0.5 * sin(M_PI * (rho_core - rho_low) / drho_cut) * M_PI / drho_cut;
-
-        cutoff_func_poly(rho_core, rho_low,drho_cut, fcut, dfcut);
-        fcut=1-fcut;
-        dfcut=-dfcut;
+        cutoff_func_poly(rho_core, rho_cut, drho_cut, fcut, dfcut);
     }
 }
 

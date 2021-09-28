@@ -140,25 +140,24 @@ void ACERadialFunctions::calcCheb(NS_TYPE n, DOUBLE_TYPE x) {
 }
 
 /**
- * Polynomial inner cutoff  function, ascending from r_in to r_in+delta_in
+ * Polynomial inner cutoff  function, descending from r_in-delta_in to r_in
  * @param r actual r
  * @param r_in inner cutoff
  * @param delta_in decay of inner cutoff
  * @param fc
  * @param dfc
- * @param inverse (=false default): false - ascending, true - descending
  */
 void cutoff_func_poly(DOUBLE_TYPE r, DOUBLE_TYPE r_in, DOUBLE_TYPE delta_in, DOUBLE_TYPE &fc, DOUBLE_TYPE &dfc) {
-    if (r < r_in) {
-        fc = 0;
-        dfc = 0;
-    } else if (r >= r_in + delta_in) {
+    if (r <= r_in-delta_in) {
         fc = 1;
         dfc = 0;
+    } else if (r >= r_in ) {
+        fc = 0;
+        dfc = 0;
     } else {
-        DOUBLE_TYPE x = 1 - 2 * (1 - (r - r_in) / delta_in);
+        DOUBLE_TYPE x = 1 - 2 * (1 + (r - r_in) / delta_in);
         fc = 0.5 + 7.5 / 2. * (x / 4. - pow(x, 3) / 6. + pow(x, 5) / 20.);
-        dfc = 7.5 / delta_in * (0.25 - x * x / 2.0 + pow(x, 4) / 4.);
+        dfc = -7.5 / delta_in * (0.25 - x * x / 2.0 + pow(x, 4) / 4.);
     }
 }
 
@@ -173,7 +172,7 @@ void
 ACERadialFunctions::radbase(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcut, string radbasename, DOUBLE_TYPE r,
                             DOUBLE_TYPE cut_in, DOUBLE_TYPE dcut_in) {
     /*lam is given by the formula (24), that contains cut */
-    if (r <= cut_in || r >= cut) {
+    if (r <= cut_in-dcut_in || r >= cut) {
         gr.fill(0);
         dgr.fill(0);
     } else { // cut_in < r < cut
@@ -196,6 +195,8 @@ ACERadialFunctions::radbase(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcut, 
             //multiply by cutoff poly gr and dgr
             DOUBLE_TYPE fc, dfc;
             cutoff_func_poly(r, cut_in, dcut_in, fc, dfc); // ascending inner cutoff
+            fc=1-fc;
+            dfc=-dfc;
             for (int i = 0; i < gr.get_dim(0); i++) {
                 DOUBLE_TYPE new_gr = gr(i) * fc;
                 DOUBLE_TYPE new_dgr = dgr(i) * fc + gr(i) * dfc;
@@ -545,8 +546,8 @@ ACERadialFunctions::radcore(DOUBLE_TYPE r, DOUBLE_TYPE pre, DOUBLE_TYPE lambda, 
         DOUBLE_TYPE fc, dfc;
         cutoff_func_poly(r, r_in, delta_in, fc, dfc);
         //inverse cutoff
-        fc = 1 - fc;
-        dfc = -dfc;
+//        fc = 1 - fc;
+//        dfc = -dfc;
 
         DOUBLE_TYPE new_cr = cr * fc;
         DOUBLE_TYPE new_dcr = dcr * fc + cr * dfc;
