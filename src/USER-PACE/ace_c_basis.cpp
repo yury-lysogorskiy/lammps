@@ -923,7 +923,7 @@ void ACECTildeBasisSet::_load_radial_ACERadial(FILE *fptr,
     //WARNING! hardcoded for single specie
     map_bond_specifications[make_pair(0, 0)].lmax = lmax;
     map_bond_specifications[make_pair(0, 0)].radbasename = radbasename;
-    map_bond_specifications[make_pair(0, 0)].inner_cutoff_type="density"; // default, for backward compatibility
+    map_bond_specifications[make_pair(0, 0)].inner_cutoff_type = "density"; // default, for backward compatibility
 
     if (radial_functions == nullptr)
         radial_functions = new ACERadialFunctions(nradbase, lmax, nradmax,
@@ -1019,9 +1019,16 @@ void ACECTildeBasisSet::_load_radial_SHIPsBasic(FILE *fptr,
                                                 const string radbasename) {
     // create a radial basis object, and read it from the file pointer
     SHIPsRadialFunctions *ships_radial_functions = new SHIPsRadialFunctions();
+
+    ships_radial_functions->nelements = nelements;
+    ships_radial_functions->radbasis.init(nelements, nelements, "SHIPsRadialFunctions::radbasis");
     ships_radial_functions->fread(fptr);
 
-    //mimic ships_radial_functions to ACERadialFunctions
+    _post_load_radial_SHIPsBasic(ships_radial_functions);
+}
+
+void ACECTildeBasisSet::_post_load_radial_SHIPsBasic(
+        SHIPsRadialFunctions *ships_radial_functions) {//mimic ships_radial_functions to ACERadialFunctions
     ships_radial_functions->nradial = ships_radial_functions->get_maxn();
     ships_radial_functions->nradbase = ships_radial_functions->get_maxn();
 
@@ -1030,10 +1037,16 @@ void ACECTildeBasisSet::_load_radial_SHIPsBasic(FILE *fptr,
     cutoffmax = ships_radial_functions->get_rcut();
     deltaSplineBins = 0.001;
 
-    ships_radial_functions->init(nradbase, lmax, nradmax,
-                                 deltaSplineBins,
-                                 nelements,
-                                 {{radbasename}});
+    ships_radial_functions->nradbase = nradbase;
+    ships_radial_functions->lmax = lmax;
+    ships_radial_functions->nradial = nradmax;
+    ships_radial_functions->gr.init(nradbase, "gr");
+    ships_radial_functions->dgr.init(nradbase, "dgr");
+
+    ships_radial_functions->fr.init(nradmax, lmax + 1, "fr");
+    ships_radial_functions->dfr.init(nradmax, lmax + 1, "dfr");
+    ships_radial_functions->crad.init(nelements, nelements, nradmax, (lmax + 1), nradbase, "crad");
+    ships_radial_functions->crad.fill(0.);
 
 
     if (radial_functions) delete radial_functions;
@@ -1042,12 +1055,13 @@ void ACECTildeBasisSet::_load_radial_SHIPsBasic(FILE *fptr,
     radial_functions->lambdahc.fill(1);
     radial_functions->lambda.fill(0);
 
+    radial_functions->cut.init(nelements, nelements, "cut");
+    radial_functions->dcut.init(nelements, nelements, "dcut");
 
     radial_functions->cut.fill(ships_radial_functions->get_rcut());
     radial_functions->dcut.fill(0);
 
     radial_functions->crad.fill(0);
-
 }
 
 vector<vector<SPECIES_TYPE>> ACECTildeBasisSet::get_all_coeffs_mask() const {
@@ -1224,91 +1238,109 @@ void ACECTildeBasisSet::load_yaml(const string &yaml_file_name) {
     this->nradmax = 0;
     this->nradbase = 0;
     this->cutoffmax = 0;
-    vector<vector<string>> radbasename_ij(nelements, vector<string>(nelements));
+
+    // check, if bonds::[]::radbasename=="ACE.jl.radbase"
+    bool ACE_jl_radbase = false;
+    bool PACE_radbase = false;
     for (const auto &p: yaml_map_bond_specifications) {
-        pair<SPECIES_TYPE, SPECIES_TYPE> bond_pair = make_pair(p.first[0], p.first[1]);
-        if (bond_pair.first > nelements - 1 || bond_pair.second > nelements - 1)
-            throw invalid_argument("yace::bonds has species type key larger than nelements");
-
         auto bond_yaml = p.second;
-        ACEBondSpecification bondSpec;
-        //TODO: refactor implement ACEBondSpecification::from_YAML
-        bondSpec.nradmax = bond_yaml["nradmax"].as<NS_TYPE>();
-        bondSpec.lmax = bond_yaml["lmax"].as<LS_TYPE>();
-        bondSpec.nradbasemax = bond_yaml["nradbasemax"].as<NS_TYPE>();
-        bondSpec.radbasename = bond_yaml["radbasename"].as<string>();
-        bondSpec.radparameters = bond_yaml["radparameters"].as<vector<DOUBLE_TYPE>>();
-        bondSpec.radcoefficients = bond_yaml["radcoefficients"].as<vector<vector<vector<DOUBLE_TYPE>>>>();
-        bondSpec.prehc = bond_yaml["prehc"].as<DOUBLE_TYPE>();
-        bondSpec.lambdahc = bond_yaml["lambdahc"].as<DOUBLE_TYPE>();
-        bondSpec.rcut = bond_yaml["rcut"].as<DOUBLE_TYPE>();
-        bondSpec.dcut = bond_yaml["dcut"].as<DOUBLE_TYPE>();
-
-        if (bond_yaml["rcut_in"]) bondSpec.rcut_in = bond_yaml["rcut_in"].as<DOUBLE_TYPE>();
-        if (bond_yaml["dcut_in"]) bondSpec.dcut_in = bond_yaml["dcut_in"].as<DOUBLE_TYPE>();
-        if (bond_yaml["inner_cutoff_type"])
-            bondSpec.inner_cutoff_type = bond_yaml["inner_cutoff_type"].as<string>();
+        string radbasename = bond_yaml["radbasename"].as<string>();
+        if (radbasename.rfind("ACE.jl", 0) == 0)
+            ACE_jl_radbase = true;
         else
-            bondSpec.inner_cutoff_type = "density"; // default value to read for backward compatibility
-
-        map_bond_specifications[bond_pair] = bondSpec;
-
-        radbasename_ij.at(bond_pair.first).at(bond_pair.second) = bondSpec.radbasename;
-
-        //update lmax, nradbase max, ...
-        if (bondSpec.nradmax > this->nradmax)
-            this->nradmax = bondSpec.nradmax;
-
-        if (bondSpec.lmax > this->lmax)
-            this->lmax = bondSpec.lmax;
-
-        if (bondSpec.nradbasemax > this->nradbase)
-            this->nradbase = bondSpec.nradbasemax;
-
-        if (bondSpec.rcut > this->cutoffmax)
-            this->cutoffmax = bondSpec.rcut;
-
+            PACE_radbase = true;
     }
-    this->deltaSplineBins = ctilde_basis_yaml["deltaSplineBins"].as<DOUBLE_TYPE>();
+    // check if both type of radbase -> inconsistency
+    if (ACE_jl_radbase & PACE_radbase) {
+        throw invalid_argument(
+                "Only ACE.jl.* or PACE's radial basis are possible, but both types are used simultaneously.");
+    }
 
-    //setup radialBasis
-    spherical_harmonics.init(lmax);
+    if (PACE_radbase) {
+        vector<vector<string>> radbasename_ij(nelements, vector<string>(nelements));
+        for (const auto &p: yaml_map_bond_specifications) {
+            pair<SPECIES_TYPE, SPECIES_TYPE> bond_pair = make_pair(p.first[0], p.first[1]);
+            if (bond_pair.first > nelements - 1 || bond_pair.second > nelements - 1)
+                throw invalid_argument("yace::bonds has species type key larger than nelements");
 
-    //TODO: implement SHIPs support
+            auto bond_yaml = p.second;
+            ACEBondSpecification bondSpec;
+            bondSpec.from_YAML(bond_yaml);
 
-    if (radial_functions == nullptr)
-        radial_functions = new ACERadialFunctions(nradbase, lmax, nradmax,
-                                                  deltaSplineBins,
-                                                  nelements,
-                                                  radbasename_ij);
-    else
-        radial_functions->init(nradbase, lmax, nradmax,
-                               deltaSplineBins,
-                               nelements,
-                               radbasename_ij);
+            map_bond_specifications[bond_pair] = bondSpec;
 
-    for (SPECIES_TYPE mu_i = 0; mu_i < nelements; ++mu_i) {
-        for (SPECIES_TYPE mu_j = 0; mu_j < nelements; ++mu_j) {
-            auto bond = make_pair(mu_i, mu_j);
-            const auto &bondSpec = map_bond_specifications[bond];
-            radial_functions->cut(mu_i, mu_j) = bondSpec.rcut;
-            radial_functions->dcut(mu_i, mu_j) = bondSpec.dcut;
-            radial_functions->prehc(mu_i, mu_j) = bondSpec.prehc;
-            radial_functions->lambdahc(mu_i, mu_j) = bondSpec.lambdahc;
-            radial_functions->lambda(mu_i, mu_j) = bondSpec.radparameters.at(0);
+            radbasename_ij.at(bond_pair.first).at(bond_pair.second) = bondSpec.radbasename;
 
-            radial_functions->cut_in(mu_i, mu_j) = bondSpec.rcut_in;
-            radial_functions->dcut_in(mu_i, mu_j) = bondSpec.dcut_in;
-            radial_functions->inner_cutoff_type = bondSpec.inner_cutoff_type;
+            //update lmax, nradbase max, ...
+            if (bondSpec.nradmax > this->nradmax)
+                this->nradmax = bondSpec.nradmax;
 
-            //setup crad
-            for (NS_TYPE n = 0; n < bondSpec.nradmax; n++)
-                for (LS_TYPE l = 0; l <= bondSpec.lmax; l++)
-                    for (NS_TYPE k = 0; k < bondSpec.nradbasemax; k++) {
-                        radial_functions->crad(mu_i, mu_j, n, l, k) = bondSpec.radcoefficients.at(n).at(l).at(k);
-                    }
+            if (bondSpec.lmax > this->lmax)
+                this->lmax = bondSpec.lmax;
+
+            if (bondSpec.nradbasemax > this->nradbase)
+                this->nradbase = bondSpec.nradbasemax;
+
+            if (bondSpec.rcut > this->cutoffmax)
+                this->cutoffmax = bondSpec.rcut;
+
         }
+        this->deltaSplineBins = ctilde_basis_yaml["deltaSplineBins"].as<DOUBLE_TYPE>();
+
+
+        if (radial_functions == nullptr)
+            radial_functions = new ACERadialFunctions(nradbase, lmax, nradmax,
+                                                      deltaSplineBins,
+                                                      nelements,
+                                                      radbasename_ij);
+        else
+            radial_functions->init(nradbase, lmax, nradmax,
+                                   deltaSplineBins,
+                                   nelements,
+                                   radbasename_ij);
+
+        for (SPECIES_TYPE mu_i = 0; mu_i < nelements; ++mu_i) {
+            for (SPECIES_TYPE mu_j = 0; mu_j < nelements; ++mu_j) {
+                auto bond = make_pair(mu_i, mu_j);
+                const auto &bondSpec = map_bond_specifications[bond];
+                radial_functions->cut(mu_i, mu_j) = bondSpec.rcut;
+                radial_functions->dcut(mu_i, mu_j) = bondSpec.dcut;
+                radial_functions->prehc(mu_i, mu_j) = bondSpec.prehc;
+                radial_functions->lambdahc(mu_i, mu_j) = bondSpec.lambdahc;
+                radial_functions->lambda(mu_i, mu_j) = bondSpec.radparameters.at(0);
+
+                radial_functions->cut_in(mu_i, mu_j) = bondSpec.rcut_in;
+                radial_functions->dcut_in(mu_i, mu_j) = bondSpec.dcut_in;
+                radial_functions->inner_cutoff_type = bondSpec.inner_cutoff_type;
+
+                //setup crad
+                for (NS_TYPE n = 0; n < bondSpec.nradmax; n++)
+                    for (LS_TYPE l = 0; l <= bondSpec.lmax; l++)
+                        for (NS_TYPE k = 0; k < bondSpec.nradbasemax; k++) {
+                            radial_functions->crad(mu_i, mu_j, n, l, k) = bondSpec.radcoefficients.at(n).at(l).at(k);
+                        }
+            }
+        }
+        ///////////////////////////////////////////////////////////////////
+    } else if (ACE_jl_radbase) {
+        ///////////////////////////////////////////////////////////////////
+        //read  lmax from YACE
+        if (ctilde_basis_yaml["lmax"])
+            this->lmax = ctilde_basis_yaml["lmax"].as<LS_TYPE>();
+        else
+            throw invalid_argument(
+                    "For `ACE.jl.*` radbase functions, `lmax` should be provided in the YACE separately.");
+        // no need to store map_bond_specifications, only SHIPsRadialFunctions
+        SHIPsRadialFunctions *ships_radial_functions = new SHIPsRadialFunctions();
+        ships_radial_functions->init(nelements);
+        ships_radial_functions->read_yaml(ctilde_basis_yaml);
+        _post_load_radial_SHIPsBasic(ships_radial_functions);
     }
+    ///////////////////////////////////////////////////////////////////
+
+    //setup spherical_harmonics and  radialBasis
+    spherical_harmonics.init(lmax);
+    radial_functions->setuplookupRadspline();
 
     //reading ACECTildeBasisFunctions
     //TODO:setup rankmax
@@ -1346,23 +1378,31 @@ void ACECTildeBasisSet::load_yaml(const string &yaml_file_name) {
             ctildefunc.num_ms_combs = ctildefunc_yaml["num_ms_combs"].as<SHORT_INT_TYPE>();
 
             int_vec = ctildefunc_yaml["mus"].as<vector<int>>();
+            if (int_vec.size()!=ctildefunc.rank)
+                throw invalid_argument("mus:: not sufficient number of values");
             ctildefunc.mus = new SPECIES_TYPE[ctildefunc.rank];
             for (int r = 0; r < ctildefunc.rank; r++)
                 ctildefunc.mus[r] = int_vec.at(r);
 
             int_vec = ctildefunc_yaml["ns"].as<vector<int>>();
+            if (int_vec.size()!=ctildefunc.rank)
+                throw invalid_argument("ns:: not sufficient number of values");
             ctildefunc.ns = new NS_TYPE[ctildefunc.rank];
             for (int r = 0; r < ctildefunc.rank; r++)
                 ctildefunc.ns[r] = int_vec.at(r);
 
 
             int_vec = ctildefunc_yaml["ls"].as<vector<int>>();
+            if (int_vec.size()!=ctildefunc.rank)
+                throw invalid_argument("ls:: not sufficient number of values");
             ctildefunc.ls = new LS_TYPE[ctildefunc.rank];
             for (int r = 0; r < ctildefunc.rank; r++)
                 ctildefunc.ls[r] = int_vec.at(r);
 
             //this->ms_combs; //[num_ms_combs * rank]
             int_vec = ctildefunc_yaml["ms_combs"].as<vector<int>>();
+            if (int_vec.size()!=ctildefunc.rank * ctildefunc.num_ms_combs)
+                throw invalid_argument("ms_combs:: not sufficient number of values");
             ctildefunc.ms_combs = new MS_TYPE[ctildefunc.rank * ctildefunc.num_ms_combs];
             for (int r = 0; r < ctildefunc.rank * ctildefunc.num_ms_combs; r++)
                 ctildefunc.ms_combs[r] = int_vec.at(r);
@@ -1370,6 +1410,8 @@ void ACECTildeBasisSet::load_yaml(const string &yaml_file_name) {
 
             // this->ctildes; //[num_of_ms_combs * ndensity]
             double_vec = ctildefunc_yaml["ctildes"].as<vector<DOUBLE_TYPE >>();
+            if (double_vec.size()!=ctildefunc.ndensity * ctildefunc.num_ms_combs)
+                throw invalid_argument("ctildes:: not sufficient number of values");
             ctildefunc.ctildes = new DOUBLE_TYPE[ctildefunc.ndensity * ctildefunc.num_ms_combs];
             for (int r = 0; r < ctildefunc.ndensity * ctildefunc.num_ms_combs; r++)
                 ctildefunc.ctildes[r] = double_vec.at(r);
@@ -1403,7 +1445,7 @@ void ACECTildeBasisSet::load_yaml(const string &yaml_file_name) {
         }
     }
 
-    radial_functions->setuplookupRadspline();
+
     pack_flatten_basis();
 }
 

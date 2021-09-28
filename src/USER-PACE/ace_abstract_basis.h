@@ -126,6 +126,31 @@ struct ACEBondSpecification {
         return ss.str();
     }
 
+    void from_YAML(YAML::Node bond_yaml) {
+        radbasename = bond_yaml["radbasename"].as<string>();
+
+        if(radbasename=="ACE.jl.base") {
+
+        } else {
+            nradmax = bond_yaml["nradmax"].as<NS_TYPE>();
+            lmax = bond_yaml["lmax"].as<LS_TYPE>();
+            nradbasemax = bond_yaml["nradbasemax"].as<NS_TYPE>();
+            radparameters = bond_yaml["radparameters"].as<vector<DOUBLE_TYPE>>();
+            radcoefficients = bond_yaml["radcoefficients"].as<vector<vector<vector<DOUBLE_TYPE>>>>();
+            prehc = bond_yaml["prehc"].as<DOUBLE_TYPE>();
+            lambdahc = bond_yaml["lambdahc"].as<DOUBLE_TYPE>();
+            rcut = bond_yaml["rcut"].as<DOUBLE_TYPE>();
+            dcut = bond_yaml["dcut"].as<DOUBLE_TYPE>();
+
+            if (bond_yaml["rcut_in"]) rcut_in = bond_yaml["rcut_in"].as<DOUBLE_TYPE>();
+            if (bond_yaml["dcut_in"]) dcut_in = bond_yaml["dcut_in"].as<DOUBLE_TYPE>();
+            if (bond_yaml["inner_cutoff_type"])
+                inner_cutoff_type = bond_yaml["inner_cutoff_type"].as<string>();
+            else
+                inner_cutoff_type = "density"; // default value to read for backward compatibility
+        }
+    }
+
     YAML::Node to_YAML() const {
         YAML::Node bond_yaml;
         bond_yaml.SetStyle(YAML::EmitterStyle::Flow);
