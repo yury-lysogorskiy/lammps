@@ -32,6 +32,7 @@
 
 #include "ace_radial.h"
 
+#define sqr(x) ((x)*(x))
 const DOUBLE_TYPE pi = 3.14159265358979323846264338327950288419; // pi
 
 ACERadialFunctions::ACERadialFunctions(NS_TYPE nradb, LS_TYPE lmax, NS_TYPE nradial, DOUBLE_TYPE deltaSplineBins,
@@ -81,6 +82,12 @@ void ACERadialFunctions::init(NS_TYPE nradb, LS_TYPE lmax, NS_TYPE nradial, DOUB
 
     dcut.init(nelements, nelements, "dcut");
     dcut.fill(1.);
+
+    cut_in.init(nelements, nelements, "cut_in");
+    cut_in.fill(0);
+
+    dcut_in.init(nelements, nelements, "dcut_in");
+    dcut_in.fill(1e-5);
 
     crad.init(nelements, nelements, nradial, (lmax + 1), nradbase, "crad");
     crad.fill(0.);
@@ -133,6 +140,28 @@ void ACERadialFunctions::calcCheb(NS_TYPE n, DOUBLE_TYPE x) {
 }
 
 /**
+ * Polynomial inner cutoff  function, descending from r_in-delta_in to r_in
+ * @param r actual r
+ * @param r_in inner cutoff
+ * @param delta_in decay of inner cutoff
+ * @param fc
+ * @param dfc
+ */
+void cutoff_func_poly(DOUBLE_TYPE r, DOUBLE_TYPE r_in, DOUBLE_TYPE delta_in, DOUBLE_TYPE &fc, DOUBLE_TYPE &dfc) {
+    if (r <= r_in-delta_in) {
+        fc = 1;
+        dfc = 0;
+    } else if (r >= r_in ) {
+        fc = 0;
+        dfc = 0;
+    } else {
+        DOUBLE_TYPE x = 1 - 2 * (1 + (r - r_in) / delta_in);
+        fc = 0.5 + 7.5 / 2. * (x / 4. - pow(x, 3) / 6. + pow(x, 5) / 20.);
+        dfc = -7.5 / delta_in * (0.25 - x * x / 2.0 + pow(x, 4) / 4.);
+    }
+}
+
+/**
 Function that computes radial basis.
 
 @param lam, nradbase, cut, dcut, r
@@ -140,24 +169,41 @@ Function that computes radial basis.
 @returns gr, dgr
 */
 void
-ACERadialFunctions::radbase(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcut, string radbasename, DOUBLE_TYPE r) {
+ACERadialFunctions::radbase(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcut, string radbasename, DOUBLE_TYPE r,
+                            DOUBLE_TYPE cut_in, DOUBLE_TYPE dcut_in) {
     /*lam is given by the formula (24), that contains cut */
-
-    if (r < cut) {
+    if (r <= cut_in-dcut_in || r >= cut) {
+        gr.fill(0);
+        dgr.fill(0);
+    } else { // cut_in < r < cut
         if (radbasename == "ChebExpCos") {
             chebExpCos(lam, cut, dcut, r);
         } else if (radbasename == "ChebPow") {
             chebPow(lam, cut, dcut, r);
         } else if (radbasename == "ChebLinear") {
             chebLinear(lam, cut, dcut, r);
+        } else if (radbasename == "TEST_SBessel") {
+            simplified_bessel(cut, r);
         } else if (radbasename.rfind("TEST_", 0) == 0) {
-            test_zero_func(lam,cut,dcut,r);
+            test_zero_func(lam, cut, dcut, r);
         } else {
             throw invalid_argument("Unknown radial basis function name: " + radbasename);
         }
-    } else {
-        gr.fill(0);
-        dgr.fill(0);
+
+        //TODO: always take into account inner cutoff
+        if (inner_cutoff_type == "distance") {
+            //multiply by cutoff poly gr and dgr
+            DOUBLE_TYPE fc, dfc;
+            cutoff_func_poly(r, cut_in, dcut_in, fc, dfc); // ascending inner cutoff
+            fc=1-fc;
+            dfc=-dfc;
+            for (int i = 0; i < gr.get_dim(0); i++) {
+                DOUBLE_TYPE new_gr = gr(i) * fc;
+                DOUBLE_TYPE new_dgr = dgr(i) * fc + gr(i) * dfc;
+                gr(i) = new_gr;
+                dgr(i) = new_dgr;
+            }
+        }
     }
 }
 
@@ -204,7 +250,7 @@ ACERadialFunctions::chebExpCos(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcu
 }
 
 /***
-*  Radial function: ChebPow, Radial function: ChebPow
+*  Radial function: ChebPow
 * - argument of Chebyshev polynomials
 * x = 2.0*( 1.0 - (1.0 - r/rcut)^lam ) - 1.0
 * - radial function
@@ -254,6 +300,74 @@ ACERadialFunctions::chebLinear(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcu
 }
 
 /**
+ * sinc(x) = sin(x)/x
+ * @param x
+ * @return
+ */
+DOUBLE_TYPE sinc(DOUBLE_TYPE x) {
+    return x != 0.0 ? sin(x) / x : 1;
+}
+
+/**
+ * Derivative of d sinc(x) / dx = (cos(x)*x - sin(x))/x^2
+ * @param x
+ * @return
+ */
+DOUBLE_TYPE dsinc(DOUBLE_TYPE x) {
+    return x != 0.0 ? (cos(x) * x - sin(x)) / (x * x) : 0;
+}
+
+/**
+ * Auxiliary function $fn$ for simplified Bessel
+ * @param x argument
+ * @param rc cutoff
+ * @param n degree
+ * @return
+ */
+DOUBLE_TYPE fn(DOUBLE_TYPE x, DOUBLE_TYPE rc, int n) {
+    return pow(-1, n) * sqrt(2) * M_PI / pow(rc, 1.5) * (n + 1) * (n + 2) / sqrt(sqr(n + 1) + sqr(n + 2)) *
+           (sinc(x * (n + 1) * M_PI / rc) + sinc(x * (n + 2) * M_PI / rc));
+}
+
+/**
+ * Derivative of the auxiliary function $fn$ for simplified Bessel
+ * @param x argument
+ * @param rc cutoff
+ * @param n degree
+ * @return
+ */
+DOUBLE_TYPE dfn(DOUBLE_TYPE x, DOUBLE_TYPE rc, int n) {
+    return pow(-1, n) * sqrt(2) * M_PI / pow(rc, 1.5) * (n + 1) * (n + 2) / sqrt(sqr(n + 1) + sqr(n + 2)) *
+           (dsinc(x * (n + 1) * M_PI / rc) * (n + 1) * M_PI / rc +
+            dsinc(x * (n + 2) * M_PI / rc) * (n + 2) * M_PI / rc);
+}
+
+/**
+ * Simplified Bessel function
+ * @param rc
+ * @param x
+ */
+void ACERadialFunctions::simplified_bessel(DOUBLE_TYPE rc, DOUBLE_TYPE x) {
+    if (x < rc) {
+        gr(0) = fn(x, rc, 0);
+        dgr(0) = dfn(x, rc, 0);
+
+        DOUBLE_TYPE d_prev = 1.0, en, dn;
+        for (NS_TYPE n = 1; n < nradbase; n++) {
+            en = sqr(n) * sqr(n + 2) / (4 * pow(n + 1, 4) + 1);
+            dn = 1 - en / d_prev;
+            gr(n) = 1 / sqrt(dn) * (fn(x, rc, n) + sqrt(en / d_prev) * gr(n - 1));
+            dgr(n) = 1 / sqrt(dn) * (dfn(x, rc, n) + sqrt(en / d_prev) * dgr(n - 1));
+            d_prev = dn;
+        }
+    } else {
+        gr.fill(0);
+        dgr.fill(0);
+    }
+}
+
+
+/**
  * Stub zero function (for testing purposes mostly), called when radbasename starts with "TEST_"
  * @param lam
  * @param cut
@@ -293,15 +407,19 @@ void ACERadialFunctions::all_radfunc(SPECIES_TYPE mu_i, SPECIES_TYPE mu_j, DOUBL
     DOUBLE_TYPE lam = lambda(mu_i, mu_j);
     DOUBLE_TYPE r_cut = cut(mu_i, mu_j);
     DOUBLE_TYPE dr_cut = dcut(mu_i, mu_j);
+
+    DOUBLE_TYPE r_in = cut_in(mu_i,mu_j);
+    DOUBLE_TYPE dr_in = dcut_in(mu_i,mu_j);
+
     // set up radial functions
-    radbase(lam, r_cut, dr_cut, radbasenameij(mu_i, mu_j), r); //update gr, dgr
+    radbase(lam, r_cut, dr_cut, radbasenameij(mu_i, mu_j), r, r_in, dr_in); //update gr, dgr
     radfunc(mu_i, mu_j); // update fr(nr, l),  dfr(nr, l)
 }
 
 
 void ACERadialFunctions::setuplookupRadspline() {
     using namespace std::placeholders;
-    DOUBLE_TYPE lam, r_cut, dr_cut;
+    DOUBLE_TYPE lam, r_cut, dr_cut, r_in, delta_in;
     DOUBLE_TYPE cr_c, dcr_c, pre, lamhc;
     string radbasename;
 
@@ -312,12 +430,14 @@ void ACERadialFunctions::setuplookupRadspline() {
             lam = lambda(elei, elej);
             r_cut = cut(elei, elej);
             dr_cut = dcut(elei, elej);
+            r_in = cut_in(elei, elej);
+            delta_in = dcut_in(elei, elej);
             radbasename = radbasenameij(elei, elej);
 
             splines_gk(elei, elej).setupSplines(gr.get_size(),
                                                 std::bind(&ACERadialFunctions::radbase, this, lam, r_cut, dr_cut,
                                                           radbasename,
-                                                          _1),//update gr, dgr
+                                                          _1, r_in, delta_in),//update gr, dgr
                                                 gr.get_data(),
                                                 dgr.get_data(), deltaSplineBins, r_cut);
 
@@ -330,10 +450,11 @@ void ACERadialFunctions::setuplookupRadspline() {
 
             pre = prehc(elei, elej);
             lamhc = lambdahc(elei, elej);
-//            radcore(r, pre, lamhc, cutoff, cr_c, dcr_c);
+            //            radcore(r, pre, lamhc, cutoff, cr_c, dcr_c, r_cut_in, dr_cut_in);
             splines_hc(elei, elej).setupSplines(1,
-                                                std::bind(&ACERadialFunctions::radcore, _1, pre, lamhc, r_cut,
-                                                          std::ref(cr_c), std::ref(dcr_c)),
+                                                std::bind(&ACERadialFunctions::radcore, this,
+                                                          _1, pre, lamhc, r_cut,
+                                                          std::ref(cr_c), std::ref(dcr_c), r_in, delta_in),
                                                 &cr_c,
                                                 &dcr_c, deltaSplineBins, r_cut);
         }
@@ -378,11 +499,8 @@ ACERadialFunctions::evaluate(DOUBLE_TYPE r, NS_TYPE nradbase_c, NS_TYPE nradial_
         d2cr = spline_hc.second_derivatives(0);
 }
 
-
-void
-ACERadialFunctions::radcore(DOUBLE_TYPE r, DOUBLE_TYPE pre, DOUBLE_TYPE lambda, DOUBLE_TYPE cutoff, DOUBLE_TYPE &cr,
-                            DOUBLE_TYPE &dcr) {
-/* pseudocode for hard core repulsion
+/**
+ pseudocode for hard core repulsion
 in:
  r: distance
  pre: prefactor: read from input, depends on pair of atoms mu_i mu_j
@@ -396,10 +514,13 @@ dcr: derivative of hard core repulsion
  \$f f_{core} = pre \exp( - \lambda r^2 ) / r   \$f
 
 */
+void
+ACERadialFunctions::radcore(DOUBLE_TYPE r, DOUBLE_TYPE pre, DOUBLE_TYPE lambda, DOUBLE_TYPE cutoff, DOUBLE_TYPE &cr,
+                            DOUBLE_TYPE &dcr, DOUBLE_TYPE r_in, DOUBLE_TYPE delta_in) {
 
     DOUBLE_TYPE r2, lr2, y, x0, env, denv;
 
-//   repulsion strictly positive and decaying
+    // repulsion strictly positive and decaying
     pre = abs(pre);
     lambda = abs(lambda);
 
@@ -420,6 +541,19 @@ dcr: derivative of hard core repulsion
         dcr = 0.0;
     }
 
+    if (inner_cutoff_type == "distance") {
+        // core repulsion became non-zero only within r < cut_in + dcut_in
+        DOUBLE_TYPE fc, dfc;
+        cutoff_func_poly(r, r_in, delta_in, fc, dfc);
+        //inverse cutoff
+//        fc = 1 - fc;
+//        dfc = -dfc;
+
+        DOUBLE_TYPE new_cr = cr * fc;
+        DOUBLE_TYPE new_dcr = dcr * fc + cr * dfc;
+        cr = new_cr;
+        dcr = new_dcr;
+    }
 }
 
 void
@@ -468,7 +602,7 @@ void SplineInterpolator::setupSplines(int num_of_functions, RadialFunctions func
                                       DOUBLE_TYPE *dvalues, DOUBLE_TYPE deltaSplineBins, DOUBLE_TYPE cutoff) {
 
     this->deltaSplineBins = deltaSplineBins;
-    if(!deltaSplineBins>0) {
+    if (!deltaSplineBins > 0) {
         throw invalid_argument("deltaSplineBins should be positive");
     }
     this->cutoff = cutoff;
@@ -499,7 +633,7 @@ void SplineInterpolator::setupSplines(int num_of_functions, RadialFunctions func
     if (dvalues == nullptr & num_of_functions > 0)
         throw invalid_argument("SplineInterpolator::setupSplines: dvalues could not be null");
 
-    if (num_of_functions==0)
+    if (num_of_functions == 0)
         return;
 
     for (int n = nlut; n >= 1; n--) {

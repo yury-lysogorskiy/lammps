@@ -104,7 +104,7 @@ test-md-energy-conservation-multispecies:
     - gcc
   script:
     - cd test/md-run-FeCrH/
-    - mpirun -np 2 ../../build/lmp -in in.lammps
+    - ../../build/lmp -in in.lammps
     - python analyse_energy_convergence.py log.lammps
 
 test-md-energy-conservation-multispecies-mpi:

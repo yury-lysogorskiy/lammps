@@ -94,12 +94,18 @@ struct ACEBondSpecification {
     DOUBLE_TYPE rcut;
     DOUBLE_TYPE dcut;
 
+    //inner cutoff
+    DOUBLE_TYPE rcut_in = 0;
+    DOUBLE_TYPE dcut_in = 0;
+    string inner_cutoff_type = "distance"; // new behaviour is default
+
     bool operator==(const ACEBondSpecification &another) const {
         return (nradbasemax == another.nradbasemax) && (lmax == another.lmax) &&
                (nradbasemax == another.nradbasemax) && (radbasename == another.radbasename) &&
                (radparameters == another.radparameters) && (radcoefficients == another.radcoefficients) &&
                (prehc == another.prehc) && (lambdahc == another.lambdahc) && (rcut == another.rcut) &&
-               (dcut == another.dcut);
+               (dcut == another.dcut) && (rcut_in == another.rcut_in) && (dcut_in == another.dcut_in) &&
+               (inner_cutoff_type == another.inner_cutoff_type);
     }
 
     bool operator!=(const ACEBondSpecification &another) const {
@@ -112,10 +118,37 @@ struct ACEBondSpecification {
            << ", radbasename=" <<
            radbasename << ", crad=(" << radcoefficients.at(0).at(0).at(0) << "...), ";
         ss << "rcut=" << rcut << ", dcut=" << dcut;
+        ss << ", rcut_in=" << rcut_in << ", dcut_in=" << dcut_in;
+        ss << ", inner_cutoff_type=" << inner_cutoff_type;
         if (prehc > 0)
             ss << ", core-rep: [prehc=" << prehc << ", lambdahc=" << lambdahc << "]";
         ss << ")";
         return ss.str();
+    }
+
+    void from_YAML(YAML::Node bond_yaml) {
+        radbasename = bond_yaml["radbasename"].as<string>();
+
+        if(radbasename=="ACE.jl.base") {
+
+        } else {
+            nradmax = bond_yaml["nradmax"].as<NS_TYPE>();
+            lmax = bond_yaml["lmax"].as<LS_TYPE>();
+            nradbasemax = bond_yaml["nradbasemax"].as<NS_TYPE>();
+            radparameters = bond_yaml["radparameters"].as<vector<DOUBLE_TYPE>>();
+            radcoefficients = bond_yaml["radcoefficients"].as<vector<vector<vector<DOUBLE_TYPE>>>>();
+            prehc = bond_yaml["prehc"].as<DOUBLE_TYPE>();
+            lambdahc = bond_yaml["lambdahc"].as<DOUBLE_TYPE>();
+            rcut = bond_yaml["rcut"].as<DOUBLE_TYPE>();
+            dcut = bond_yaml["dcut"].as<DOUBLE_TYPE>();
+
+            if (bond_yaml["rcut_in"]) rcut_in = bond_yaml["rcut_in"].as<DOUBLE_TYPE>();
+            if (bond_yaml["dcut_in"]) dcut_in = bond_yaml["dcut_in"].as<DOUBLE_TYPE>();
+            if (bond_yaml["inner_cutoff_type"])
+                inner_cutoff_type = bond_yaml["inner_cutoff_type"].as<string>();
+            else
+                inner_cutoff_type = "density"; // default value to read for backward compatibility
+        }
     }
 
     YAML::Node to_YAML() const {
@@ -133,6 +166,10 @@ struct ACEBondSpecification {
         bond_yaml["lambdahc"] = this->lambdahc;
         bond_yaml["rcut"] = this->rcut;
         bond_yaml["dcut"] = this->dcut;
+
+        bond_yaml["rcut_in"] = this->rcut_in;
+        bond_yaml["dcut_in"] = this->dcut_in;
+        bond_yaml["inner_cutoff_type"] = this->inner_cutoff_type;
 
         return bond_yaml;
     }

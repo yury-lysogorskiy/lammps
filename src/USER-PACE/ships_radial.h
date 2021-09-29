@@ -34,6 +34,7 @@
 #include "ace_arraynd.h"
 #include "ace_types.h"
 #include "ace_radial.h"
+#include <yaml-cpp/yaml.h>
 
 class SHIPsRadPolyBasis {
 
@@ -75,6 +76,7 @@ public:
     void fcut(const DOUBLE_TYPE x, DOUBLE_TYPE &f_out, DOUBLE_TYPE &df_out) const;
 
     void fread(FILE *fptr);
+    void read_YAML(YAML::Node node);
 
     void _init(DOUBLE_TYPE r0, int p, DOUBLE_TYPE rcut,
                DOUBLE_TYPE xl, DOUBLE_TYPE xr,
@@ -93,20 +95,20 @@ class SHIPsRadialFunctions : public AbstractRadialBasis {
 public:
 
     // radial basis 
-    SHIPsRadPolyBasis radbasis; 
+    Array2D<SHIPsRadPolyBasis> radbasis;
 
     // pair potential basis 
     bool haspair = false; 
     SHIPsRadPolyBasis pairbasis; 
 
-    // pair potential coefficients 
-    Array1D<DOUBLE_TYPE> paircoeffs = Array1D<DOUBLE_TYPE>("SHIPs pairpot coeffs: paircoeffs");
+    // pair potential coefficients, shape [mu_i, mu_j, n]
+    Array3D<DOUBLE_TYPE> paircoeffs = Array3D<DOUBLE_TYPE>("SHIPs pairpot coeffs: paircoeffs");
 
     // spline parameters for repulsive core
-    DOUBLE_TYPE ri = 0.0;
-    DOUBLE_TYPE e0 = 0.0;
-    DOUBLE_TYPE A = 0.0;
-    DOUBLE_TYPE B = 0.0;
+    Array2D<DOUBLE_TYPE> ri = Array2D<DOUBLE_TYPE>("ri");
+    Array2D<DOUBLE_TYPE> e0 = Array2D<DOUBLE_TYPE>("e0");
+    Array2D<DOUBLE_TYPE> A = Array2D<DOUBLE_TYPE>("A");
+    Array2D<DOUBLE_TYPE> B = Array2D<DOUBLE_TYPE>("B");
 
 //////////////////////////////////
 
@@ -116,13 +118,16 @@ public:
 
 
     void fread(FILE *fptr);
+    void read_yaml(YAML::Node node);
 
     void load(string fname);
 
     size_t get_maxn();
-    DOUBLE_TYPE get_rcut(); 
+    DOUBLE_TYPE get_rcut();
 
-    bool has_pair(); 
+    bool has_pair();
+
+    void init(SPECIES_TYPE nelements);
 
     void init(NS_TYPE nradb, LS_TYPE lmax, NS_TYPE nradial, DOUBLE_TYPE deltaSplineBins, SPECIES_TYPE nelements,
               vector<vector<string>> radbasename) override;

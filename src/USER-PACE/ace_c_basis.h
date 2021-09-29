@@ -31,6 +31,7 @@
 #define ACE_C_BASIS_H
 
 #include "ace_flatten_basis.h"
+#include "ships_radial.h"
 
 typedef vector<vector<ACECTildeBasisFunction>> C_tilde_full_basis_vector2d;
 
@@ -168,6 +169,7 @@ public:
     void set_all_coeffs(const vector<DOUBLE_TYPE> &coeffs) override;
 
 
+    void _post_load_radial_SHIPsBasic(SHIPsRadialFunctions *ships_radial_functions);
 };
 
 #endif //ACE_C_BASIS_H
