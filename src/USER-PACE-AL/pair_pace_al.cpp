@@ -123,7 +123,7 @@ void PairPACEActiveLearning::compute(int eflag, int vflag) {
     double delx, dely, delz, evdwl;
     double fij[3];
     int *ilist, *jlist, *numneigh, **firstneigh;
-    double max_gamma_grade;
+    double gamma_grade;
     ev_init(eflag, vflag);
 
     // downwards modified by YL
@@ -208,9 +208,15 @@ void PairPACEActiveLearning::compute(int eflag, int vflag) {
             exit(EXIT_FAILURE);
         }
         // 'compute_atom' will update the `ace->e_atom` and `ace->neighbours_forces(jj, alpha)` arrays and max_gamma_grade
-        max_gamma_grade = ace->max_gamma_grade;
-        if (max_gamma_grade>1.5){
-            printf("WARNING: extrapolation grade gamma = %.3f\n",max_gamma_grade);
+        gamma_grade = ace->max_gamma_grade;
+        if (gamma_grade>gamma_lower_bound){
+            if (screen) fprintf(screen, "WARNING (lower bound): extrapolation grade gamma = %.3f\n",gamma_grade);
+            if (logfile) fprintf(logfile, "WARNING (lower bound): extrapolation grade gamma = %.3f\n",gamma_grade);
+        } else if (gamma_grade > gamma_upper_bound) {
+            if (screen) fprintf(screen, "STOP (upper bound): extrapolation grade gamma = %.3f\n",gamma_grade);
+            if (logfile) fprintf(logfile, "STOP (upper bound): extrapolation grade gamma = %.3f\n",gamma_grade);
+            error->all(FLERR, "Extrapolation grade is too large");
+            exit(EXIT_FAILURE);
         }
 
         for (jj = 0; jj < jnum; jj++) {

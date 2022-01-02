@@ -64,7 +64,8 @@ namespace LAMMPS_NS {
 
         char *potential_file_name;
         char *active_set_inv_filename;
-
+        double gamma_lower_bound = 1.5;
+        double gamma_upper_bound = 10;
         virtual void allocate();
 
         void read_files(char *, char *);
