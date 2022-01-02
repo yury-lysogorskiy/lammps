@@ -134,7 +134,7 @@ set(DEFAULT_PACKAGES ASPHERE BODY CLASS2 COLLOID COMPRESS CORESHELL DIPOLE
         USER-MANIFOLD USER-MEAMC USER-MGPT USER-MISC USER-MOFFF USER-MOLFILE
         USER-NETCDF USER-PHONON USER-PLUMED USER-PTM USER-QTB USER-REAXC
         USER-SCAFACOS USER-SDPD USER-SMD USER-SMTBQ USER-SPH USER-TALLY USER-UEF
-        USER-VTK USER-QUIP USER-QMMM USER-YAFF USER-ADIOS USER-PACE)
+        USER-VTK USER-QUIP USER-QMMM USER-YAFF USER-ADIOS USER-PACE USER-PACE-AL)
 set(ACCEL_PACKAGES USER-OMP KOKKOS OPT USER-INTEL GPU)
 
 #set(DEFAULT_PACKAGES SNAP USER-PACE MANYBODY)
@@ -154,6 +154,22 @@ add_library(yaml-cpp STATIC ${YAML_SRC})
 set_target_properties(yaml-cpp PROPERTIES LINKER_LANGUAGE CXX)
 
 include_directories(${YAML_INCLUDE_PATH})
+
+##### USER-PACE-AL ######
+
+## cnpy
+set(CNPY_PATH ${LAMMPS_LIB_SOURCE_DIR}/user-pace/cnpy)
+set(CNPY_INCLUDE_PATH ${CNPY_PATH})
+set(CNPY_SRC ${CNPY_PATH}/cnpy.cpp)
+add_library(cnpy-static STATIC ${CNPY_SRC})
+set_target_properties(cnpy-static PROPERTIES LINKER_LANGUAGE CXX)
+include_directories(${CNPY_INCLUDE_PATH})
+
+## winger-cpp
+set(WIGNER_PATH ${LAMMPS_LIB_SOURCE_DIR}/user-pace/wigner-cpp)
+set(WIGNER_INCLUDE_PATH ${WIGNER_PATH}/include/wigner)
+include_directories(${WIGNER_INCLUDE_PATH})
+
 ######################################################
 # download and unpack support binaries for compilation
 # of windows binaries.
@@ -533,7 +549,7 @@ endif()
 list(REMOVE_DUPLICATES LAMMPS_LINK_LIBS)
 if(BUILD_LIB)
   add_library(lammps ${LIB_SOURCES})
-  target_link_libraries(lammps ${LAMMPS_LINK_LIBS} yaml-cpp)
+  target_link_libraries(lammps ${LAMMPS_LINK_LIBS} yaml-cpp cnpy-static)
   if(LAMMPS_DEPS)
     add_dependencies(lammps ${LAMMPS_DEPS})
   endif()
@@ -586,9 +602,10 @@ endif()
 if (BUILD_EXE)
   add_executable(lmp ${LMP_SOURCES} ${PACE_CPP} ${PACE_PAIR_STYLE_CPP})
   target_include_directories(lmp PUBLIC ${PACE_INCLUDE})
-  target_link_libraries(lmp yaml-cpp)
+  target_link_libraries(lmp yaml-cpp cnpy-static)
+  target_compile_definitions(lmp PUBLIC EXTRA_C_PROJECTIONS)
   if (BUILD_LIB)
-    target_link_libraries(lmp lammps yaml-cpp)
+    target_link_libraries(lmp lammps yaml-cpp  cnpy-static)
   else ()
     target_link_libraries(lmp ${LAMMPS_LINK_LIBS})
     if (LAMMPS_DEPS)
