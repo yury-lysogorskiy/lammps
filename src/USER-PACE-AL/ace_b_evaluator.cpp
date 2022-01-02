@@ -619,12 +619,11 @@ ACEBEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *type, co
         const auto &A_as_inv = A_active_set_inv.at(mu_i);
 
         DOUBLE_TYPE gamma_max = 0;
-        for (int i = 0; i < A_as_inv.get_dim(1); i++) {
+        for (int i = 0; i < A_as_inv.get_dim(0); i++) {
             DOUBLE_TYPE current_gamma = 0;
-
-            // compute row-matrix-multiplication projections * A_as_inv
+            // compute row-matrix-multiplication projections * A_as_inv (transposed matrix)
             for (int k = 0; k < projections.get_dim(0); k++)
-                current_gamma += projections(k) * A_as_inv(k, i);
+                current_gamma += projections(k) * A_as_inv( i,k );
 
             if (abs(current_gamma) > gamma_max)
                 gamma_max = abs(current_gamma);
@@ -656,15 +655,29 @@ void ACEBEvaluator::load_active_set(const string &asi_filename) {
         Array2D<DOUBLE_TYPE> A0_inv(shape.at(0), shape.at(1), element_name);
         auto data_vec = kv.second.as_vec<DOUBLE_TYPE>();
         A0_inv.set_flatten_vector(data_vec);
-        this->A_active_set_inv[st] = A0_inv;
+        //transpose matrix to speed-up vec-mat multiplication
+        Array2D<DOUBLE_TYPE> A0_inv_transpose(A0_inv.get_dim(1), A0_inv.get_dim(0));
+
+        for (int i = 0; i < A0_inv.get_dim(0); i++)
+            for (int j = 0; j < A0_inv.get_dim(1); j++)
+                A0_inv_transpose(j, i) = A0_inv(i,j);
+
+        this->A_active_set_inv[st] = A0_inv_transpose;
     }
 }
 
 void ACEBEvaluator::set_active_set(const vector<vector<vector<DOUBLE_TYPE>>> &species_type_active_set_inv) {
-    for(SPECIES_TYPE mu=0; mu<species_type_active_set_inv.size(); mu++) {
-        const auto & active_set = species_type_active_set_inv.at(mu);
+    for (SPECIES_TYPE mu = 0; mu < species_type_active_set_inv.size(); mu++) {
+        const auto &active_set = species_type_active_set_inv.at(mu);
         Array2D<DOUBLE_TYPE> A0_inv(active_set.size(), active_set.at(0).size());
         A0_inv.set_vector(active_set);
-        this->A_active_set_inv[mu] = A0_inv;
+        //transpose matrix to speed-up vec-mat multiplication
+        Array2D<DOUBLE_TYPE> A0_inv_transpose(A0_inv.get_dim(1), A0_inv.get_dim(0));
+
+        for (int i = 0; i < A0_inv.get_dim(0); i++)
+            for (int j = 0; j < A0_inv.get_dim(1); j++)
+                A0_inv_transpose(j, i) = A0_inv(i,j);
+
+        this->A_active_set_inv[mu] = A0_inv_transpose;
     }
 }
