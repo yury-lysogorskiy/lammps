@@ -132,7 +132,6 @@ void PairPACEActiveLearning::compute(int eflag, int vflag) {
     double **f = atom->f;
     tagint *tag = atom->tag;
     int *type = atom->type;
-
     // number of atoms in cell
     int nlocal = atom->nlocal;
 
@@ -209,14 +208,16 @@ void PairPACEActiveLearning::compute(int eflag, int vflag) {
         }
         // 'compute_atom' will update the `ace->e_atom` and `ace->neighbours_forces(jj, alpha)` arrays and max_gamma_grade
         gamma_grade = ace->max_gamma_grade;
-        if (gamma_grade>gamma_lower_bound){
-            if (screen) fprintf(screen, "WARNING (lower bound): extrapolation grade gamma = %.3f\n",gamma_grade);
-            if (logfile) fprintf(logfile, "WARNING (lower bound): extrapolation grade gamma = %.3f\n",gamma_grade);
-        } else if (gamma_grade > gamma_upper_bound) {
-            if (screen) fprintf(screen, "STOP (upper bound): extrapolation grade gamma = %.3f\n",gamma_grade);
-            if (logfile) fprintf(logfile, "STOP (upper bound): extrapolation grade gamma = %.3f\n",gamma_grade);
+        if (gamma_grade > gamma_upper_bound) {
+            if (screen) fprintf(screen, "STOP (upper bound): extrapolation grade gamma = %.3f\n", gamma_grade);
+            if (logfile) fprintf(logfile, "STOP (upper bound): extrapolation grade gamma = %.3f\n", gamma_grade);
             error->all(FLERR, "Extrapolation grade is too large");
+            //TODO: dump current structure to cfg
             exit(EXIT_FAILURE);
+        } else if (gamma_grade > gamma_lower_bound) {
+            if (screen) fprintf(screen, "WARNING (lower bound): extrapolation grade gamma = %.3f\n", gamma_grade);
+            if (logfile) fprintf(logfile, "WARNING (lower bound): extrapolation grade gamma = %.3f\n", gamma_grade);
+            //TODO: dump current structure to cfg
         }
 
         for (jj = 0; jj < jnum; jj++) {
@@ -277,38 +278,41 @@ void PairPACEActiveLearning::allocate() {
 ------------------------------------------------------------------------- */
 
 void PairPACEActiveLearning::settings(int narg, char **arg) {
-//    if (narg > 1) {
-//        error->all(FLERR,
-//                   "Illegal pair_style command. Correct form:\n\tpair_style pace\nor\n\tpair_style pace ");
-//        error->all(FLERR, RECURSIVE_KEYWORD);
-//        error->all(FLERR, "or\n\tpair_style pace ");
-//        error->all(FLERR, PRODUCT_KEYWORD);
-//    }
-//    recursive = true; // default evaluator style: RECURSIVE
-//    if (narg > 0) {
-//        if (strcmp(arg[0], PRODUCT_KEYWORD) == 0) {
-//            recursive = false;
-//        } else if (strcmp(arg[0], RECURSIVE_KEYWORD) == 0) {
-//            recursive = true;
-//        } else {
-//            error->all(FLERR,
-//                       "Illegal pair_style command: pair_style pace ");
-//            error->all(FLERR, arg[0]);
-//            error->all(FLERR, "\nCorrect form:\n\tpair_style pace product\nor\n\tpair_style pace recursive\n");
-//        }
-//    }
+    if (narg > 2) {
+        error->all(FLERR,
+                   "Illegal pair_style command. Correct form:\n\tpair_style pace/al [gamma_lower_bound] [gamma_upper_bound]");
+    }
+
+    if (narg > 0) {
+        double glb = atof(arg[0]); // gamma lower bound
+        if (glb < 1.0)
+            error->all(FLERR,
+                       "Illegal gamma_lower_bound value: it should be real number >= 1.0");
+        else
+            gamma_lower_bound = glb;
+    }
+
+    if (narg > 1) {
+        double gub = atof(arg[1]); // gamma upper bound
+        if (gub < gamma_lower_bound)
+            error->all(FLERR,
+                       "Illegal gamma_upper_bound value: it should be real number >= gamma_lower_bound >= 1.0");
+        else
+            gamma_upper_bound = gub;
+    }
+
 
     if (comm->me == 0) {
-        if (screen) fprintf(screen, "ACE/AL version: %d.%d.%d\n", VERSION_YEAR, VERSION_MONTH, VERSION_DAY);
-        if (logfile) fprintf(logfile, "ACE/AL version: %d.%d.%d\n", VERSION_YEAR, VERSION_MONTH, VERSION_DAY);
+        if (screen)  {
+            fprintf(screen, "ACE/AL version: %d.%d.%d\n", VERSION_YEAR, VERSION_MONTH, VERSION_DAY);
+            fprintf(screen, "Extrapolation grade thresholds (lower/upper): %f/%f\n", gamma_lower_bound, gamma_upper_bound);
+        }
+        if (logfile) {
+            fprintf(logfile, "ACE/AL version: %d.%d.%d\n", VERSION_YEAR, VERSION_MONTH, VERSION_DAY);
+            fprintf(logfile, "Extrapolation grade thresholds (lower/upper): %f/%f\n", gamma_lower_bound, gamma_upper_bound);
+        }
 
-//        if (recursive) {
-//            if (screen) fprintf(screen, "Recursive evaluator is used\n");
-//            if (logfile) fprintf(logfile, "Recursive evaluator is used\n");
-//        } else {
-//            if (screen) fprintf(screen, "Product evaluator is used\n");
-//            if (logfile) fprintf(logfile, "Product evaluator is used\n");
-//        }
+
     }
 
 
