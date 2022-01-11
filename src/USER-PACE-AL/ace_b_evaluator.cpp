@@ -608,7 +608,6 @@ ACEBEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *type, co
     //check if active set is loaded
     if (A_active_set_inv.find(mu_i) != A_active_set_inv.end()) {
         // collect projections of rank1 and other rank in one array
-        Array1D<DOUBLE_TYPE> projections(total_basis_size_rank1 + total_basis_size);
         int pi = 0;
         for (int i = 0; i < total_basis_size_rank1; i++, pi++)
             projections(pi) = basis_projections_rank1(i, 0);
@@ -664,6 +663,7 @@ void ACEBEvaluator::load_active_set(const string &asi_filename) {
 
         this->A_active_set_inv[st] = A0_inv_transpose;
     }
+    resize_projections();
 }
 
 void ACEBEvaluator::set_active_set(const vector<vector<vector<DOUBLE_TYPE>>> &species_type_active_set_inv) {
@@ -680,4 +680,18 @@ void ACEBEvaluator::set_active_set(const vector<vector<vector<DOUBLE_TYPE>>> &sp
 
         this->A_active_set_inv[mu] = A0_inv_transpose;
     }
+    resize_projections();
+}
+
+void ACEBEvaluator::resize_projections(){
+    // find the maximal basis size per element and resize projections array correspondingly
+    size_t max_basis_size = 0; // include rank1 + rank>1
+    for(SPECIES_TYPE mu=0; mu<basis_set->nelements; mu++) {
+        size_t curr_basis_size = this->basis_set->total_basis_size_rank1[mu] + this->basis_set->total_basis_size[mu];
+        if (curr_basis_size>max_basis_size) {
+            max_basis_size = curr_basis_size;
+        }
+    }
+
+    this->projections.resize(max_basis_size);
 }

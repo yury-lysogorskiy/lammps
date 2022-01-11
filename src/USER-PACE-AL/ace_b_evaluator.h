@@ -46,6 +46,9 @@ class ACEBEvaluator : public ACEEvaluator {
 
     // active sets
     map<SPECIES_TYPE, Array2D<DOUBLE_TYPE>> A_active_set_inv;
+    Array1D<DOUBLE_TYPE> projections;
+
+    void resize_projections();
 public:
 
     ACEBEvaluator() = default;
