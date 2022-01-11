@@ -32,8 +32,10 @@ Copyright 2021 Yury Lysogorskiy^1, Cas van der Oord^2, Anton Bochkarev^1,
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <mpi.h>
 #include "pair_pace_al.h"
 #include "atom.h"
+#include "dump_cfg.h"
 #include "neighbor.h"
 #include "neigh_list.h"
 #include "neigh_request.h"
@@ -59,13 +61,14 @@ using namespace MathConst;
 
 int elements_num_pace_al = 104;
 char const *const elements_pace_al[104] = {"X", "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na",
-                                        "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn",
-                                        "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr",
-                                        "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb",
-                                        "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd",
-                                        "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir",
-                                        "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th",
-                                        "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"
+                                           "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr",
+                                           "Mn",
+                                           "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr",
+                                           "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb",
+                                           "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd",
+                                           "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir",
+                                           "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th",
+                                           "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"
 };
 
 int AtomicNumberByName_pace_al(char *elname) {
@@ -114,6 +117,9 @@ PairPACEActiveLearning::~PairPACEActiveLearning() {
         memory->destroy(map);
         memory->destroy(scale);
     }
+
+    if (dump)
+        delete dump;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -123,7 +129,8 @@ void PairPACEActiveLearning::compute(int eflag, int vflag) {
     double delx, dely, delz, evdwl;
     double fij[3];
     int *ilist, *jlist, *numneigh, **firstneigh;
-    double gamma_grade;
+    double gamma_grade = 0;
+    double global_gamma_grade = 0;
     ev_init(eflag, vflag);
 
     // downwards modified by YL
@@ -207,18 +214,10 @@ void PairPACEActiveLearning::compute(int eflag, int vflag) {
             exit(EXIT_FAILURE);
         }
         // 'compute_atom' will update the `ace->e_atom` and `ace->neighbours_forces(jj, alpha)` arrays and max_gamma_grade
-        gamma_grade = ace->max_gamma_grade;
-        if (gamma_grade > gamma_upper_bound) {
-            if (screen) fprintf(screen, "STOP (upper bound): extrapolation grade gamma = %.3f\n", gamma_grade);
-            if (logfile) fprintf(logfile, "STOP (upper bound): extrapolation grade gamma = %.3f\n", gamma_grade);
-            error->all(FLERR, "Extrapolation grade is too large");
-            //TODO: dump current structure to cfg
-            exit(EXIT_FAILURE);
-        } else if (gamma_grade > gamma_lower_bound) {
-            if (screen) fprintf(screen, "WARNING (lower bound): extrapolation grade gamma = %.3f\n", gamma_grade);
-            if (logfile) fprintf(logfile, "WARNING (lower bound): extrapolation grade gamma = %.3f\n", gamma_grade);
-            //TODO: dump current structure to cfg
-        }
+
+        if (gamma_grade < ace->max_gamma_grade)
+            gamma_grade = ace->max_gamma_grade;
+
 
         for (jj = 0; jj < jnum; jj++) {
             j = jlist[jj];
@@ -255,10 +254,36 @@ void PairPACEActiveLearning::compute(int eflag, int vflag) {
         }
     }
 
+
     if (vflag_fdotr) virial_fdotr_compute();
 
 
-    // end modifications YL
+    //gather together global_gamma_grade
+    MPI_Allreduce(&gamma_grade, &global_gamma_grade, 1, MPI_DOUBLE, MPI_MAX, world);
+    int mpi_rank;
+    MPI_Comm_rank(world, &mpi_rank);
+
+    if (global_gamma_grade > gamma_upper_bound) {
+        if (mpi_rank == 0) {
+            if (screen)
+                fprintf(screen, "STOP (upper bound): extrapolation grade gamma = %.3f\n", global_gamma_grade);
+            if (logfile)
+                fprintf(logfile, "STOP (upper bound): extrapolation grade gamma = %.3f\n", global_gamma_grade);
+        }
+        dump->write();
+        error->all(FLERR, "Extrapolation grade is too large");
+        exit(EXIT_FAILURE);
+    } else if (global_gamma_grade > gamma_lower_bound) {
+        if (mpi_rank == 0) {
+            if (screen)
+                fprintf(screen, "WARNING (lower bound): extrapolation grade gamma = %.3f\n", global_gamma_grade);
+            if (logfile)
+                fprintf(logfile, "WARNING (lower bound): extrapolation grade gamma = %.3f\n", global_gamma_grade);
+        }
+        dump->write();
+    }
+
+// end modifications YL
 }
 
 /* ---------------------------------------------------------------------- */
@@ -303,13 +328,15 @@ void PairPACEActiveLearning::settings(int narg, char **arg) {
 
 
     if (comm->me == 0) {
-        if (screen)  {
+        if (screen) {
             fprintf(screen, "ACE/AL version: %d.%d.%d\n", VERSION_YEAR, VERSION_MONTH, VERSION_DAY);
-            fprintf(screen, "Extrapolation grade thresholds (lower/upper): %f/%f\n", gamma_lower_bound, gamma_upper_bound);
+            fprintf(screen, "Extrapolation grade thresholds (lower/upper): %f/%f\n", gamma_lower_bound,
+                    gamma_upper_bound);
         }
         if (logfile) {
             fprintf(logfile, "ACE/AL version: %d.%d.%d\n", VERSION_YEAR, VERSION_MONTH, VERSION_DAY);
-            fprintf(logfile, "Extrapolation grade thresholds (lower/upper): %f/%f\n", gamma_lower_bound, gamma_upper_bound);
+            fprintf(logfile, "Extrapolation grade thresholds (lower/upper): %f/%f\n", gamma_lower_bound,
+                    gamma_upper_bound);
         }
 
 
@@ -436,6 +463,24 @@ void PairPACEActiveLearning::coeff(int narg, char **arg) {
     if (count == 0) error->all(FLERR, "Incorrect args for pair coefficients");
 
 
+    // prepare dump class
+
+    if (!dump) {
+        // dump 2 inner cfg 10 dump.snap.*.cfg mass type xs ys zs
+        char **dumpargs = new char *[10];
+        dumpargs[0] = (char *) "WRITE_DUMP"; // dump id
+        dumpargs[1] = (char *) "all";                // group
+        dumpargs[2] = (char *) "cfg";                // dump style
+        dumpargs[3] = (char *) "1";          // dump frequency
+        dumpargs[4] = (char *) "extrapolation.*.cfg";          // fname
+        dumpargs[5] = (char *) "mass";          // dump frequency
+        dumpargs[6] = (char *) "type";          // dump frequency
+        dumpargs[7] = (char *) "xs";          // dump frequency
+        dumpargs[8] = (char *) "ys";          // dump frequency
+        dumpargs[9] = (char *) "zs";          // dump frequency
+        dump = new DumpCFG(lmp, 10, dumpargs);
+        dump->init();
+    }
 }
 
 /* ----------------------------------------------------------------------
