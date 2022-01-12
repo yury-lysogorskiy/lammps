@@ -43,6 +43,7 @@ Copyright 2021 Yury Lysogorskiy^1, Cas van der Oord^2, Anton Bochkarev^1,
 #include "comm.h"
 #include "memory.h"
 #include "error.h"
+#include "update.h"
 
 
 #include "math_const.h"
@@ -78,6 +79,24 @@ int AtomicNumberByName_pace_al(char *elname) {
     return -1;
 }
 
+/* ----------------------------------------------------------------------
+ * Append extrapolation grade to file
+ ---------------------------------------------------------------------- */
+void dump_extrapolation_grade_header() {
+    FILE *gamma_file = fopen("extrapolation_grade.dat", "w");
+    fprintf(gamma_file, "Step\tgamma\n");
+    fclose(gamma_file);
+}
+
+/* ----------------------------------------------------------------------
+ * Append extrapolation grade to file
+ ---------------------------------------------------------------------- */
+void dump_extrapolation_grade(int timestep, double gamma) {
+    FILE *gamma_file = fopen("extrapolation_grade.dat", "a");
+    fprintf(gamma_file, "%d\t%f\n", timestep, gamma);
+    fclose(gamma_file);
+}
+
 
 /* ---------------------------------------------------------------------- */
 PairPACEActiveLearning::PairPACEActiveLearning(LAMMPS *lmp) : Pair(lmp) {
@@ -87,7 +106,6 @@ PairPACEActiveLearning::PairPACEActiveLearning(LAMMPS *lmp) : Pair(lmp) {
     manybody_flag = 1;
 
     nelements = 0;
-
     ace = NULL;
     potential_file_name = NULL;
     elements = NULL;
@@ -264,22 +282,18 @@ void PairPACEActiveLearning::compute(int eflag, int vflag) {
     MPI_Comm_rank(world, &mpi_rank);
 
     if (global_gamma_grade > gamma_upper_bound) {
-        if (mpi_rank == 0) {
-            if (screen)
-                fprintf(screen, "STOP (upper bound): extrapolation grade gamma = %.3f\n", global_gamma_grade);
-            if (logfile)
-                fprintf(logfile, "STOP (upper bound): extrapolation grade gamma = %.3f\n", global_gamma_grade);
-        }
+        if (comm->me == 0) dump_extrapolation_grade(update->ntimestep, global_gamma_grade);
         dump->write();
-        error->all(FLERR, "Extrapolation grade is too large");
+        MPI_Barrier(world);
+
+        if (comm->me == 0) {
+            error->all(FLERR, "Extrapolation grade is too large, stopping...\n");
+        }
+
+        MPI_Abort(world, 1); //abort properly with error code '1' if not using 4 processes
         exit(EXIT_FAILURE);
     } else if (global_gamma_grade > gamma_lower_bound) {
-        if (mpi_rank == 0) {
-            if (screen)
-                fprintf(screen, "WARNING (lower bound): extrapolation grade gamma = %.3f\n", global_gamma_grade);
-            if (logfile)
-                fprintf(logfile, "WARNING (lower bound): extrapolation grade gamma = %.3f\n", global_gamma_grade);
-        }
+        if (comm->me == 0) dump_extrapolation_grade(update->ntimestep, global_gamma_grade);
         dump->write();
     }
 
@@ -481,6 +495,10 @@ void PairPACEActiveLearning::coeff(int narg, char **arg) {
         dump = new DumpCFG(lmp, 10, dumpargs);
         dump->init();
     }
+
+    // write extrapolation_grade.dat file header
+    if (comm->me == 0)
+        dump_extrapolation_grade_header();
 }
 
 /* ----------------------------------------------------------------------
