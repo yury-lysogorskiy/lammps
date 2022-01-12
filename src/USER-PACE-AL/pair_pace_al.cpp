@@ -55,7 +55,7 @@ using namespace MathConst;
 
 #define MAXLINE 1024
 #define DELTA 4
-
+#define PACE_AL_EXTRAPOLATION_GRADE_FNAME "grade.dat"
 //added YL
 
 
@@ -83,7 +83,7 @@ int AtomicNumberByName_pace_al(char *elname) {
  * Append extrapolation grade to file
  ---------------------------------------------------------------------- */
 void dump_extrapolation_grade_header() {
-    FILE *gamma_file = fopen("extrapolation_grade.dat", "w");
+    FILE *gamma_file = fopen(PACE_AL_EXTRAPOLATION_GRADE_FNAME, "w");
     fprintf(gamma_file, "Step\tgamma\n");
     fclose(gamma_file);
 }
@@ -92,7 +92,7 @@ void dump_extrapolation_grade_header() {
  * Append extrapolation grade to file
  ---------------------------------------------------------------------- */
 void dump_extrapolation_grade(int timestep, double gamma) {
-    FILE *gamma_file = fopen("extrapolation_grade.dat", "a");
+    FILE *gamma_file = fopen(PACE_AL_EXTRAPOLATION_GRADE_FNAME, "a");
     fprintf(gamma_file, "%d\t%f\n", timestep, gamma);
     fclose(gamma_file);
 }
@@ -488,12 +488,19 @@ void PairPACEActiveLearning::coeff(int narg, char **arg) {
         dumpargs[3] = (char *) "1";          // dump frequency
         dumpargs[4] = (char *) "extrapolation.*.cfg";          // fname
         dumpargs[5] = (char *) "mass";          // dump frequency
-        dumpargs[6] = (char *) "type";          // dump frequency
-        dumpargs[7] = (char *) "xs";          // dump frequency
-        dumpargs[8] = (char *) "ys";          // dump frequency
-        dumpargs[9] = (char *) "zs";          // dump frequency
+        dumpargs[6] = (char *) "type";
+        dumpargs[7] = (char *) "xs";
+        dumpargs[8] = (char *) "ys";
+        dumpargs[9] = (char *) "zs";
         dump = new DumpCFG(lmp, 10, dumpargs);
         dump->init();
+
+        // dump_modify WRITE_DUMP element X Y Z
+        char **dumpargs3 = new char *[atom->ntypes+1];
+        dumpargs3[0] = (char*) "element";
+        for(int k=0;k<atom->ntypes;k++)
+            dumpargs3[k+1] = elemtypes[k];
+        dump->modify_params(atom->ntypes+1, dumpargs3);
     }
 
     // write extrapolation_grade.dat file header
