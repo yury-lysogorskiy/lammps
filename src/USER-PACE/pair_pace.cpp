@@ -407,13 +407,12 @@ void PairPACE::coeff(int narg, char **arg) {
     }
 
     // clear setflag since coeff() called once with I,J = * *
-    int n = atom->ntypes;
-    for (int i = ilo; i <= ihi; i++) {
-        for (int j = jlo; j <= jhi; j++) {
-            setflag[i][j] = 1;
-            scale[i][j] = 1.0;
-        }
-    }
+//    for (int i = ilo; i <= ihi; i++) {
+//        for (int j = jlo; j <= jhi; j++) {
+//            setflag[i][j] = 0;
+//            scale[i][j] = 1.0;
+//        }
+//    }
 
     // set setflag i,j for type pairs where both are mapped to elements
 
@@ -422,6 +421,7 @@ void PairPACE::coeff(int narg, char **arg) {
         for (int j = jlo; j <= jhi; j++)
             if (map[i] >= 0 && map[j] >= 0) {
                 setflag[i][j] = 1;
+                scale[i][j] = 1.0;
                 count++;
             }
 
