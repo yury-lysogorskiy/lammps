@@ -35,7 +35,7 @@ Copyright 2021 Yury Lysogorskiy^1, Cas van der Oord^2, Anton Bochkarev^1,
 #include <mpi.h>
 #include "pair_pace_al.h"
 #include "atom.h"
-#include "dump_cfg.h"
+#include "dump_custom.h"
 #include "neighbor.h"
 #include "neigh_list.h"
 #include "neigh_request.h"
@@ -422,12 +422,16 @@ void PairPACEActiveLearning::coeff(int narg, char **arg) {
     ace = new ACEBEvaluator();
     ace->element_type_mapping.init(atom->ntypes + 1);
 
+    FILE *species_type_file = fopen("species_types.dat", "w");
     for (int i = 1; i <= atom->ntypes; i++) {
         char *elemname = elemtypes[i - 1];
+        // dump species types for reconstruction of atomic configurations
+        fprintf(species_type_file, "%s ",elemname);
         int atomic_number = AtomicNumberByName_pace_al(elemname);
         if (atomic_number == -1) {
             char error_msg[1024];
             snprintf(error_msg, 1024, "String '%s' is not a valid element\n", elemname);
+            fclose(species_type_file);
             error->all(FLERR, error_msg);
         }
         SPECIES_TYPE mu = basis_set->get_species_index_by_name(elemname);
@@ -444,9 +448,11 @@ void PairPACEActiveLearning::coeff(int narg, char **arg) {
             char error_msg[1024];
             snprintf(error_msg, 1024, "Element %s is not supported by ACE-potential from file %s", elemname,
                      potential_file_name);
+            fclose(species_type_file);
             error->all(FLERR, error_msg);
         }
     }
+    fclose(species_type_file);
     ace->set_basis(*basis_set);
 
     if (comm->me == 0) {
@@ -480,19 +486,21 @@ void PairPACEActiveLearning::coeff(int narg, char **arg) {
     // prepare dump class
 
     if (!dump) {
-        // dump 2 inner cfg 10 dump.snap.*.cfg mass type xs ys zs
-        char **dumpargs = new char *[10];
+        // dump WRITE_DUMP all cfg 10 dump.snap.*.cfg mass type xs ys zs
+        // dump WRITE_DUMP all custom freq extrapolation.dat id type mass x y z
+        char **dumpargs = new char *[11];
         dumpargs[0] = (char *) "WRITE_DUMP"; // dump id
         dumpargs[1] = (char *) "all";                // group
-        dumpargs[2] = (char *) "cfg";                // dump style
+        dumpargs[2] = (char *) "custom";                // dump style
         dumpargs[3] = (char *) "1";          // dump frequency
-        dumpargs[4] = (char *) "extrapolation.*.cfg";          // fname
-        dumpargs[5] = (char *) "mass";          // dump frequency
+        dumpargs[4] = (char *) "extrapolative_structures.dat";          // fname
+        dumpargs[5] = (char *) "id";
         dumpargs[6] = (char *) "type";
-        dumpargs[7] = (char *) "xs";
-        dumpargs[8] = (char *) "ys";
-        dumpargs[9] = (char *) "zs";
-        dump = new DumpCFG(lmp, 10, dumpargs);
+        dumpargs[7] = (char *) "mass";
+        dumpargs[8] = (char *) "x";
+        dumpargs[9] = (char *) "y";
+        dumpargs[10] = (char *) "z";
+        dump = new DumpCustom(lmp, 11, dumpargs);
         dump->init();
 
         // dump_modify WRITE_DUMP element X Y Z

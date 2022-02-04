@@ -32,7 +32,7 @@ PairStyle(pace/al,PairPACEActiveLearning)
 #define LMP_PAIR_PACE_AL_H
 
 #include "pair.h"
-#include "dump_cfg.h"
+#include "dump_custom.h"
 #include "ace_b_evaluator.h"
 #include "ace_b_basis.h"
 
@@ -65,7 +65,7 @@ namespace LAMMPS_NS {
 
         char *potential_file_name;
 
-        DumpCFG *dump = nullptr;
+        DumpCustom *dump = nullptr;
 
         char *active_set_inv_filename;
         double gamma_lower_bound = 1.5;
