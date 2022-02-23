@@ -190,7 +190,7 @@ void ACEDAG::insert_node(TDAGMAP &DAGmap, vector<int> a, vector<DOUBLE_TYPE> c) 
 
     // TODO: first try to find partitions into nodes that are already parents
     //       that way we will get more leaf nodes!
-    for (TPARTITION const &p : partitions) {
+    for (TPARTITION const &p: partitions) {
         /* this is the good case; the parent nodes are both already in the 
          * graph; add the new node and return. This is also the only place in the 
          * code where an actual insert happens. */
@@ -222,7 +222,7 @@ void ACEDAG::insert_node(TDAGMAP &DAGmap, vector<int> a, vector<DOUBLE_TYPE> c) 
      */
     TPARTITION longest;
     int longest_length = 0;
-    for (auto const &p : partitions) {
+    for (auto const &p: partitions) {
         int len = 0;
         if (DAGmap.count(p.first)) {
             len = p.first.size();
@@ -877,6 +877,9 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
             mu_j = element_type_mapping(type_j);
         else
             mu_j = type_j;
+        // exclude atom if it is not supported by current potential
+//        if (mu_j < 0)
+//            continue;
 
         DOUBLE_TYPE current_cutoff = basis_set->radial_functions->cut(mu_i, mu_j);
         r_xyz = sqrt(xn * xn + yn * yn + zn * zn);
