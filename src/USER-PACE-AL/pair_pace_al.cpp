@@ -388,10 +388,12 @@ void PairPACEActiveLearning::coeff(int narg, char **arg) {
     active_set_inv_filename = arg[3];
     char **elemtypes = &arg[4];
 
-    // insure I,J args are * *
-
-    if (strcmp(type1, "*") != 0 || strcmp(type2, "*") != 0)
-        error->all(FLERR, "Incorrect args for pair coefficients");
+    // insure that I,J are identical
+    if (strcmp(type1, type2) != 0)
+        error->all(FLERR, "Incorrect args for PACE/AL:pair_coeff coefficients");
+    int ilo, ihi, jlo, jhi;
+    force->bounds(FLERR, type1, atom->ntypes, ilo, ihi);
+    force->bounds(FLERR, type2, atom->ntypes, jlo, jhi);
 
 
     //load potential file
