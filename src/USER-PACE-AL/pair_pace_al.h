@@ -35,6 +35,7 @@ PairStyle(pace/al,PairPACEActiveLearning)
 #include "dump_custom.h"
 #include "ace_b_evaluator.h"
 #include "ace_b_basis.h"
+#include "ace_recursive.h"
 
 namespace LAMMPS_NS {
 
@@ -61,9 +62,14 @@ namespace LAMMPS_NS {
     protected:
         ACEBBasisSet *basis_set = nullptr;
 
+        ACECTildeBasisSet *ctilde_basis_set = nullptr;
+
         ACEBEvaluator* ace = nullptr;
 
+        ACERecursiveEvaluator* rec_ace = nullptr;
+
         char *potential_file_name;
+        int gamma_grade_eval_freq = 1;
 
         DumpCustom *dump = nullptr;
 

@@ -15,7 +15,7 @@ mass		1 26.98
 
 group		Al type 1
 
-pair_style 	pace/al
+pair_style 	pace/al 1.5 10 2
 pair_coeff  * * Cu.yaml Cu.asi Cu
 
 fix 1 all box/relax iso 0.0 vmax 0.001
