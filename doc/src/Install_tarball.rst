@@ -1,73 +1,52 @@
 Download source and documentation as a tarball
-==============================================
+----------------------------------------------
 
 You can download a current LAMMPS tarball from the `download page <download_>`_
-of the `LAMMPS website <lws_>`_.
+of the `LAMMPS website <lws_>`_ or from GitHub (see below).
 
-.. _download: http://lammps.sandia.gov/download.html
-.. _bug: http://lammps.sandia.gov/bug.html
-.. _older: http://lammps.sandia.gov/tars
-.. _lws: http://lammps.sandia.gov
+.. _download: https://www.lammps.org/download.html
+.. _bug: https://www.lammps.org/bug.html
+.. _older: https://download.lammps.org/tars/
+.. _lws: https://www.lammps.org
 
+You have two choices of tarballs, either the most recent stable release
+or the most recent feature release.  Stable releases occur a few times
+per year, and undergo more testing before release.  Also, between stable
+releases bug fixes from the feature releases are back-ported and the
+tarball occasionally updated.  Feature releases occur every 4 to 8
+weeks.  The new contents in all feature releases are listed on the `bug
+and feature page <bug_>`_ of the LAMMPS homepage.
 
-You have two choices of tarballs, either the most recent stable
-release or the most current patch release.  Stable releases occur a
-few times per year, and undergo more testing before release.  Patch
-releases occur a couple times per month.  The new contents in all
-releases are listed on the `bug and feature page <bug_>`_ of the website.
+Tarballs of older LAMMPS versions can also be downloaded from `this page
+<older_>`_.
 
-Both tarballs include LAMMPS documentation (HTML and PDF files)
-corresponding to that version.  The download page also has an option
-to download the current-version LAMMPS documentation by itself.
+Tarballs downloaded from the LAMMPS homepage include the pre-translated
+LAMMPS documentation (HTML and PDF files) corresponding to that version.
 
-Older versions of LAMMPS can also be downloaded from `this page <older_>`_.
-
-Once you have a tarball, unzip and untar it with the following
+Once you have a tarball, uncompress and untar it with the following
 command:
 
+.. code-block:: bash
 
-.. parsed-literal::
+   tar -xzvf lammps*.tar.gz
 
-   tar -xzvf lammps\*.tar.gz
-
-This will create a LAMMPS directory with the version date
-in its name, e.g. lammps-23Jun18.
-
+This will create a LAMMPS directory with the version date in its name,
+e.g. lammps-28Mar23.
 
 ----------
 
+You can also download a compressed tar or zip archives from the
+"Assets" sections of the `LAMMPS GitHub releases site <git_>`_.
+The file name will be lammps-<version>.zip which can be unzipped
+with the following command, to create a lammps-<version> directory:
 
-You can also download a zip file via the "Clone or download" button on
-the `LAMMPS GitHub site <git_>`_.  The file name will be lammps-master.zip
-which can be unzipped with the following command, to create
-a lammps-master dir:
+.. code-block:: bash
 
+   unzip lammps*.zip
 
-.. parsed-literal::
+This version corresponds to the selected LAMMPS feature or stable
+release (as indicated by the matching git tag) and will only contain the
+source code and no pre-built documentation.
 
-   unzip lammps\*.zip
+.. _git: https://github.com/lammps/lammps/releases
 
-This version is the most up-to-date LAMMPS development version.  It
-will have the date of the most recent patch release (see the file
-src/version.h).  But it will also include any new bug-fixes or
-features added since the last patch release.  They will be included in
-the next patch release tarball.
-
-.. _git: https://github.com/lammps/lammps
-
-
-
-
-----------
-
-
-If you download a current LAMMPS tarball, one way to stay current as
-new patch tarballs are released, is to download a patch file which you
-can apply to your local directory to update it for each new patch
-release.  (Or of course you could just download the newest tarball
-periodically.)
-
-The patch files are posted on the `bug and feature page <bug_>`_ of the
-website, along with a list of changed files and details about what is
-in the new patch release.  Instructions for applying a patch file are
-on the :doc:`Install patch <Install_patch>` doc page.

@@ -1,7 +1,8 @@
+// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -12,10 +13,12 @@
 ------------------------------------------------------------------------- */
 
 #include "atom_vec_kokkos.h"
+
 #include "atom_kokkos.h"
-#include "comm_kokkos.h"
-#include "domain.h"
 #include "atom_masks.h"
+#include "comm_kokkos.h"
+#include "error.h"
+#include "domain.h"
 
 using namespace LAMMPS_NS;
 
@@ -24,11 +27,26 @@ using namespace LAMMPS_NS;
 AtomVecKokkos::AtomVecKokkos(LAMMPS *lmp) : AtomVec(lmp)
 {
   kokkosable = 1;
-  buffer = NULL;
+  buffer = nullptr;
   buffer_size = 0;
 
   no_comm_vel_flag = 0;
   no_border_vel_flag = 1;
+  unpack_exchange_indices_flag = 0;
+  size_exchange = 0;
+
+  k_count = DAT::tdual_int_1d("atom:k_count",1);
+  atomKK = (AtomKokkos *) atom;
+  commKK = (CommKokkos *) comm;
+}
+
+/* ---------------------------------------------------------------------- */
+
+AtomVecKokkos::~AtomVecKokkos()
+{
+  // Kokkos already deallocated host memory
+
+  ngrow = 0;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -94,10 +112,10 @@ int AtomVecKokkos::pack_comm_kokkos(const int &n,
   // Check whether to always run forward communication on the host
   // Choose correct forward PackComm kernel
 
-  if(commKK->forward_comm_on_host) {
-    sync(Host,X_MASK);
-    if(pbc_flag) {
-      if(domain->triclinic) {
+  if (commKK->forward_comm_on_host) {
+    atomKK->sync(Host,X_MASK);
+    if (pbc_flag) {
+      if (domain->triclinic) {
         struct AtomVecKokkos_PackComm<LMPHostType,1,1> f(atomKK->k_x,buf,list,iswap,
           domain->xprd,domain->yprd,domain->zprd,
           domain->xy,domain->xz,domain->yz,pbc);
@@ -109,7 +127,7 @@ int AtomVecKokkos::pack_comm_kokkos(const int &n,
         Kokkos::parallel_for(n,f);
       }
     } else {
-      if(domain->triclinic) {
+      if (domain->triclinic) {
         struct AtomVecKokkos_PackComm<LMPHostType,0,1> f(atomKK->k_x,buf,list,iswap,
           domain->xprd,domain->yprd,domain->zprd,
           domain->xy,domain->xz,domain->yz,pbc);
@@ -122,9 +140,9 @@ int AtomVecKokkos::pack_comm_kokkos(const int &n,
       }
     }
   } else {
-    sync(Device,X_MASK);
-    if(pbc_flag) {
-      if(domain->triclinic) {
+    atomKK->sync(Device,X_MASK);
+    if (pbc_flag) {
+      if (domain->triclinic) {
         struct AtomVecKokkos_PackComm<LMPDeviceType,1,1> f(atomKK->k_x,buf,list,iswap,
           domain->xprd,domain->yprd,domain->zprd,
           domain->xy,domain->xz,domain->yz,pbc);
@@ -136,7 +154,7 @@ int AtomVecKokkos::pack_comm_kokkos(const int &n,
         Kokkos::parallel_for(n,f);
       }
     } else {
-      if(domain->triclinic) {
+      if (domain->triclinic) {
         struct AtomVecKokkos_PackComm<LMPDeviceType,0,1> f(atomKK->k_x,buf,list,iswap,
           domain->xprd,domain->yprd,domain->zprd,
           domain->xy,domain->xz,domain->yz,pbc);
@@ -207,11 +225,11 @@ struct AtomVecKokkos_PackCommSelf {
 
 int AtomVecKokkos::pack_comm_self(const int &n, const DAT::tdual_int_2d &list, const int & iswap,
                                         const int nfirst, const int &pbc_flag, const int* const pbc) {
-  if(commKK->forward_comm_on_host) {
-    sync(Host,X_MASK);
-    modified(Host,X_MASK);
-    if(pbc_flag) {
-      if(domain->triclinic) {
+  if (commKK->forward_comm_on_host) {
+    atomKK->sync(Host,X_MASK);
+    atomKK->modified(Host,X_MASK);
+    if (pbc_flag) {
+      if (domain->triclinic) {
       struct AtomVecKokkos_PackCommSelf<LMPHostType,1,1> f(atomKK->k_x,nfirst,list,iswap,
           domain->xprd,domain->yprd,domain->zprd,
           domain->xy,domain->xz,domain->yz,pbc);
@@ -223,7 +241,7 @@ int AtomVecKokkos::pack_comm_self(const int &n, const DAT::tdual_int_2d &list, c
       Kokkos::parallel_for(n,f);
       }
     } else {
-      if(domain->triclinic) {
+      if (domain->triclinic) {
       struct AtomVecKokkos_PackCommSelf<LMPHostType,0,1> f(atomKK->k_x,nfirst,list,iswap,
           domain->xprd,domain->yprd,domain->zprd,
           domain->xy,domain->xz,domain->yz,pbc);
@@ -236,10 +254,10 @@ int AtomVecKokkos::pack_comm_self(const int &n, const DAT::tdual_int_2d &list, c
       }
     }
   } else {
-    sync(Device,X_MASK);
-    modified(Device,X_MASK);
-    if(pbc_flag) {
-      if(domain->triclinic) {
+    atomKK->sync(Device,X_MASK);
+    atomKK->modified(Device,X_MASK);
+    if (pbc_flag) {
+      if (domain->triclinic) {
       struct AtomVecKokkos_PackCommSelf<LMPDeviceType,1,1> f(atomKK->k_x,nfirst,list,iswap,
           domain->xprd,domain->yprd,domain->zprd,
           domain->xy,domain->xz,domain->yz,pbc);
@@ -251,7 +269,7 @@ int AtomVecKokkos::pack_comm_self(const int &n, const DAT::tdual_int_2d &list, c
       Kokkos::parallel_for(n,f);
       }
     } else {
-      if(domain->triclinic) {
+      if (domain->triclinic) {
       struct AtomVecKokkos_PackCommSelf<LMPDeviceType,0,1> f(atomKK->k_x,nfirst,list,iswap,
           domain->xprd,domain->yprd,domain->zprd,
           domain->xy,domain->xz,domain->yz,pbc);
@@ -343,10 +361,10 @@ struct AtomVecKokkos_PackCommSelfFused {
 int AtomVecKokkos::pack_comm_self_fused(const int &n, const DAT::tdual_int_2d &list, const DAT::tdual_int_1d &sendnum_scan,
                                          const DAT::tdual_int_1d &firstrecv, const DAT::tdual_int_1d &pbc_flag, const DAT::tdual_int_2d &pbc,
                                          const DAT::tdual_int_1d &g2l) {
-  if(commKK->forward_comm_on_host) {
-    sync(Host,X_MASK);
-    modified(Host,X_MASK);
-    if(domain->triclinic) {
+  if (commKK->forward_comm_on_host) {
+    atomKK->sync(Host,X_MASK);
+    atomKK->modified(Host,X_MASK);
+    if (domain->triclinic) {
     struct AtomVecKokkos_PackCommSelfFused<LMPHostType,1> f(atomKK->k_x,list,pbc,pbc_flag,firstrecv,sendnum_scan,g2l,
         domain->xprd,domain->yprd,domain->zprd,
         domain->xy,domain->xz,domain->yz);
@@ -358,9 +376,9 @@ int AtomVecKokkos::pack_comm_self_fused(const int &n, const DAT::tdual_int_2d &l
     Kokkos::parallel_for(n,f);
     }
   } else {
-    sync(Device,X_MASK);
-    modified(Device,X_MASK);
-    if(domain->triclinic) {
+    atomKK->sync(Device,X_MASK);
+    atomKK->modified(Device,X_MASK);
+    if (domain->triclinic) {
     struct AtomVecKokkos_PackCommSelfFused<LMPDeviceType,1> f(atomKK->k_x,list,pbc,pbc_flag,firstrecv,sendnum_scan,g2l,
         domain->xprd,domain->yprd,domain->zprd,
         domain->xy,domain->xz,domain->yz);
@@ -402,15 +420,15 @@ struct AtomVecKokkos_UnpackComm {
 /* ---------------------------------------------------------------------- */
 
 void AtomVecKokkos::unpack_comm_kokkos(const int &n, const int &first,
-    const DAT::tdual_xfloat_2d &buf ) {
-  if(commKK->forward_comm_on_host) {
-    sync(Host,X_MASK);
-    modified(Host,X_MASK);
+    const DAT::tdual_xfloat_2d &buf) {
+  if (commKK->forward_comm_on_host) {
+    atomKK->sync(Host,X_MASK);
+    atomKK->modified(Host,X_MASK);
     struct AtomVecKokkos_UnpackComm<LMPHostType> f(atomKK->k_x,buf,first);
     Kokkos::parallel_for(n,f);
   } else {
-    sync(Device,X_MASK);
-    modified(Device,X_MASK);
+    atomKK->sync(Device,X_MASK);
+    atomKK->modified(Device,X_MASK);
     struct AtomVecKokkos_UnpackComm<LMPDeviceType> f(atomKK->k_x,buf,first);
     Kokkos::parallel_for(n,f);
   }
@@ -512,8 +530,8 @@ int AtomVecKokkos::pack_comm_vel_kokkos(
   const int &pbc_flag,
   const int* const pbc)
 {
-  if(commKK->forward_comm_on_host) {
-    sync(Host,X_MASK|V_MASK);
+  if (commKK->forward_comm_on_host) {
+    atomKK->sync(Host,X_MASK|V_MASK);
     if (pbc_flag) {
       if (deform_vremap) {
         if (domain->triclinic) {
@@ -534,7 +552,7 @@ int AtomVecKokkos::pack_comm_vel_kokkos(
           Kokkos::parallel_for(n,f);
         }
       } else {
-        if(domain->triclinic) {
+        if (domain->triclinic) {
           struct AtomVecKokkos_PackCommVel<LMPHostType,1,1,0> f(
             atomKK->k_x,atomKK->k_mask,
             atomKK->k_v,
@@ -553,7 +571,7 @@ int AtomVecKokkos::pack_comm_vel_kokkos(
         }
       }
     } else {
-      if(domain->triclinic) {
+      if (domain->triclinic) {
         struct AtomVecKokkos_PackCommVel<LMPHostType,0,1,0> f(
           atomKK->k_x,atomKK->k_mask,
           atomKK->k_v,
@@ -572,10 +590,10 @@ int AtomVecKokkos::pack_comm_vel_kokkos(
       }
     }
   } else {
-    sync(Device,X_MASK|V_MASK);
-    if(pbc_flag) {
-      if(deform_vremap) {
-        if(domain->triclinic) {
+    atomKK->sync(Device,X_MASK|V_MASK);
+    if (pbc_flag) {
+      if (deform_vremap) {
+        if (domain->triclinic) {
           struct AtomVecKokkos_PackCommVel<LMPDeviceType,1,1,1> f(
             atomKK->k_x,atomKK->k_mask,
             atomKK->k_v,
@@ -593,7 +611,7 @@ int AtomVecKokkos::pack_comm_vel_kokkos(
           Kokkos::parallel_for(n,f);
         }
       } else {
-        if(domain->triclinic) {
+        if (domain->triclinic) {
           struct AtomVecKokkos_PackCommVel<LMPDeviceType,1,1,0> f(
             atomKK->k_x,atomKK->k_mask,
             atomKK->k_v,
@@ -612,7 +630,7 @@ int AtomVecKokkos::pack_comm_vel_kokkos(
         }
       }
     } else {
-      if(domain->triclinic) {
+      if (domain->triclinic) {
         struct AtomVecKokkos_PackCommVel<LMPDeviceType,0,1,0> f(
           atomKK->k_x,atomKK->k_mask,
           atomKK->k_v,
@@ -673,149 +691,17 @@ struct AtomVecKokkos_UnpackCommVel {
 /* ---------------------------------------------------------------------- */
 
 void AtomVecKokkos::unpack_comm_vel_kokkos(const int &n, const int &first,
-    const DAT::tdual_xfloat_2d &buf ) {
-  if(commKK->forward_comm_on_host) {
-    sync(Host,X_MASK|V_MASK);
-    modified(Host,X_MASK|V_MASK);
+    const DAT::tdual_xfloat_2d &buf) {
+  if (commKK->forward_comm_on_host) {
+    atomKK->sync(Host,X_MASK|V_MASK);
+    atomKK->modified(Host,X_MASK|V_MASK);
     struct AtomVecKokkos_UnpackCommVel<LMPHostType> f(atomKK->k_x,atomKK->k_v,buf,first);
     Kokkos::parallel_for(n,f);
   } else {
-    sync(Device,X_MASK|V_MASK);
-    modified(Device,X_MASK|V_MASK);
+    atomKK->sync(Device,X_MASK|V_MASK);
+    atomKK->modified(Device,X_MASK|V_MASK);
     struct AtomVecKokkos_UnpackCommVel<LMPDeviceType> f(atomKK->k_x,atomKK->k_v,buf,first);
     Kokkos::parallel_for(n,f);
-  }
-}
-
-/* ---------------------------------------------------------------------- */
-
-int AtomVecKokkos::pack_comm(int n, int *list, double *buf,
-                             int pbc_flag, int *pbc)
-{
-  int i,j,m;
-  double dx,dy,dz;
-
-  m = 0;
-  if (pbc_flag == 0) {
-    for (i = 0; i < n; i++) {
-      j = list[i];
-      buf[m++] = h_x(j,0);
-      buf[m++] = h_x(j,1);
-      buf[m++] = h_x(j,2);
-    }
-  } else {
-    if (domain->triclinic == 0) {
-      dx = pbc[0]*domain->xprd;
-      dy = pbc[1]*domain->yprd;
-      dz = pbc[2]*domain->zprd;
-    } else {
-      dx = pbc[0]*domain->xprd + pbc[5]*domain->xy + pbc[4]*domain->xz;
-      dy = pbc[1]*domain->yprd + pbc[3]*domain->yz;
-      dz = pbc[2]*domain->zprd;
-    }
-    for (i = 0; i < n; i++) {
-      j = list[i];
-      buf[m++] = h_x(j,0) + dx;
-      buf[m++] = h_x(j,1) + dy;
-      buf[m++] = h_x(j,2) + dz;
-    }
-  }
-  return m;
-}
-
-/* ---------------------------------------------------------------------- */
-
-int AtomVecKokkos::pack_comm_vel(int n, int *list, double *buf,
-                                 int pbc_flag, int *pbc)
-{
-  int i,j,m;
-  double dx,dy,dz,dvx,dvy,dvz;
-
-  m = 0;
-  if (pbc_flag == 0) {
-    for (i = 0; i < n; i++) {
-      j = list[i];
-      buf[m++] = h_x(j,0);
-      buf[m++] = h_x(j,1);
-      buf[m++] = h_x(j,2);
-      buf[m++] = h_v(j,0);
-      buf[m++] = h_v(j,1);
-      buf[m++] = h_v(j,2);
-    }
-  } else {
-    if (domain->triclinic == 0) {
-      dx = pbc[0]*domain->xprd;
-      dy = pbc[1]*domain->yprd;
-      dz = pbc[2]*domain->zprd;
-    } else {
-      dx = pbc[0]*domain->xprd + pbc[5]*domain->xy + pbc[4]*domain->xz;
-      dy = pbc[1]*domain->yprd + pbc[3]*domain->yz;
-      dz = pbc[2]*domain->zprd;
-    }
-    if (!deform_vremap) {
-      for (i = 0; i < n; i++) {
-        j = list[i];
-        buf[m++] = h_x(j,0) + dx;
-        buf[m++] = h_x(j,1) + dy;
-        buf[m++] = h_x(j,2) + dz;
-        buf[m++] = h_v(j,0);
-        buf[m++] = h_v(j,1);
-        buf[m++] = h_v(j,2);
-      }
-    } else {
-      dvx = pbc[0]*h_rate[0] + pbc[5]*h_rate[5] + pbc[4]*h_rate[4];
-      dvy = pbc[1]*h_rate[1] + pbc[3]*h_rate[3];
-      dvz = pbc[2]*h_rate[2];
-      for (i = 0; i < n; i++) {
-        j = list[i];
-        buf[m++] = h_x(j,0) + dx;
-        buf[m++] = h_x(j,1) + dy;
-        buf[m++] = h_x(j,2) + dz;
-        if (atom->mask[i] & deform_groupbit) {
-          buf[m++] = h_v(j,0) + dvx;
-          buf[m++] = h_v(j,1) + dvy;
-          buf[m++] = h_v(j,2) + dvz;
-        } else {
-          buf[m++] = h_v(j,0);
-          buf[m++] = h_v(j,1);
-          buf[m++] = h_v(j,2);
-        }
-      }
-    }
-  }
-  return m;
-}
-
-/* ---------------------------------------------------------------------- */
-
-void AtomVecKokkos::unpack_comm(int n, int first, double *buf)
-{
-  int i,m,last;
-
-  m = 0;
-  last = first + n;
-  for (i = first; i < last; i++) {
-    h_x(i,0) = buf[m++];
-    h_x(i,1) = buf[m++];
-    h_x(i,2) = buf[m++];
-  }
-}
-
-/* ---------------------------------------------------------------------- */
-
-void AtomVecKokkos::unpack_comm_vel(int n, int first, double *buf)
-{
-  int i,m,last;
-
-  m = 0;
-  last = first + n;
-  for (i = first; i < last; i++) {
-    h_x(i,0) = buf[m++];
-    h_x(i,1) = buf[m++];
-    h_x(i,2) = buf[m++];
-    h_v(i,0) = buf[m++];
-    h_v(i,1) = buf[m++];
-    h_v(i,2) = buf[m++];
   }
 }
 
@@ -846,13 +732,13 @@ struct AtomVecKokkos_PackReverse {
 /* ---------------------------------------------------------------------- */
 
 int AtomVecKokkos::pack_reverse_kokkos(const int &n, const int &first,
-    const DAT::tdual_ffloat_2d &buf ) {
-  if(commKK->reverse_comm_on_host) {
-    sync(Host,F_MASK);
+    const DAT::tdual_ffloat_2d &buf) {
+  if (commKK->reverse_comm_on_host) {
+    atomKK->sync(Host,F_MASK);
     struct AtomVecKokkos_PackReverse<LMPHostType> f(atomKK->k_f,buf,first);
     Kokkos::parallel_for(n,f);
   } else {
-    sync(Device,F_MASK);
+    atomKK->sync(Device,F_MASK);
     struct AtomVecKokkos_PackReverse<LMPDeviceType> f(atomKK->k_f,buf,first);
     Kokkos::parallel_for(n,f);
   }
@@ -893,16 +779,16 @@ struct AtomVecKokkos_UnPackReverseSelf {
 
 int AtomVecKokkos::unpack_reverse_self(const int &n, const DAT::tdual_int_2d &list, const int & iswap,
                                         const int nfirst) {
-  if(commKK->reverse_comm_on_host) {
-    sync(Host,F_MASK);
+  if (commKK->reverse_comm_on_host) {
+    atomKK->sync(Host,F_MASK);
     struct AtomVecKokkos_UnPackReverseSelf<LMPHostType> f(atomKK->k_f,nfirst,list,iswap);
     Kokkos::parallel_for(n,f);
-    modified(Host,F_MASK);
+    atomKK->modified(Host,F_MASK);
   } else {
-    sync(Device,F_MASK);
+    atomKK->sync(Device,F_MASK);
     struct AtomVecKokkos_UnPackReverseSelf<LMPDeviceType> f(atomKK->k_f,nfirst,list,iswap);
     Kokkos::parallel_for(n,f);
-    modified(Device,F_MASK);
+    atomKK->modified(Device,F_MASK);
   }
   return n*3;
 }
@@ -948,47 +834,13 @@ void AtomVecKokkos::unpack_reverse_kokkos(const int &n,
   // Check whether to always run reverse communication on the host
   // Choose correct reverse UnPackReverse kernel
 
-  if(commKK->reverse_comm_on_host) {
+  if (commKK->reverse_comm_on_host) {
     struct AtomVecKokkos_UnPackReverse<LMPHostType> f(atomKK->k_f,buf,list,iswap);
     Kokkos::parallel_for(n,f);
-    modified(Host,F_MASK);
+    atomKK->modified(Host,F_MASK);
   } else {
     struct AtomVecKokkos_UnPackReverse<LMPDeviceType> f(atomKK->k_f,buf,list,iswap);
     Kokkos::parallel_for(n,f);
-    modified(Device,F_MASK);
+    atomKK->modified(Device,F_MASK);
   }
-}
-
-/* ---------------------------------------------------------------------- */
-
-int AtomVecKokkos::pack_reverse(int n, int first, double *buf)
-{
-  if(n > 0)
-    sync(Host,F_MASK);
-
-  int m = 0;
-  const int last = first + n;
-  for (int i = first; i < last; i++) {
-    buf[m++] = h_f(i,0);
-    buf[m++] = h_f(i,1);
-    buf[m++] = h_f(i,2);
-  }
-
-  return m;
-}
-
-/* ---------------------------------------------------------------------- */
-
-void AtomVecKokkos::unpack_reverse(int n, int *list, double *buf)
-{
-  int m = 0;
-  for (int i = 0; i < n; i++) {
-    const int j = list[i];
-    h_f(j,0) += buf[m++];
-    h_f(j,1) += buf[m++];
-    h_f(j,2) += buf[m++];
-  }
-
-  if(n > 0)
-    modified(Host,F_MASK);
 }

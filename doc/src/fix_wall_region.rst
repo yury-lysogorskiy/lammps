@@ -6,7 +6,6 @@ fix wall/region command
 Syntax
 """"""
 
-
 .. parsed-literal::
 
    fix ID group-ID wall/region region-ID style args ... cutoff
@@ -16,28 +15,26 @@ Syntax
 * region-ID = region whose boundary will act as wall
 * style = *lj93* or *lj126* or *lj1043* or *colloid* or *harmonic* or *morse*
 * args for styles *lj93* or *lj126* or *lj1043* or *colloid* or *harmonic* =
-  
+
   .. parsed-literal::
-  
+
         epsilon = strength factor for wall-particle interaction (energy or energy/distance\^2 units)
         sigma = size factor for wall-particle interaction (distance units)
 
 * args for style *morse* =
-  
+
   .. parsed-literal::
-  
+
         D_0 = depth of the potential (energy units)
         alpha = width parameter (1/distance units)
         r_0 = distance of the potential minimum from wall position (distance units)
 
 * cutoff = distance from wall at which wall-particle interaction is cut off (distance units)
 
-
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    fix wall all wall/region mySphere lj93 1.0 1.0 2.5
    fix wall all wall/region mySphere harmonic 1.0 0.0 2.5
@@ -80,7 +77,7 @@ region surface will move over time in the corresponding manner.
 
    As discussed on the :doc:`region <region>` command doc page,
    regions in LAMMPS do not get wrapped across periodic boundaries.  It
-   is up to you to insure that periodic or non-periodic boundaries are
+   is up to you to ensure that periodic or non-periodic boundaries are
    specified appropriately via the :doc:`boundary <boundary>` command when
    using a region as a wall that bounds particle motion.  This also means
    that if you embed a region in your simulation box and want it to
@@ -130,40 +127,58 @@ region surface will move over time in the corresponding manner.
 The energy of wall-particle interactions depends on the specified
 style.
 
-For style *lj93*\ , the energy E is given by the 9/3 potential:
+For style *lj93*, the energy E is given by the 9/3 potential:
 
-.. image:: Eqs/fix_wall_lj93.jpg
-   :align: center
+.. math::
 
-For style *lj126*\ , the energy E is given by the 12/6 potential:
+ E = \epsilon \left[ \frac{2}{15} \left(\frac{\sigma}{r}\right)^{9} -
+                       \left(\frac{\sigma}{r}\right)^3 \right]
+                       \qquad r < r_c
 
-.. image:: Eqs/pair_lj.jpg
-   :align: center
+For style *lj126*, the energy E is given by the 12/6 potential:
 
-For style *wall/lj1043*\ , the energy E is given by the 10/4/3 potential:
+.. math::
 
-.. image:: Eqs/fix_wall_lj1043.jpg
-   :align: center
+ E = 4 \epsilon \left[ \left(\frac{\sigma}{r}\right)^{12} -
+                       \left(\frac{\sigma}{r}\right)^6 \right]
+                       \qquad r < r_c
 
-For style *colloid*\ , the energy E is given by an integrated form of
+For style *wall/lj1043*, the energy E is given by the 10/4/3 potential:
+
+.. math::
+
+ E = 2 \pi \epsilon \left[ \frac{2}{5} \left(\frac{\sigma}{r}\right)^{10} -
+                       \left(\frac{\sigma}{r}\right)^4 -
+                       \frac{\sqrt(2)\sigma^3}{3\left(r+\left(0.61/\sqrt(2)\right)\sigma\right)^3}\right]
+                       \qquad r < r_c
+
+For style *colloid*, the energy E is given by an integrated form of
 the :doc:`pair_style colloid <pair_colloid>` potential:
 
-.. image:: Eqs/fix_wall_colloid.jpg
-   :align: center
+.. math::
 
-For style *wall/harmonic*\ , the energy E is given by a harmonic spring
+   E = & \epsilon \left[ \frac{\sigma^{6}}{7560}
+   \left(\frac{6R-D}{D^{7}} + \frac{D+8R}{(D+2R)^{7}} \right) \right. \\
+    & \left. - \frac{1}{6} \left(\frac{2R(D+R) + D(D+2R)
+    \left[ \ln D - \ln (D+2R) \right]}{D(D+2R)} \right) \right] \qquad r < r_c
+
+For style *wall/harmonic*, the energy E is given by a harmonic spring
 potential (the distance parameter is ignored):
 
-.. image:: Eqs/fix_wall_harmonic.jpg
-   :align: center
+.. math::
 
-For style *wall/morse*\ , the energy E is given by the Morse potential:
+   E = \epsilon \quad (r - r_c)^2 \qquad r < r_c
 
-.. image:: Eqs/pair_morse.jpg
-   :align: center
+For style *wall/morse*, the energy E is given by the Morse potential:
 
-Unlike other styles, this requires three parameters (*D\_0*, *alpha*\ , *r\_0*
-in this order) instead of two like for the other wall styles.
+.. math::
+
+   E = D_0 \left[ e^{- 2 \alpha (r - r_0)} - 2 e^{- \alpha (r - r_0)} \right]
+       \qquad r < r_c
+
+Unlike other styles, this requires three parameters (:math:`D_0`,
+:math:`\alpha`, and :math:`r_0` in this order) instead of two like
+for the other wall styles.
 
 In all cases, *r* is the distance from the particle to the region
 surface, and Rc is the *cutoff* distance at which the particle and
@@ -171,31 +186,40 @@ surface no longer interact.  The cutoff is always the last argument.
 The energy of the wall potential is shifted so that the wall-particle
 interaction energy is 0.0 at the cutoff distance.
 
-For a full description of these wall styles, see fix\_style
+For a full description of these wall styles, see fix_style
 :doc:`wall <fix_wall>`
 
-**Restart, fix\_modify, output, run start/stop, minimize info:**
+Restart, fix_modify, output, run start/stop, minimize info
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 No information about this fix is written to :doc:`binary restart files <restart>`.
 
-The :doc:`fix_modify <fix_modify>` *energy* option is supported by this
-fix to add the energy of interaction between atoms and the wall to the
-system's potential energy as part of :doc:`thermodynamic output <thermo_style>`.
+The :doc:`fix_modify <fix_modify>` *energy* option is supported by
+this fix to add the energy of interaction between atoms and the region
+wall to the global potential energy of the system as part of
+:doc:`thermodynamic output <thermo_style>`.  The default setting for
+this fix is :doc:`fix_modify energy no <fix_modify>`.
 
-The :doc:`fix_modify <fix_modify>` *virial* option is supported by this
-fix to add the contribution due to the interaction between
-atoms and each wall to the system's virial as part of :doc:`thermodynamic output <thermo_style>`. The default is *virial no*
+The :doc:`fix_modify <fix_modify>` *virial* option is supported by
+this fix to add the contribution due to the interaction between atoms
+and the region wall to both the global pressure and per-atom stress of
+the system via the :doc:`compute pressure <compute_pressure>` and
+:doc:`compute stress/atom <compute_stress_atom>` commands.  The former
+can be accessed by :doc:`thermodynamic output <thermo_style>`.  The
+default setting for this fix is :doc:`fix_modify virial no
+<fix_modify>`.
 
 The :doc:`fix_modify <fix_modify>` *respa* option is supported by this
 fix. This allows to set at which level of the :doc:`r-RESPA <run_style>`
 integrator the fix is adding its forces. Default is the outermost level.
 
 This fix computes a global scalar energy and a global 3-length vector
-of forces, which can be accessed by various :doc:`output commands <Howto_output>`.  The scalar energy is the sum of energy
-interactions for all particles interacting with the wall represented
-by the region surface.  The 3 vector quantities are the x,y,z
-components of the total force acting on the wall due to the particles.
-The scalar and vector values calculated by this fix are "extensive".
+of forces, which can be accessed by various :doc:`output commands
+<Howto_output>`.  The scalar energy is the sum of energy interactions
+for all particles interacting with the wall represented by the region
+surface.  The 3 vector quantities are the x,y,z components of the
+total force acting on the wall due to the particles.  The scalar and
+vector values calculated by this fix are "extensive".
 
 No parameter of this fix can be used with the *start/stop* keywords of
 the :doc:`run <run>` command.
@@ -205,10 +229,10 @@ invoked by the :doc:`minimize <minimize>` command.
 
 .. note::
 
-   If you want the atom/wall interaction energy to be included in
-   the total potential energy of the system (the quantity being
-   minimized), you MUST enable the :doc:`fix_modify <fix_modify>` *energy*
-   option for this fix.
+   If you want the atom/wall interaction energy to be included in the
+   total potential energy of the system (the quantity being
+   minimized), you MUST enable the :doc:`fix_modify <fix_modify>`
+   *energy* option for this fix.
 
 Restrictions
 """"""""""""
@@ -224,4 +248,7 @@ Related commands
 :doc:`fix wall/harmonic <fix_wall>`,
 :doc:`fix wall/gran <fix_wall_gran>`
 
-**Default:** none
+Default
+"""""""
+
+none

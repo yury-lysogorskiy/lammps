@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   www.cs.sandia.gov/~sjplimp/lammps.html
-   Steve Plimpton, sjplimp@sandia.gov, Sandia National Laboratories
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -25,10 +25,10 @@
 #include <mpi.h>
 
 // these are LAMMPS include files
-#include <lammps/lammps.h>
-#include <lammps/input.h>
-#include <lammps/atom.h>
-#include <lammps/library.h>
+#include "lammps.h"
+#include "input.h"
+#include "atom.h"
+#include "library.h"
 
 using namespace LAMMPS_NS;
 
@@ -41,7 +41,7 @@ int main(int narg, char **arg)
   MPI_Init(&narg,&arg);
 
   if (narg != 3) {
-    printf("Syntax: simpleCC P in.lammps\n");
+    printf("Syntax: %s P in.lammps\n", arg[0]);
     exit(1);
   }
 
@@ -125,20 +125,20 @@ int main(int narg, char **arg)
   // extract force on single atom two different ways
 
   if (lammps == 1) {
-    double **f = (double **) lammps_extract_atom(lmp,(char *) "f");
+    double **f = (double **) lammps_extract_atom(lmp, "f");
     printf("Force on 1 atom via extract_atom: %g\n",f[0][0]);
 
-    double *fx = (double *) 
-      lammps_extract_variable(lmp,(char *) "fx",(char *) "all");
+    double *fx = (double *) lammps_extract_variable(lmp, "fx", "all");
     printf("Force on 1 atom via extract_variable: %g\n",fx[0]);
+    lammps_free(fx);
   }
 
   // use commands_string() and commands_list() to invoke more commands
 
-  char *strtwo = (char *) "run 10\nrun 20";
+  const char *strtwo = (char *) "run 10\nrun 20";
   if (lammps == 1) lammps_commands_string(lmp,strtwo);
 
-  char *cmds[2];
+  const char *cmds[2];
   cmds[0] = (char *) "run 10";
   cmds[1] = (char *) "run 20";
   if (lammps == 1) lammps_commands_list(lmp,2,cmds);

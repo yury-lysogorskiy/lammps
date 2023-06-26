@@ -6,16 +6,15 @@ atom_modify command
 Syntax
 """"""
 
-
 .. code-block:: LAMMPS
 
    atom_modify keyword values ...
 
 * one or more keyword/value pairs may be appended
 * keyword = *id* or *map* or *first* or *sort*
-  
+
   .. parsed-literal::
-  
+
         *id* value = *yes* or *no*
         *map* value = *yes* or *array* or *hash*
         *first* value = group-ID = group whose atoms will appear first in internal atom lists
@@ -23,11 +22,8 @@ Syntax
           Nfreq = sort atoms spatially every this many time steps
           binsize = bin size for spatial sorting (distance units)
 
-
-
 Examples
 """"""""
-
 
 .. code-block:: LAMMPS
 
@@ -44,7 +40,7 @@ command.  The *id* and *map* keywords must be specified before a
 simulation box is defined; other keywords can be specified any time.
 
 The *id* keyword determines whether non-zero atom IDs can be assigned
-to each atom.  If the value is *yes*\ , which is the default, IDs are
+to each atom.  If the value is *yes*, which is the default, IDs are
 assigned, whether you use the :doc:`create atoms <create_atoms>` or
 :doc:`read_data <read_data>` or :doc:`read_restart <read_restart>`
 commands to initialize atoms.  If the value is *no* the IDs for all
@@ -64,8 +60,8 @@ The only reason not to use atom IDs is if you are running an atomic
 simulation so large that IDs cannot be uniquely assigned.  For a
 default LAMMPS build this limit is 2\^31 or about 2 billion atoms.
 However, even in this case, you can use 64-bit atom IDs, allowing 2\^63
-or about 9e18 atoms, if you build LAMMPS with the - DLAMMPS\_BIGBIG
-switch.  This is described on the :doc:`Build\_settings <Build_settings>`
+or about 9e18 atoms, if you build LAMMPS with the - DLAMMPS_BIGBIG
+switch.  This is described on the :doc:`Build_settings <Build_settings>`
 doc page.  If atom IDs are not used, they must be specified as 0 for
 all atoms, e.g. in a data or restart file.
 
@@ -84,7 +80,7 @@ LAMMPS commands require a map, even for atomic systems, and will
 generate an error if one does not exist.  The *map* keyword thus
 allows you to force the creation of a map.  The *yes* value will
 create either an *array* or *hash* style map, as explained in the next
-paragraph.  The *array* and *hash* values create an atom-style or
+paragraph.  The *array* and *hash* values create an array-style or
 hash-style map respectively.
 
 For an *array*\ -style map, each processor stores a lookup table of
@@ -112,12 +108,12 @@ this command.  Note that specifying "all" as the group-ID effectively
 turns off the *first* option.
 
 It is OK to use the *first* keyword with a group that has not yet been
-defined, e.g. to use the atom\_modify first command at the beginning of
+defined, e.g. to use the atom_modify first command at the beginning of
 your input script.  LAMMPS does not use the group until a simulation
 is run.
 
 The *sort* keyword turns on a spatial sorting or reordering of atoms
-within each processor's sub-domain every *Nfreq* timesteps.  If
+within each processor's subdomain every *Nfreq* timesteps.  If
 *Nfreq* is set to 0, then sorting is turned off.  Sorting can improve
 cache performance and thus speed-up a LAMMPS simulation, as discussed
 in a paper by :ref:`(Meloni) <Meloni>`.  Its efficacy depends on the problem
@@ -157,15 +153,25 @@ cache locality will be undermined.
    order of atoms in a :doc:`dump <dump>` file will also typically change
    if sorting is enabled.
 
+.. note::
+
+   When running simple pair-wise potentials like Lennard Jones on GPUs
+   with the KOKKOS package, using a larger binsize (e.g. 2x larger than
+   default) and a more frequent reordering than default (e.g. every 100
+   time steps) may improve performance.
+
 Restrictions
 """"""""""""
-
 
 The *first* and *sort* options cannot be used together.  Since sorting
 is on by default, it will be turned off if the *first* keyword is
 used with a group-ID that is not "all".
 
-**Related commands:** none
+Related commands
+""""""""""""""""
+
+none
+
 
 Default
 """""""
@@ -179,12 +185,8 @@ frequency of 1000 and a binsize of 0.0, which means the neighbor
 cutoff will be used to set the bin size. If no neighbor cutoff is
 defined, sorting will be turned off.
 
-
 ----------
 
-
 .. _Meloni:
-
-
 
 **(Meloni)** Meloni, Rosati and Colombo, J Chem Phys, 126, 121102 (2007).

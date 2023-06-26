@@ -1,7 +1,7 @@
 /* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -12,9 +12,9 @@
 ------------------------------------------------------------------------- */
 
 #ifdef FIX_CLASS
-
-FixStyle(EVENT/TAD,FixEventTAD)
-
+// clang-format off
+FixStyle(EVENT/TAD,FixEventTAD);
+// clang-format on
 #else
 
 #ifndef LMP_FIX_EVENT_TAD_H
@@ -26,36 +26,24 @@ namespace LAMMPS_NS {
 
 class FixEventTAD : public FixEvent {
  public:
-  int event_number;      // event counter
-  bigint event_timestep; // timestep of last event
-  double tlo;            // event time at low temperature
-  double ebarrier;       // energy barrier for this event
+  int event_number;         // event counter
+  bigint event_timestep;    // timestep of last event
+  double tlo;               // event time at low temperature
+  double ebarrier;          // energy barrier for this event
 
   FixEventTAD(class LAMMPS *, int, char **);
-  ~FixEventTAD() {}
 
-  void write_restart(FILE *);
-  void restart(char *);
+  void write_restart(FILE *) override;
+  void restart(char *) override;
 
   // methods specific to FixEventTAD, invoked by TAD
 
   void store_event_tad(bigint);
 
  private:
-
 };
 
-}
+}    // namespace LAMMPS_NS
 
 #endif
 #endif
-
-/* ERROR/WARNING messages:
-
-E: Illegal ... command
-
-Self-explanatory.  Check the input script syntax and compare to the
-documentation for the command.  You can use -echo screen as a
-command-line option when running LAMMPS to see the offending line.
-
-*/

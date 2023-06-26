@@ -1,7 +1,8 @@
+// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -12,7 +13,7 @@
 ------------------------------------------------------------------------- */
 
 #include "fix_setforce_kokkos.h"
-#include <cstring>
+
 #include "atom_kokkos.h"
 #include "update.h"
 #include "modify.h"
@@ -24,7 +25,8 @@
 #include "error.h"
 #include "atom_masks.h"
 #include "kokkos_base.h"
-#include "region.h"
+
+#include <cstring>
 
 using namespace LAMMPS_NS;
 using namespace FixConst;
@@ -56,7 +58,7 @@ FixSetForceKokkos<DeviceType>::~FixSetForceKokkos()
   if (copymode) return;
 
   memoryKK->destroy_kokkos(k_sforce,sforce);
-  sforce = NULL;
+  sforce = nullptr;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -66,18 +68,17 @@ void FixSetForceKokkos<DeviceType>::init()
 {
   FixSetForce::init();
 
-  if (strstr(update->integrate_style,"respa"))
+  if (utils::strmatch(update->integrate_style,"^respa"))
     error->all(FLERR,"Cannot (yet) use respa with Kokkos");
 }
 
 /* ---------------------------------------------------------------------- */
 
 template<class DeviceType>
-void FixSetForceKokkos<DeviceType>::post_force(int vflag)
+void FixSetForceKokkos<DeviceType>::post_force(int /*vflag*/)
 {
-  atomKK->sync(execution_space, X_MASK | F_MASK | MASK_MASK);
+  atomKK->sync(execution_space, F_MASK | MASK_MASK);
 
-  x = atomKK->k_x.view<DeviceType>();
   f = atomKK->k_f.view<DeviceType>();
   mask = atomKK->k_mask.view<DeviceType>();
 
@@ -85,9 +86,9 @@ void FixSetForceKokkos<DeviceType>::post_force(int vflag)
 
   // update region if necessary
 
-  region = NULL;
-  if (iregion >= 0) {
-    region = domain->regions[iregion];
+  if (region) {
+    if (!utils::strmatch(region->style, "^block"))
+      error->all(FLERR,"Cannot (yet) use {}-style region with fix setforce/kk",region->style);
     region->prematch();
     DAT::tdual_int_1d k_match = DAT::tdual_int_1d("setforce:k_match",nlocal);
     KokkosBase* regionKKBase = dynamic_cast<KokkosBase*>(region);
@@ -184,7 +185,7 @@ void FixSetForceKokkos<DeviceType>::operator()(TagFixSetForceNonConstant, const 
 
 namespace LAMMPS_NS {
 template class FixSetForceKokkos<LMPDeviceType>;
-#ifdef KOKKOS_ENABLE_CUDA
+#ifdef LMP_KOKKOS_GPU
 template class FixSetForceKokkos<LMPHostType>;
 #endif
 }

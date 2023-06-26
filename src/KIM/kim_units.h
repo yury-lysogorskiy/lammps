@@ -1,7 +1,7 @@
 /* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -52,8 +52,24 @@
 /* ----------------------------------------------------------------------
    Designed for use with the kim-api-2.0.2 (and newer) package
 ------------------------------------------------------------------------- */
+#ifndef LMP_KIM_UNITS_H
+#define LMP_KIM_UNITS_H
 
-int lammps_unit_conversion(std::string const &unit_type_str,
-                           std::string const &from_system_str,
-                           std::string const &to_system_str,
-                           double &conversion_factor);
+#include <string>
+extern "C" {
+#include "KIM_SimulatorHeaders.h"
+}
+
+namespace LAMMPS_NS {
+class Error;
+
+namespace kim_units {
+  int lammps_unit_conversion(const std::string &unit_type_str, const std::string &from_system_str,
+                             const std::string &to_system_str, double &conversion_factor);
+  void get_kim_unit_names(char const *const system, KIM_LengthUnit &lengthUnit,
+                          KIM_EnergyUnit &energyUnit, KIM_ChargeUnit &chargeUnit,
+                          KIM_TemperatureUnit &temperatureUnit, KIM_TimeUnit &timeUnit,
+                          Error *error);
+}    // namespace kim_units
+}    // namespace LAMMPS_NS
+#endif

@@ -6,8 +6,7 @@ dimension command
 Syntax
 """"""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    dimension N
 
@@ -16,8 +15,7 @@ Syntax
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    dimension 2
 
@@ -30,7 +28,7 @@ prior to setting up a simulation box via the
 :doc:`create_box <create_box>` or :doc:`read_data <read_data>` commands.
 Restart files also store this setting.
 
-See the discussion on the :doc:`Howto 2d <Howto_2d>` doc page for
+See the discussion on the :doc:`Howto 2d <Howto_2d>` page for
 additional instructions on how to run 2d simulations.
 
 .. note::
@@ -43,7 +41,6 @@ additional instructions on how to run 2d simulations.
 Restrictions
 """"""""""""
 
-
 This command must be used before the simulation box is defined by a
 :doc:`read_data <read_data>` or :doc:`create_box <create_box>` command.
 
@@ -55,7 +52,6 @@ Related commands
 Default
 """""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    dimension 3

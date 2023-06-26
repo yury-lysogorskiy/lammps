@@ -6,8 +6,7 @@ compute erotate/asphere command
 Syntax
 """"""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    compute ID group-ID erotate/asphere
 
@@ -17,8 +16,7 @@ Syntax
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    compute 1 all erotate/asphere
 
@@ -32,9 +30,9 @@ ellipsoids, or line segments, or triangles.  See the
 for descriptions of these options.
 
 For all 3 types of particles, the rotational kinetic energy is
-computed as 1/2 I w\^2, where I is the inertia tensor for the
-aspherical particle and w is its angular velocity, which is computed
-from its angular momentum if needed.
+computed as :math:`\frac12 I \omega^2`, where :math:`I` is the inertia tensor
+for the aspherical particle and :math:`\omega` is its angular velocity, which
+is computed from its angular momentum if needed.
 
 .. note::
 
@@ -42,11 +40,12 @@ from its angular momentum if needed.
    treated as ellipsoids, not ellipses, meaning their moments of inertia
    will be the same as in 3d.
 
-**Output info:**
+Output info
+"""""""""""
 
 This compute calculates a global scalar (the KE).  This value can be
 used by any command that uses a global scalar value from a compute as
-input.  See the :doc:`Howto output <Howto_output>` doc page for an
+input.  See the :doc:`Howto output <Howto_output>` page for an
 overview of LAMMPS output options.
 
 The scalar value calculated by this compute is "extensive".  The
@@ -54,7 +53,6 @@ scalar value will be in energy :doc:`units <units>`.
 
 Restrictions
 """"""""""""
-
 
 This compute requires that ellipsoidal particles atoms store a shape
 and quaternion orientation and angular momentum as defined by the
@@ -67,11 +65,18 @@ This compute requires that triangular particles atoms store a size and
 shape and quaternion orientation and angular momentum as defined by
 the :doc:`atom_style tri <atom_style>` command.
 
-All particles in the group must be finite-size.  They cannot be point
+All particles in the group must be of finite size.  They cannot be point
 particles.
 
-**Related commands:** none
+Related commands
+""""""""""""""""
+
+none
+
 
 :doc:`compute erotate/sphere <compute_erotate_sphere>`
 
-**Default:** none
+Default
+"""""""
+
+none

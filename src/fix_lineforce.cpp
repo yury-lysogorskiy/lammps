@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -12,31 +12,30 @@
 ------------------------------------------------------------------------- */
 
 #include "fix_lineforce.h"
-#include <cmath>
-#include <cstring>
+
 #include "atom.h"
-#include "update.h"
-#include "respa.h"
 #include "error.h"
-#include "force.h"
+#include "respa.h"
+#include "update.h"
+
+#include <cmath>
 
 using namespace LAMMPS_NS;
 using namespace FixConst;
 
 /* ---------------------------------------------------------------------- */
 
-FixLineForce::FixLineForce(LAMMPS *lmp, int narg, char **arg) :
-  Fix(lmp, narg, arg)
+FixLineForce::FixLineForce(LAMMPS *lmp, int narg, char **arg) : Fix(lmp, narg, arg)
 {
   dynamic_group_allow = 1;
 
-  if (narg != 6) error->all(FLERR,"Illegal fix lineforce command");
-  xdir = force->numeric(FLERR,arg[3]);
-  ydir = force->numeric(FLERR,arg[4]);
-  zdir = force->numeric(FLERR,arg[5]);
+  if (narg != 6) error->all(FLERR, "Illegal fix lineforce command");
+  xdir = utils::numeric(FLERR, arg[3], false, lmp);
+  ydir = utils::numeric(FLERR, arg[4], false, lmp);
+  zdir = utils::numeric(FLERR, arg[5], false, lmp);
 
-  double len = sqrt(xdir*xdir + ydir*ydir + zdir*zdir);
-  if (len == 0.0) error->all(FLERR,"Illegal fix lineforce command");
+  double len = sqrt(xdir * xdir + ydir * ydir + zdir * zdir);
+  if (len == 0.0) error->all(FLERR, "Illegal fix lineforce command");
 
   xdir /= len;
   ydir /= len;
@@ -58,14 +57,14 @@ int FixLineForce::setmask()
 
 void FixLineForce::setup(int vflag)
 {
-  if (strstr(update->integrate_style,"verlet"))
+  if (utils::strmatch(update->integrate_style, "^verlet"))
     post_force(vflag);
   else {
-    int nlevels_respa = ((Respa *) update->integrate)->nlevels;
+    int nlevels_respa = (dynamic_cast<Respa *>(update->integrate))->nlevels;
     for (int ilevel = 0; ilevel < nlevels_respa; ilevel++) {
-      ((Respa *) update->integrate)->copy_flevel_f(ilevel);
-      post_force_respa(vflag,ilevel,0);
-      ((Respa *) update->integrate)->copy_f_flevel(ilevel);
+      (dynamic_cast<Respa *>(update->integrate))->copy_flevel_f(ilevel);
+      post_force_respa(vflag, ilevel, 0);
+      (dynamic_cast<Respa *>(update->integrate))->copy_f_flevel(ilevel);
     }
   }
 }
@@ -88,7 +87,7 @@ void FixLineForce::post_force(int /*vflag*/)
   double dot;
   for (int i = 0; i < nlocal; i++)
     if (mask[i] & groupbit) {
-      dot = f[i][0]*xdir + f[i][1]*ydir + f[i][2]*zdir;
+      dot = f[i][0] * xdir + f[i][1] * ydir + f[i][2] * zdir;
       f[i][0] = dot * xdir;
       f[i][1] = dot * ydir;
       f[i][2] = dot * zdir;

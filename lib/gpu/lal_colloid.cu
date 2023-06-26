@@ -11,14 +11,14 @@
 //
 //    begin                :
 //    email                : nguyentd@ornl.gov
-// ***************************************************************************/
+// ***************************************************************************
 
-#ifdef NV_KERNEL
+#if defined(NV_KERNEL) || defined(USE_HIP)
 #include "lal_aux_fun1.h"
 #ifndef _DOUBLE_DOUBLE
-texture<float4> pos_tex;
+_texture( pos_tex,float4);
 #else
-texture<int4,1> pos_tex;
+_texture_2d( pos_tex,int4);
 #endif
 #else
 #define pos_tex x_
@@ -34,7 +34,7 @@ __kernel void k_colloid(const __global numtyp4 *restrict x_,
                         const __global int *form,
                         const __global int *dev_nbor,
                         const __global int *dev_packed,
-                        __global acctyp4 *restrict ans,
+                        __global acctyp3 *restrict ans,
                         __global acctyp *restrict engv,
                         const int eflag, const int vflag, const int inum,
                         const int nbor_pitch, const int t_per_atom) {
@@ -42,22 +42,25 @@ __kernel void k_colloid(const __global numtyp4 *restrict x_,
   atom_info(t_per_atom,ii,tid,offset);
 
   __local numtyp sp_lj[4];
+  int n_stride;
+  local_allocate_store_pair();
+
   sp_lj[0]=sp_lj_in[0];
   sp_lj[1]=sp_lj_in[1];
   sp_lj[2]=sp_lj_in[2];
   sp_lj[3]=sp_lj_in[3];
 
-  acctyp energy=(acctyp)0;
-  acctyp4 f;
+  acctyp3 f;
   f.x=(acctyp)0; f.y=(acctyp)0; f.z=(acctyp)0;
-  acctyp virial[6];
-  for (int i=0; i<6; i++)
-    virial[i]=(acctyp)0;
+  acctyp energy, virial[6];
+  if (EVFLAG) {
+    energy=(acctyp)0;
+    for (int i=0; i<6; i++) virial[i]=(acctyp)0;
+  }
 
   if (ii<inum) {
     int nbor, nbor_end;
     int i, numj;
-    __local int n_stride;
     nbor_info(dev_nbor,dev_packed,nbor_pitch,t_per_atom,ii,offset,i,numj,
               n_stride,nbor_end,nbor);
 
@@ -66,6 +69,7 @@ __kernel void k_colloid(const __global numtyp4 *restrict x_,
 
     numtyp factor_lj;
     for ( ; nbor<nbor_end; nbor+=n_stride) {
+      ucl_prefetch(dev_packed+nbor+n_stride);
 
       int j=dev_packed[nbor];
       factor_lj = sp_lj[sbmask(j)];
@@ -120,10 +124,10 @@ __kernel void k_colloid(const __global numtyp4 *restrict x_,
           K[6] = K[2]-r;
           K[7] = ucl_recip(K[3]*K[4]);
           K[8] = ucl_recip(K[5]*K[6]);
-          g[0] = ucl_powr(K[3],(numtyp)-7.0);
-          g[1] = -ucl_powr(-K[4],(numtyp)-7.0);
-          g[2] = ucl_powr(K[5],(numtyp)-7.0);
-          g[3] = -ucl_powr(-K[6],(numtyp)-7.0);
+          g[0] = (numtyp)1.0/(K[3]*K[3]*K[3]*K[3]*K[3]*K[3]*K[3]);  // ucl_powr(K[3],(numtyp)-7.0);
+          g[1] = (numtyp)1.0/(K[4]*K[4]*K[4]*K[4]*K[4]*K[4]*K[4]);  //-ucl_powr(-K[4],(numtyp)-7.0);
+          g[2] = (numtyp)1.0/(K[5]*K[5]*K[5]*K[5]*K[5]*K[5]*K[5]);  // ucl_powr(K[5],(numtyp)-7.0);
+          g[3] = (numtyp)1.0/(K[6]*K[6]*K[6]*K[6]*K[6]*K[6]*K[6]);  //-ucl_powr(-K[6],(numtyp)-7.0);
           h[0] = ((K[3]+(numtyp)5.0*K[1])*K[3]+(numtyp)30.0*K[0])*g[0];
           h[1] = ((K[4]+(numtyp)5.0*K[1])*K[4]+(numtyp)30.0*K[0])*g[1];
           h[2] = ((K[5]+(numtyp)5.0*K[2])*K[5]-(numtyp)30.0*K[0])*g[2];
@@ -146,7 +150,7 @@ __kernel void k_colloid(const __global numtyp4 *restrict x_,
         f.y+=dely*force;
         f.z+=delz*force;
 
-        if (eflag>0) {
+        if (EVFLAG && eflag) {
           numtyp e=(numtyp)0.0;
           if (form[mtype]==0) {
             e=r6inv*(lj3[mtype].x*r6inv-lj3[mtype].y);
@@ -160,7 +164,7 @@ __kernel void k_colloid(const __global numtyp4 *restrict x_,
           }
           energy+=factor_lj*(e-lj3[mtype].z);
         }
-        if (vflag>0) {
+        if (EVFLAG && vflag) {
           virial[0] += delx*delx*force;
           virial[1] += dely*dely*force;
           virial[2] += delz*delz*force;
@@ -171,9 +175,9 @@ __kernel void k_colloid(const __global numtyp4 *restrict x_,
       }
 
     } // for nbor
-    store_answers(f,energy,virial,ii,inum,tid,t_per_atom,offset,eflag,vflag,
-                  ans,engv);
   } // if ii
+  store_answers(f,energy,virial,ii,inum,tid,t_per_atom,offset,eflag,vflag,
+                ans,engv);
 }
 
 __kernel void k_colloid_fast(const __global numtyp4 *restrict x_,
@@ -185,7 +189,7 @@ __kernel void k_colloid_fast(const __global numtyp4 *restrict x_,
                              const __global int *form_in,
                              const __global int *dev_nbor,
                              const __global int *dev_packed,
-                             __global acctyp4 *restrict ans,
+                             __global acctyp3 *restrict ans,
                              __global acctyp *restrict engv,
                              const int eflag, const int vflag, const int inum,
                              const int nbor_pitch, const int t_per_atom) {
@@ -198,6 +202,9 @@ __kernel void k_colloid_fast(const __global numtyp4 *restrict x_,
   __local numtyp4 colloid2[MAX_SHARED_TYPES*MAX_SHARED_TYPES];
   __local int form[MAX_SHARED_TYPES*MAX_SHARED_TYPES];
   __local numtyp sp_lj[4];
+  int n_stride;
+  local_allocate_store_pair();
+
   if (tid<4)
     sp_lj[tid]=sp_lj_in[tid];
   if (tid<MAX_SHARED_TYPES*MAX_SHARED_TYPES) {
@@ -205,23 +212,23 @@ __kernel void k_colloid_fast(const __global numtyp4 *restrict x_,
     colloid1[tid]=colloid1_in[tid];
     colloid2[tid]=colloid2_in[tid];
     form[tid]=form_in[tid];
-    if (eflag>0)
+    if (EVFLAG && eflag)
       lj3[tid]=lj3_in[tid];
   }
 
-  acctyp energy=(acctyp)0;
-  acctyp4 f;
+  acctyp3 f;
   f.x=(acctyp)0; f.y=(acctyp)0; f.z=(acctyp)0;
-  acctyp virial[6];
-  for (int i=0; i<6; i++)
-    virial[i]=(acctyp)0;
+  acctyp energy, virial[6];
+  if (EVFLAG) {
+    energy=(acctyp)0;
+    for (int i=0; i<6; i++) virial[i]=(acctyp)0;
+  }
 
   __syncthreads();
 
   if (ii<inum) {
     int nbor, nbor_end;
     int i, numj;
-    __local int n_stride;
     nbor_info(dev_nbor,dev_packed,nbor_pitch,t_per_atom,ii,offset,i,numj,
               n_stride,nbor_end,nbor);
 
@@ -231,6 +238,7 @@ __kernel void k_colloid_fast(const __global numtyp4 *restrict x_,
 
     numtyp factor_lj;
     for ( ; nbor<nbor_end; nbor+=n_stride) {
+      ucl_prefetch(dev_packed+nbor+n_stride);
 
       int j=dev_packed[nbor];
       factor_lj = sp_lj[sbmask(j)];
@@ -284,10 +292,10 @@ __kernel void k_colloid_fast(const __global numtyp4 *restrict x_,
           K[6] = K[2]-r;
           K[7] = ucl_recip(K[3]*K[4]);
           K[8] = ucl_recip(K[5]*K[6]);
-          g[0] = ucl_powr(K[3],(numtyp)-7.0);
-          g[1] = -ucl_powr(-K[4],(numtyp)-7.0);
-          g[2] = ucl_powr(K[5],(numtyp)-7.0);
-          g[3] = -ucl_powr(-K[6],(numtyp)-7.0);
+          g[0] = (numtyp)1.0/(K[3]*K[3]*K[3]*K[3]*K[3]*K[3]*K[3]);  // ucl_powr(K[3],(numtyp)-7.0);
+          g[1] = (numtyp)1.0/(K[4]*K[4]*K[4]*K[4]*K[4]*K[4]*K[4]);  //-ucl_powr(-K[4],(numtyp)-7.0);
+          g[2] = (numtyp)1.0/(K[5]*K[5]*K[5]*K[5]*K[5]*K[5]*K[5]);  // ucl_powr(K[5],(numtyp)-7.0);
+          g[3] = (numtyp)1.0/(K[6]*K[6]*K[6]*K[6]*K[6]*K[6]*K[6]);  //-ucl_powr(-K[6],(numtyp)-7.0);
           h[0] = ((K[3]+(numtyp)5.0*K[1])*K[3]+(numtyp)30.0*K[0])*g[0];
           h[1] = ((K[4]+(numtyp)5.0*K[1])*K[4]+(numtyp)30.0*K[0])*g[1];
           h[2] = ((K[5]+(numtyp)5.0*K[2])*K[5]-(numtyp)30.0*K[0])*g[2];
@@ -310,7 +318,7 @@ __kernel void k_colloid_fast(const __global numtyp4 *restrict x_,
         f.y+=dely*force;
         f.z+=delz*force;
 
-        if (eflag>0) {
+        if (EVFLAG && eflag) {
           numtyp e=(numtyp)0.0;
           if (form[mtype]==0) {
             e=r6inv*(lj3[mtype].x*r6inv-lj3[mtype].y);
@@ -325,7 +333,7 @@ __kernel void k_colloid_fast(const __global numtyp4 *restrict x_,
           }
           energy+=factor_lj*(e-lj3[mtype].z);
         }
-        if (vflag>0) {
+        if (EVFLAG && vflag) {
           virial[0] += delx*delx*force;
           virial[1] += dely*dely*force;
           virial[2] += delz*delz*force;
@@ -336,8 +344,8 @@ __kernel void k_colloid_fast(const __global numtyp4 *restrict x_,
       }
 
     } // for nbor
-    store_answers(f,energy,virial,ii,inum,tid,t_per_atom,offset,eflag,vflag,
-                  ans,engv);
   } // if ii
+  store_answers(f,energy,virial,ii,inum,tid,t_per_atom,offset,eflag,vflag,
+                ans,engv);
 }
 

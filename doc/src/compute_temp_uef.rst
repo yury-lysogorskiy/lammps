@@ -6,8 +6,7 @@ compute temp/uef command
 Syntax
 """"""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    compute ID group-ID temp/uef
 
@@ -17,8 +16,7 @@ Syntax
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    compute 1 all temp/uef
    compute 2 sel temp/uef
@@ -40,9 +38,9 @@ documentation for :doc:`compute temp <compute_temp>`.
 Restrictions
 """"""""""""
 
-
-This fix is part of the USER-UEF package. It is only enabled if LAMMPS
-was built with that package. See the :doc:`Build package <Build_package>` doc page for more info.
+This fix is part of the UEF package. It is only enabled if LAMMPS was built
+with that package. See the :doc:`Build package <Build_package>` page for more
+info.
 
 This command can only be used when :doc:`fix nvt/uef <fix_nh_uef>`
 or :doc:`fix npt/uef <fix_nh_uef>` is active.
@@ -54,4 +52,7 @@ Related commands
 :doc:`fix nvt/uef <fix_nh_uef>`,
 :doc:`compute pressure/uef <compute_pressure_uef>`
 
-**Default:** none
+Default
+"""""""
+
+none

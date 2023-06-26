@@ -1,13 +1,9 @@
 #ifndef DYNMAT_H
 #define DYNMAT_H
 
-#include "stdio.h"
-#include "stdlib.h"
-#include "string.h"
-#include "memory.h"
-#include "interpolate.h"
+#include "zheevd.h"
 
-using namespace std;
+#include <cstdio>
 
 class DynMat {
 public:
@@ -17,7 +13,7 @@ public:
 
   int nx, ny, nz, nucell;
   int sysdim, fftdim;
-  double eml2f;
+  double eml2f, eml2fc, symprec;
   char *funit;
 
   void getDMq(double *);
@@ -30,24 +26,24 @@ public:
   doublecomplex **DM_q;
 
   int flag_latinfo;
+  int npt, fftdim2;
   double Tmeasure, basevec[9], ibasevec[9];
+  double *M_inv_sqrt;
   double **basis;
   int *attyp;
+
+  class UserInput *input;
 
 private:
 
   int flag_skip, flag_reset_gamma;
-  Interpolate *interpolate;
-  
-  Memory *memory;
-  int npt, fftdim2;
+  class Interpolate *interpolate;
+  class Memory *memory;
 
-  int nasr;
   void EnforceASR();
 
   char *binfile, *dmfile;
-  double boltz, q[3];
-  double *M_inv_sqrt;
+  double boltz;
 
   doublecomplex **DM_all;
 
@@ -56,6 +52,8 @@ private:
   void GaussJordan(int, double *);
 
   void help();
+  void ShowInfo();
   void ShowVersion();
+  void Define_Conversion_Factor();
 };
 #endif

@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -12,18 +12,17 @@
 ------------------------------------------------------------------------- */
 
 #include "npair_half_bin_atomonly_newton.h"
-#include "neigh_list.h"
+
 #include "atom.h"
-#include "atom_vec.h"
-#include "my_page.h"
 #include "error.h"
+#include "my_page.h"
+#include "neigh_list.h"
 
 using namespace LAMMPS_NS;
 
 /* ---------------------------------------------------------------------- */
 
-NPairHalfBinAtomonlyNewton::NPairHalfBinAtomonlyNewton(LAMMPS *lmp) :
-  NPair(lmp) {}
+NPairHalfBinAtomonlyNewton::NPairHalfBinAtomonlyNewton(LAMMPS *lmp) : NPair(lmp) {}
 
 /* ----------------------------------------------------------------------
    binned neighbor list construction with full Newton's 3rd law
@@ -33,8 +32,8 @@ NPairHalfBinAtomonlyNewton::NPairHalfBinAtomonlyNewton(LAMMPS *lmp) :
 
 void NPairHalfBinAtomonlyNewton::build(NeighList *list)
 {
-  int i,j,k,n,itype,jtype,ibin;
-  double xtmp,ytmp,ztmp,delx,dely,delz,rsq;
+  int i, j, k, n, itype, jtype, ibin;
+  double xtmp, ytmp, ztmp, delx, dely, delz, rsq;
   int *neighptr;
 
   double **x = atom->x;
@@ -75,12 +74,12 @@ void NPairHalfBinAtomonlyNewton::build(NeighList *list)
       }
 
       jtype = type[j];
-      if (exclude && exclusion(i,j,itype,jtype,mask,molecule)) continue;
+      if (exclude && exclusion(i, j, itype, jtype, mask, molecule)) continue;
 
       delx = xtmp - x[j][0];
       dely = ytmp - x[j][1];
       delz = ztmp - x[j][2];
-      rsq = delx*delx + dely*dely + delz*delz;
+      rsq = delx * delx + dely * dely + delz * delz;
 
       if (rsq <= cutneighsq[itype][jtype]) neighptr[n++] = j;
     }
@@ -90,14 +89,14 @@ void NPairHalfBinAtomonlyNewton::build(NeighList *list)
     ibin = atom2bin[i];
 
     for (k = 0; k < nstencil; k++) {
-      for (j = binhead[ibin+stencil[k]]; j >= 0; j = bins[j]) {
+      for (j = binhead[ibin + stencil[k]]; j >= 0; j = bins[j]) {
         jtype = type[j];
-        if (exclude && exclusion(i,j,itype,jtype,mask,molecule)) continue;
+        if (exclude && exclusion(i, j, itype, jtype, mask, molecule)) continue;
 
         delx = xtmp - x[j][0];
         dely = ytmp - x[j][1];
         delz = ztmp - x[j][2];
-        rsq = delx*delx + dely*dely + delz*delz;
+        rsq = delx * delx + dely * dely + delz * delz;
 
         if (rsq <= cutneighsq[itype][jtype]) neighptr[n++] = j;
       }
@@ -107,8 +106,7 @@ void NPairHalfBinAtomonlyNewton::build(NeighList *list)
     firstneigh[i] = neighptr;
     numneigh[i] = n;
     ipage->vgot(n);
-    if (ipage->status())
-      error->one(FLERR,"Neighbor list overflow, boost neigh_modify one");
+    if (ipage->status()) error->one(FLERR, "Neighbor list overflow, boost neigh_modify one");
   }
 
   list->inum = inum;

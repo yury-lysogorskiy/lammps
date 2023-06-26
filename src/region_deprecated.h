@@ -1,7 +1,7 @@
 /* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -12,11 +12,10 @@
 ------------------------------------------------------------------------- */
 
 #ifdef REGION_CLASS
-
+// clang-format off
 // list all deprecated and removed region styles here
-
-RegionStyle(DEPRECATED,RegionDeprecated)
-
+RegionStyle(DEPRECATED,RegionDeprecated);
+// clang-format on
 #else
 
 #ifndef LMP_REGION_DEPRECATED_H
@@ -29,22 +28,14 @@ namespace LAMMPS_NS {
 class RegionDeprecated : public Region {
  public:
   RegionDeprecated(class LAMMPS *, int, char **);
-  ~RegionDeprecated() {}
-  virtual void init() {}
-  virtual int inside(double, double, double) { return 0; }
-  virtual int surface_interior(double *, double) { return 0; }
-  virtual int surface_exterior(double *, double) { return 0; }
- };
 
-}
+  void init() override {}
+  int inside(double, double, double) override { return 0; }
+  int surface_interior(double *, double) override { return 0; }
+  int surface_exterior(double *, double) override { return 0; }
+};
+
+}    // namespace LAMMPS_NS
 
 #endif
 #endif
-
-/* ERROR/WARNING messages:
-
-E: This region command has been removed from LAMMPS
-
-UNDOCUMENTED
-
-*/

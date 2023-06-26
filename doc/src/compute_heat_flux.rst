@@ -6,8 +6,7 @@ compute heat/flux command
 Syntax
 """"""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    compute ID group-ID heat/flux ke-ID pe-ID stress-ID
 
@@ -20,8 +19,7 @@ Syntax
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    compute myFlux all heat/flux myKE myPE myStress
 
@@ -30,20 +28,20 @@ Description
 
 Define a computation that calculates the heat flux vector based on
 contributions from atoms in the specified group.  This can be used by
-itself to measure the heat flux through a set of atoms (e.g. a region
+itself to measure the heat flux through a set of atoms (e.g., a region
 between two thermostatted reservoirs held at different temperatures),
 or to calculate a thermal conductivity using the equilibrium
 Green-Kubo formalism.
 
 For other non-equilibrium ways to compute a thermal conductivity, see
-the :doc:`Howto kappa <Howto_kappa>` doc page..  These include use of
+the :doc:`Howto kappa <Howto_kappa>` doc page.  These include use of
 the :doc:`fix thermal/conductivity <fix_thermal_conductivity>` command
 for the Muller-Plathe method.  Or the :doc:`fix heat <fix_heat>` command
 which can add or subtract heat from groups of atoms.
 
 The compute takes three arguments which are IDs of other
 :doc:`computes <compute>`.  One calculates per-atom kinetic energy
-(\ *ke-ID*\ ), one calculates per-atom potential energy (\ *pe-ID)*\ , and the
+(\ *ke-ID*\ ), one calculates per-atom potential energy (\ *pe-ID)*, and the
 third calculates per-atom stress (\ *stress-ID*\ ).
 
 .. note::
@@ -54,12 +52,12 @@ third calculates per-atom stress (\ *stress-ID*\ ).
    (or any group whose atoms are superset of the atoms in this compute's
    group).  LAMMPS does not check for this.
 
-In case of two-body interactions, the heat flux is defined as:
+In case of two-body interactions, the heat flux :math:`\mathbf{J}` is defined as
 
 .. math::
    \mathbf{J} &= \frac{1}{V} \left[ \sum_i e_i \mathbf{v}_i - \sum_{i} \mathbf{S}_{i} \mathbf{v}_i \right] \\
    &= \frac{1}{V} \left[ \sum_i e_i \mathbf{v}_i + \sum_{i<j} \left( \mathbf{F}_{ij} \cdot \mathbf{v}_j \right) \mathbf{r}_{ij} \right] \\
-   &= \frac{1}{V} \left[ \sum_i e_i \mathbf{v}_i + \frac{1}{2} \sum_{i<j} \left( \mathbf{F}_{ij} \cdot \left(\mathbf{v}_i + \mathbf{v}_j \right)  \right) \mathbf{r}_{ij} \right]
+   &= \frac{1}{V} \left[ \sum_i e_i \mathbf{v}_i + \frac{1}{2} \sum_{i<j} \bigl( \mathbf{F}_{ij} \cdot \left(\mathbf{v}_i + \mathbf{v}_j \right) \bigr) \mathbf{r}_{ij} \right]
 
 :math:`e_i` in the first term of the equation
 is the per-atom energy (potential and kinetic).
@@ -70,12 +68,12 @@ See :doc:`compute stress/atom <compute_stress_atom>`
 and :doc:`compute centroid/stress/atom <compute_stress_atom>`
 for possible definitions of atomic stress :math:`\mathbf{S}_i`
 in the case of bonded and many-body interactions.
-The tensor multiplies :math:`\mathbf{v}_i` as a 3x3 matrix-vector multiply
+The tensor multiplies :math:`\mathbf{v}_i` by a :math:`3\times3` matrix
 to yield a vector.
-Note that as discussed below, the 1/:math:`{V}` scaling factor in the
-equation for :math:`\mathbf{J}` is NOT included in the calculation performed by
-these computes; you need to add it for a volume appropriate to the atoms
-included in the calculation.
+Note that as discussed below, the :math:`1/V` scaling factor in the
+equation for :math:`\mathbf{J}` is **not** included in the calculation
+performed by these computes; you need to add it for a volume appropriate to the
+atoms included in the calculation.
 
 .. note::
 
@@ -88,66 +86,70 @@ included in the calculation.
    or :doc:`compute centroid/stress/atom virial <compute_stress_atom>`
    so as not to include a kinetic energy term in the heat flux.
 
-
 .. warning::
 
    The compute *heat/flux* has been reported to produce unphysical
-   values for angle, dihedral and improper contributions
+   values for angle, dihedral, improper and constraint force contributions
    when used with :doc:`compute stress/atom <compute_stress_atom>`,
-   as discussed in :ref:`(Surblys) <Surblys2>` and :ref:`(Boone) <Boone>`.
-   You are strongly advised to
+   as discussed in :ref:`(Surblys2019) <Surblys3>`, :ref:`(Boone) <Boone>`
+   and :ref:`(Surblys2021) <Surblys4>`. You are strongly advised to
    use :doc:`compute centroid/stress/atom <compute_stress_atom>`,
    which has been implemented specifically for such cases.
 
-The Green-Kubo formulas relate the ensemble average of the
+.. warning::
+
+   Due to an implementation detail, the :math:`y` and :math:`z`
+   components of heat flux from :doc:`fix rigid <fix_rigid>`
+   contribution when computed via :doc:`compute stress/atom <compute_stress_atom>`
+   are highly unphysical and should not be used.
+
+The Green--Kubo formulas relate the ensemble average of the
 auto-correlation of the heat flux :math:`\mathbf{J}`
 to the thermal conductivity :math:`\kappa`:
 
 .. math::
    \kappa  = \frac{V}{k_B T^2} \int_0^\infty \langle J_x(0)  J_x(t) \rangle \, \mathrm{d} t = \frac{V}{3 k_B T^2} \int_0^\infty \langle \mathbf{J}(0) \cdot  \mathbf{J}(t)  \rangle \, \mathrm{d}t
 
-
 ----------
 
-
-The heat flux can be output every so many timesteps (e.g. via the
+The heat flux can be output every so many timesteps (e.g., via the
 :doc:`thermo_style custom <thermo_style>` command).  Then as a
 post-processing operation, an auto-correlation can be performed, its
-integral estimated, and the Green-Kubo formula above evaluated.
+integral estimated, and the Green--Kubo formula above evaluated.
 
 The :doc:`fix ave/correlate <fix_ave_correlate>` command can calculate
 the auto-correlation.  The trap() function in the
 :doc:`variable <variable>` command can calculate the integral.
 
-An example LAMMPS input script for solid Ar is appended below.  The
-result should be: average conductivity ~0.29 in W/mK.
-
+An example LAMMPS input script for solid argon is appended below.  The
+result should be an average conductivity
+:math:`\approx 0.29~\mathrm{W/m \cdot K}`.
 
 ----------
 
-
-**Output info:**
+Output info
+"""""""""""
 
 This compute calculates a global vector of length 6.
-The first 3 components are the :math:`x`, :math:`y`, :math:`z`
-components of the full heat flux vector,
-i.e. (:math:`J_x`, :math:`J_y`, :math:`J_z`).
-The next 3 components are the :math:`x`, :math:`y`, :math:`z` components
-of just the convective portion of the flux, i.e. the
-first term in the equation for :math:`\mathbf{J}`.
-Each component can be
-accessed by indices 1-6. These values can be used by any command that
-uses global vector values from a compute as input.  See the :doc:`Howto output <Howto_output>` doc page for an overview of LAMMPS output
-options.
+The first three components are the :math:`x`, :math:`y`, and :math:`z`
+components of the full heat flux vector
+(i.e., :math:`J_x`, :math:`J_y`, and :math:`J_z`).
+The next three components are the :math:`x`, :math:`y`, and :math:`z`
+components of just the convective portion of the flux (i.e., the
+first term in the equation for :math:`\mathbf{J}`).
+Each component can be accessed by indices 1--6. These values can be used by any
+command that uses global vector values from a compute as input.
+See the :doc:`Howto output <Howto_output>` documentation for an overview of
+LAMMPS output options.
 
 The vector values calculated by this compute are "extensive", meaning
 they scale with the number of atoms in the simulation.  They can be
-divided by the appropriate volume to get a flux, which would then be
-an "intensive" value, meaning independent of the number of atoms in
-the simulation.  Note that if the compute is "all", then the
-appropriate volume to divide by is the simulation box volume.
-However, if a sub-group is used, it should be the volume containing
-those atoms.
+divided by the appropriate volume to get a flux, which would then be an
+"intensive" value, meaning independent of the number of atoms in the
+simulation.  Note that if the compute group is "all", then the
+appropriate volume to divide by is the simulation box volume.  However,
+if a group with a subset of atoms is used, it should be the volume
+containing those atoms.
 
 The vector values will be in energy\*velocity :doc:`units <units>`.  Once
 divided by a volume the units will be that of flux, namely
@@ -164,14 +166,17 @@ Related commands
 :doc:`fix ave/correlate <fix_ave_correlate>`,
 :doc:`variable <variable>`
 
-**Default:** none
+Default
+"""""""
 
+none
 
 ----------
 
+Example Input File
+------------------
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    # Sample LAMMPS input script for thermal conductivity of solid Ar
 
@@ -181,7 +186,7 @@ Related commands
    variable    dt equal 4.0
    variable    p equal 200     # correlation length
    variable    s equal 10      # sample interval
-   variable    d equal $p\*$s   # dump interval
+   variable    d equal $p*$s   # dump interval
 
    # convert from LAMMPS real units to SI
 
@@ -189,7 +194,7 @@ Related commands
    variable    kCal2J equal 4186.0/6.02214e23
    variable    A2m equal 1.0e-10
    variable    fs2s equal 1.0e-15
-   variable    convert equal ${kCal2J}\*${kCal2J}/${fs2s}/${A2m}
+   variable    convert equal ${kCal2J}*${kCal2J}/${fs2s}/${A2m}
 
    # setup problem
 
@@ -201,7 +206,7 @@ Related commands
    create_atoms 1 box
    mass         1 39.948
    pair_style   lj/cut 13.0
-   pair_coeff   \* \* 0.2381 3.405
+   pair_coeff   * * 0.2381 3.405
    timestep     ${dt}
    thermo       $d
 
@@ -226,28 +231,26 @@ Related commands
    variable     Jz equal c_flux[3]/vol
    fix          JJ all ave/correlate $s $p $d &
                 c_flux[1] c_flux[2] c_flux[3] type auto file J0Jt.dat ave running
-   variable     scale equal ${convert}/${kB}/$T/$T/$V\*$s\*${dt}
-   variable     k11 equal trap(f_JJ[3])\*${scale}
-   variable     k22 equal trap(f_JJ[4])\*${scale}
-   variable     k33 equal trap(f_JJ[5])\*${scale}
+   variable     scale equal ${convert}/${kB}/$T/$T/$V*$s*${dt}
+   variable     k11 equal trap(f_JJ[3])*${scale}
+   variable     k22 equal trap(f_JJ[4])*${scale}
+   variable     k33 equal trap(f_JJ[5])*${scale}
    thermo_style custom step temp v_Jx v_Jy v_Jz v_k11 v_k22 v_k33
    run          100000
    variable     k equal (v_k11+v_k22+v_k33)/3.0
    variable     ndens equal count(all)/vol
    print        "average conductivity: $k[W/mK] @ $T K, ${ndens} /A\^3"
 
-
 ----------
 
+.. _Surblys3:
 
-.. _Surblys2:
-
-
-
-**(Surblys)** Surblys, Matsubara, Kikugawa, Ohara, Phys Rev E, 99, 051301(R) (2019).
+**(Surblys2019)** Surblys, Matsubara, Kikugawa, Ohara, Phys Rev E, 99, 051301(R) (2019).
 
 .. _Boone:
 
-
-
 **(Boone)** Boone, Babaei, Wilmer, J Chem Theory Comput, 15, 5579--5587 (2019).
+
+.. _Surblys4:
+
+**(Surblys2021)** Surblys, Matsubara, Kikugawa, Ohara, J Appl Phys 130, 215104 (2021).

@@ -1,7 +1,7 @@
 /* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -12,9 +12,9 @@
 ------------------------------------------------------------------------- */
 
 #ifdef PAIR_CLASS
-
-PairStyle(airebo/morse,PairAIREBOMorse)
-
+// clang-format off
+PairStyle(airebo/morse,PairAIREBOMorse);
+// clang-format on
 #else
 
 #ifndef LMP_PAIR_AIREBO_MORSE_H
@@ -27,20 +27,10 @@ namespace LAMMPS_NS {
 class PairAIREBOMorse : public PairAIREBO {
  public:
   PairAIREBOMorse(class LAMMPS *);
-  void settings(int, char **);
+  void settings(int, char **) override;
 };
 
-}
+}    // namespace LAMMPS_NS
 
 #endif
 #endif
-
-/* ERROR/WARNING messages:
-
-E: Illegal ... command
-
-Self-explanatory.  Check the input script syntax and compare to the
-documentation for the command.  You can use -echo screen as a
-command-line option when running LAMMPS to see the offending line.
-
-*/

@@ -1,13 +1,12 @@
-.. index:: pair\_style sph/rhosum
+.. index:: pair_style sph/rhosum
 
-pair\_style sph/rhosum command
-==============================
+pair_style sph/rhosum command
+=============================
 
 Syntax
 """"""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    pair_style sph/rhosum Nstep
 
@@ -16,11 +15,10 @@ Syntax
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    pair_style sph/rhosum 10
-   pair_coeff \* \* 2.4
+   pair_coeff * * 2.4
 
 Description
 """""""""""
@@ -28,7 +26,7 @@ Description
 The sph/rhosum style computes the local particle mass density rho for
 SPH particles by kernel function interpolation, every Nstep timesteps.
 
-See `this PDF guide <USER/sph/SPH_LAMMPS_userguide.pdf>`_ to using SPH in
+See `this PDF guide <PDF/SPH_LAMMPS_userguide.pdf>`_ to using SPH in
 LAMMPS.
 
 The following coefficients must be defined for each pair of atoms
@@ -37,11 +35,10 @@ above.
 
 * h (distance units)
 
-
 ----------
 
-
-**Mixing, shift, table, tail correction, restart, rRESPA info**\ :
+Mixing, shift, table, tail correction, restart, rRESPA info
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 This style does not support mixing.  Thus, coefficients for all
 I,J pairs must be specified explicitly.
@@ -49,22 +46,24 @@ I,J pairs must be specified explicitly.
 This style does not support the :doc:`pair_modify <pair_modify>`
 shift, table, and tail options.
 
-This style does not write information to :doc:`binary restart files <restart>`.  Thus, you need to re-specify the pair\_style and
-pair\_coeff commands in an input script that reads a restart file.
+This style does not write information to :doc:`binary restart files <restart>`.  Thus, you need to re-specify the pair_style and
+pair_coeff commands in an input script that reads a restart file.
 
-This style can only be used via the *pair* keyword of the :doc:`run_style respa <run_style>` command.  It does not support the *inner*\ ,
-*middle*\ , *outer* keywords.
+This style can only be used via the *pair* keyword of the :doc:`run_style respa <run_style>` command.  It does not support the *inner*,
+*middle*, *outer* keywords.
 
 Restrictions
 """"""""""""
 
-
-This pair style is part of the USER-SPH package.  It is only enabled
-if LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` doc page for more info.
+This pair style is part of the SPH package.  It is only enabled
+if LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` page for more info.
 
 Related commands
 """"""""""""""""
 
-:doc:`pair_coeff <pair_coeff>`, pair\_sph/taitwater
+:doc:`pair_coeff <pair_coeff>`, pair_sph/taitwater
 
-**Default:** none
+Default
+"""""""
+
+none

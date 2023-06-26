@@ -12,6 +12,11 @@
 
 #include "colvarbias.h"
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4250) // Silence diamond inheritance warning
+#endif
+
 /// \brief Most general definition of a colvar restraint:
 /// see derived classes for specific types
 /// (implementation of \link colvarbias \endlink)
@@ -35,8 +40,6 @@ public:
   virtual int set_state_params(std::string const &conf);
   // virtual std::ostream & write_state_data(std::ostream &os);
   // virtual std::istream & read_state_data(std::istream &os);
-  virtual std::ostream & write_state(std::ostream &os);
-  virtual std::istream & read_state(std::istream &is);
 
   virtual std::ostream & write_traj_label(std::ostream &os);
   virtual std::ostream & write_traj(std::ostream &os);
@@ -120,6 +123,9 @@ protected:
   /// \brief Changing force constant?
   bool b_chg_force_k;
 
+  /// \brief Perform decoupling of the restraint?
+  bool b_decoupling;
+
   /// \brief Number of stages over which to perform the change
   /// If zero, perform a continuous change
   int target_nstages;
@@ -133,6 +139,9 @@ protected:
   /// \brief Number of steps required to reach the target force constant
   /// or restraint centers
   cvm::step_number target_nsteps;
+
+  /// \brief Timestep at which the restraint starts moving
+  cvm::step_number first_step;
 
   /// \brief Accumulated work (computed when outputAccumulatedWork == true)
   cvm::real acc_work;
@@ -204,7 +213,7 @@ protected:
   cvm::real starting_force_k;
 
   /// \brief Exponent for varying the force constant
-  cvm::real force_k_exp;
+  cvm::real lambda_exp;
 
   /// \brief Intermediate quantity to compute the restraint free energy
   /// (in TI, would be the accumulating FE derivative)
@@ -258,7 +267,6 @@ public:
   colvarbias_restraint_harmonic_walls(char const *key);
   virtual int init(std::string const &conf);
   virtual int update();
-  virtual void communicate_forces();
   virtual std::string const get_state_params() const;
   virtual int set_state_params(std::string const &conf);
   virtual std::ostream & write_state_data(std::ostream &os);
@@ -362,5 +370,8 @@ protected:
   bool b_write_histogram;
 };
 
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 #endif

@@ -6,7 +6,6 @@ fix rigid/meso command
 Syntax
 """"""
 
-
 .. parsed-literal::
 
    fix ID group-ID rigid/meso bodystyle args keyword values ...
@@ -14,9 +13,9 @@ Syntax
 * ID, group-ID are documented in :doc:`fix <fix>` command
 * rigid/meso = style name of this fix command
 * bodystyle = *single* or *molecule* or *group*
-  
+
   .. parsed-literal::
-  
+
        *single* args = none
        *molecule* args = none
        *custom* args = *i_propname* or *v_varname*
@@ -28,9 +27,9 @@ Syntax
 
 * zero or more keyword/value pairs may be appended
 * keyword = *reinit* or *force* or *torque* or *infile*
-  
+
   .. parsed-literal::
-  
+
        *reinit* = *yes* or *no*
        *force* values = M xflag yflag zflag
          M = which rigid body from 1-Nbody (see asterisk form below)
@@ -41,19 +40,16 @@ Syntax
        *infile* filename
          filename = file with per-body values of mass, center-of-mass, moments of inertia
 
-
-
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    fix 1 ellipsoid rigid/meso single
    fix 1 rods      rigid/meso molecule
    fix 1 spheres   rigid/meso single force 1 off off on
-   fix 1 particles rigid/meso molecule force 1\*5 off off off force 6\*10 off off on
-   fix 2 spheres   rigid/meso group 3 sphere1 sphere2 sphere3 torque \* off off off
+   fix 1 particles rigid/meso molecule force 1*5 off off off force 6*10 off off on
+   fix 2 spheres   rigid/meso group 3 sphere1 sphere2 sphere3 torque * off off off
 
 Description
 """""""""""
@@ -79,19 +75,21 @@ internal energy and extrapolated velocity are also updated.
 .. note::
 
    You should not update the particles in rigid bodies via other
-   time-integration fixes (e.g. :doc:`fix meso <fix_meso>`,
-   :doc:`fix meso/stationary <fix_meso_stationary>`), or you will have conflicting
-   updates to positions and velocities resulting in unphysical behavior in most
-   cases. When performing a hybrid simulation with some atoms in rigid bodies,
-   and some not, a separate time integration fix like :doc:`fix meso <fix_meso>`
-   should be used for the non-rigid particles.
+   time-integration fixes (e.g. :doc:`fix sph <fix_sph>`, :doc:`fix
+   sph/stationary <fix_sph_stationary>`), or you will have conflicting
+   updates to positions and velocities resulting in unphysical
+   behavior in most cases. When performing a hybrid simulation with
+   some atoms in rigid bodies, and some not, a separate time
+   integration fix like :doc:`fix sph <fix_sph>` should be used for
+   the non-rigid particles.
 
 .. note::
 
-   These fixes are overkill if you simply want to hold a collection
-   of particles stationary or have them move with a constant velocity. To
-   hold particles stationary use :doc:`fix meso/stationary <fix_meso_stationary>` instead. If you would like to
-   move particles with a constant velocity use :doc:`fix meso/move <fix_meso_move>`.
+   These fixes are overkill if you simply want to hold a collection of
+   particles stationary or have them move with a constant velocity. To
+   hold particles stationary use :doc:`fix sph/stationary
+   <fix_sph_stationary>` instead. If you would like to move particles
+   with a constant velocity use :doc:`fix meso/move <fix_meso_move>`.
 
 .. warning::
 
@@ -106,11 +104,11 @@ internal energy and extrapolated velocity are also updated.
    they effect any computation of per-particle forces or torques. If the
    keyword *reinit* is set to *yes* (the default), the rigid body data
    structures will be recreated at the beginning of each *run* command;
-   if the keyword *reinit* is set to *no*\ , the rigid body data structures
+   if the keyword *reinit* is set to *no*, the rigid body data structures
    will be built only at the very first *run* command and maintained for
    as long as the rigid fix is defined. For example, you might think you
    could displace the particles in a body or add a large velocity to each particle
-   in a body to make it move in a desired direction before a 2nd run is
+   in a body to make it move in a desired direction before a second run is
    performed, using the :doc:`set <set>` or
    :doc:`displace_atoms <displace_atoms>` or :doc:`velocity <velocity>`
    commands.  But these commands will not affect the internal attributes
@@ -119,9 +117,7 @@ internal energy and extrapolated velocity are also updated.
    and velocity of individual particles in the body will be reset when time
    integration starts again.
 
-
 ----------
-
 
 Each rigid body must have two or more particles.  A particle can belong
 to at most one rigid body.  Which particles are in which bodies can be
@@ -130,7 +126,7 @@ defined via several options.
 For bodystyle *single* the entire fix group of particles is treated as
 one rigid body.
 
-For bodystyle *molecule*\ , particles are grouped into rigid bodies by their
+For bodystyle *molecule*, particles are grouped into rigid bodies by their
 respective molecule IDs: each set of particles in the fix group with the
 same molecule ID is treated as a different rigid body.  Note that particles
 with a molecule ID = 0 will be treated as a single rigid body. For a
@@ -145,13 +141,13 @@ of particles that form rigid bodies.  An integer vector defined by the
 :doc:`fix property/atom <fix_property_atom>` command can be used.  Or an
 :doc:`atom-style or atomfile-style variable <variable>` can be used; the
 floating-point value produced by the variable is rounded to an
-integer.  As with bodystyle *molecule*\ , each set of particles in the fix
+integer.  As with bodystyle *molecule*, each set of particles in the fix
 groups with the same integer value is treated as a different rigid
 body.  Since fix property/atom vectors and atom-style variables
 produce values for all particles, you should be careful to use a fix group
 that only includes particles you want to be part of rigid bodies.
 
-For bodystyle *group*\ , each of the listed groups is treated as a
+For bodystyle *group*, each of the listed groups is treated as a
 separate rigid body.  Only particles that are also in the fix group are
 included in each rigid body.
 
@@ -160,7 +156,7 @@ included in each rigid body.
    To compute the initial center-of-mass position and other
    properties of each rigid body, the image flags for each particle in the
    body are used to "unwrap" the particle coordinates.  Thus you must
-   insure that these image flags are consistent so that the unwrapping
+   ensure that these image flags are consistent so that the unwrapping
    creates a valid rigid body (one where the particles are close together)
    , particularly if the particles in a single rigid body straddle a
    periodic boundary.  This means the input data file or restart file must
@@ -177,7 +173,7 @@ This may be useful if you wish a body to rotate but not translate, or
 vice versa, or if you wish it to rotate or translate continuously
 unaffected by interactions with other particles.  Note that if you
 expect a rigid body not to move or rotate by using these keywords, you
-must insure its initial center-of-mass translational or angular
+must ensure its initial center-of-mass translational or angular
 velocity is 0.0. Otherwise the initial translational or angular
 momentum, the body has, will persist.
 
@@ -203,9 +199,7 @@ rigid/meso command which includes all the desired rigid bodies. LAMMPS
 will allow multiple rigid/meso fixes to be defined, but it is more
 expensive.
 
-
 ----------
-
 
 The keyword/value option pairs are used in the following ways.
 
@@ -217,9 +211,7 @@ unphysical manipulations between runs or when properties cannot be
 easily re-computed (e.g. when read from a file). When using the *infile*
 keyword, the *reinit* option is automatically set to *no*\ .
 
-
 ----------
-
 
 The *infile* keyword allows a file of rigid body attributes to be read
 in from a file, rather then having LAMMPS compute them.  There are 5
@@ -241,7 +233,6 @@ attributes overridden.  The file can contain initial blank lines or
 comment lines starting with "#" which are ignored.  The first
 non-blank, non-comment line should list N = the number of lines to
 follow.  The N successive lines contain the following information:
-
 
 .. parsed-literal::
 
@@ -295,11 +286,10 @@ cross periodic boundaries during the simulation.
    auxiliary file will contain one line for every rigid body, even if the
    original file only listed a subset of the rigid bodies.
 
-
 ----------
 
-
-**Restart, fix\_modify, output, run start/stop, minimize info:**
+Restart, fix_modify, output, run start/stop, minimize info
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 No information is written to :doc:`binary restart files <restart>`.
 If the *infile* keyword is used, an auxiliary file is written out
@@ -349,20 +339,17 @@ the :doc:`run <run>` command.
 
 This fix is not invoked during :doc:`energy minimization <minimize>`.
 
-
 ----------
-
 
 Restrictions
 """"""""""""
 
-
-This fix is part of the USER-SDPD package and also depends on the RIGID
+This fix is part of the DPD-SMOOTH package and also depends on the RIGID
 package.  It is only enabled if LAMMPS was built with both packages. See
-the :doc:`Build package <Build_package>` doc page for more info.
+the :doc:`Build package <Build_package>` page for more info.
 
 This fix requires that atoms store density and internal energy as
-defined by the :doc:`atom_style meso <atom_style>` command.
+defined by the :doc:`atom_style sph <atom_style>` command.
 
 All particles in the group must be mesoscopic SPH/SDPD particles.
 
@@ -379,13 +366,9 @@ The option defaults are force \* on on on and torque \* on on on,
 meaning all rigid bodies are acted on by center-of-mass force and
 torque. Also reinit = yes.
 
-
 ----------
 
-
 .. _Miller:
-
-
 
 **(Miller)** Miller, Eleftheriou, Pattnaik, Ndirango, and Newns,
 J Chem Phys, 116, 8649 (2002).

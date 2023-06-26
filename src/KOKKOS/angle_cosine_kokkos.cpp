@@ -1,7 +1,8 @@
+// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -16,17 +17,16 @@
 ------------------------------------------------------------------------- */
 
 #include "angle_cosine_kokkos.h"
-#include <cmath>
-#include <cstdlib>
+
 #include "atom_kokkos.h"
-#include "neighbor_kokkos.h"
-#include "domain.h"
+#include "atom_masks.h"
 #include "comm.h"
 #include "force.h"
 #include "math_const.h"
 #include "memory_kokkos.h"
-#include "error.h"
-#include "atom_masks.h"
+#include "neighbor_kokkos.h"
+
+#include <cmath>
 
 using namespace LAMMPS_NS;
 using namespace MathConst;
@@ -43,6 +43,8 @@ AngleCosineKokkos<DeviceType>::AngleCosineKokkos(LAMMPS *lmp) : AngleCosine(lmp)
   execution_space = ExecutionSpaceFromDevice<DeviceType>::space;
   datamask_read = X_MASK | F_MASK | ENERGY_MASK | VIRIAL_MASK;
   datamask_modify = F_MASK | ENERGY_MASK | VIRIAL_MASK;
+
+  centroidstressflag = CENTROID_NOTAVAIL;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -75,7 +77,7 @@ void AngleCosineKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
   }
   if (vflag_atom) {
     memoryKK->destroy_kokkos(k_vatom,vatom);
-    memoryKK->create_kokkos(k_vatom,vatom,maxvatom,6,"angle:vatom");
+    memoryKK->create_kokkos(k_vatom,vatom,maxvatom,"angle:vatom");
     d_vatom = k_vatom.template view<DeviceType>();
   }
 
@@ -141,27 +143,33 @@ KOKKOS_INLINE_FUNCTION
 void AngleCosineKokkos<DeviceType>::operator()(TagAngleCosineCompute<NEWTON_BOND,EVFLAG>, const int &n, EV_FLOAT& ev) const {
 
   // The f array is atomic
-  Kokkos::View<F_FLOAT*[3], typename DAT::t_f_array::array_layout,DeviceType,Kokkos::MemoryTraits<Kokkos::Atomic|Kokkos::Unmanaged> > a_f = f;
+  Kokkos::View<F_FLOAT*[3], typename DAT::t_f_array::array_layout,typename KKDevice<DeviceType>::value,Kokkos::MemoryTraits<Kokkos::Atomic|Kokkos::Unmanaged> > a_f = f;
 
   const int i1 = anglelist(n,0);
   const int i2 = anglelist(n,1);
   const int i3 = anglelist(n,2);
   const int type = anglelist(n,3);
 
+  const F_FLOAT k = d_k[type];
+
+  const F_FLOAT x20 = x(i2,0);
+  const F_FLOAT x21 = x(i2,1);
+  const F_FLOAT x22 = x(i2,2);
+
   // 1st bond
 
-  const F_FLOAT delx1 = x(i1,0) - x(i2,0);
-  const F_FLOAT dely1 = x(i1,1) - x(i2,1);
-  const F_FLOAT delz1 = x(i1,2) - x(i2,2);
+  const F_FLOAT delx1 = x(i1,0) - x20;
+  const F_FLOAT dely1 = x(i1,1) - x21;
+  const F_FLOAT delz1 = x(i1,2) - x22;
 
   const F_FLOAT rsq1 = delx1*delx1 + dely1*dely1 + delz1*delz1;
   const F_FLOAT r1 = sqrt(rsq1);
 
   // 2nd bond
 
-  const F_FLOAT delx2 = x(i3,0) - x(i2,0);
-  const F_FLOAT dely2 = x(i3,1) - x(i2,1);
-  const F_FLOAT delz2 = x(i3,2) - x(i2,2);
+  const F_FLOAT delx2 = x(i3,0) - x20;
+  const F_FLOAT dely2 = x(i3,1) - x21;
+  const F_FLOAT delz2 = x(i3,2) - x22;
 
   const F_FLOAT rsq2 = delx2*delx2 + dely2*dely2 + delz2*delz2;
   const F_FLOAT r2 = sqrt(rsq2);
@@ -176,9 +184,9 @@ void AngleCosineKokkos<DeviceType>::operator()(TagAngleCosineCompute<NEWTON_BOND
   // force & energy
 
   F_FLOAT eangle = 0.0;
-  if (eflag) eangle = d_k[type]*(1.0+c);
+  if (eflag) eangle = k*(1.0+c);
 
-  const F_FLOAT a = d_k[type];
+  const F_FLOAT a = k;
   const F_FLOAT a11 = a*c / rsq1;
   const F_FLOAT a12 = -a / (r1*r2);
   const F_FLOAT a22 = a*c / rsq2;
@@ -284,8 +292,8 @@ void AngleCosineKokkos<DeviceType>::ev_tally(EV_FLOAT &ev, const int i, const in
   F_FLOAT v[6];
 
   // The eatom and vatom arrays are atomic
-  Kokkos::View<E_FLOAT*, typename DAT::t_efloat_1d::array_layout,DeviceType,Kokkos::MemoryTraits<Kokkos::Atomic|Kokkos::Unmanaged> > v_eatom = k_eatom.template view<DeviceType>();
-  Kokkos::View<F_FLOAT*[6], typename DAT::t_virial_array::array_layout,DeviceType,Kokkos::MemoryTraits<Kokkos::Atomic|Kokkos::Unmanaged> > v_vatom = k_vatom.template view<DeviceType>();
+  Kokkos::View<E_FLOAT*, typename DAT::t_efloat_1d::array_layout,typename KKDevice<DeviceType>::value,Kokkos::MemoryTraits<Kokkos::Atomic|Kokkos::Unmanaged> > v_eatom = k_eatom.template view<DeviceType>();
+  Kokkos::View<F_FLOAT*[6], typename DAT::t_virial_array::array_layout,typename KKDevice<DeviceType>::value,Kokkos::MemoryTraits<Kokkos::Atomic|Kokkos::Unmanaged> > v_vatom = k_vatom.template view<DeviceType>();
 
   if (eflag_either) {
     if (eflag_global) {
@@ -386,7 +394,7 @@ void AngleCosineKokkos<DeviceType>::ev_tally(EV_FLOAT &ev, const int i, const in
 
 namespace LAMMPS_NS {
 template class AngleCosineKokkos<LMPDeviceType>;
-#ifdef KOKKOS_ENABLE_CUDA
+#ifdef LMP_KOKKOS_GPU
 template class AngleCosineKokkos<LMPHostType>;
 #endif
 }

@@ -1,7 +1,8 @@
+// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -16,7 +17,7 @@
 ------------------------------------------------------------------------- */
 
 #include "pair_born.h"
-#include <mpi.h>
+
 #include <cmath>
 #include <cstring>
 #include "atom.h"
@@ -26,7 +27,7 @@
 #include "math_const.h"
 #include "memory.h"
 #include "error.h"
-#include "utils.h"
+
 
 using namespace LAMMPS_NS;
 using namespace MathConst;
@@ -35,6 +36,7 @@ using namespace MathConst;
 
 PairBorn::PairBorn(LAMMPS *lmp) : Pair(lmp)
 {
+  born_matrix_enable = 1;
   writedata = 1;
 }
 
@@ -177,7 +179,7 @@ void PairBorn::settings(int narg, char **arg)
 {
   if (narg != 1) error->all(FLERR,"Illegal pair_style command");
 
-  cut_global = force->numeric(FLERR,arg[0]);
+  cut_global = utils::numeric(FLERR,arg[0],false,lmp);
 
   // reset cutoffs that have been explicitly set
 
@@ -199,18 +201,18 @@ void PairBorn::coeff(int narg, char **arg)
   if (!allocated) allocate();
 
   int ilo,ihi,jlo,jhi;
-  force->bounds(FLERR,arg[0],atom->ntypes,ilo,ihi);
-  force->bounds(FLERR,arg[1],atom->ntypes,jlo,jhi);
+  utils::bounds(FLERR,arg[0],1,atom->ntypes,ilo,ihi,error);
+  utils::bounds(FLERR,arg[1],1,atom->ntypes,jlo,jhi,error);
 
-  double a_one = force->numeric(FLERR,arg[2]);
-  double rho_one = force->numeric(FLERR,arg[3]);
-  double sigma_one = force->numeric(FLERR,arg[4]);
+  double a_one = utils::numeric(FLERR,arg[2],false,lmp);
+  double rho_one = utils::numeric(FLERR,arg[3],false,lmp);
+  double sigma_one = utils::numeric(FLERR,arg[4],false,lmp);
   if (rho_one <= 0) error->all(FLERR,"Incorrect args for pair coefficients");
-  double c_one = force->numeric(FLERR,arg[5]);
-  double d_one = force->numeric(FLERR,arg[6]);
+  double c_one = utils::numeric(FLERR,arg[5],false,lmp);
+  double d_one = utils::numeric(FLERR,arg[6],false,lmp);
 
   double cut_one = cut_global;
-  if (narg == 8) cut_one = force->numeric(FLERR,arg[7]);
+  if (narg == 8) cut_one = utils::numeric(FLERR,arg[7],false,lmp);
 
   int count = 0;
   for (int i = ilo; i <= ihi; i++) {
@@ -330,16 +332,16 @@ void PairBorn::read_restart(FILE *fp)
   int me = comm->me;
   for (i = 1; i <= atom->ntypes; i++)
     for (j = i; j <= atom->ntypes; j++) {
-      if (me == 0) utils::sfread(FLERR,&setflag[i][j],sizeof(int),1,fp,NULL,error);
+      if (me == 0) utils::sfread(FLERR,&setflag[i][j],sizeof(int),1,fp,nullptr,error);
       MPI_Bcast(&setflag[i][j],1,MPI_INT,0,world);
       if (setflag[i][j]) {
         if (me == 0) {
-          utils::sfread(FLERR,&a[i][j],sizeof(double),1,fp,NULL,error);
-          utils::sfread(FLERR,&rho[i][j],sizeof(double),1,fp,NULL,error);
-          utils::sfread(FLERR,&sigma[i][j],sizeof(double),1,fp,NULL,error);
-          utils::sfread(FLERR,&c[i][j],sizeof(double),1,fp,NULL,error);
-          utils::sfread(FLERR,&d[i][j],sizeof(double),1,fp,NULL,error);
-          utils::sfread(FLERR,&cut[i][j],sizeof(double),1,fp,NULL,error);
+          utils::sfread(FLERR,&a[i][j],sizeof(double),1,fp,nullptr,error);
+          utils::sfread(FLERR,&rho[i][j],sizeof(double),1,fp,nullptr,error);
+          utils::sfread(FLERR,&sigma[i][j],sizeof(double),1,fp,nullptr,error);
+          utils::sfread(FLERR,&c[i][j],sizeof(double),1,fp,nullptr,error);
+          utils::sfread(FLERR,&d[i][j],sizeof(double),1,fp,nullptr,error);
+          utils::sfread(FLERR,&cut[i][j],sizeof(double),1,fp,nullptr,error);
         }
         MPI_Bcast(&a[i][j],1,MPI_DOUBLE,0,world);
         MPI_Bcast(&rho[i][j],1,MPI_DOUBLE,0,world);
@@ -370,10 +372,10 @@ void PairBorn::write_restart_settings(FILE *fp)
 void PairBorn::read_restart_settings(FILE *fp)
 {
   if (comm->me == 0) {
-    utils::sfread(FLERR,&cut_global,sizeof(double),1,fp,NULL,error);
-    utils::sfread(FLERR,&offset_flag,sizeof(int),1,fp,NULL,error);
-    utils::sfread(FLERR,&mix_flag,sizeof(int),1,fp,NULL,error);
-    utils::sfread(FLERR,&tail_flag,sizeof(int),1,fp,NULL,error);
+    utils::sfread(FLERR,&cut_global,sizeof(double),1,fp,nullptr,error);
+    utils::sfread(FLERR,&offset_flag,sizeof(int),1,fp,nullptr,error);
+    utils::sfread(FLERR,&mix_flag,sizeof(int),1,fp,nullptr,error);
+    utils::sfread(FLERR,&tail_flag,sizeof(int),1,fp,nullptr,error);
   }
   MPI_Bcast(&cut_global,1,MPI_DOUBLE,0,world);
   MPI_Bcast(&offset_flag,1,MPI_INT,0,world);
@@ -427,11 +429,41 @@ double PairBorn::single(int /*i*/, int /*j*/, int itype, int jtype,
 
 /* ---------------------------------------------------------------------- */
 
+void PairBorn::born_matrix(int /*i*/, int /*j*/, int itype, int jtype, double rsq,
+                            double /*factor_coul*/, double factor_lj, double &dupair,
+                            double &du2pair)
+{
+  double rinv, r2inv, r7inv, r8inv, r9inv, r10inv, du, du2;
+  double r, rexp;
+
+  r = sqrt(rsq);
+  rexp = exp((sigma[itype][jtype]-r)*rhoinv[itype][jtype]);
+
+  r2inv = 1.0 / rsq;
+  rinv = sqrt(r2inv);
+  r7inv = r2inv * r2inv * r2inv * rinv;
+  r8inv = r7inv * rinv;
+  r9inv = r7inv * r2inv;
+  r10inv = r9inv * rinv;
+
+  // Reminder: born1[itype][jtype] = a[itype][jtype]/rho[itype][jtype];
+  // Reminder: born2[itype][jtype] = 6.0*c[itype][jtype];
+  // Reminder: born3[itype][jtype] = 8.0*d[itype][jtype];
+
+  du = born2[itype][jtype] * r7inv - born1[itype][jtype] * rexp - born3[itype][jtype] * r9inv;
+  du2 = (born1[itype][jtype] / rho[itype][jtype]) * rexp - 7 * born2[itype][jtype] * r8inv + 9 * born3[itype][jtype] * r10inv;
+
+  dupair = factor_lj * du;
+  du2pair = factor_lj * du2;
+}
+
+/* ---------------------------------------------------------------------- */
+
 void *PairBorn::extract(const char *str, int &dim)
 {
   dim = 2;
   if (strcmp(str,"a") == 0) return (void *) a;
   if (strcmp(str,"c") == 0) return (void *) c;
   if (strcmp(str,"d") == 0) return (void *) d;
-  return NULL;
+  return nullptr;
 }

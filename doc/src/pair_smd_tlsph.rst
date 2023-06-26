@@ -1,20 +1,21 @@
-.. index:: pair\_style smd/tlsph
+.. index:: pair_style smd/tlsph
 
-pair\_style smd/tlsph command
-=============================
+pair_style smd/tlsph command
+============================
 
 Syntax
 """"""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    pair_style smd/tlsph args
 
 Examples
 """"""""
 
-pair\_style smd/tlsph
+.. code-block:: LAMMPS
+
+   pair_style smd/tlsph
 
 Description
 """""""""""
@@ -25,12 +26,11 @@ Smooth-Particle Hydrodynamics algorithm.
 
 This pair style is invoked with the following command:
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    pair_style smd/tlsph
-   pair_coeff i j \*COMMON rho0 E nu Q1 Q2 hg Cp &
-                  \*END
+   pair_coeff i j *COMMON rho0 E nu Q1 Q2 hg Cp &
+                  *END
 
 Here, *i* and *j* denote the *LAMMPS* particle types for which this
 pair style is defined. Note that *i* and *j* must be equal, i.e., no
@@ -48,33 +48,32 @@ and a material model to compute shear stresses (the off-diagonal
 components of the stress tensor). Damage and failure models can also
 be added.
 
-Please see the `SMD user guide <PDF/SMD_LAMMPS_userguide.pdf>`_ for a
+Please see the `SMD user guide <PDF/MACHDYN_LAMMPS_userguide.pdf>`_ for a
 complete listing of the possible keywords and material models.
-
 
 ----------
 
+Mixing, shift, table, tail correction, restart, rRESPA info
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-**Mixing, shift, table, tail correction, restart, rRESPA info**\ :
-
-No mixing is performed automatically.  Currently, no part of USER-SMD
+No mixing is performed automatically.  Currently, no part of MACHDYN
 supports restarting nor minimization.  rRESPA does not apply to this
 pair style.
 
-
 ----------
-
 
 Restrictions
 """"""""""""
 
-
-This fix is part of the USER-SMD package.  It is only enabled if
-LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` doc page for more info.
+This fix is part of the MACHDYN package.  It is only enabled if
+LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` page for more info.
 
 Related commands
 """"""""""""""""
 
 :doc:`pair_coeff <pair_coeff>`
 
-**Default:** none
+Default
+"""""""
+
+none

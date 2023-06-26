@@ -11,17 +11,17 @@
 //
 //    begin                :
 //    email                : nguyentd@ornl.gov
-// ***************************************************************************/
+// ***************************************************************************
 
-#ifdef NV_KERNEL
+#if defined(NV_KERNEL) || defined(USE_HIP)
 
 #include "lal_aux_fun1.h"
 #ifndef _DOUBLE_DOUBLE
-texture<float4> pos_tex;
-texture<float> q_tex;
+_texture( pos_tex,float4);
+_texture( q_tex,float);
 #else
-texture<int4,1> pos_tex;
-texture<int2> q_tex;
+_texture_2d( pos_tex,int4);
+_texture( q_tex,int2);
 #endif
 
 #else
@@ -36,7 +36,7 @@ __kernel void k_buck_coul(const __global numtyp4 *restrict x_,
                           const __global numtyp *restrict sp_lj_in,
                           const __global int *dev_nbor,
                           const __global int *dev_packed,
-                          __global acctyp4 *restrict ans,
+                          __global acctyp3 *restrict ans,
                           __global acctyp *restrict engv,
                           const int eflag, const int vflag, const int inum,
                           const int nbor_pitch,
@@ -47,6 +47,9 @@ __kernel void k_buck_coul(const __global numtyp4 *restrict x_,
   atom_info(t_per_atom,ii,tid,offset);
 
   __local numtyp sp_lj[8];
+  int n_stride;
+  local_allocate_store_charge();
+
   sp_lj[0]=sp_lj_in[0];
   sp_lj[1]=sp_lj_in[1];
   sp_lj[2]=sp_lj_in[2];
@@ -56,18 +59,18 @@ __kernel void k_buck_coul(const __global numtyp4 *restrict x_,
   sp_lj[6]=sp_lj_in[6];
   sp_lj[7]=sp_lj_in[7];
 
-  acctyp energy=(acctyp)0;
-  acctyp e_coul=(acctyp)0;
-  acctyp4 f;
+  acctyp3 f;
   f.x=(acctyp)0; f.y=(acctyp)0; f.z=(acctyp)0;
-  acctyp virial[6];
-  for (int i=0; i<6; i++)
-    virial[i]=(acctyp)0;
+  acctyp energy, e_coul, virial[6];
+  if (EVFLAG) {
+    energy=(acctyp)0;
+    e_coul=(acctyp)0;
+    for (int i=0; i<6; i++) virial[i]=(acctyp)0;
+  }
 
   if (ii<inum) {
     int nbor, nbor_end;
     int i, numj;
-    __local int n_stride;
     nbor_info(dev_nbor,dev_packed,nbor_pitch,t_per_atom,ii,offset,i,numj,
               n_stride,nbor_end,nbor);
 
@@ -76,6 +79,7 @@ __kernel void k_buck_coul(const __global numtyp4 *restrict x_,
     int itype=ix.w;
 
     for ( ; nbor<nbor_end; nbor+=n_stride) {
+      ucl_prefetch(dev_packed+nbor+n_stride);
       int j=dev_packed[nbor];
 
       numtyp factor_lj, factor_coul;
@@ -119,14 +123,14 @@ __kernel void k_buck_coul(const __global numtyp4 *restrict x_,
         f.y+=dely*force;
         f.z+=delz*force;
 
-        if (eflag>0) {
+        if (EVFLAG && eflag) {
           e_coul += forcecoul;
           if (rsq < cutsq[mtype].y) {
             numtyp e=coeff2[mtype].x*rexp - coeff2[mtype].y*r6inv;
             energy+=factor_lj*(e-coeff2[mtype].z);
           }
         }
-        if (vflag>0) {
+        if (EVFLAG && vflag) {
           virial[0] += delx*delx*force;
           virial[1] += dely*dely*force;
           virial[2] += delz*delz*force;
@@ -137,9 +141,9 @@ __kernel void k_buck_coul(const __global numtyp4 *restrict x_,
       }
 
     } // for nbor
-    store_answers_q(f,energy,e_coul,virial,ii,inum,tid,t_per_atom,offset,eflag,
-                    vflag,ans,engv);
   } // if ii
+  store_answers_q(f,energy,e_coul,virial,ii,inum,tid,t_per_atom,offset,eflag,
+                  vflag,ans,engv);
 }
 
 __kernel void k_buck_coul_fast(const __global numtyp4 *restrict x_,
@@ -148,7 +152,7 @@ __kernel void k_buck_coul_fast(const __global numtyp4 *restrict x_,
                                const __global numtyp *restrict sp_lj_in,
                                const __global int *dev_nbor,
                                const __global int *dev_packed,
-                               __global acctyp4 *restrict ans,
+                               __global acctyp3 *restrict ans,
                                __global acctyp *restrict engv,
                                const int eflag, const int vflag, const int inum,
                                const int nbor_pitch,
@@ -162,29 +166,32 @@ __kernel void k_buck_coul_fast(const __global numtyp4 *restrict x_,
   __local numtyp4 coeff2[MAX_SHARED_TYPES*MAX_SHARED_TYPES];
   __local numtyp4 cutsq[MAX_SHARED_TYPES*MAX_SHARED_TYPES];
   __local numtyp sp_lj[8];
+  int n_stride;
+  local_allocate_store_charge();
+
   if (tid<8)
     sp_lj[tid]=sp_lj_in[tid];
   if (tid<MAX_SHARED_TYPES*MAX_SHARED_TYPES) {
     coeff1[tid]=coeff1_in[tid];
     cutsq[tid]=_cutsq[tid];
-    if (eflag>0)
+    if (EVFLAG && eflag)
       coeff2[tid]=coeff2_in[tid];
   }
 
-  acctyp energy=(acctyp)0;
-  acctyp e_coul=(acctyp)0;
-  acctyp4 f;
+  acctyp3 f;
   f.x=(acctyp)0; f.y=(acctyp)0; f.z=(acctyp)0;
-  acctyp virial[6];
-  for (int i=0; i<6; i++)
-    virial[i]=(acctyp)0;
+  acctyp energy, e_coul, virial[6];
+  if (EVFLAG) {
+    energy=(acctyp)0;
+    e_coul=(acctyp)0;
+    for (int i=0; i<6; i++) virial[i]=(acctyp)0;
+  }
 
   __syncthreads();
 
   if (ii<inum) {
     int nbor, nbor_end;
     int i, numj;
-    __local int n_stride;
     nbor_info(dev_nbor,dev_packed,nbor_pitch,t_per_atom,ii,offset,i,numj,
               n_stride,nbor_end,nbor);
 
@@ -194,6 +201,7 @@ __kernel void k_buck_coul_fast(const __global numtyp4 *restrict x_,
     int itype=fast_mul((int)MAX_SHARED_TYPES,iw);
 
     for ( ; nbor<nbor_end; nbor+=n_stride) {
+      ucl_prefetch(dev_packed+nbor+n_stride);
       int j=dev_packed[nbor];
 
       numtyp factor_lj, factor_coul;
@@ -236,14 +244,14 @@ __kernel void k_buck_coul_fast(const __global numtyp4 *restrict x_,
         f.y+=dely*force;
         f.z+=delz*force;
 
-        if (eflag>0) {
+        if (EVFLAG && eflag) {
           e_coul += forcecoul;
           if (rsq < cutsq[mtype].y) {
             numtyp e=coeff2[mtype].x*rexp - coeff2[mtype].y*r6inv;
             energy+=factor_lj*(e-coeff2[mtype].z);
           }
         }
-        if (vflag>0) {
+        if (EVFLAG && vflag) {
           virial[0] += delx*delx*force;
           virial[1] += dely*dely*force;
           virial[2] += delz*delz*force;
@@ -254,8 +262,8 @@ __kernel void k_buck_coul_fast(const __global numtyp4 *restrict x_,
       }
 
     } // for nbor
-    store_answers_q(f,energy,e_coul,virial,ii,inum,tid,t_per_atom,offset,eflag,
-                    vflag,ans,engv);
   } // if ii
+  store_answers_q(f,energy,e_coul,virial,ii,inum,tid,t_per_atom,offset,eflag,
+                  vflag,ans,engv);
 }
 

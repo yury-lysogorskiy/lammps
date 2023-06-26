@@ -1,7 +1,7 @@
 /* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -12,13 +12,14 @@
 ------------------------------------------------------------------------- */
 
 #ifdef FIX_CLASS
-
-FixStyle(nve/sphere/kk,FixNVESphereKokkos<LMPDeviceType>)
-FixStyle(nve/sphere/kk/device,FixNVESphereKokkos<LMPDeviceType>)
-FixStyle(nve/sphere/kk/host,FixNVESphereKokkos<LMPHostType>)
-
+// clang-format off
+FixStyle(nve/sphere/kk,FixNVESphereKokkos<LMPDeviceType>);
+FixStyle(nve/sphere/kk/device,FixNVESphereKokkos<LMPDeviceType>);
+FixStyle(nve/sphere/kk/host,FixNVESphereKokkos<LMPHostType>);
+// clang-format on
 #else
 
+// clang-format off
 #ifndef LMP_FIX_NVE_SPHERE_KOKKOS_H
 #define LMP_FIX_NVE_SPHERE_KOKKOS_H
 
@@ -31,21 +32,25 @@ template<class DeviceType>
 class FixNVESphereKokkos : public FixNVESphere {
   public:
     FixNVESphereKokkos(class LAMMPS *, int, char **);
-    virtual ~FixNVESphereKokkos() {}
+
     void cleanup_copy();
-    void init();
-    void initial_integrate(int);
-    void final_integrate();
+    void init() override;
+    void initial_integrate(int) override;
+    void final_integrate() override;
+    void fused_integrate(int) override;
 
     KOKKOS_INLINE_FUNCTION
     void initial_integrate_item(const int i) const;
     KOKKOS_INLINE_FUNCTION
     void final_integrate_item(const int i) const;
+    KOKKOS_INLINE_FUNCTION
+    void fused_integrate_item(int) const;
 
   private:
     typename ArrayTypes<DeviceType>::t_x_array x;
     typename ArrayTypes<DeviceType>::t_v_array v;
     typename ArrayTypes<DeviceType>::t_v_array omega;
+    typename ArrayTypes<DeviceType>::t_mu_array mu;
     typename ArrayTypes<DeviceType>::t_f_array f;
     typename ArrayTypes<DeviceType>::t_f_array torque;
     typename ArrayTypes<DeviceType>::t_float_1d rmass;
@@ -55,6 +60,7 @@ class FixNVESphereKokkos : public FixNVESphere {
 
 template <class DeviceType>
 struct FixNVESphereKokkosInitialIntegrateFunctor {
+  typedef DeviceType device_type;
   FixNVESphereKokkos<DeviceType> c;
   FixNVESphereKokkosInitialIntegrateFunctor(FixNVESphereKokkos<DeviceType> *c_ptr): c(*c_ptr) { c.cleanup_copy(); }
   KOKKOS_INLINE_FUNCTION
@@ -65,11 +71,23 @@ struct FixNVESphereKokkosInitialIntegrateFunctor {
 
 template <class DeviceType>
 struct FixNVESphereKokkosFinalIntegrateFunctor {
+  typedef DeviceType device_type;
   FixNVESphereKokkos<DeviceType> c;
   FixNVESphereKokkosFinalIntegrateFunctor(FixNVESphereKokkos<DeviceType> *c_ptr): c(*c_ptr) { c.cleanup_copy(); }
   KOKKOS_INLINE_FUNCTION
   void operator()(const int i) const {
     c.final_integrate_item(i);
+  }
+};
+
+template <class DeviceType>
+struct FixNVESphereKokkosFusedIntegrateFunctor {
+  typedef DeviceType device_type;
+  FixNVESphereKokkos<DeviceType> c;
+  FixNVESphereKokkosFusedIntegrateFunctor(FixNVESphereKokkos<DeviceType> *c_ptr): c(*c_ptr) { c.cleanup_copy(); }
+  KOKKOS_INLINE_FUNCTION
+  void operator()(const int i) const {
+    c.fused_integrate_item(i);
   }
 };
 

@@ -1,14 +1,13 @@
 .. index:: bond_style quartic
+.. index:: bond_style quartic/omp
 
 bond_style quartic command
 ==========================
 
-bond_style quartic/omp command
-==============================
+Accelerator Variants: *quartic/omp*
 
 Syntax
 """"""
-
 
 .. code-block:: LAMMPS
 
@@ -16,7 +15,6 @@ Syntax
 
 Examples
 """"""""
-
 
 .. code-block:: LAMMPS
 
@@ -30,11 +28,18 @@ The *quartic* bond style uses the potential
 
 .. math::
 
-   E = K (r - R_c)^ 2 (r - R_c - B_1) (r - R_c - B_2) + U_0 + 4 \epsilon \left[ \left(\frac{\sigma}{r}\right)^{12} - \left(\frac{\sigma}{r}\right)^6 \right] + \epsilon
+   E      & = E_q + E_{LJ} \\
+   E_q    & = K (r - R_c)^ 2 (r - R_c - B_1) (r - R_c - B_2) + U_0 \\
+   E_{LJ} & = \left\{ \begin{array} {l@{\quad:\quad}l}
+   4 \epsilon \left[ \left(\frac{\sigma}{r}\right)^{12} - \left(\frac{\sigma}{r}\right)^6 \right] + \epsilon & r < 2^{\frac{1}{6}}, \epsilon = 1, \sigma = 1 \\
+                                                  0 & r >= 2^{\frac{1}{6}}
+                         \end{array} \right.
 
 to define a bond that can be broken as the simulation proceeds (e.g.
-due to a polymer being stretched).  The :math:`\sigma` and :math:`\epsilon` used in the
-LJ portion of the formula are both set equal to 1.0 by LAMMPS.
+due to a polymer being stretched).  The :math:`\sigma` and
+:math:`\epsilon` used in the LJ portion of the formula are both set
+equal to 1.0 by LAMMPS and the LJ portion is cut off at its minimum,
+i.e. at :math:`r_c = 2^{\frac{1}{6}}`.
 
 The following coefficients must be defined for each bond type via the
 :doc:`bond_coeff <bond_coeff>` command as in the example above, or in
@@ -48,9 +53,9 @@ or :doc:`read_restart <read_restart>` commands:
 * :math:`U_0` (energy)
 
 This potential was constructed to mimic the FENE bond potential for
-coarse-grained polymer chains.  When monomers with :math:`\sigma = \epsilon = 1.0`
-are used, the following choice of parameters gives a quartic potential that
-looks nearly like the FENE potential: 
+coarse-grained polymer chains.  When monomers with :math:`\sigma =
+\epsilon = 1.0` are used, the following choice of parameters gives a
+quartic potential that looks nearly like the FENE potential:
 
 .. math::
 
@@ -59,7 +64,7 @@ looks nearly like the FENE potential:
    B_2 &= 0.25 \\
    R_c &= 1.3 \\
    U_0 &= 34.6878
-   
+
 Different parameters can be specified using the :doc:`bond_coeff <bond_coeff>`
 command, but you will need to choose them carefully so they form a suitable
 bond potential.
@@ -69,7 +74,8 @@ local maximum.  If a bond length ever becomes :math:`> R_c`, LAMMPS "breaks"
 the bond, which means two things.  First, the bond potential is turned
 off by setting its type to 0, and is no longer computed.  Second, a
 pairwise interaction between the two atoms is turned on, since they
-are no longer bonded.
+are no longer bonded. See the :doc:`Howto <Howto_broken_bonds>` page
+on broken bonds for more information.
 
 LAMMPS does the second task via a computational sleight-of-hand.  It
 subtracts the pairwise interaction as part of the bond computation.
@@ -83,44 +89,22 @@ Note that when bonds are dumped to a file via the :doc:`dump local <dump>` comma
 :doc:`delete_bonds <delete_bonds>` command can also be used to query the
 status of broken bonds or permanently delete them, e.g.:
 
-
 .. code-block:: LAMMPS
 
    delete_bonds all stats
    delete_bonds all bond 0 remove
 
-
 ----------
 
-
-Styles with a *gpu*\ , *intel*\ , *kk*\ , *omp*\ , or *opt* suffix are
-functionally the same as the corresponding style without the suffix.
-They have been optimized to run faster, depending on your available
-hardware, as discussed on the :doc:`Speed packages <Speed_packages>` doc
-page.  The accelerated styles take the same arguments and should
-produce the same results, except for round-off and precision issues.
-
-These accelerated styles are part of the GPU, USER-INTEL, KOKKOS,
-USER-OMP and OPT packages, respectively.  They are only enabled if
-LAMMPS was built with those packages.  See the :doc:`Build package <Build_package>` doc page for more info.
-
-You can specify the accelerated styles explicitly in your input script
-by including their suffix, or you can use the :doc:`-suffix command-line switch <Run_options>` when you invoke LAMMPS, or you can use the
-:doc:`suffix <suffix>` command in your input script.
-
-See the :doc:`Speed packages <Speed_packages>` doc page for more
-instructions on how to use the accelerated styles effectively.
-
+.. include:: accel_styles.rst
 
 ----------
-
 
 Restrictions
 """"""""""""
 
-
 This bond style can only be used if LAMMPS was built with the MOLECULE
-package.  See the :doc:`Build package <Build_package>` doc page for more
+package.  See the :doc:`Build package <Build_package>` page for more
 info.
 
 The *quartic* style requires that :doc:`special_bonds <special_bonds>`
@@ -132,4 +116,7 @@ Related commands
 
 :doc:`bond_coeff <bond_coeff>`, :doc:`delete_bonds <delete_bonds>`
 
-**Default:** none
+Default
+"""""""
+
+none

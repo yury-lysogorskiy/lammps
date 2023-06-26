@@ -1,7 +1,8 @@
+// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -12,15 +13,15 @@
 ------------------------------------------------------------------------- */
 
 #include "fix_nve_sphere.h"
-#include <cmath>
-#include <cstring>
+
 #include "atom.h"
 #include "domain.h"
-#include "atom_vec.h"
-#include "force.h"
 #include "error.h"
-#include "math_vector.h"
+#include "force.h"
 #include "math_extra.h"
+
+#include <cmath>
+#include <cstring>
 
 using namespace LAMMPS_NS;
 using namespace FixConst;
@@ -34,7 +35,7 @@ enum{NODLM,DLM};
 FixNVESphere::FixNVESphere(LAMMPS *lmp, int narg, char **arg) :
   FixNVE(lmp, narg, arg)
 {
-  if (narg < 3) error->all(FLERR,"Illegal fix nve/sphere command");
+  if (narg < 3) utils::missing_cmd_args(FLERR, "fix nve/sphere", error);
 
   time_integrate = 1;
 
@@ -48,12 +49,12 @@ FixNVESphere::FixNVESphere(LAMMPS *lmp, int narg, char **arg) :
   int iarg = 3;
   while (iarg < narg) {
     if (strcmp(arg[iarg],"update") == 0) {
-      if (iarg+2 > narg) error->all(FLERR,"Illegal fix nve/sphere command");
+      if (iarg+2 > narg) utils::missing_cmd_args(FLERR, "fix nve/sphere update", error);
       if (strcmp(arg[iarg+1],"dipole") == 0) extra = DIPOLE;
       else if (strcmp(arg[iarg+1],"dipole/dlm") == 0) {
         extra = DIPOLE;
         dlm = DLM;
-      } else error->all(FLERR,"Illegal fix nve/sphere command");
+      } else error->all(FLERR,"Unknown keyword in fix nve/sphere update command: {}",arg[iarg+1]);
       iarg += 2;
     }
     else if (strcmp(arg[iarg],"disc")==0) {
@@ -62,7 +63,7 @@ FixNVESphere::FixNVESphere(LAMMPS *lmp, int narg, char **arg) :
         error->all(FLERR,"Fix nve/sphere disc requires 2d simulation");
       iarg++;
     }
-    else error->all(FLERR,"Illegal fix nve/sphere command");
+    else error->all(FLERR,"Unknown keyword in fix nve/sphere command: {}",arg[iarg]);
   }
 
   // error checks
@@ -97,9 +98,8 @@ void FixNVESphere::init()
 void FixNVESphere::initial_integrate(int /*vflag*/)
 {
   double dtfm,dtirotate,msq,scale,s2,inv_len_mu;
-  double g[3];
-  vector w, w_temp, a;
-  matrix Q, Q_temp, R;
+  double g[3], w[3], w_temp[3], a[3];
+  double Q[3][3], Q_temp[3][3], R[3][3];
 
   double **x = atom->x;
   double **v = atom->v;
@@ -186,7 +186,7 @@ void FixNVESphere::initial_integrate(int /*vflag*/)
           // Q = I + vx + vx^2 * (1-c)/s^2
 
           s2 = a[0]*a[0] + a[1]*a[1];
-          if (s2 != 0.0){ // i.e. the vectors are not parallel
+          if (s2 != 0.0) { // i.e. the vectors are not parallel
             scale = (1.0 - a[2])/s2;
 
             Q[0][0] = 1.0 - scale*a[0]*a[0];
@@ -294,7 +294,6 @@ void FixNVESphere::final_integrate()
   // update v,omega for all particles
   // d_omega/dt = torque / inertia
 
-  double rke = 0.0;
   for (int i = 0; i < nlocal; i++)
     if (mask[i] & groupbit) {
       dtfm = dtf / rmass[i];
@@ -306,8 +305,5 @@ void FixNVESphere::final_integrate()
       omega[i][0] += dtirotate * torque[i][0];
       omega[i][1] += dtirotate * torque[i][1];
       omega[i][2] += dtirotate * torque[i][2];
-      rke += (omega[i][0]*omega[i][0] + omega[i][1]*omega[i][1] +
-              omega[i][2]*omega[i][2])*radius[i]*radius[i]*rmass[i];
     }
-
 }

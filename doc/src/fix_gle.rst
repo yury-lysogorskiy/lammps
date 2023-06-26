@@ -6,7 +6,6 @@ fix gle command
 Syntax
 """"""
 
-
 .. parsed-literal::
 
    fix ID id-group gle Ns Tstart Tstop seed Amatrix [noneq Cmatrix] [every stride]
@@ -18,22 +17,19 @@ Syntax
 * Amatrix = file to read the drift matrix A from
 * seed = random number seed to use for generating noise (positive integer)
 * zero or more keyword/value pairs may be appended
-  
+
   .. parsed-literal::
-  
+
        keyword = *noneq* or *every*
          *noneq* Cmatrix  = file to read the non-equilibrium covariance matrix from
          *every* stride   = apply the GLE once every time steps. Reduces the accuracy
              of the integration of the GLE, but has \*no effect\* on the accuracy of equilibrium
              sampling. It might change sampling properties when used together with *noneq*\ .
 
-
-
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    fix 3 boundary gle 6 300 300 31415 smart.A
    fix 1 all gle 6 300 300 31415 qt-300k.A noneq qt-300k.C
@@ -55,7 +51,6 @@ Each degree of freedom in the thermostatted group is supplemented
 with Ns additional degrees of freedom s, and the equations of motion
 become
 
-
 .. parsed-literal::
 
    dq/dt=p/m
@@ -68,7 +63,7 @@ un-correlated Gaussian random forces. The A matrix couples the physical
 and makes it possible to obtain effectively a history-dependent
 noise and friction kernel.
 
-The drift matrix should be given as an external file *Afile*\ ,
+The drift matrix should be given as an external file *Afile*,
 as a (Ns+1 x Ns+1) matrix in inverse time units. Matrices that are
 optimal for a given application and the system of choice can be
 obtained from :ref:`(GLE4MD) <GLE4MD>`.
@@ -104,35 +99,38 @@ input matrix for :doc:`fix gle <fix_gle>`. While the GLE scheme is more
 general, the form used by :doc:`fix gld <fix_gld>` can be more directly
 related to the representation of an implicit solvent environment.
 
-**Restart, fix\_modify, output, run start/stop, minimize info:**
+Restart, fix_modify, output, run start/stop, minimize info
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 The instantaneous values of the extended variables are written to
-:doc:`binary restart files <restart>`.  Because the state of the random
-number generator is not saved in restart files, this means you cannot
-do "exact" restarts with this fix, where the simulation continues on
-the same as if no restart had taken place. However, in a statistical
-sense, a restarted simulation should produce the same behavior.
-Note however that you should use a different seed each time you
-restart, otherwise the same sequence of random numbers will be used
-each time, which might lead to stochastic synchronization and
+:doc:`binary restart files <restart>`.  Because the state of the
+random number generator is not saved in restart files, this means you
+cannot do "exact" restarts with this fix, where the simulation
+continues on the same as if no restart had taken place. However, in a
+statistical sense, a restarted simulation should produce the same
+behavior.  Note however that you should use a different seed each time
+you restart, otherwise the same sequence of random numbers will be
+used each time, which might lead to stochastic synchronization and
 subtle artifacts in the sampling.
+
+The cumulative energy change in the system imposed by this fix is
+included in the :doc:`thermodynamic output <thermo_style>` keywords
+*ecouple* and *econserve*.  See the :doc:`thermo_style <thermo_style>`
+doc page for details.
+
+This fix computes a global scalar which can be accessed by various
+:doc:`output commands <Howto_output>`.  The scalar is the same
+cumulative energy change due to this fix described in the previous
+paragraph.  The scalar value calculated by this fix is "extensive".
 
 This fix can ramp its target temperature over multiple runs, using the
 *start* and *stop* keywords of the :doc:`run <run>` command.  See the
 :doc:`run <run>` command for details of how to do this.
 
-The :doc:`fix_modify <fix_modify>` *energy* option is supported by this
-fix to add the energy change induced by Langevin thermostatting to the
-system's potential energy as part of :doc:`thermodynamic output <thermo_style>`.
-
-This fix computes a global scalar which can be accessed by various
-:doc:`output commands <Howto_output>`.  The scalar is the cumulative
-energy change due to this fix.  The scalar value calculated by this
-fix is "extensive".
+This fix is not invoked during :doc:`energy minimization <minimize>`.
 
 Restrictions
 """"""""""""
-
 
 The GLE thermostat in its current implementation should not be used
 with rigid bodies, SHAKE or RATTLE. It is expected that all the
@@ -144,34 +142,26 @@ In order to perform constant-pressure simulations please use
 :doc:`fix npt <fix_nh>`, to avoid duplicate integration of the
 equations of motion.
 
-This fix is part of the USER-MISC package.  It is only enabled if
-LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` doc page for more info.
+This fix is part of the EXTRA-FIX package.  It is only enabled if
+LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` page for more info.
 
 Related commands
 """"""""""""""""
 
 :doc:`fix nvt <fix_nh>`, :doc:`fix temp/rescale <fix_temp_rescale>`, :doc:`fix viscous <fix_viscous>`, :doc:`fix nvt <fix_nh>`, :doc:`pair_style dpd/tstat <pair_dpd>`, :doc:`fix gld <fix_gld>`
 
-
 ----------
 
-
 .. _Ceriotti:
-
-
 
 **(Ceriotti)** Ceriotti, Bussi and Parrinello, J Chem Theory Comput 6,
 1170-80 (2010)
 
 .. _GLE4MD:
 
-
-
-**(GLE4MD)** `http://gle4md.org/ <http://gle4md.org/>`_
+**(GLE4MD)** `https://gle4md.org/ <https://gle4md.org/>`_
 
 .. _Ceriotti2:
-
-
 
 **(Ceriotti2)** Ceriotti, Bussi and Parrinello, Phys Rev Lett 103,
 030603 (2009)

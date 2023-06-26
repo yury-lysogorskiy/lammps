@@ -6,7 +6,6 @@ fix wall/srd command
 Syntax
 """"""
 
-
 .. parsed-literal::
 
    fix ID group-ID wall/srd face arg ... keyword value ...
@@ -15,34 +14,31 @@ Syntax
 * wall/srd = style name of this fix command
 * one or more face/arg pairs may be appended
 * face = *xlo* or *xhi* or *ylo* or *yhi* or *zlo* or *zhi*
-  
+
   .. parsed-literal::
-  
-       *xlo*\ ,\ *ylo*\ ,\ *zlo* arg = EDGE or constant or variable
+
+       *xlo*,\ *ylo*,\ *zlo* arg = EDGE or constant or variable
          EDGE = current lo edge of simulation box
          constant = number like 0.0 or -30.0 (distance units)
          variable = :doc:`equal-style variable <variable>` like v_x or v_wiggle
-       *xhi*\ ,\ *yhi*\ ,\ *zhi* arg = EDGE or constant or variable
+       *xhi*,\ *yhi*,\ *zhi* arg = EDGE or constant or variable
          EDGE = current hi edge of simulation box
          constant = number like 50.0 or 100.3 (distance units)
          variable = :doc:`equal-style variable <variable>` like v_x or v_wiggle
 
 * zero or more keyword/value pairs may be appended
 * keyword = *units*
-  
+
   .. parsed-literal::
-  
+
        *units* value = *lattice* or *box*
          *lattice* = the wall position is defined in lattice units
          *box* = the wall position is defined in simulation box units
 
-
-
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    fix xwalls all wall/srd xlo EDGE xhi EDGE
    fix walls all wall/srd xlo 0.0 ylo 10.0 units box
@@ -76,8 +72,8 @@ tangential direction for the SRD velocity is chosen randomly.  This
 collision style imparts both a normal and tangential force to the
 wall.
 
-Up to 6 walls or faces can be specified in a single command: *xlo*\ ,
-*xhi*\ , *ylo*\ , *yhi*\ , *zlo*\ , *zhi*\ .  A *lo* face reflects particles
+Up to 6 walls or faces can be specified in a single command: *xlo*,
+*xhi*, *ylo*, *yhi*, *zlo*, *zhi*\ .  A *lo* face reflects particles
 that move to a coordinate less than the wall position, back in the
 *hi* direction.  A *hi* face reflects particles that move to a
 coordinate higher than the wall position, back in the *lo* direction.
@@ -88,7 +84,7 @@ EDGE is used, then the corresponding boundary of the current
 simulation box is used.  If a numeric constant is specified then the
 wall is placed at that position in the appropriate dimension (x, y, or
 z).  In both the EDGE and constant cases, the wall will never move.
-If the wall position is a variable, it should be specified as v\_name,
+If the wall position is a variable, it should be specified as v_name,
 where name is an :doc:`equal-style variable <variable>` name.  In this
 case the variable is evaluated each timestep and the result becomes
 the current position of the reflecting wall.  Equal-style variables
@@ -100,7 +96,7 @@ specify a time-dependent wall position.
 .. note::
 
    Because the trajectory of the SRD particle is tracked as it
-   collides with the wall, you must insure that r = distance of the
+   collides with the wall, you must ensure that r = distance of the
    particle from the wall, is always > 0 for SRD particles, or LAMMPS
    will generate an error.  This means you cannot start your simulation
    with SRD particles at the wall position *coord* (r = 0) or with
@@ -121,7 +117,7 @@ specify a time-dependent wall position.
    a mixture containing other kinds of particles, then you should
    typically use :doc:`another wall command <fix_wall>` to act on the other
    particles.  Since SRD particles will be colliding both with the walls
-   and the other particles, it is important to insure that the other
+   and the other particles, it is important to ensure that the other
    particle's finite extent does not overlap an SRD wall.  If you do not
    do this, you may generate errors when SRD particles end up "inside"
    another particle or a wall at the beginning of a collision step.
@@ -137,16 +133,13 @@ A *lattice* value means the distance units are in lattice spacings.
 The :doc:`lattice <lattice>` command must have been previously used to
 define the lattice spacings.
 
-
 ----------
-
 
 Here are examples of variable definitions that move the wall position
 in a time-dependent fashion using equal-style
 :doc:`variables <variable>`.
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    variable ramp equal ramp(0,10)
    fix 1 all wall/srd xlo v_ramp
@@ -160,35 +153,32 @@ in a time-dependent fashion using equal-style
    variable wiggle equal cwiggle(0.0,5.0,3.0)
    fix 1 all wall/srd xlo v_wiggle
 
-The ramp(lo,hi) function adjusts the wall position linearly from lo to
-hi over the course of a run.  The displace(c0,velocity) function does
-something similar using the equation position = c0 + velocity\*delta,
-where delta is the elapsed time.
+The *ramp(lo,hi)* function adjusts the wall position linearly from *lo*
+to *hi* over the course of a run.  The *vdisplace(c0,velocity)* function
+does something similar using the equation *position = c0 +
+velocity\*delta*, where *delta* is the elapsed time.
 
-The swiggle(c0,A,period) function causes the wall position to
-oscillate sinusoidally according to this equation, where omega = 2 PI
-/ period:
-
+The *swiggle(c0,A,period)* function causes the wall position to
+oscillate sinusoidally according to this equation, where *omega = 2 PI
+/ period*\ :
 
 .. parsed-literal::
 
    position = c0 + A sin(omega\*delta)
 
-The cwiggle(c0,A,period) function causes the wall position to
+The *cwiggle(c0,A,period)* function causes the wall position to
 oscillate sinusoidally according to this equation, which will have an
 initial wall velocity of 0.0, and thus may impose a gentler
 perturbation on the particles:
-
 
 .. parsed-literal::
 
    position = c0 + A (1 - cos(omega\*delta))
 
-
 ----------
 
-
-**Restart, fix\_modify, output, run start/stop, minimize info:**
+Restart, fix_modify, output, run start/stop, minimize info
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 No information about this fix is written to :doc:`binary restart files <restart>`.  None of the :doc:`fix_modify <fix_modify>` options
 are relevant to this fix.
@@ -209,7 +199,6 @@ the :doc:`run <run>` command.  This fix is not invoked during :doc:`energy minim
 Restrictions
 """"""""""""
 
-
 Any dimension (xyz) that has an SRD wall must be non-periodic.
 
 Related commands
@@ -217,4 +206,7 @@ Related commands
 
 :doc:`fix srd <fix_srd>`
 
-**Default:** none
+Default
+"""""""
+
+none

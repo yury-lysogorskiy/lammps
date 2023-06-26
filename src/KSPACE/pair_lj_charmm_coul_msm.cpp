@@ -1,7 +1,8 @@
+// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -35,7 +36,7 @@ PairLJCharmmCoulMSM::PairLJCharmmCoulMSM(LAMMPS *lmp) :
   ewaldflag = pppmflag = 0;
   msmflag = 1;
   nmax = 0;
-  ftmp = NULL;
+  ftmp = nullptr;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -537,5 +538,5 @@ void *PairLJCharmmCoulMSM::extract(const char *str, int &dim)
   if (strcmp(str,"implicit") == 0) return (void *) &implicit;
   if (strcmp(str,"cut_coul") == 0) return (void *) &cut_coul;
 
-  return NULL;
+  return nullptr;
 }

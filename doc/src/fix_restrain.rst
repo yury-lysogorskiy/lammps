@@ -6,7 +6,6 @@ fix restrain command
 Syntax
 """"""
 
-
 .. code-block:: LAMMPS
 
    fix ID group-ID restrain keyword args ...
@@ -14,14 +13,22 @@ Syntax
 * ID, group-ID are documented in :doc:`fix <fix>` command
 * restrain = style name of this fix command
 * one or more keyword/arg pairs may be appended
-* keyword = *bond* or *angle* or *dihedral*
-  
+* keyword = *bond* or *lbound* or *angle* or *dihedral*
+
   .. parsed-literal::
-  
-       *bond* args = atom1 atom2 Kstart Kstop r0
+
+       *bond* args = atom1 atom2 Kstart Kstop r0start (r0stop)
          atom1,atom2 = IDs of 2 atoms in bond
          Kstart,Kstop = restraint coefficients at start/end of run (energy units)
-         r0 = equilibrium bond distance (distance units)
+         r0start = equilibrium bond distance at start of run (distance units)
+         r0stop = equilibrium bond distance at end of run (optional) (distance units). If not
+           specified it is assumed to be equal to r0start
+       *lbound* args = atom1 atom2 Kstart Kstop r0start (r0stop)
+         atom1,atom2 = IDs of 2 atoms in bond
+         Kstart,Kstop = restraint coefficients at start/end of run (energy units)
+         r0start = equilibrium bond distance at start of run (distance units)
+         r0stop = equilibrium bond distance at end of run (optional) (distance units). If not
+           specified it is assumed to be equal to r0start
        *angle* args = atom1 atom2 atom3 Kstart Kstop theta0
          atom1,atom2,atom3 = IDs of 3 atoms in angle, atom2 = middle atom
          Kstart,Kstop = restraint coefficients at start/end of run (energy units)
@@ -33,15 +40,13 @@ Syntax
          keyword/value = optional keyword value pairs. supported keyword/value pairs:
            *mult* n = dihedral multiplicity n (integer >= 0, default = 1)
 
-
-
 Examples
 """"""""
-
 
 .. code-block:: LAMMPS
 
    fix holdem all restrain bond 45 48 2000.0 2000.0 2.75
+   fix holdem all restrain lbound 45 48 2000.0 2000.0 2.75
    fix holdem all restrain dihedral 1 2 3 4 2000.0 2000.0 120.0
    fix holdem all restrain bond 45 48 2000.0 2000.0 2.75 dihedral 1 2 3 4 2000.0 2000.0 120.0
    fix texas_holdem all restrain dihedral 1 2 3 4 0.0 2000.0 120.0 dihedral 1 2 3 5 0.0 2000.0 -120.0 dihedral 1 2 3 6 0.0 2000.0 0.0
@@ -54,7 +59,7 @@ of a bond or angle or dihedral interaction whose strength can vary
 over time during a simulation.  This is functionally similar to
 creating a bond or angle or dihedral for the same atoms in a data
 file, as specified by the :doc:`read_data <read_data>` command, albeit
-with a time-varying pre-factor coefficient, and except for exclusion
+with a time-varying prefactor coefficient, and except for exclusion
 rules, as explained below.
 
 For the purpose of force field parameter-fitting or mapping a molecular
@@ -106,7 +111,6 @@ molecule with particular restraints (e.g. for fitting force field
 parameters or constructing a potential energy surface), commands such
 as the following may be useful:
 
-
 .. code-block:: LAMMPS
 
    # minimize molecule energy with restraints
@@ -126,9 +130,7 @@ as the following may be useful:
    unfix REST
    run 0
 
-
 ----------
-
 
 The *bond* keyword applies a bond restraint to the specified atoms
 using the same functional form used by the :doc:`bond_style harmonic <bond_harmonic>` command.  The potential associated with
@@ -138,6 +140,28 @@ the restraint is
 
    E = K (r - r_0)^2
 
+with the following coefficients:
+
+* :math:`K` (energy/distance\^2)
+* :math:`r_0` (distance)
+
+:math:`K` and :math:`r_0` are specified with the fix.  Note that the usual 1/2 factor
+is included in :math:`K`.
+
+----------
+
+The *lbound* keyword applies a lower bound bond restraint to the specified atoms
+using the same functional form used by the :doc:`bond_style harmonic <bond_harmonic>` command if the distance between
+the atoms is smaller than the equilibrium bond distance and 0 otherwise. The potential associated with
+the restraint is
+
+.. math::
+
+   E = K (r - r_0)^2 ,if\;r < r_0
+
+.. math::
+
+   E = 0 \qquad\quad\quad ,if\;r \ge r_0
 
 with the following coefficients:
 
@@ -147,9 +171,7 @@ with the following coefficients:
 :math:`K` and :math:`r_0` are specified with the fix.  Note that the usual 1/2 factor
 is included in :math:`K`.
 
-
 ----------
-
 
 The *angle* keyword applies an angle restraint to the specified atoms
 using the same functional form used by the :doc:`angle_style harmonic <angle_harmonic>` command.  The potential associated with
@@ -161,15 +183,15 @@ the restraint is
 
 with the following coefficients:
 
-* :math:`K` (energy/radian\^2)
+* :math:`K` (energy)
 * :math:`\theta_0` (degrees)
 
-:math:`K` and :math:`\theta_0` are specified with the fix.  Note that the usual 1/2
-factor is included in :math:`K`.
-
+:math:`K` and :math:`\theta_0` are specified with the fix.
+:math:`\theta_0` is specified in degrees, but LAMMPS converts it to
+radians internally; hence :math:`K` is effectively energy per
+radian\^2.  Note that the usual 1/2 factor is included in :math:`K`.
 
 ----------
-
 
 The *dihedral* keyword applies a dihedral restraint to the specified
 atoms using a simplified form of the function used by the
@@ -179,7 +201,6 @@ associated with the restraint is
 .. math::
 
    E = K [ 1 + \cos (n \phi - d) ]
-
 
 with the following coefficients:
 
@@ -193,21 +214,24 @@ optional *mult* keyword to set it to a different positive integer.
 Also note that the energy will be a minimum when the
 current dihedral angle :math:`\phi` is equal to :math:`\phi_0`.
 
-
 ----------
 
+Restart, fix_modify, output, run start/stop, minimize info
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-**Restart, fix\_modify, output, run start/stop, minimize info:**
+No information about this fix is written to :doc:`binary restart files
+<restart>`.
 
-No information about this fix is written to :doc:`binary restart files <restart>`.
-
-The :doc:`fix_modify <fix_modify>` *energy* option is supported by this
-fix to add the potential energy associated with this fix to the
-system's potential energy as part of :doc:`thermodynamic output <thermo_style>`.
+The :doc:`fix_modify <fix_modify>` *energy* option is supported by
+this fix to add the potential energy associated with this fix to the
+global potential energy of the system as part of :doc:`thermodynamic
+output <thermo_style>` The default setting for this fix is
+:doc:`fix_modify energy no <fix_modify>`.
 
 The :doc:`fix_modify <fix_modify>` *respa* option is supported by this
-fix. This allows to set at which level of the :doc:`r-RESPA <run_style>`
-integrator the fix is adding its forces. Default is the outermost level.
+fix. This allows to set at which level of the :doc:`r-RESPA
+<run_style>` integrator the fix is adding its forces. Default is the
+outermost level.
 
 .. note::
 
@@ -235,6 +259,13 @@ Restrictions
 """"""""""""
  none
 
-**Related commands:** none
+Related commands
+""""""""""""""""
 
-**Default:** none
+none
+
+
+Default
+"""""""
+
+none

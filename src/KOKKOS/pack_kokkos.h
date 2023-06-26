@@ -1,7 +1,8 @@
-/* ----------------------------------------------------------------------
+// clang-format off
+/* -*- c++ -*- ----------------------------------------------------------
    SPARTA - Stochastic PArallel Rarefied-gas Time-accurate Analyzer
    http://sparta.sandia.gov
-   Steve Plimpton, sjplimp@sandia.gov, Michael Gallis, magalli@sandia.gov
+   LAMMPS development team: developers@lammps.org, Michael Gallis, magalli@sandia.gov
    Sandia National Laboratories
 
    Copyright (2014) Sandia Corporation.  Under the terms of Contract
@@ -86,7 +87,7 @@ static void pack_3d(typename FFT_AT::t_FFT_SCALAR_1d_um d_data, int data_offset,
   const int nfast = plan->nfast;
   pack_3d_functor f(d_buf,buf_offset,d_data,data_offset,plan);
   Kokkos::parallel_for(nslow*nmid*nfast,f);
-  DeviceType::fence();
+  DeviceType().fence();
 }
 
 /* ----------------------------------------------------------------------
@@ -140,7 +141,7 @@ static void unpack_3d(typename FFT_AT::t_FFT_SCALAR_1d_um d_buf, int buf_offset,
   const int nfast = plan->nfast;
   unpack_3d_functor f(d_buf,buf_offset,d_data,data_offset,plan);
   Kokkos::parallel_for(nslow*nmid*nfast,f);
-  DeviceType::fence();
+  DeviceType().fence();
 }
 
 /* ----------------------------------------------------------------------
@@ -195,7 +196,7 @@ static void unpack_3d_permute1_1(typename FFT_AT::t_FFT_SCALAR_1d_um d_buf, int 
   const int nfast = plan->nfast;
   unpack_3d_permute1_1_functor f(d_buf,buf_offset,d_data,data_offset,plan);
   Kokkos::parallel_for(nslow*nmid*nfast,f);
-  DeviceType::fence();
+  DeviceType().fence();
 }
 /* ----------------------------------------------------------------------
    unpack from buf -> data, one axis permutation, 2 values/element
@@ -249,7 +250,7 @@ static void unpack_3d_permute1_2(typename FFT_AT::t_FFT_SCALAR_1d_um d_buf, int 
   const int nfast = plan->nfast;
   unpack_3d_permute1_2_functor f(d_buf,buf_offset,d_data,data_offset,plan);
   Kokkos::parallel_for(nslow*nmid*nfast,f);
-  DeviceType::fence();
+  DeviceType().fence();
 }
 
 /* ----------------------------------------------------------------------
@@ -305,7 +306,7 @@ static void unpack_3d_permute1_n(typename FFT_AT::t_FFT_SCALAR_1d_um d_buf, int 
   const int nfast = plan->nfast;
   unpack_3d_permute1_n_functor f(d_buf,buf_offset,d_data,data_offset,plan);
   Kokkos::parallel_for(nslow*nmid*nfast,f);
-  DeviceType::fence();
+  DeviceType().fence();
 }
 
 /* ----------------------------------------------------------------------
@@ -358,7 +359,7 @@ static void unpack_3d_permute2_1(typename FFT_AT::t_FFT_SCALAR_1d_um d_buf, int 
   const int nfast = plan->nfast;
   unpack_3d_permute2_1_functor f(d_buf,buf_offset,d_data,data_offset,plan);
   Kokkos::parallel_for(nslow*nmid*nfast,f);
-  DeviceType::fence();
+  DeviceType().fence();
 }
 
 /* ----------------------------------------------------------------------
@@ -412,7 +413,7 @@ static void unpack_3d_permute2_2(typename FFT_AT::t_FFT_SCALAR_1d_um d_buf, int 
   const int nfast = plan->nfast;
   unpack_3d_permute2_2_functor f(d_buf,buf_offset,d_data,data_offset,plan);
   Kokkos::parallel_for(nslow*nmid*nfast,f);
-  DeviceType::fence();
+  DeviceType().fence();
 }
 /* ----------------------------------------------------------------------
    unpack from buf -> data, two axis permutation, nqty values/element
@@ -466,7 +467,7 @@ static void unpack_3d_permute2_n(typename FFT_AT::t_FFT_SCALAR_1d_um d_buf, int 
   const int nfast = plan->nfast;
   unpack_3d_permute2_n_functor f(d_buf,buf_offset,d_data,data_offset,plan);
   Kokkos::parallel_for(nslow*nmid*nfast,f);
-  DeviceType::fence();
+  DeviceType().fence();
 }
 
 };

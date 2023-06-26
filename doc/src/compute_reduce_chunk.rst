@@ -6,7 +6,6 @@ compute reduce/chunk command
 Syntax
 """"""
 
-
 .. parsed-literal::
 
    compute ID group-ID reduce/chunk chunkID mode input1 input2 ...
@@ -16,25 +15,22 @@ Syntax
 * chunkID = ID of :doc:`compute chunk/atom <compute_chunk_atom>` command
 * mode = *sum* or *min* or *max*
 * one or more inputs can be listed
-* input = c\_ID, c\_ID[N], f\_ID, f\_ID[N], v\_ID
-  
+* input = c_ID, c_ID[N], f_ID, f_ID[N], v_ID
+
   .. parsed-literal::
-  
+
        c_ID = per-atom vector calculated by a compute with ID
        c_ID[I] = Ith column of per-atom array calculated by a compute with ID, I can include wildcard (see below)
        f_ID = per-atom vector calculated by a fix with ID
        f_ID[I] = Ith column of per-atom array calculated by a fix with ID, I can include wildcard (see below)
        v_name = per-atom vector calculated by an atom-style variable with name
 
-
-
 Examples
 """"""""
 
+.. code-block:: LAMMPS
 
-.. parsed-literal::
-
-   compute 1 all reduce/chunk/atom mychunk min c_cluster
+   compute 1 all reduce/chunk mychunk min c_cluster
 
 Description
 """""""""""
@@ -42,7 +38,7 @@ Description
 Define a calculation that reduces one or more per-atom vectors into
 per-chunk values.  This can be useful for diagnostic output.  Or when
 used in conjunction with the :doc:`compute chunk/spread/atom <compute_chunk_spread_atom>` command it can be
-used ot create per-atom values that induce a new set of chunks with a
+used to create per-atom values that induce a new set of chunks with a
 second :doc:`compute chunk/atom <compute_chunk_atom>` command.  An
 example is given below.
 
@@ -65,7 +61,7 @@ per-atom values for each chunk.
 
 Note that only atoms in the specified group contribute to the
 reduction operation.  If the *chunkID* compute returns a 0 for the
-chunk ID of an atom (i.e. the atom is not in a chunk defined by the
+chunk ID of an atom (i.e., the atom is not in a chunk defined by the
 :doc:`compute chunk/atom <compute_chunk_atom>` command), that atom will
 also not contribute to the reduction operation.  An input that is a
 compute or fix may define its own group which affects the quantities
@@ -78,29 +74,27 @@ of an atom-style :doc:`variable <variable>`.
 
 Note that for values from a compute or fix, the bracketed index I can
 be specified using a wildcard asterisk with the index to effectively
-specify multiple values.  This takes the form "\*" or "\*n" or "n\*" or
-"m\*n".  If N = the size of the vector (for *mode* = scalar) or the
+specify multiple values.  This takes the form "\*" or "\*n" or "m\*" or
+"m\*n".  If :math:`N` is the size of the vector (for *mode* = scalar) or the
 number of columns in the array (for *mode* = vector), then an asterisk
-with no numeric values means all indices from 1 to N.  A leading
+with no numeric values means all indices from 1 to :math:`N`.  A leading
 asterisk means all indices from 1 to n (inclusive).  A trailing
-asterisk means all indices from n to N (inclusive).  A middle asterisk
+asterisk means all indices from n to :math:`N` (inclusive).  A middle asterisk
 means all indices from m to n (inclusive).
 
 Using a wildcard is the same as if the individual columns of the array
-had been listed one by one.  E.g. these 2 compute reduce/chunk
-commands are equivalent, since the :doc:`compute property/chunk <compute_property_chunk>` command creates a per-atom
+had been listed one by one.  For example, the following two compute reduce/chunk
+commands are equivalent, since the
+:doc:`compute property/chunk <compute_property_chunk>` command creates a per-atom
 array with 3 columns:
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    compute prop all property/atom vx vy vz
-   compute 10 all reduce/chunk mychunk max c_prop[\*]
+   compute 10 all reduce/chunk mychunk max c_prop[*]
    compute 10 all reduce/chunk mychunk max c_prop[1] c_prop[2] c_prop[3]
 
-
 ----------
-
 
 Here is an example of using this compute, in conjunction with the
 compute chunk/spread/atom command to identify self-assembled micelles.
@@ -112,14 +106,13 @@ to a group called "phobic".
 
 These commands will assign a unique cluster ID to all HP atoms within
 a specified distance of each other.  A cluster will contain all HP
-atoms in a single molecule, but also the HP atoms in nearby molecules,
-e.g. molecules that have clumped to form a micelle due to the
-attraction induced by the hydrophobicity.  The output of the
+atoms in a single molecule, but also the HP atoms in nearby molecules
+(e.g., molecules that have clumped to form a micelle due to the
+attraction induced by the hydrophobicity).  The output of the
 chunk/reduce command will be a cluster ID per chunk (molecule).
 Molecules with the same cluster ID are in the same micelle.
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    group phobic type 4     # specific to in.micelle model
    compute cluster phobic cluster/atom 2.0
@@ -128,8 +121,7 @@ Molecules with the same cluster ID are in the same micelle.
 
 This per-chunk info could be output in at least two ways:
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    fix 10 all ave/time 1000 1 1000 c_reduce file tmp.phobic mode vector
 
@@ -145,35 +137,31 @@ atoms of that atom's molecule belong to.
 
 The result from compute chunk/spread/atom can be used to define a new
 set of chunks, where all the atoms in all the molecules in the same
-micelle are assigned to the same chunk, i.e. one chunk per micelle.
+micelle are assigned to the same chunk (i.e., one chunk per micelle).
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    compute micelle all chunk/atom c_spread compress yes
 
 Further analysis on a per-micelle basis can now be performed using any
 of the per-chunk computes listed on the :doc:`Howto chunk <Howto_chunk>`
-doc page.  E.g. count the number of atoms in each micelle, calculate
-its center or mass, shape (moments of inertia), radius of gyration,
-etc.
+doc page (e.g., count the number of atoms in each micelle, calculate
+its center or mass, shape/moments of inertia, and radius of gyration).
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    compute prop all property/chunk micelle count
    fix 20 all ave/time 1000 1 1000 c_prop file tmp.micelle mode vector
 
 Each snapshot in the tmp.micelle file will have one line per micelle
 with its count of atoms, plus a first line for a chunk with all the
-solvent atoms.  By the time 50000 steps have elapsed there are a
+solvent atoms.  By the time 50000 steps have elapsed, there are a
 handful of large micelles.
-
 
 ----------
 
-
-**Output info:**
+Output info
+"""""""""""
 
 This compute calculates a global vector if a single input value is
 specified, otherwise a global array is output.  The number of columns
@@ -181,7 +169,7 @@ in the array is the number of inputs provided.  The length of the
 vector or the number of vector elements or array rows = the number of
 chunks *Nchunk* as calculated by the specified :doc:`compute chunk/atom <compute_chunk_atom>` command.  The vector or array can
 be accessed by any command that uses global values from a compute as
-input.  See the :doc:`Howto output <Howto_output>` doc page for an
+input.  See the :doc:`Howto output <Howto_output>` page for an
 overview of LAMMPS output options.
 
 The per-atom values for the vector or each column of the array will be
@@ -197,4 +185,7 @@ Related commands
 
 :doc:`compute chunk/atom <compute_chunk_atom>`, :doc:`compute reduce <compute_reduce>`, :doc:`compute chunk/spread/atom <compute_chunk_spread_atom>`
 
-**Default:** none
+Default
+"""""""
+
+none

@@ -1,6 +1,6 @@
 ## reorder_remd_traj
 
-LAMMPS Replica Exchange Molecular Dynamics (REMD) trajectories (implemented using the temper command) are arranged by replica, i.e., each trajectory is a continuous replica that records all the ups and downs in temperature. However, often the requirement is  that trajectories be continuous in temperature. This requires the LAMMPS REMD trajectories to be re-ordered, which LAMMPS does not do automatically. (see the discussion [here](https://lammps.sandia.gov/threads/msg60440.html)). The reorderLAMMPSREMD tool does exactly this in parallel (using MPI)
+LAMMPS Replica Exchange Molecular Dynamics (REMD) trajectories (implemented using the temper command) are arranged by replica, i.e., each trajectory is a continuous replica that records all the ups and downs in temperature. However, often the requirement is  that trajectories be continuous in temperature. This requires the LAMMPS REMD trajectories to be re-ordered, which LAMMPS does not do automatically. (see the discussion [here](https://www.lammps.org/threads/msg60440.html)). The reorderLAMMPSREMD tool does exactly this in parallel (using MPI)
 
 (Protein folding trajectories in [Sanyal, Mittal and Shell, JPC, 2019, 151(4), 044111](https://aip.scitation.org/doi/abs/10.1063/1.5108761) were ordered in temperature space using this tool)
 
@@ -24,14 +24,14 @@ email: tanmoy dot 7989 at gmail.com
 
 #### Dependencies
 
-[`mpi4py`](https://mpi4py.readthedocs.io/en/stable/)  
-[`pymbar`](https://pymbar.readthedocs.io/en/master/) (for getting configurational weights)  
-[`tqdm`](https://github.com/tqdm/tqdm) (for printing pretty progress bars)  
+[`mpi4py`](https://mpi4py.readthedocs.io/en/stable/)
+[`pymbar`](https://pymbar.readthedocs.io/en/master/) (for getting configurational weights)
+[`tqdm`](https://github.com/tqdm/tqdm) (for printing pretty progress bars)
 [`StringIO`](https://docs.python.org/2/library/stringio.html) (or [`io`](https://docs.python.org/3/library/io.html) if in Python 3.x)
 
 #### Example
 
-###### REMD Simulation specs 
+###### REMD Simulation specs
 Suppose you ran a REMD simulation for the peptide example using the CHARMM forcefield (see lammps/examples/peptide) in Lammps with the following settings:
 
 - number of replicas = 16
@@ -45,11 +45,11 @@ Suppose you ran a REMD simulation for the peptide example using the CHARMM force
 So, when the dust settles,
 
 - You'll have 16 replica trajectories. For this tool to work, each replica traj must be named: `<prefix>.<n>.lammpstrj[.gz or .bz2]`, where,
-  - `prefix` = some common prefix for all your trajectories and (say it is called "peptide")` 
+  - `prefix` = some common prefix for all your trajectories and (say it is called "peptide")`
   - `n` = replica number (0-15 in this case). Note: trajectories **must be in default LAMMPS format **(so stuff like dcd won't work)
 
 - You will also have a master LAMMPS log file (`logfn`) that contains the swap history of all the replicas
-  (for more details see [here](https://lammps.sandia.gov/doc/temper.html). Assume that this is called `log.peptide`
+  (for more details see [here](https://docs.lammps.org/temper.html). Assume that this is called `log.peptide`
 
 - Further you must have a txt file that numpy can read which stores all the temperature values (say this is called `temps.txt`)
 
@@ -60,7 +60,7 @@ So, when the dust settles,
 
 - Configurational log-weight calculation (using [`pymbar`](https://github.com/choderalab/pymbar)). Here, this is limited to the canonical (NVT) ensemble **and without biasing restraints** in your simulation. To do this you'd need to have a file (say called `ene.dat`) that stores a 2D  (K X N) array of total potential energies, where,
 
-  - K = total number of replicas = 16, and N = total number of frames in each replica trajectory (= 1000 / 20 = 50 in this case) 
+  - K = total number of replicas = 16, and N = total number of frames in each replica trajectory (= 1000 / 20 = 50 in this case)
 
   - `ene[k,n]` = energy from n-th frame of k-th replica.
 

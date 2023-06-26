@@ -1,7 +1,8 @@
+// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -18,18 +19,19 @@
                         added forcezero ls
    Sources: Numerical Recipes frprmn routine
             "Conjugate Gradient Method Without the Agonizing Pain" by
-            JR Shewchuk, http://www-2.cs.cmu.edu/~jrs/jrspapers.html#cg
+            JR Shewchuk, https://www.cs.cmu.edu/~quake-papers/painless-conjugate-gradient.pdf
 ------------------------------------------------------------------------- */
 
 #include "min_linesearch.h"
-#include <mpi.h>
-#include <cmath>
+
 #include "atom.h"
-#include "modify.h"
 #include "fix_minimize.h"
-#include "pair.h"
+#include "modify.h"
 #include "output.h"
+#include "pair.h"
 #include "thermo.h"
+
+#include <cmath>
 
 using namespace LAMMPS_NS;
 
@@ -53,19 +55,19 @@ using namespace LAMMPS_NS;
 MinLineSearch::MinLineSearch(LAMMPS *lmp) : Min(lmp)
 {
   searchflag = 1;
-  gextra = hextra = NULL;
-  x0extra_atom = gextra_atom = hextra_atom = NULL;
+  gextra = hextra = nullptr;
+  x0extra_atom = gextra_atom = hextra_atom = nullptr;
 }
 
 /* ---------------------------------------------------------------------- */
 
 MinLineSearch::~MinLineSearch()
 {
-  delete [] gextra;
-  delete [] hextra;
-  delete [] x0extra_atom;
-  delete [] gextra_atom;
-  delete [] hextra_atom;
+  delete[] gextra;
+  delete[] hextra;
+  delete[] x0extra_atom;
+  delete[] gextra_atom;
+  delete[] hextra_atom;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -74,18 +76,18 @@ void MinLineSearch::init()
 {
   Min::init();
 
-  if (linestyle == 0) linemin = &MinLineSearch::linemin_backtrack;
-  else if (linestyle == 1) linemin = &MinLineSearch::linemin_quadratic;
-  else if (linestyle == 2) linemin = &MinLineSearch::linemin_forcezero;
+  if (linestyle == BACKTRACK) linemin = &MinLineSearch::linemin_backtrack;
+  else if (linestyle == QUADRATIC) linemin = &MinLineSearch::linemin_quadratic;
+  else if (linestyle == FORCEZERO) linemin = &MinLineSearch::linemin_forcezero;
 
-  delete [] gextra;
-  delete [] hextra;
-  gextra = hextra = NULL;
+  delete[] gextra;
+  delete[] hextra;
+  gextra = hextra = nullptr;
 
-  delete [] x0extra_atom;
-  delete [] gextra_atom;
-  delete [] hextra_atom;
-  x0extra_atom = gextra_atom = hextra_atom = NULL;
+  delete[] x0extra_atom;
+  delete[] gextra_atom;
+  delete[] hextra_atom;
+  x0extra_atom = gextra_atom = hextra_atom = nullptr;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -201,7 +203,7 @@ int MinLineSearch::linemin_backtrack(double eoriginal, double &alpha)
   // for atom coords, max amount = dmax
   // for extra per-atom dof, max amount = extra_max[]
   // for extra global dof, max amount is set by fix
-  // also insure alpha <= ALPHA_MAX
+  // also ensure alpha <= ALPHA_MAX
   // else will have to backtrack from huge value when forces are tiny
   // if all search dir components are already 0.0, exit with error
 
@@ -251,7 +253,7 @@ int MinLineSearch::linemin_backtrack(double eoriginal, double &alpha)
 
   // backtrack with alpha until energy decrease is sufficient
 
-  while (1) {
+  while (true) {
     ecurrent = alpha_step(alpha,1);
 
     // if energy change is better than ideal, exit with success
@@ -326,7 +328,7 @@ int MinLineSearch::linemin_quadratic(double eoriginal, double &alpha)
   int i,m,n;
   double fdothall,fdothme,hme,hmax,hmaxall;
   double de_ideal,de;
-  double delfh,engprev,relerr,alphaprev,fhprev,ff,fh,alpha0;
+  double delfh,engprev,relerr,alphaprev,fhprev,fh,alpha0;
   double dot[2],dotall[2];
   double *xatom,*x0atom,*fatom,*hatom;
   double alphamax;
@@ -353,7 +355,7 @@ int MinLineSearch::linemin_quadratic(double eoriginal, double &alpha)
   // for atom coords, max amount = dmax
   // for extra per-atom dof, max amount = extra_max[]
   // for extra global dof, max amount is set by fix
-  // also insure alphamax <= ALPHA_MAX
+  // also ensure alphamax <= ALPHA_MAX
   // else will have to backtrack from huge value when forces are tiny
   // if all search dir components are already 0.0, exit with error
 
@@ -410,7 +412,7 @@ int MinLineSearch::linemin_quadratic(double eoriginal, double &alpha)
   //        etmp-eoriginal+alphatmp*fdothall);
   // alpha_step(0.0,1);
 
-  while (1) {
+  while (true) {
     ecurrent = alpha_step(alpha,1);
 
     // compute new fh, alpha, delfh
@@ -437,12 +439,8 @@ int MinLineSearch::linemin_quadratic(double eoriginal, double &alpha)
         dotall[1] += fextra[i]*hextra[i];
       }
     }
-    ff = dotall[0];
     fh = dotall[1];
-    if (output->thermo->normflag) {
-      ff /= atom->natoms;
-      fh /= atom->natoms;
-    }
+    if (output->thermo->normflag) fh /= atom->natoms;
 
     delfh = fh - fhprev;
 
@@ -544,7 +542,7 @@ pseudo code:
               bactrack = true
 
            // GRAD_TOL = 0.1
-           if ( (not backtrack) && (fabs(fhCurr/fh0) <= GRAD_TOL) ):
+           if ((not backtrack) && (fabs(fhCurr/fh0) <= GRAD_TOL)):
               // forces sufficiently reduced without energy increase
               EXIT with success
 
@@ -632,7 +630,7 @@ int MinLineSearch::linemin_forcezero(double eoriginal, double &alpha)
   // for extra per-atom dof, max amount = extra_max[]
   // for extra global dof, max amount is set by fix
 
-  // also insure alpha <= ALPHA_MAX else will have
+  // also ensure alpha <= ALPHA_MAX else will have
   // to backtrack from huge value when forces are tiny
 
   // if all search dir components are already 0.0, exit with error
@@ -706,7 +704,7 @@ int MinLineSearch::linemin_forcezero(double eoriginal, double &alpha)
 
   // main linesearch loop
 
-  while (1) {
+  while (true) {
     backtrack = false;
     fhPrev = fhCurr;
     engPrev = engCurr;

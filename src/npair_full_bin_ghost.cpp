@@ -1,7 +1,8 @@
+// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -53,7 +54,7 @@ void NPairFullBinGhost::build(NeighList *list)
   int *molindex = atom->molindex;
   int *molatom = atom->molatom;
   Molecule **onemols = atom->avec->onemols;
-  if (molecular == 2) moltemplate = 1;
+  if (molecular == Atom::TEMPLATE) moltemplate = 1;
   else moltemplate = 0;
 
   int *ilist = list->ilist;
@@ -100,7 +101,7 @@ void NPairFullBinGhost::build(NeighList *list)
           rsq = delx*delx + dely*dely + delz*delz;
 
           if (rsq <= cutneighsq[itype][jtype]) {
-            if (molecular) {
+            if (molecular != Atom::ATOMIC) {
               if (!moltemplate)
                 which = find_special(special[i],nspecial[i],tag[j]);
               else if (imol >= 0)

@@ -1,7 +1,8 @@
+// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -15,9 +16,11 @@
 #include "pair_snap_kokkos_impl.h"
 
 namespace LAMMPS_NS {
-template class PairSNAPKokkos<LMPDeviceType>;
-#ifdef KOKKOS_ENABLE_CUDA
-template class PairSNAPKokkos<LMPHostType>;
+
+template class PairSNAPKokkosDevice<LMPDeviceType>;
+#ifdef LMP_KOKKOS_GPU
+template class PairSNAPKokkosHost<LMPHostType>;
 #endif
+
 }
 

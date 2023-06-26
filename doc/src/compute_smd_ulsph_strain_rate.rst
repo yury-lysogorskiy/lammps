@@ -6,8 +6,7 @@ compute smd/ulsph/strain/rate command
 Syntax
 """"""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    compute ID group-ID smd/ulsph/strain/rate
 
@@ -17,8 +16,7 @@ Syntax
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    compute 1 all smd/ulsph/strain/rate
 
@@ -29,10 +27,11 @@ Define a computation that outputs the rate of the logarithmic strain
 tensor for particles interacting via the updated Lagrangian SPH pair
 style.
 
-See `this PDF guide <PDF/SMD_LAMMPS_userguide.pdf>`_ to using Smooth
+See `this PDF guide <PDF/MACHDYN_LAMMPS_userguide.pdf>`_ to using Smooth
 Mach Dynamics in LAMMPS.
 
-**Output info:**
+Output info
+"""""""""""
 
 This compute calculates a per-particle vector of vectors (tensors),
 which can be accessed by any command that uses per-particle values
@@ -47,9 +46,8 @@ zz, xy, xz, yz components of the symmetric strain rate tensor.
 Restrictions
 """"""""""""
 
-
-This compute is part of the USER-SMD package.  It is only enabled if
-LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` doc page for more info.
+This compute is part of the MACHDYN package.  It is only enabled if
+LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` page for more info.
 
 This compute can only be used for particles which interact with the
 updated Lagrangian SPH pair style.
@@ -59,4 +57,7 @@ Related commands
 
 :doc:`compute smd/tlsph/strain/rate <compute_smd_tlsph_strain_rate>`
 
-**Default:** none
+Default
+"""""""
+
+none

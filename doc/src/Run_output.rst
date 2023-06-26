@@ -14,55 +14,51 @@ thermodynamic state and a total run time for the simulation.  It also
 appends statistics about the CPU time and storage requirements for the
 simulation.  An example set of statistics is shown here:
 
-
 .. parsed-literal::
 
-   Loop time of 2.81192 on 4 procs for 300 steps with 2004 atoms
+   Loop time of 0.942801 on 4 procs for 300 steps with 2004 atoms
 
-   Performance: 18.436 ns/day  1.302 hours/ns  106.689 timesteps/s
-   97.0% CPU use with 4 MPI tasks x no OpenMP threads
+   Performance: 54.985 ns/day, 0.436 hours/ns, 318.201 timesteps/s, 637.674 katom-step/s
+   195.2% CPU use with 2 MPI tasks x 2 OpenMP threads
 
-   MPI task timings breakdown:
+   MPI task timing breakdown:
    Section \|  min time  \|  avg time  \|  max time  \|%varavg\| %total
    ---------------------------------------------------------------
-   Pair    \| 1.9808     \| 2.0134     \| 2.0318     \|   1.4 \| 71.60
-   Bond    \| 0.0021894  \| 0.0060319  \| 0.010058   \|   4.7 \|  0.21
-   Kspace  \| 0.3207     \| 0.3366     \| 0.36616    \|   3.1 \| 11.97
-   Neigh   \| 0.28411    \| 0.28464    \| 0.28516    \|   0.1 \| 10.12
-   Comm    \| 0.075732   \| 0.077018   \| 0.07883    \|   0.4 \|  2.74
-   Output  \| 0.00030518 \| 0.00042665 \| 0.00078821 \|   1.0 \|  0.02
-   Modify  \| 0.086606   \| 0.086631   \| 0.086668   \|   0.0 \|  3.08
-   Other   \|            \| 0.007178   \|            \|       \|  0.26
+   Pair    \| 0.61419    \| 0.62872    \| 0.64325    \|   1.8 \| 66.69
+   Bond    \| 0.0028608  \| 0.0028899  \| 0.002919   \|   0.1 \|  0.31
+   Kspace  \| 0.12652    \| 0.14048    \| 0.15444    \|   3.7 \| 14.90
+   Neigh   \| 0.10242    \| 0.10242    \| 0.10242    \|   0.0 \| 10.86
+   Comm    \| 0.026753   \| 0.027593   \| 0.028434   \|   0.5 \|  2.93
+   Output  \| 0.00018341 \| 0.00030942 \| 0.00043542 \|   0.0 \|  0.03
+   Modify  \| 0.039117   \| 0.039348   \| 0.039579   \|   0.1 \|  4.17
+   Other   \|            \| 0.001041   \|            \|       \|  0.11
 
-   Nlocal:    501 ave 508 max 490 min
-   Histogram: 1 0 0 0 0 0 1 1 0 1
-   Nghost:    6586.25 ave 6628 max 6548 min
-   Histogram: 1 0 1 0 0 0 1 0 0 1
-   Neighs:    177007 ave 180562 max 170212 min
-   Histogram: 1 0 0 0 0 0 0 1 1 1
+   Nlocal:           1002 ave        1006 max         998 min
+   Histogram: 1 0 0 0 0 0 0 0 0 1
+   Nghost:         8670.5 ave        8691 max        8650 min
+   Histogram: 1 0 0 0 0 0 0 0 0 1
+   Neighs:         354010 ave      357257 max      350763 min
+   Histogram: 1 0 0 0 0 0 0 0 0 1
 
-   Total # of neighbors = 708028
-   Ave neighs/atom = 353.307
-   Ave special neighs/atom = 2.34032
+   Total # of neighbors = 708020
+   Ave neighs/atom = 353.30339
+   Ave special neighs/atom = 2.3403194
    Neighbor list builds = 26
    Dangerous builds = 0
 
-
 ----------
 
-
-The first section provides a global loop timing summary. The *loop
-time* is the total wall-clock time for the simulation to run.  The
-*Performance* line is provided for convenience to help predict how
-long it will take to run a desired physical simulation.  The *CPU use*
-line provides the CPU utilization per MPI task; it should be close to
-100% times the number of OpenMP threads (or 1 of not using OpenMP).
-Lower numbers correspond to delays due to file I/O or insufficient
-thread utilization.
-
+The first section provides a global loop timing summary. The *loop time*
+is the total wall-clock time for the simulation to run.  The
+*Performance* line is provided for convenience to help predict how long
+it will take to run a desired physical simulation and to have numbers
+useful for performance comparison between different simulation settings
+or system sizes.  The *CPU use* line provides the CPU utilization per
+MPI task; it should be close to 100% times the number of OpenMP threads
+(or 1 of not using OpenMP).  Lower numbers correspond to delays due to
+file I/O or insufficient thread utilization.
 
 ----------
-
 
 The *MPI task* section gives the breakdown of the CPU run time (in
 seconds) into major categories:
@@ -96,7 +92,6 @@ only and thus, because the breakdown for MPI tasks can change from
 MPI rank to MPI rank, this breakdown can be very different for
 individual ranks. Here is an example output for this section:
 
-
 .. parsed-literal::
 
    Thread timings breakdown (MPI rank 0):
@@ -109,40 +104,33 @@ individual ranks. Here is an example output for this section:
    Neigh   \| 0.084778   \| 0.086969   \| 0.089161   \|   0.7 \| 12.70
    Reduce  \| 0.0036485  \| 0.003737   \| 0.0038254  \|   0.1 \|  0.55
 
-
 ----------
 
-
 The third section above lists the number of owned atoms (Nlocal),
-ghost atoms (Nghost), and pair-wise neighbors stored per processor.
+ghost atoms (Nghost), and pairwise neighbors stored per processor.
 The max and min values give the spread of these values across
 processors with a 10-bin histogram showing the distribution. The total
 number of histogram counts is equal to the number of processors.
 
-
 ----------
 
-
 The last section gives aggregate statistics (across all processors)
-for pair-wise neighbors and special neighbors that LAMMPS keeps track
+for pairwise neighbors and special neighbors that LAMMPS keeps track
 of (see the :doc:`special_bonds <special_bonds>` command).  The number
 of times neighbor lists were rebuilt is tallied, as is the number of
 potentially *dangerous* rebuilds.  If atom movement triggered neighbor
 list rebuilding (see the :doc:`neigh_modify <neigh_modify>` command),
 then dangerous reneighborings are those that were triggered on the
 first timestep atom movement was checked for.  If this count is
-non-zero you may wish to reduce the delay factor to insure no force
+non-zero you may wish to reduce the delay factor to ensure no force
 interactions are missed by atoms moving beyond the neighbor skin
 distance before a rebuild takes place.
 
-
 ----------
-
 
 If an energy minimization was performed via the
 :doc:`minimize <minimize>` command, additional information is printed,
 e.g.
-
 
 .. parsed-literal::
 
@@ -165,16 +153,13 @@ information is provided about the line search and statistics on how
 many iterations and force-evaluations the minimizer required.
 Multiple force evaluations are typically done at each iteration to
 perform a 1d line minimization in the search direction.  See the
-:doc:`minimize <minimize>` doc page for more details.
-
+:doc:`minimize <minimize>` page for more details.
 
 ----------
-
 
 If a :doc:`kspace_style <kspace_style>` long-range Coulombics solver
 that performs FFTs was used during the run (PPPM, Ewald), then
 additional information is printed, e.g.
-
 
 .. parsed-literal::
 
@@ -184,7 +169,7 @@ additional information is printed, e.g.
 The first line is the time spent doing 3d FFTs (several per timestep)
 and the fraction it represents of the total KSpace time (listed
 above).  Each 3d FFT requires computation (3 sets of 1d FFTs) and
-communication (transposes).  The total flops performed is 5Nlog\_2(N),
+communication (transposes).  The total flops performed is 5Nlog_2(N),
 where N is the number of points in the 3d grid.  The FFTs are timed
 with and without the communication and a Gflop rate is computed.  The
 3d rate is with communication; the 1d rate is without (just the 1d

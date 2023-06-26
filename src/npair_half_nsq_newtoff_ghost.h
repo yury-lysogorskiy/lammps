@@ -1,7 +1,7 @@
 /* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -12,11 +12,11 @@
 ------------------------------------------------------------------------- */
 
 #ifdef NPAIR_CLASS
-
+// clang-format off
 NPairStyle(half/nsq/newtoff/ghost,
            NPairHalfNsqNewtoffGhost,
-           NP_HALF | NP_NSQ | NP_NEWTOFF | NP_GHOST | NP_ORTHO | NP_TRI)
-
+           NP_HALF | NP_NSQ | NP_NEWTOFF | NP_GHOST | NP_ORTHO | NP_TRI);
+// clang-format on
 #else
 
 #ifndef LMP_NPAIR_HALF_NSQ_NEWTOFF_GHOST_H
@@ -29,19 +29,10 @@ namespace LAMMPS_NS {
 class NPairHalfNsqNewtoffGhost : public NPair {
  public:
   NPairHalfNsqNewtoffGhost(class LAMMPS *);
-  ~NPairHalfNsqNewtoffGhost() {}
-  void build(class NeighList *);
+  void build(class NeighList *) override;
 };
 
-}
+}    // namespace LAMMPS_NS
 
 #endif
 #endif
-
-/* ERROR/WARNING messages:
-
-E: Neighbor list overflow, boost neigh_modify one
-
-UNDOCUMENTED
-
-*/

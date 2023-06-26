@@ -6,39 +6,35 @@ restart command
 Syntax
 """"""
 
-
 .. parsed-literal::
 
    restart 0
    restart N root keyword value ...
    restart N file1 file2 keyword value ...
 
-* N = write a restart file every this many timesteps
+* N = write a restart file on timesteps which are multiples of N
 * N can be a variable (see below)
 * root = filename to which timestep # is appended
 * file1,file2 = two full filenames, toggle between them when writing file
 * zero or more keyword/value pairs may be appended
 * keyword = *fileper* or *nfile*
-  
+
   .. parsed-literal::
-  
+
        *fileper* arg = Np
          Np = write one file for every this many processors
        *nfile* arg = Nf
          Nf = write this many files, one from each of Nf processors
 
-
-
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    restart 0
    restart 1000 poly.restart
    restart 1000 poly.restart.mpiio
-   restart 1000 restart.\*.equil
+   restart 1000 restart.*.equil
    restart 10000 poly.%.1 poly.%.2 nfile 10
    restart v_mystep poly.restart
 
@@ -46,13 +42,14 @@ Description
 """""""""""
 
 Write out a binary restart file with the current state of the
-simulation every so many timesteps, in either or both of two modes, as
-a run proceeds.  A value of 0 means do not write out any restart
-files.  The two modes are as follows.  If one filename is specified, a
-series of filenames will be created which include the timestep in the
-filename.  If two filenames are specified, only 2 restart files will
-be created, with those names.  LAMMPS will toggle between the 2 names
-as it writes successive restart files.
+simulation on timesteps which are a multiple of N.  A value of N = 0
+means do not write out any restart files, which is the default.
+Restart files are written in one (or both) of two modes as a run
+proceeds.  If one filename is specified, a series of filenames will be
+created which include the timestep in the filename.  If two filenames
+are specified, only 2 restart files will be created, with those names.
+LAMMPS will toggle between the 2 names as it writes successive restart
+files.
 
 Note that you can specify the restart command twice, once with a
 single filename and once with two filenames.  This would allow you,
@@ -66,10 +63,10 @@ two wild-card characters.
 
 If a "\*" appears in the single filename, it is replaced with the
 current timestep value.  This is only recognized when a single
-filename is used (not when toggling back and forth).  Thus, the 3rd
+filename is used (not when toggling back and forth).  Thus, the third
 example above creates restart files as follows: restart.1000.equil,
 restart.2000.equil, etc.  If a single filename is used with no "\*",
-then the timestep value is appended.  E.g. the 2nd example above
+then the timestep value is appended.  E.g. the second example above
 creates restart files as follows: poly.restart.1000,
 poly.restart.2000, etc.
 
@@ -89,8 +86,7 @@ file via the MPI-IO library, which is part of the MPI standard for
 versions 2.0 and above.  Using MPI-IO requires two steps.  First,
 build LAMMPS with its MPIIO package installed, e.g.
 
-
-.. parsed-literal::
+.. code-block:: bash
 
    make yes-mpiio    # installs the MPIIO package
    make mpi          # build LAMMPS for your platform
@@ -108,7 +104,7 @@ timestep of a run unless it is a multiple of N.  A restart file is
 written on the last timestep of a minimization if N > 0 and the
 minimization converges.
 
-Instead of a numeric value, N can be specified as an :doc:`equal-style variable <variable>`, which should be specified as v\_name, where
+Instead of a numeric value, N can be specified as an :doc:`equal-style variable <variable>`, which should be specified as v_name, where
 name is the variable name.  In this case, the variable is evaluated at
 the beginning of a run to determine the next timestep at which a
 restart file will be written out.  On that timestep, the variable will
@@ -122,15 +118,12 @@ For example, the following commands will write restart files
 every step from 1100 to 1200, and could be useful for debugging
 a simulation where something goes wrong at step 1163:
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    variable       s equal stride(1100,1200,1)
    restart        v_s tmp.restart
 
-
 ----------
-
 
 See the :doc:`read_restart <read_restart>` command for information about
 what is stored in a restart file.
@@ -152,9 +145,7 @@ another machine.  In this case, you can use the :doc:`-r command-line switch <Ru
    to re-use that information.  See the :doc:`read_restart <read_restart>`
    command for information about what is stored in a restart file.
 
-
 ----------
-
 
 The optional *nfile* or *fileper* keywords can be used in conjunction
 with the "%" wildcard character in the specified restart file name(s).
@@ -170,17 +161,14 @@ be written, by processors 0,25,50,75.  Each will collect information
 from itself and the next 24 processors and write it to a restart file.
 
 For the *fileper* keyword, the specified value of Np means write one
-file for every Np processors.  For example, if Np = 4, every 4th
+file for every Np processors.  For example, if Np = 4, every fourth
 processor (0,4,8,12,etc) will collect information from itself and the
 next 3 processors and write it to a restart file.
 
-
 ----------
-
 
 Restrictions
 """"""""""""
-
 
 To write and read restart files in parallel with MPI-IO, the MPIIO
 package must be installed.
@@ -193,7 +181,6 @@ Related commands
 Default
 """""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    restart 0

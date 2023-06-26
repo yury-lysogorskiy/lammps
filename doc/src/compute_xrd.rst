@@ -6,8 +6,7 @@ compute xrd command
 Syntax
 """"""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    compute ID group-ID xrd lambda type1 type2 ... typeN keyword value ...
 
@@ -17,9 +16,9 @@ Syntax
 * type1 type2 ... typeN = chemical symbol of each atom type (see valid options below)
 * zero or more keyword/value pairs may be appended
 * keyword = *2Theta* or *c* or *LP* or *manual* or *echo*
-  
+
   .. parsed-literal::
-  
+
        *2Theta* values = Min2Theta Max2Theta
          Min2Theta,Max2Theta = minimum and maximum 2 theta range to explore
          (radians or degrees)
@@ -32,13 +31,10 @@ Syntax
                   based on the values of the *c* parameters
        *echo* = flag to provide extra output for debugging purposes
 
-
-
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    compute 1 all xrd 1.541838 Al O 2Theta 0.087 0.87 c 1 1 1 LP 1 echo
    compute 2 all xrd 1.541838 Al O 2Theta 10 100 c 0.05 0.05 0.05 LP 1 manual
@@ -49,73 +45,71 @@ Examples
 Description
 """""""""""
 
-Define a computation that calculates x-ray diffraction intensity as described
+Define a computation that calculates X-ray diffraction intensity as described
 in :ref:`(Coleman) <xrd-Coleman>` on a mesh of reciprocal lattice nodes defined
 by the entire simulation domain (or manually) using a simulated radiation
-of wavelength lambda.
+of wavelength *lambda*.
 
-The x-ray diffraction intensity, I, at each reciprocal lattice point, k,
-is computed from the structure factor, F, using the equations:
+The X-ray diffraction intensity, :math:`I`, at each reciprocal lattice point,
+:math:`k`, is computed from the structure factor, :math:`F`, using the
+equations:
 
-.. image:: Eqs/compute_xrd1.jpg
-   :align: center
+.. math::
 
-.. image:: Eqs/compute_xrd2.jpg
-   :align: center
+   I &= L_p(\theta)\frac{F^{*}F}{N} \\
+   F(\mathbf{k}) &= \sum_{j=1}^{N}f_j(\theta)exp(2\pi i \mathbf{k}\cdot \mathbf{r}_j) \\
+   L_p(\theta) &= \frac{1+\cos^2(2\theta)}{\cos(\theta)\sin^2(\theta)} \\
+   \frac{\sin(\theta)}{\lambda} &= \frac{\left\lVert\mathbf{k}\right\rVert}{2}
 
-.. image:: Eqs/compute_xrd3.jpg
-   :align: center
-
-.. image:: Eqs/compute_xrd4.jpg
-   :align: center
-
-Here, K is the location of the reciprocal lattice node, rj is the
-position of each atom, fj are atomic scattering factors, LP is the
-Lorentz-polarization factor, and theta is the scattering angle of
-diffraction.  The Lorentz-polarization factor can be turned off using
-the optional *LP* keyword.
+Here, :math:`\mathbf{k}` is the location of the reciprocal lattice node,
+:math:`r_j` is the position of each atom, :math:`f_j` are atomic scattering
+factors, *Lp* is the Lorentz-polarization factor, and :math:`\theta` is the
+scattering angle of diffraction.  The Lorentz-polarization factor can be turned
+off using the optional *LP* keyword.
 
 Diffraction intensities are calculated on a three-dimensional mesh of
-reciprocal lattice nodes. The mesh spacing is defined either (a)
-by the entire simulation domain or (b) manually using selected values as
+reciprocal lattice nodes. The mesh spacing is defined either (a) by the entire
+simulation domain or (b) manually using selected values as
 shown in the 2D diagram below.
 
-.. image:: JPG/xrd_mesh_small.jpg
-   :target: JPG/xrd_mesh.jpg
+.. image:: img/xrd_mesh.jpg
+   :scale: 75%
    :align: center
 
 For a mesh defined by the simulation domain, a rectilinear grid is
-constructed with spacing *c*\ \*inv(A) along each reciprocal lattice
-axis. Where A are the vectors corresponding to the edges of the
-simulation cell. If one or two directions has non-periodic boundary
-conditions, then the spacing in these directions is defined from the
+constructed with spacing :math:`c A^{-1}` along each reciprocal lattice
+axis, where :math:`A` is a matrix containing the vectors corresponding to the
+edges of the simulation cell. If one or two directions has non-periodic
+boundary conditions, then the spacing in these directions is defined from the
 average of the (inversed) box lengths with periodic boundary conditions.
 Meshes defined by the simulation domain must contain at least one periodic
 boundary.
 
 If the *manual* flag is included, the mesh of reciprocal lattice nodes
-will defined using the *c* values for the spacing along each
+will be defined using the *c* values for the spacing along each
 reciprocal lattice axis. Note that manual mapping of the reciprocal
 space mesh is good for comparing diffraction results from multiple
-simulations; however it can reduce the likelihood that Bragg
-reflections will be satisfied unless small spacing parameters (< 0.05
-Angstrom\^(-1)) are implemented.  Meshes with manual spacing do not
-require a periodic boundary.
+simulations; however, it can reduce the likelihood that Bragg
+reflections will be satisfied unless small spacing parameters
+(:math:`< 0.05~\AA^{-1}`) are implemented.
+Meshes with manual spacing do not require a periodic boundary.
 
 The limits of the reciprocal lattice mesh are determined by range of
-scattering angles explored.  The *2Theta* parameters allows the user
+scattering angles explored.  The *2Theta* parameter allows the user
 to reduce the scattering angle range to only the region of interest
 which reduces the cost of the computation.
 
-The atomic scattering factors, fj, accounts for the reduction in
+The atomic scattering factor, :math:`f_j`, accounts for the reduction in
 diffraction intensity due to Compton scattering.  Compute xrd uses
 analytical approximations of the atomic scattering factors that vary
 for each atom type (type1 type2 ... typeN) and angle of diffraction.
 The analytic approximation is computed using the formula
 :ref:`(Colliex) <Colliex>`:
 
-.. image:: Eqs/compute_xrd5.jpg
-   :align: center
+.. math::
+
+   f_j\left ( \frac{\sin(\theta)}{\lambda} \right )=\sum_{i=1}^{4}
+   a_i \exp\left ( -b_i \frac{\sin^{2}(\theta)}{\lambda^{2}} \right )+c
 
 Coefficients parameterized by :ref:`(Peng) <Peng>` are assigned for each
 atom type designating the chemical symbol and charge of each atom
@@ -210,11 +204,12 @@ type. Valid chemical symbols for compute xrd are:
 If the *echo* keyword is specified, compute xrd will provide extra
 reporting information to the screen.
 
-**Output info:**
+Output info
+"""""""""""
 
 This compute calculates a global array.  The number of rows in the
 array is the number of reciprocal lattice nodes that are explored
-which by the mesh.  The global array has 2 columns.
+which by the mesh.  The global array has two columns.
 
 The first column contains the diffraction angle in the units (radians
 or degrees) provided with the *2Theta* values. The second column contains
@@ -229,11 +224,10 @@ All array values calculated by this compute are "intensive".
 Restrictions
 """"""""""""
 
+This compute is part of the DIFFRACTION package.  It is only
+enabled if LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` page for more info.
 
-This compute is part of the USER-DIFFRACTION package.  It is only
-enabled if LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` doc page for more info.
-
-The compute\_xrd command does not work for triclinic cells.
+The compute_xrd command does not work for triclinic cells.
 
 Related commands
 """"""""""""""""
@@ -244,30 +238,22 @@ Related commands
 Default
 """""""
 
-The option defaults are 2Theta = 1 179 (degrees), c = 1 1 1, LP = 1,
+The option defaults are *2Theta* = 1 179 (degrees), *c* = 1 1 1, *LP* = 1,
 no manual flag, no echo flag.
-
 
 ----------
 
-
 .. _xrd-Coleman:
-
-
 
 **(Coleman)** Coleman, Spearot, Capolungo, MSMSE, 21, 055020
 (2013).
 
 .. _Colliex:
 
-
-
 **(Colliex)** Colliex et al. International Tables for Crystallography
 Volume C: Mathematical and Chemical Tables, 249-429 (2004).
 
 .. _Peng:
-
-
 
 **(Peng)** Peng, Ren, Dudarev, Whelan, Acta Crystallogr. A, 52, 257-76
 (1996).

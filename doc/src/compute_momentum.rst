@@ -6,8 +6,7 @@ compute momentum command
 Syntax
 """"""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    compute ID group-ID momentum
 
@@ -17,25 +16,25 @@ Syntax
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    compute 1 all momentum
 
 Description
 """""""""""
 
-Define a computation that calculates the translational momentum
-of a group of particles.
+Define a computation that calculates the translational momentum *p*
+of a group of particles.  It is computed as the sum
+:math:`\vec{p} = \sum_i m_i \cdot \vec{v}_i`
+over all particles in the compute group, where *m* and *v* are
+the mass and velocity vector of the particle, respectively.
 
-The momentum of each particles is computed as m v, where m and v are
-the mass and velocity of the particle.
-
-**Output info:**
+Output info
+"""""""""""
 
 This compute calculates a global vector (the summed momentum) of
 length 3. This value can be used by any command that uses a global
-vector value from a compute as input. See the :doc:`Howto output <Howto_output>` doc page for an overview of LAMMPS output
+vector value from a compute as input. See the :doc:`Howto output <Howto_output>` page for an overview of LAMMPS output
 options.
 
 The vector value calculated by this compute is "extensive". The vector
@@ -44,11 +43,13 @@ value will be in mass\*velocity :doc:`units <units>`.
 Restrictions
 """"""""""""
 
-
-This compute is part of the USER-MISC package.  It is only enabled if
-LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` doc page for more info.
+This compute is part of the EXTRA-COMPUTE package.  It is only enabled if
+LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` page for more info.
 
 Related commands
 """"""""""""""""
 
-**Default:** none
+Default
+"""""""
+
+none

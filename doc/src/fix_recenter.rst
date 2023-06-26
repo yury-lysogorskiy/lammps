@@ -6,7 +6,6 @@ fix recenter command
 Syntax
 """"""
 
-
 .. parsed-literal::
 
    fix ID group-ID recenter x y z keyword value ...
@@ -16,20 +15,17 @@ Syntax
 * x,y,z = constrain center-of-mass to these coords (distance units),         any coord can also be NULL or INIT (see below)
 * zero or more keyword/value pairs may be appended
 * keyword = *shift* or *units*
-  
+
   .. parsed-literal::
-  
+
        *shift* value = group-ID
          group-ID = group of atoms whose coords are shifted
        *units* value = *box* or *lattice* or *fraction*
 
-
-
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    fix 1 all recenter 0.0 0.5 0.0
    fix 1 all recenter INIT INIT NULL
@@ -42,7 +38,7 @@ Constrain the center-of-mass position of a group of atoms by adjusting
 the coordinates of the atoms every timestep.  This is simply a small
 shift that does not alter the dynamics of the system or change the
 relative coordinates of any pair of atoms in the group.  This can be
-used to insure the entire collection of atoms (or a portion of them)
+used to ensure the entire collection of atoms (or a portion of them)
 do not drift during the simulation due to random perturbations
 (e.g. :doc:`fix langevin <fix_langevin>` thermostatting).
 
@@ -62,7 +58,7 @@ example, the COM could be computed on a protein to keep it in the
 center of the simulation box.  But the entire system (protein + water)
 could be shifted.
 
-If the *units* keyword is set to *box*\ , then the distance units of
+If the *units* keyword is set to *box*, then the distance units of
 x,y,z are defined by the :doc:`units <units>` command - e.g. Angstroms
 for *real* units.  A *lattice* value means the distance units are in
 lattice spacings.  The :doc:`lattice <lattice>` command must have been
@@ -97,7 +93,8 @@ velocities with zero aggregate linear and/or angular momentum.
    simulation scenario is to use the :doc:`fix spring <fix_spring>` command
    to tether the molecule in place.
 
-**Restart, fix\_modify, output, run start/stop, minimize info:**
+Restart, fix_modify, output, run start/stop, minimize info
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 No information about this fix is written to :doc:`binary restart files <restart>`.  None of the :doc:`fix_modify <fix_modify>` options
 are relevant to this fix.
@@ -119,9 +116,8 @@ the :doc:`run <run>` command.  This fix is not invoked during :doc:`energy minim
 Restrictions
 """"""""""""
 
-
 This fix should not be used with an x,y,z setting that causes a large
-shift in the system on the 1st timestep, due to the requested COM
+shift in the system on the first timestep, due to the requested COM
 being very different from the initial COM.  This could cause atoms to
 be lost, especially in parallel.  Instead, use the
 :doc:`displace_atoms <displace_atoms>` command, which can be used to

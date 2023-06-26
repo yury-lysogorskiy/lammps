@@ -1,7 +1,7 @@
 /* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -12,13 +12,14 @@
 ------------------------------------------------------------------------- */
 
 #ifdef FIX_CLASS
-
-FixStyle(momentum/kk,FixMomentumKokkos<LMPDeviceType>)
-FixStyle(momentum/kk/device,FixMomentumKokkos<LMPDeviceType>)
-FixStyle(momentum/kk/host,FixMomentumKokkos<LMPHostType>)
-
+// clang-format off
+FixStyle(momentum/kk,FixMomentumKokkos<LMPDeviceType>);
+FixStyle(momentum/kk/device,FixMomentumKokkos<LMPDeviceType>);
+FixStyle(momentum/kk/host,FixMomentumKokkos<LMPHostType>);
+// clang-format on
 #else
 
+// clang-format off
 #ifndef LMP_FIX_MOMENTUM_KOKKOS_H
 #define LMP_FIX_MOMENTUM_KOKKOS_H
 
@@ -33,7 +34,7 @@ class FixMomentumKokkos : public FixMomentum {
   typedef ArrayTypes<DeviceType> AT;
 
   FixMomentumKokkos(class LAMMPS *, int, char **);
-  void end_of_step();
+  void end_of_step() override;
 };
 
 }
@@ -41,6 +42,3 @@ class FixMomentumKokkos : public FixMomentum {
 #endif
 #endif
 
-/* ERROR/WARNING messages:
-
-*/

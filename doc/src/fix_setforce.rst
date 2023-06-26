@@ -1,17 +1,17 @@
 .. index:: fix setforce
+.. index:: fix setforce/kk
+.. index:: fix setforce/spin
 
 fix setforce command
 ====================
 
-fix setforce/kk command
-=======================
+Accelerator Variants: *setforce/kk*
 
 fix setforce/spin command
 =========================
 
 Syntax
 """"""
-
 
 .. parsed-literal::
 
@@ -23,19 +23,16 @@ Syntax
 * any of fx,fy,fz can be a variable (see below)
 * zero or more keyword/value pairs may be appended to args
 * keyword = *region*
-  
+
   .. parsed-literal::
-  
+
        *region* value = region-ID
          region-ID = ID of region atoms must be in to have added force
-
-
 
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    fix freeze indenter setforce 0.0 0.0 0.0
    fix 2 edge setforce NULL 0.0 0.0
@@ -57,9 +54,9 @@ Any of the fx,fy,fz values can be specified as NULL which means do not
 alter the force component in that dimension.
 
 Any of the 3 quantities defining the force components can be specified
-as an equal-style or atom-style :doc:`variable <variable>`, namely *fx*\ ,
-*fy*\ , *fz*\ .  If the value is a variable, it should be specified as
-v\_name, where name is the variable name.  In this case, the variable
+as an equal-style or atom-style :doc:`variable <variable>`, namely *fx*,
+*fy*, *fz*\ .  If the value is a variable, it should be specified as
+v_name, where name is the variable name.  In this case, the variable
 will be evaluated each timestep, and its value used to determine the
 force component.
 
@@ -77,9 +74,7 @@ If the *region* keyword is used, the atom must also be in the
 specified geometric :doc:`region <region>` in order to have force added
 to it.
 
-
 ----------
-
 
 Style *spin* suffix sets the components of the magnetic precession
 vectors instead of the mechanical forces. This also erases all
@@ -92,36 +87,20 @@ atoms in the simulation by zeroing their precession vector.
 All options defined above remain valid, they just apply to the magnetic
 precession vectors instead of the forces.
 
+----------
+
+.. include:: accel_styles.rst
+
+.. note::
+
+  The region keyword is supported by Kokkos, but a Kokkos-enabled
+  region must be used. See the region :doc:`region <region>` command for
+  more information.
 
 ----------
 
-
-Styles with a *gpu*\ , *intel*\ , *kk*\ , *omp*\ , or *opt* suffix are
-functionally the same as the corresponding style without the suffix.
-They have been optimized to run faster, depending on your available
-hardware, as discussed on the :doc:`Speed packages <Speed_packages>` doc
-page.  The accelerated styles take the same arguments and should
-produce the same results, except for round-off and precision issues.
-
-The region keyword is also supported by Kokkos, but a Kokkos-enabled
-region must be used. See the region :doc:`region <region>` command for
-more information.
-
-These accelerated styles are part of the r Kokkos package.  They are
-only enabled if LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` doc page for more info.
-
-You can specify the accelerated styles explicitly in your input script
-by including their suffix, or you can use the :doc:`-suffix command-line switch <Run_options>` when you invoke LAMMPS, or you can use the
-:doc:`suffix <suffix>` command in your input script.
-
-See the :doc:`Speed packages <Speed_packages>` doc page for more
-instructions on how to use the accelerated styles effectively.
-
-
-----------
-
-
-**Restart, fix\_modify, output, run start/stop, minimize info:**
+Restart, fix_modify, output, run start/stop, minimize info
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 No information about this fix is written to :doc:`binary restart files <restart>`.
 
@@ -150,13 +129,16 @@ non-zero force to atoms during a minimization.
 Restrictions
 """"""""""""
 
-
-The fix *setforce/spin* only makes sense when LAMMPS was built with the
-SPIN package.
+Fix *setforce/spin* is part of the SPIN package.  It is only
+enabled if LAMMPS was built with that package.  See the :doc:`Build
+package <Build_package>` page for more info.
 
 Related commands
 """"""""""""""""
 
 :doc:`fix addforce <fix_addforce>`, :doc:`fix aveforce <fix_aveforce>`
 
-**Default:** none
+Default
+"""""""
+
+none

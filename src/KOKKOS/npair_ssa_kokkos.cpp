@@ -1,7 +1,8 @@
+// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -64,8 +65,6 @@ void NPairSSAKokkos<DeviceType>::copy_neighbor_info()
   k_ex1_type = neighborKK->k_ex1_type;
   k_ex2_type = neighborKK->k_ex2_type;
   k_ex_type = neighborKK->k_ex_type;
-  k_ex1_group = neighborKK->k_ex1_group;
-  k_ex2_group = neighborKK->k_ex2_group;
   k_ex1_bit = neighborKK->k_ex1_bit;
   k_ex2_bit = neighborKK->k_ex2_bit;
   k_ex_mol_group = neighborKK->k_ex_mol_group;
@@ -234,7 +233,7 @@ int NPairSSAKokkosExecute<DeviceType>::exclusion(const int &i,const int &j,
 
 /* ----------------------------------------------------------------------
    binned neighbor list construction with full Newton's 3rd law
-   for use by Shardlow Spliting Algorithm
+   for use by Shardlow Splitting Algorithm
    each owned atom i checks its own bin and other bins in Newton stencil
    every pair stored exactly once by some processor
 ------------------------------------------------------------------------- */
@@ -416,8 +415,6 @@ fprintf(stdout, "tota%03d total %3d could use %6d inums, expected %6d inums. inu
          k_ex2_type.view<DeviceType>(),
          k_ex_type.view<DeviceType>(),
          nex_group,
-         k_ex1_group.view<DeviceType>(),
-         k_ex2_group.view<DeviceType>(),
          k_ex1_bit.view<DeviceType>(),
          k_ex2_bit.view<DeviceType>(),
          nex_mol,
@@ -432,8 +429,6 @@ fprintf(stdout, "tota%03d total %3d could use %6d inums, expected %6d inums. inu
   k_ex1_type.sync<DeviceType>();
   k_ex2_type.sync<DeviceType>();
   k_ex_type.sync<DeviceType>();
-  k_ex1_group.sync<DeviceType>();
-  k_ex2_group.sync<DeviceType>();
   k_ex1_bit.sync<DeviceType>();
   k_ex2_bit.sync<DeviceType>();
   k_ex_mol_group.sync<DeviceType>();
@@ -452,7 +447,7 @@ fprintf(stdout, "tota%03d total %3d could use %6d inums, expected %6d inums. inu
 
   bool firstTry = true;
   data.h_resize()=1;
-  while(data.h_resize()) {
+  while (data.h_resize()) {
     data.h_new_maxneighs() = list->maxneighs;
     data.h_resize() = 0;
 
@@ -460,8 +455,9 @@ fprintf(stdout, "tota%03d total %3d could use %6d inums, expected %6d inums. inu
     Kokkos::deep_copy(data.new_maxneighs, data.h_new_maxneighs);
 
     // loop over bins with local atoms, storing half of the neighbors
-    Kokkos::parallel_for(ssa_phaseCt, LAMMPS_LAMBDA (const int workPhase) {
-      data.build_locals_onePhase(firstTry, comm->me, workPhase);
+    Kokkos::parallel_for(Kokkos::RangePolicy<DeviceType>(0,ssa_phaseCt),
+     LAMMPS_LAMBDA (const int workPhase) {
+      data.build_locals_onePhase(firstTry, workPhase);
     });
     k_ssa_itemLoc.modify<DeviceType>();
     k_ssa_itemLen.modify<DeviceType>();
@@ -473,7 +469,8 @@ fprintf(stdout, "tota%03d total %3d could use %6d inums, expected %6d inums. inu
       h_ssa_itemLen(ssa_phaseCt-1,h_ssa_phaseLen(ssa_phaseCt-1)-1);
 
     // loop over AIR ghost atoms, storing their local neighbors
-    Kokkos::parallel_for(ssa_gphaseCt, LAMMPS_LAMBDA (const int workPhase) {
+    Kokkos::parallel_for(Kokkos::RangePolicy<DeviceType>(0,ssa_gphaseCt),
+     LAMMPS_LAMBDA (const int workPhase) {
       data.build_ghosts_onePhase(workPhase);
     });
     k_ssa_gitemLoc.modify<DeviceType>();
@@ -487,10 +484,10 @@ fprintf(stdout, "tota%03d total %3d could use %6d inums, expected %6d inums. inu
       h_ssa_gitemLen(ssa_gphaseCt-1,h_ssa_gphaseLen(ssa_gphaseCt-1)-1) - data.neigh_list.inum;
     firstTry = false;
 
-    deep_copy(data.h_resize, data.resize);
+    Kokkos::deep_copy(data.h_resize, data.resize);
 
-    if(data.h_resize()) {
-      deep_copy(data.h_new_maxneighs, data.new_maxneighs);
+    if (data.h_resize()) {
+      Kokkos::deep_copy(data.h_new_maxneighs, data.new_maxneighs);
       list->maxneighs = data.h_new_maxneighs() * 1.2;
       list->d_neighbors = typename ArrayTypes<DeviceType>::t_neighbors_2d("neighbors", list->d_neighbors.extent(0), list->maxneighs);
       data.neigh_list.d_neighbors = list->d_neighbors;
@@ -523,7 +520,8 @@ fprintf(stdout, "Fina%03d %6d inum %6d gnum, total used %6d, allocated %6d\n"
 
 
 template<class DeviceType>
-void NPairSSAKokkosExecute<DeviceType>::build_locals_onePhase(const bool firstTry, int me, int workPhase) const
+KOKKOS_INLINE_FUNCTION
+void NPairSSAKokkosExecute<DeviceType>::build_locals_onePhase(const bool firstTry, int workPhase) const
 {
   const typename ArrayTypes<DeviceType>::t_int_1d_const_um stencil = d_stencil;
   int which = 0;
@@ -570,14 +568,14 @@ void NPairSSAKokkosExecute<DeviceType>::build_locals_onePhase(const bool firstTr
           for (; jl < c_bincount(jbin); ++jl) {
             const int j = c_bins(jbin, jl);
             const int jtype = type(j);
-            if(exclude && exclusion(i,j,itype,jtype)) continue;
+            if (exclude && exclusion(i,j,itype,jtype)) continue;
 
             const X_FLOAT delx = xtmp - x(j, 0);
             const X_FLOAT dely = ytmp - x(j, 1);
             const X_FLOAT delz = ztmp - x(j, 2);
             const X_FLOAT rsq = delx*delx + dely*dely + delz*delz;
-            if(rsq <= cutneighsq(itype,jtype)) {
-              if (molecular) {
+            if (rsq <= cutneighsq(itype,jtype)) {
+              if (molecular != Atom::ATOMIC) {
                 if (!moltemplate)
                   which = find_special(i,j);
                     /* else if (imol >= 0) */
@@ -585,19 +583,19 @@ void NPairSSAKokkosExecute<DeviceType>::build_locals_onePhase(const bool firstTr
                     /*                        onemols[imol]->nspecial[iatom], */
                     /*                        tag[j]-tagprev); */
                     /* else which = 0; */
-                if (which == 0){
-                  if(n<neigh_list.maxneighs) neighbors_i(n++) = j;
+                if (which == 0) {
+                  if (n<neigh_list.maxneighs) neighbors_i(n++) = j;
                   else n++;
-                } else if (minimum_image_check(delx,dely,delz)){
-                  if(n<neigh_list.maxneighs) neighbors_i(n++) = j;
+                } else if (minimum_image_check(delx,dely,delz)) {
+                  if (n<neigh_list.maxneighs) neighbors_i(n++) = j;
                   else n++;
                 }
                 else if (which > 0) {
-                  if(n<neigh_list.maxneighs) neighbors_i(n++) = j ^ (which << SBBITS);
+                  if (n<neigh_list.maxneighs) neighbors_i(n++) = j ^ (which << SBBITS);
                   else n++;
                 }
               } else {
-                if(n<neigh_list.maxneighs) neighbors_i(n++) = j;
+                if (n<neigh_list.maxneighs) neighbors_i(n++) = j;
                 else n++;
               }
             }
@@ -607,15 +605,15 @@ void NPairSSAKokkosExecute<DeviceType>::build_locals_onePhase(const bool firstTr
         if (n > 0) {
           neigh_list.d_numneigh(inum) = n;
           neigh_list.d_ilist(inum++) = i;
-          if(n > neigh_list.maxneighs) {
+          if (n > neigh_list.maxneighs) {
             resize() = 1;
-            if(n > new_maxneighs()) Kokkos::atomic_fetch_max(&new_maxneighs(),n);
+            if (n > new_maxneighs()) Kokkos::atomic_max(&new_maxneighs(),n);
           }
         }
       }
     }
-    int len = inum - inum_start;
 #ifdef DEBUG_SSA_BUILD_LOCALS
+    int len = inum - inum_start;
     if (len != d_ssa_itemLen(workPhase, workItem + skippedItems)) {
 fprintf(stdout, "Leng%03d workphase (%2d,%3d,%3d): len  = %4d, but ssa_itemLen = %4d%s\n"
   ,me
@@ -659,6 +657,7 @@ fprintf(stdout, "Phas%03d phase %3d used %6d inums, workItems = %3d, skipped = %
 
 
 template<class DeviceType>
+KOKKOS_INLINE_FUNCTION
 void NPairSSAKokkosExecute<DeviceType>::build_ghosts_onePhase(int workPhase) const
 {
   const typename ArrayTypes<DeviceType>::t_int_1d_const_um stencil = d_stencil;
@@ -697,14 +696,14 @@ void NPairSSAKokkosExecute<DeviceType>::build_ghosts_onePhase(int workPhase) con
           for (int jl = 0; jl < c_bincount(jbin); ++jl) {
             const int j = c_bins(jbin, jl);
             const int jtype = type(j);
-            if(exclude && exclusion(i,j,itype,jtype)) continue;
+            if (exclude && exclusion(i,j,itype,jtype)) continue;
 
             const X_FLOAT delx = xtmp - x(j, 0);
             const X_FLOAT dely = ytmp - x(j, 1);
             const X_FLOAT delz = ztmp - x(j, 2);
             const X_FLOAT rsq = delx*delx + dely*dely + delz*delz;
-            if(rsq <= cutneighsq(itype,jtype)) {
-              if (molecular) {
+            if (rsq <= cutneighsq(itype,jtype)) {
+              if (molecular != Atom::ATOMIC) {
                 if (!moltemplate)
                   which = find_special(j,i);
                     /* else if (jmol >= 0) */
@@ -712,19 +711,19 @@ void NPairSSAKokkosExecute<DeviceType>::build_ghosts_onePhase(int workPhase) con
                     /*                        onemols[jmol]->nspecial[jatom], */
                     /*                        tag[i]-jtagprev); */
                     /* else which = 0; */
-                if (which == 0){
-                  if(n<neigh_list.maxneighs) neighbors_i(n++) = j;
+                if (which == 0) {
+                  if (n<neigh_list.maxneighs) neighbors_i(n++) = j;
                   else n++;
-                } else if (minimum_image_check(delx,dely,delz)){
-                  if(n<neigh_list.maxneighs) neighbors_i(n++) = j;
+                } else if (minimum_image_check(delx,dely,delz)) {
+                  if (n<neigh_list.maxneighs) neighbors_i(n++) = j;
                   else n++;
                 }
                 else if (which > 0) {
-                  if(n<neigh_list.maxneighs) neighbors_i(n++) = j ^ (which << SBBITS);
+                  if (n<neigh_list.maxneighs) neighbors_i(n++) = j ^ (which << SBBITS);
                   else n++;
                 }
               } else {
-                if(n<neigh_list.maxneighs) neighbors_i(n++) = j;
+                if (n<neigh_list.maxneighs) neighbors_i(n++) = j;
                 else n++;
               }
             }
@@ -734,9 +733,9 @@ void NPairSSAKokkosExecute<DeviceType>::build_ghosts_onePhase(int workPhase) con
         if (n > 0) {
           neigh_list.d_numneigh(gNdx) = n;
           neigh_list.d_ilist(gNdx++) = i;
-          if(n > neigh_list.maxneighs) {
+          if (n > neigh_list.maxneighs) {
             resize() = 1;
-            if(n > new_maxneighs()) Kokkos::atomic_fetch_max(&new_maxneighs(),n);
+            if (n > new_maxneighs()) Kokkos::atomic_max(&new_maxneighs(),n);
           }
         }
       }
@@ -751,7 +750,7 @@ void NPairSSAKokkosExecute<DeviceType>::build_ghosts_onePhase(int workPhase) con
 
 namespace LAMMPS_NS {
 template class NPairSSAKokkos<LMPDeviceType>;
-#ifdef KOKKOS_ENABLE_CUDA
+#ifdef LMP_KOKKOS_GPU
 template class NPairSSAKokkos<LMPHostType>;
 #endif
 }

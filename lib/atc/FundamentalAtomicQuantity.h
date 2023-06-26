@@ -131,11 +131,11 @@ namespace ATC {
 
     /** gets appropriate pointer for lammps data */
     virtual double * lammps_scalar() const
-      {return NULL;};
+      {return nullptr;};
 
     /** gets appropriate pointer for lammps data */
     virtual double ** lammps_vector() const
-      {return NULL;};
+      {return nullptr;};
 
   private:
 
@@ -153,7 +153,7 @@ namespace ATC {
   //    be initialized.
   //--------------------------------------------------------
   //--------------------------------------------------------
-  
+
   class ComputedAtomQuantity : public ShallowAtomQuantity<double> {
 
   public:
@@ -167,7 +167,7 @@ namespace ATC {
     // destructor
     virtual ~ComputedAtomQuantity() {};
 
-    /** resets compute, must be this way to accomodate atom sorting between runs */
+    /** resets compute, must be this way to accommodate atom sorting between runs */
     virtual void post_exchange() {this->needReset_ = true;};
 
     /** specialized reset to account for forcing lammps to perform the compute */
@@ -220,7 +220,7 @@ namespace ATC {
   protected:
 
     /** pointer to Lammps compute, meant as rapid indexing only (do not use!) */
-    COMPUTE_POINTER computePointer_;  
+    COMPUTE_POINTER computePointer_;
 
     /** tag for Lammps compute */
     std::string computeTag_;

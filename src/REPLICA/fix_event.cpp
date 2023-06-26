@@ -1,7 +1,8 @@
+// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -27,8 +28,8 @@ using namespace FixConst;
 /* ---------------------------------------------------------------------- */
 
 FixEvent::FixEvent(LAMMPS *lmp, int narg, char **arg) :
-  Fix(lmp, narg, arg), xevent(NULL), xold(NULL), vold(NULL),
-  imageold(NULL), xorig(NULL), vorig(NULL), imageorig(NULL)
+  Fix(lmp, narg, arg), xevent(nullptr), xold(nullptr), vold(nullptr),
+  imageold(nullptr), xorig(nullptr), vorig(nullptr), imageorig(nullptr)
 {
   if (narg != 3) error->all(FLERR,"Illegal fix event command");
 
@@ -38,7 +39,7 @@ FixEvent::FixEvent(LAMMPS *lmp, int narg, char **arg) :
   // register with Atom class
 
   grow_arrays(atom->nmax);
-  atom->add_callback(0);
+  atom->add_callback(Atom::GROW);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -47,7 +48,7 @@ FixEvent::~FixEvent()
 {
   // unregister callbacks to this fix from Atom class
 
-  atom->delete_callback(id,0);
+  atom->delete_callback(id,Atom::GROW);
 
   // delete locally stored array
 
@@ -208,7 +209,7 @@ void FixEvent::restore_state_dephase()
 double FixEvent::memory_usage()
 {
   double bytes = 12*atom->nmax * sizeof(double);
-  bytes += atom->nmax*sizeof(int);
+  bytes += (double)atom->nmax*sizeof(int);
   return bytes;
 }
 

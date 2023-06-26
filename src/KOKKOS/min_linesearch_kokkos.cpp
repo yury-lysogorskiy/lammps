@@ -1,7 +1,8 @@
+// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -16,16 +17,17 @@
 ------------------------------------------------------------------------- */
 
 #include "min_linesearch_kokkos.h"
-#include <mpi.h>
-#include <cmath>
+
 #include "atom_kokkos.h"
-#include "modify.h"
-#include "fix_minimize_kokkos.h"
-#include "pair.h"
-#include "output.h"
-#include "thermo.h"
-#include "error.h"
 #include "atom_masks.h"
+#include "error.h"
+#include "fix_minimize_kokkos.h"
+#include "output.h"
+#include "pair.h"
+#include "thermo.h"
+#include "modify.h"
+
+#include <cmath>
 
 using namespace LAMMPS_NS;
 
@@ -50,13 +52,15 @@ MinLineSearchKokkos::MinLineSearchKokkos(LAMMPS *lmp) : MinKokkos(lmp)
 {
   searchflag = 1;
   atomKK = (AtomKokkos *) atom;
+  gextra = hextra = nullptr;
 }
 
 /* ---------------------------------------------------------------------- */
 
 MinLineSearchKokkos::~MinLineSearchKokkos()
 {
-
+  delete [] gextra;
+  delete [] hextra;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -65,7 +69,7 @@ void MinLineSearchKokkos::init()
 {
   MinKokkos::init();
 
-  if (linestyle == 1) linemin = &MinLineSearchKokkos::linemin_quadratic;
+  if (linestyle == QUADRATIC) linemin = &MinLineSearchKokkos::linemin_quadratic;
   else error->all(FLERR,"Kokkos minimize only supports the 'min_modify line "
    "quadratic' option");
 }
@@ -79,6 +83,13 @@ void MinLineSearchKokkos::setup_style()
   fix_minimize_kk->add_vector_kokkos();
   fix_minimize_kk->add_vector_kokkos();
   fix_minimize_kk->add_vector_kokkos();
+
+  // memory for g,h for extra global dof, fix stores x0
+
+  if (nextra_global) {
+    gextra = new double[nextra_global];
+    hextra = new double[nextra_global];
+  }
 }
 
 /* ----------------------------------------------------------------------
@@ -100,9 +111,6 @@ void MinLineSearchKokkos::reset_vectors()
   x0 = fix_minimize_kk->request_vector_kokkos(0);
   g = fix_minimize_kk->request_vector_kokkos(1);
   h = fix_minimize_kk->request_vector_kokkos(2);
-
-  auto h_fvec = Kokkos::create_mirror_view(fvec);
-  Kokkos::deep_copy(h_fvec,fvec);
 }
 
 /* ----------------------------------------------------------------------
@@ -170,6 +178,8 @@ int MinLineSearchKokkos::linemin_quadratic(double eoriginal, double &alpha)
   fix_minimize_kk->k_vectors.sync<LMPDeviceType>();
   fix_minimize_kk->k_vectors.modify<LMPDeviceType>();
 
+  atomKK->sync(Device,X_MASK|F_MASK);
+
   // fdothall = projection of search dir along downhill gradient
   // if search direction is not downhill, exit with error
 
@@ -185,6 +195,8 @@ int MinLineSearchKokkos::linemin_quadratic(double eoriginal, double &alpha)
     },fdothme);
   }
   MPI_Allreduce(&fdothme,&fdothall,1,MPI_DOUBLE,MPI_SUM,world);
+  if (nextra_global)
+    for (int i = 0; i < nextra_global; i++) fdothall += fextra[i]*hextra[i];
   if (output->thermo->normflag) fdothall /= atom->natoms;
 
   if (fdothall <= 0.0) return DOWNHILL;
@@ -193,7 +205,7 @@ int MinLineSearchKokkos::linemin_quadratic(double eoriginal, double &alpha)
   // for atom coords, max amount = dmax
   // for extra per-atom dof, max amount = extra_max[]
   // for extra global dof, max amount is set by fix
-  // also insure alphamax <= ALPHA_MAX
+  // also ensure alphamax <= ALPHA_MAX
   // else will have to backtrack from huge value when forces are tiny
   // if all search dir components are already 0.0, exit with error
 
@@ -210,6 +222,12 @@ int MinLineSearchKokkos::linemin_quadratic(double eoriginal, double &alpha)
   }
   MPI_Allreduce(&hme,&hmaxall,1,MPI_DOUBLE,MPI_MAX,world);
   alphamax = MIN(ALPHA_MAX,dmax/hmaxall);
+  if (nextra_global) {
+    double alpha_extra = modify->max_alpha(hextra);
+    alphamax = MIN(alphamax,alpha_extra);
+    for (int i = 0; i < nextra_global; i++)
+      hmaxall = MAX(hmaxall,fabs(hextra[i]));
+  }
 
   if (hmaxall == 0.0) return ZEROFORCE;
 
@@ -226,6 +244,7 @@ int MinLineSearchKokkos::linemin_quadratic(double eoriginal, double &alpha)
       l_x0[i] = l_xvec[i];
     });
   }
+  if (nextra_global) modify->min_store();
 
   // backtrack with alpha until energy decrease is sufficient
   // or until get to small energy change, then perform quadratic projection
@@ -244,7 +263,7 @@ int MinLineSearchKokkos::linemin_quadratic(double eoriginal, double &alpha)
   //        etmp-eoriginal+alphatmp*fdothall);
   // alpha_step(0.0,1);
 
-  while (1) {
+  while (true) {
     ecurrent = alpha_step(alpha,1);
 
     // compute new fh, alpha, delfh
@@ -265,6 +284,12 @@ int MinLineSearchKokkos::linemin_quadratic(double eoriginal, double &alpha)
     dot[1] = sdot.d1;
 
     MPI_Allreduce(dot,dotall,2,MPI_DOUBLE,MPI_SUM,world);
+    if (nextra_global) {
+      for (int i = 0; i < nextra_global; i++) {
+        dotall[0] += fextra[i]*fextra[i];
+        dotall[1] += fextra[i]*hextra[i];
+      }
+    }
     ff = dotall[0];
     fh = dotall[1];
     if (output->thermo->normflag) {
@@ -290,6 +315,10 @@ int MinLineSearchKokkos::linemin_quadratic(double eoriginal, double &alpha)
     if (relerr <= QUADRATIC_TOL && alpha0 > 0.0 && alpha0 < alphamax) {
       ecurrent = alpha_step(alpha0,1);
       if (ecurrent - eoriginal < EMACH) {
+        if (nextra_global) {
+          int itmp = modify->min_reset_ref();
+          if (itmp) ecurrent = energy_force(1);
+        }
         return 0;
       }
     }
@@ -299,8 +328,13 @@ int MinLineSearchKokkos::linemin_quadratic(double eoriginal, double &alpha)
     de_ideal = -BACKTRACK_SLOPE*alpha*fdothall;
     de = ecurrent - eoriginal;
 
-    if (de <= de_ideal)
+    if (de <= de_ideal) {
+      if (nextra_global) {
+        int itmp = modify->min_reset_ref();
+        if (itmp) ecurrent = energy_force(1);
+      }
       return 0;
+    }
 
     // save previous state
 
@@ -328,8 +362,9 @@ double MinLineSearchKokkos::alpha_step(double alpha, int resetflag)
 {
   // reset to starting point
 
-  atomKK->k_x.clear_sync_state(); // ignore if host positions since device
-                                  //  positions will be reset below
+  if (nextra_global) modify->min_step(0.0,hextra);
+  atomKK->k_x.clear_sync_state(); // ignore if host positions modified since
+                                  //  device positions will be reset below
   {
     // local variables for lambda capture
 
@@ -341,9 +376,15 @@ double MinLineSearchKokkos::alpha_step(double alpha, int resetflag)
     });
   }
 
+  atomKK->modified(Device,X_MASK);
+
   // step forward along h
 
   if (alpha > 0.0) {
+    if (nextra_global) modify->min_step(alpha,hextra);
+
+  atomKK->sync(Device,X_MASK); // positions can be modified by fix box/relax
+
     // local variables for lambda capture
 
     auto l_xvec = xvec;
@@ -371,6 +412,8 @@ double MinLineSearchKokkos::compute_dir_deriv(double &ff)
   double dot[2],dotall[2];
   double fh;
 
+  atomKK->sync(Device,F_MASK);
+
   // compute new fh, alpha, delfh
 
   s_double2 sdot;
@@ -389,6 +432,12 @@ double MinLineSearchKokkos::compute_dir_deriv(double &ff)
   dot[1] = sdot.d1;
 
   MPI_Allreduce(dot,dotall,2,MPI_DOUBLE,MPI_SUM,world);
+  if (nextra_global) {
+    for (int i = 0; i < nextra_global; i++) {
+      dotall[0] += fextra[i]*fextra[i];
+      dotall[1] += fextra[i]*hextra[i];
+    }
+  }
 
   ff = dotall[0];
   fh = dotall[1];

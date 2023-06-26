@@ -1,7 +1,7 @@
 /* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -12,17 +12,17 @@
 ------------------------------------------------------------------------- */
 
 #ifdef NPAIR_CLASS
-
+// clang-format off
 NPairStyle(halffull/newton,
            NPairHalffullNewton,
-           NP_HALF_FULL | NP_NEWTON | NP_HALF | NP_NSQ | NP_BIN | NP_MULTI |
-           NP_ORTHO | NP_TRI)
+           NP_HALF_FULL | NP_NEWTON | NP_HALF | NP_NSQ | NP_BIN | NP_MULTI | NP_MULTI_OLD |
+           NP_ORTHO | NP_TRI);
 
 NPairStyle(halffull/newton/skip,
            NPairHalffullNewton,
-           NP_HALF_FULL | NP_NEWTON | NP_HALF | NP_NSQ | NP_BIN | NP_MULTI |
-           NP_ORTHO | NP_TRI | NP_SKIP)
-
+           NP_HALF_FULL | NP_NEWTON | NP_HALF | NP_NSQ | NP_BIN | NP_MULTI | NP_MULTI_OLD |
+           NP_ORTHO | NP_TRI | NP_SKIP);
+// clang-format on
 #else
 
 #ifndef LMP_NPAIR_HALFFULL_NEWTON_H
@@ -35,19 +35,10 @@ namespace LAMMPS_NS {
 class NPairHalffullNewton : public NPair {
  public:
   NPairHalffullNewton(class LAMMPS *);
-  ~NPairHalffullNewton() {}
-  void build(class NeighList *);
+  void build(class NeighList *) override;
 };
 
-}
+}    // namespace LAMMPS_NS
 
 #endif
 #endif
-
-/* ERROR/WARNING messages:
-
-E: Neighbor list overflow, boost neigh_modify one
-
-UNDOCUMENTED
-
-*/

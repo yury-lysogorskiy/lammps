@@ -1,7 +1,7 @@
 /* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -12,13 +12,14 @@
 ------------------------------------------------------------------------- */
 
 #ifdef DIHEDRAL_CLASS
-
-DihedralStyle(charmm/kk,DihedralCharmmKokkos<LMPDeviceType>)
-DihedralStyle(charmm/kk/device,DihedralCharmmKokkos<LMPDeviceType>)
-DihedralStyle(charmm/kk/host,DihedralCharmmKokkos<LMPHostType>)
-
+// clang-format off
+DihedralStyle(charmm/kk,DihedralCharmmKokkos<LMPDeviceType>);
+DihedralStyle(charmm/kk/device,DihedralCharmmKokkos<LMPDeviceType>);
+DihedralStyle(charmm/kk/host,DihedralCharmmKokkos<LMPHostType>);
+// clang-format on
 #else
 
+// clang-format off
 #ifndef LMP_DIHEDRAL_CHARMM_KOKKOS_H
 #define LMP_DIHEDRAL_CHARMM_KOKKOS_H
 
@@ -62,25 +63,6 @@ struct s_EVM_FLOAT {
     vp[4] += rhs.vp[4];
     vp[5] += rhs.vp[5];
   }
-
-  KOKKOS_INLINE_FUNCTION
-  void operator+=(const volatile s_EVM_FLOAT &rhs) volatile {
-    evdwl += rhs.evdwl;
-    ecoul += rhs.ecoul;
-    emol += rhs.emol;
-    v[0] += rhs.v[0];
-    v[1] += rhs.v[1];
-    v[2] += rhs.v[2];
-    v[3] += rhs.v[3];
-    v[4] += rhs.v[4];
-    v[5] += rhs.v[5];
-    vp[0] += rhs.vp[0];
-    vp[1] += rhs.vp[1];
-    vp[2] += rhs.vp[2];
-    vp[3] += rhs.vp[3];
-    vp[4] += rhs.vp[4];
-    vp[5] += rhs.vp[5];
-  }
 };
 typedef struct s_EVM_FLOAT EVM_FLOAT;
 
@@ -95,11 +77,11 @@ class DihedralCharmmKokkos : public DihedralCharmm {
   typedef ArrayTypes<DeviceType> AT;
 
   DihedralCharmmKokkos(class LAMMPS *);
-  virtual ~DihedralCharmmKokkos();
-  void compute(int, int);
-  void coeff(int, char **);
-  void init_style();
-  void read_restart(FILE *);
+  ~DihedralCharmmKokkos() override;
+  void compute(int, int) override;
+  void coeff(int, char **) override;
+  void init_style() override;
+  void read_restart(FILE *) override;
 
   template<int NEWTON_BOND, int EVFLAG>
   KOKKOS_INLINE_FUNCTION
@@ -132,15 +114,16 @@ class DihedralCharmmKokkos : public DihedralCharmm {
   typename AT::t_f_array f;
   typename AT::t_int_2d dihedrallist;
 
-  Kokkos::DualView<E_FLOAT*,Kokkos::LayoutRight,DeviceType> k_eatom;
-  Kokkos::DualView<F_FLOAT*[6],Kokkos::LayoutRight,DeviceType> k_vatom;
-  Kokkos::View<E_FLOAT*,Kokkos::LayoutRight,DeviceType,Kokkos::MemoryTraits<Kokkos::Atomic> > d_eatom;
-  Kokkos::View<F_FLOAT*[6],Kokkos::LayoutRight,DeviceType,Kokkos::MemoryTraits<Kokkos::Atomic> > d_vatom;
+  typedef typename KKDevice<DeviceType>::value KKDeviceType;
+  Kokkos::DualView<E_FLOAT*,Kokkos::LayoutRight,KKDeviceType> k_eatom;
+  Kokkos::DualView<F_FLOAT*[6],Kokkos::LayoutRight,KKDeviceType> k_vatom;
+  Kokkos::View<E_FLOAT*,Kokkos::LayoutRight,KKDeviceType,Kokkos::MemoryTraits<Kokkos::Atomic> > d_eatom;
+  Kokkos::View<F_FLOAT*[6],Kokkos::LayoutRight,KKDeviceType,Kokkos::MemoryTraits<Kokkos::Atomic> > d_vatom;
 
-  Kokkos::DualView<E_FLOAT*,Kokkos::LayoutRight,DeviceType> k_eatom_pair;
-  Kokkos::DualView<F_FLOAT*[6],Kokkos::LayoutRight,DeviceType> k_vatom_pair;
-  Kokkos::View<E_FLOAT*,Kokkos::LayoutRight,DeviceType,Kokkos::MemoryTraits<Kokkos::Atomic> > d_eatom_pair;
-  Kokkos::View<F_FLOAT*[6],Kokkos::LayoutRight,DeviceType,Kokkos::MemoryTraits<Kokkos::Atomic> > d_vatom_pair;
+  Kokkos::DualView<E_FLOAT*,Kokkos::LayoutRight,KKDeviceType> k_eatom_pair;
+  Kokkos::DualView<F_FLOAT*[6],Kokkos::LayoutRight,KKDeviceType> k_vatom_pair;
+  Kokkos::View<E_FLOAT*,Kokkos::LayoutRight,KKDeviceType,Kokkos::MemoryTraits<Kokkos::Atomic> > d_eatom_pair;
+  Kokkos::View<F_FLOAT*[6],Kokkos::LayoutRight,KKDeviceType,Kokkos::MemoryTraits<Kokkos::Atomic> > d_vatom_pair;
 
   int nlocal,newton_bond;
   int eflag,vflag;
@@ -162,7 +145,7 @@ class DihedralCharmmKokkos : public DihedralCharmm {
   typename AT::t_ffloat_1d d_cos_shift;
   typename AT::t_ffloat_1d d_weight;
 
-  void allocate();
+  void allocate() override;
 };
 
 }
@@ -170,11 +153,3 @@ class DihedralCharmmKokkos : public DihedralCharmm {
 #endif
 #endif
 
-/* ERROR/WARNING messages:
-
-W: Dihedral problem
-
-Conformation of the 4 listed dihedral atoms is extreme; you may want
-to check your simulation geometry.
-
-*/

@@ -6,26 +6,22 @@ replicate command
 Syntax
 """"""
 
-
 .. parsed-literal::
 
    replicate nx ny nz *keyword*
 
-nx,ny,nz = replication factors in each dimension 
+nx,ny,nz = replication factors in each dimension
 
 * optional *keyword* = *bbox*
-  
+
   .. parsed-literal::
-  
-       *bbox* = only check atoms in replicas that overlap with a processor's sub-domain
 
-
+       *bbox* = only check atoms in replicas that overlap with a processor's subdomain
 
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    replicate 2 3 2
 
@@ -56,7 +52,7 @@ image flags that differ by 1.  This will allow the bond to be
 unwrapped appropriately.
 
 The optional keyword *bbox* uses a bounding box to only check atoms in
-replicas that overlap with a processor's sub-domain when assigning
+replicas that overlap with a processor's subdomain when assigning
 atoms to processors.  It typically results in a substantial speedup
 when using the replicate command on a large number of processors.  It
 does require temporary use of more memory, specifically that each
@@ -65,7 +61,6 @@ replicated.
 
 Restrictions
 """"""""""""
-
 
 A 2d simulation cannot be replicated in the z dimension.
 
@@ -106,6 +101,13 @@ To work around this restriction, restart files may be converted into
 data files and fixes may be undefined via the :doc:`unfix <unfix>`
 command before and redefined after the replicate command.
 
-**Related commands:** none
+Related commands
+""""""""""""""""
 
-**Default:** none
+none
+
+
+Default
+"""""""
+
+none

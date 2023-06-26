@@ -4,12 +4,8 @@
 #include <cstdio>
 #include <cassert>
 
-/* We default to OpenCL 1.2 as target version for now as
- * there are known issues with OpenCL 2.0 and later.
- * This is also to silence warnings from generic OpenCL headers */
-
-#if !defined(CL_TARGET_OPENCL_VERSION)
-#define CL_TARGET_OPENCL_VERSION 120
+#ifndef CL_TARGET_OPENCL_VERSION
+#define CL_TARGET_OPENCL_VERSION 300
 #endif
 
 #ifdef __APPLE__
@@ -37,6 +33,9 @@
 #ifdef UCL_DEBUG
 #define UCL_SYNC_DEBUG
 #define UCL_DESTRUCT_CHECK
+#define UCL_DEBUG_ARG(arg) arg
+#else
+#define UCL_DEBUG_ARG(arg)
 #endif
 
 #ifndef UCL_NO_API_CHECK

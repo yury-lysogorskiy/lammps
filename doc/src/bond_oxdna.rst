@@ -1,4 +1,6 @@
 .. index:: bond_style oxdna/fene
+.. index:: bond_style oxdna2/fene
+.. index:: bond_style oxrna2/fene
 
 bond_style oxdna/fene command
 =============================
@@ -12,7 +14,6 @@ bond_style oxrna2/fene command
 Syntax
 """"""
 
-
 .. code-block:: LAMMPS
 
    bond_style oxdna/fene
@@ -24,7 +25,6 @@ Syntax
 Examples
 """"""""
 
-
 .. code-block:: LAMMPS
 
    bond_style oxdna/fene
@@ -34,17 +34,16 @@ Examples
    bond_coeff * 2.0 0.25 0.7564
 
    bond_style oxrna2/fene
-   bond_coeff \* 2.0 0.25 0.76107
+   bond_coeff * 2.0 0.25 0.76107
 
 Description
 """""""""""
 
-The *oxdna/fene* , *oxdna2/fene* and *oxrna2/fene* bond styles use the potential
+The *oxdna/fene*, *oxdna2/fene*, and *oxrna2/fene* bond styles use the potential
 
 .. math::
 
    E = - \frac{\epsilon}{2} \ln \left[ 1 - \left(\frac{r-r_0}{\Delta}\right)^2\right]
-
 
 to define a modified finite extensible nonlinear elastic (FENE)
 potential :ref:`(Ouldridge) <Ouldridge0>` to model the connectivity of the
@@ -69,55 +68,69 @@ commands:
    coaxial stacking interaction *oxdna/coaxstk* as well as
    hydrogen-bonding interaction *oxdna/hbond* (see also documentation of
    :doc:`pair_style oxdna/excv <pair_oxdna>`). For the oxDNA2
-   :ref:`(Snodin) <Snodin0>` bond style the analogous pair styles 
+   :ref:`(Snodin) <Snodin0>` bond style the analogous pair styles
    *oxdna2/excv* , *oxdna2/stk* , *oxdna2/xstk* , *oxdna2/coaxstk* ,
-   *oxdna2/hbond* and an additional Debye-Hueckel pair style 
+   *oxdna2/hbond* and an additional Debye-Hueckel pair style
    *oxdna2/dh* have to be defined. The same applies to the oxRNA2
-   :ref:`(Sulc1) <Sulc01>` styles. 
+   :ref:`(Sulc1) <Sulc01>` styles.
    The coefficients in the above example have to be kept fixed and cannot
    be changed without reparameterizing the entire model.
 
+.. note::
+
+   This bond style has to be used with the *atom_style hybrid bond ellipsoid oxdna*
+   (see documentation of :doc:`atom_style <atom_style>`). The *atom_style oxdna*
+   stores the 3'-to-5' polarity of the nucleotide strand, which is set through
+   the bond topology in the data file. The first (second) atom in a bond definition
+   is understood to point towards the 3'-end (5'-end) of the strand.
+
+.. warning::
+
+   If data files are produced with :doc:`write_data <write_data>`, then the
+   :doc:`newton <newton>` command should be set to *newton on* or *newton off on*.
+   Otherwise the data files will not have the same 3'-to-5' polarity as the
+   initial data file. This limitation does not apply to binary restart files
+   produced with :doc:`write_restart <write_restart>`.
+
 Example input and data files for DNA and RNA duplexes can be found in
-examples/USER/cgdna/examples/oxDNA/ , /oxDNA2/ and /oxRNA2/.  A simple python
+examples/PACKAGES/cgdna/examples/oxDNA/ , /oxDNA2/ and /oxRNA2/.  A simple python
 setup tool which creates single straight or helical DNA strands, DNA/RNA
 duplexes or arrays of DNA/RNA duplexes can be found in
-examples/USER/cgdna/util/.
+examples/PACKAGES/cgdna/util/.
 
-Please cite :ref:`(Henrich) <Henrich0>` in any publication that uses 
-this implementation.  The article contains general information 
-on the model, its implementation and performance as well as the structure of 
-the data and input file. The preprint version of the article can be found
-`here <PDF/USER-CGDNA.pdf>`_.
-Please cite also the relevant oxDNA/oxRNA publications. These are 
-:ref:`(Ouldridge) <Ouldridge0>` and 
-:ref:`(Ouldridge-DPhil) <Ouldridge-DPhil0>` for oxDNA, 
-:ref:`(Snodin) <Snodin0>` for oxDNA2, 
-:ref:`(Sulc1) <Sulc01>` for oxRNA2 
-and for sequence-specific hydrogen-bonding and stacking interactions 
+Please cite :ref:`(Henrich) <Henrich0>` in any publication that uses
+this implementation. An updated documentation that contains general information
+on the model, its implementation and performance as well as the structure of
+the data and input file can be found `here <PDF/CG-DNA.pdf>`_.
+
+Please cite also the relevant oxDNA/oxRNA publications. These are
+:ref:`(Ouldridge) <Ouldridge0>` and
+:ref:`(Ouldridge-DPhil) <Ouldridge-DPhil0>` for oxDNA,
+:ref:`(Snodin) <Snodin0>` for oxDNA2,
+:ref:`(Sulc1) <Sulc01>` for oxRNA2
+and for sequence-specific hydrogen-bonding and stacking interactions
 :ref:`(Sulc2) <Sulc02>`.
 
-
 ----------
-
 
 Restrictions
 """"""""""""
 
-
 This bond style can only be used if LAMMPS was built with the
-USER-CGDNA package and the MOLECULE and ASPHERE package.  See the
-:doc:`Build package <Build_package>` doc page for more info.
+CG-DNA package and the MOLECULE and ASPHERE package.  See the
+:doc:`Build package <Build_package>` page for more info.
 
 Related commands
 """"""""""""""""
 
-:doc:`pair_style oxdna/excv <pair_oxdna>`, :doc:`pair_style oxdna2/excv <pair_oxdna2>`, :doc:`pair_style oxrna2/excv <pair_oxrna2>`, 
-:doc:`bond_coeff <bond_coeff>`, :doc:`fix nve/dotc/langevin <fix_nve_dotc_langevin>`
+:doc:`pair_style oxdna/excv <pair_oxdna>`, :doc:`pair_style oxdna2/excv <pair_oxdna2>`, :doc:`pair_style oxrna2/excv <pair_oxrna2>`,
+:doc:`bond_coeff <bond_coeff>`, :doc:`atom_style oxdna <atom_style>`, :doc:`fix nve/dotc/langevin <fix_nve_dotc_langevin>`
 
-**Default:**
+Default
+"""""""
+
 
 none
-
 
 ----------
 

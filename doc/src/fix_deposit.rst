@@ -6,7 +6,6 @@ fix deposit command
 Syntax
 """"""
 
-
 .. parsed-literal::
 
    fix ID group-ID deposit N type M seed keyword values ...
@@ -18,10 +17,10 @@ Syntax
 * M = insert a single atom or molecule every M steps
 * seed = random # seed (positive integer)
 * one or more keyword/value pairs may be appended to args
-* keyword = *region* or *id* or *global* or *local* or *near* or *gaussian* or *attempt* or *rate* or *vx* or *vy* or *vz* or *mol* or *rigid* or *shake* or *units*
-  
+* keyword = *region* or *id* or *global* or *local* or *near* or *gaussian* or *attempt* or *rate* or *vx* or *vy* or *vz* or *target* or *mol* or *molfrac* or *rigid* or *shake* or *orient* or *units*
+
   .. parsed-literal::
-  
+
        *region* value = region-ID
          region-ID = ID of region to use as insertion volume
        *id* value = *max* or *next*
@@ -63,13 +62,10 @@ Syntax
          lattice = the geometry is defined in lattice units
          box = the geometry is defined in simulation box units
 
-
-
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    fix 3 all deposit 1000 2 100 29494 region myblock local 1.0 1.0 1.0 units box
    fix 2 newatoms deposit 10000 1 500 12345 region disk near 2.0 vz -1.0 -0.8
@@ -100,7 +96,7 @@ default group "all" and the group specified in the fix deposit command
 
 If you are computing temperature values which include inserted
 particles, you will want to use the
-:doc:`compute_modify <compute_modify>` dynamic option, which insures the
+:doc:`compute_modify <compute_modify>` dynamic option, which ensures the
 current number of atoms is used as a normalizing factor each time the
 temperature is computed.
 
@@ -132,7 +128,7 @@ side = *in*\ .
    tests against the larger orthonormal box that bounds the tilted
    simulation box.  If the specified region includes volume outside the
    tilted box, then an insertion will likely fail, leading to a "lost
-   atoms" error.  Thus for triclinic boxes you should insure the
+   atoms" error.  Thus for triclinic boxes you should ensure the
    specified region is wholly inside the simulation box.
 
 The locations of inserted particles are taken from uniform distributed
@@ -167,7 +163,7 @@ command which also appears in your input script.
    If you wish the new rigid molecules (and other rigid molecules)
    to be thermostatted correctly via :doc:`fix rigid/small/nvt <fix_rigid>`
    or :doc:`fix rigid/small/npt <fix_rigid>`, then you need to use the
-   "fix\_modify dynamic/dof yes" command for the rigid fix.  This is to
+   "fix_modify dynamic/dof yes" command for the rigid fix.  This is to
    inform that fix that the molecule count will vary dynamically.
 
 If you wish to insert molecules via the *mol* keyword, that will have
@@ -224,11 +220,11 @@ ignored if the *global* or *local* keywords are used, since those
 options choose a z-coordinate for insertion independently.
 
 The vx, vy, and vz components of velocity for the inserted particle
-are set using the values specified for the *vx*\ , *vy*\ , and *vz*
-keywords.  Note that normally, new particles should be a assigned a
-negative vertical velocity so that they move towards the surface.  For
-molecules, the same velocity is given to every particle (no rotation
-or bond vibration).
+are set by sampling a uniform distribution between the bounds set by
+the values specified for the *vx*, *vy*, and *vz* keywords. Note that
+normally, new particles should be a assigned a negative vertical
+velocity so that they move towards the surface.  For molecules, the
+same velocity is given to every particle (no rotation or bond vibration).
 
 If the *target* option is used, the velocity vector of the inserted
 particle is changed so that it points from the insertion position
@@ -275,7 +271,8 @@ units of distance or velocity.
    the :doc:`compute_modify dynamic yes <compute_modify>` command for the
    temperature compute you are using.
 
-**Restart, fix\_modify, output, run start/stop, minimize info:**
+Restart, fix_modify, output, run start/stop, minimize info
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 This fix writes the state of the deposition to :doc:`binary restart files <restart>`.  This includes information about how many
 particles have been deposited, the random number generator seed, the
@@ -298,10 +295,6 @@ of this fix can be used with the *start/stop* keywords of the
 
 Restrictions
 """"""""""""
-
-
-This fix is part of the MISC package.  It is only enabled if LAMMPS
-was built with that package.  See the :doc:`Build package <Build_package>` doc page for more info.
 
 The specified insertion region cannot be a "dynamic" region, as
 defined by the :doc:`region <region>` command.

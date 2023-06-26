@@ -6,24 +6,23 @@ Use the :doc:`dimension <dimension>` command to specify a 2d simulation.
 Make the simulation box periodic in z via the :doc:`boundary <boundary>`
 command.  This is the default.
 
-If using the :doc:`create box <create_box>` command to define a
+If using the :doc:`create_box <create_box>` command to define a
 simulation box, set the z dimensions narrow, but finite, so that the
-create\_atoms command will tile the 3d simulation box with a single z
-plane of atoms - e.g.
+:doc:`create_atoms <create_atoms>` command will fill the 3d simulation
+box with a single z plane of atoms - e.g.
 
+.. code-block:: LAMMPS
 
-.. parsed-literal::
-
-   :doc:`create box <create_box>` 1 -10 10 -10 10 -0.25 0.25
+   create box 1 -10 10 -10 10 -0.25 0.25
 
 If using the :doc:`read data <read_data>` command to read in a file of
 atom coordinates, set the "zlo zhi" values to be finite but narrow,
-similar to the create\_box command settings just described.  For each
+similar to the create_box command settings just described.  For each
 atom in the file, assign a z coordinate so it falls inside the
 z-boundaries of the box - e.g. 0.0.
 
 Use the :doc:`fix enforce2d <fix_enforce2d>` command as the last
-defined fix to insure that the z-components of velocities and forces
+defined fix to ensure that the z-components of velocities and forces
 are zeroed out every timestep.  The reason to make it the last fix is
 so that any forces induced by other fixes will be zeroed out.
 

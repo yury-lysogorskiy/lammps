@@ -11,9 +11,9 @@
 //
 //    begin                :
 //    email                : brownw@ornl.gov
-// ***************************************************************************/
+// ***************************************************************************
 
-#ifdef NV_KERNEL
+#if defined(NV_KERNEL) || defined(USE_HIP)
 #include "lal_ellipsoid_extra.h"
 #endif
 
@@ -80,6 +80,9 @@ ucl_inline void compute_eta_torque(numtyp m[9],numtyp m2[9], const numtyp4 shape
                     m[6]*m[1]*m2[7]-(numtyp)2.0*m2[8]*m[3]*m[1])*den;
 }
 
+#ifdef INTEL_OCL
+__attribute__((intel_reqd_sub_group_size(16)))
+#endif
 __kernel void k_gayberne(const __global numtyp4 *restrict x_,
                          const __global numtyp4 *restrict q,
                          const __global numtyp4 *restrict shape,
@@ -90,7 +93,7 @@ __kernel void k_gayberne(const __global numtyp4 *restrict x_,
                          const __global numtyp *restrict lshape,
                          const __global int *dev_nbor,
                          const int stride,
-                         __global acctyp4 *restrict ans,
+                         __global acctyp3 *restrict ans,
                          const int astride,
                          __global acctyp *restrict engv,
                          __global int *restrict err_flag,
@@ -100,29 +103,27 @@ __kernel void k_gayberne(const __global numtyp4 *restrict x_,
   atom_info(t_per_atom,ii,tid,offset);
 
   __local numtyp sp_lj[4];
+  int n_stride;
+  local_allocate_store_ellipse();
+
   sp_lj[0]=gum[3];
   sp_lj[1]=gum[4];
   sp_lj[2]=gum[5];
   sp_lj[3]=gum[6];
 
-  acctyp energy=(acctyp)0;
-  acctyp4 f;
-  f.x=(acctyp)0;
-  f.y=(acctyp)0;
-  f.z=(acctyp)0;
-  acctyp4 tor;
-  tor.x=(acctyp)0;
-  tor.y=(acctyp)0;
-  tor.z=(acctyp)0;
-  acctyp virial[6];
-  for (int i=0; i<6; i++)
-    virial[i]=(acctyp)0;
+  acctyp3 f, tor;
+  f.x=(acctyp)0; f.y=(acctyp)0; f.z=(acctyp)0;
+  tor.x=(acctyp)0; tor.y=(acctyp)0; tor.z=(acctyp)0;
+  acctyp energy, virial[6];
+  if (EVFLAG) {
+    energy=(acctyp)0;
+    for (int i=0; i<6; i++) virial[i]=(acctyp)0;
+  }
 
   if (ii<inum) {
     int nbor, nbor_end;
     int i, numj;
-    __local int n_stride;
-    nbor_info_e(dev_nbor,stride,t_per_atom,ii,offset,i,numj,
+    nbor_info_p(dev_nbor,stride,t_per_atom,ii,offset,i,numj,
                 n_stride,nbor_end,nbor);
 
     numtyp4 ix; fetch4(ix,i,pos_tex);
@@ -140,6 +141,7 @@ __kernel void k_gayberne(const __global numtyp4 *restrict x_,
 
     numtyp factor_lj;
     for ( ; nbor<nbor_end; nbor+=n_stride) {
+      ucl_prefetch(dev_nbor+nbor+n_stride);
       int j=dev_nbor[nbor];
       factor_lj = sp_lj[sbmask(j)];
       j &= NEIGHMASK;
@@ -322,10 +324,10 @@ __kernel void k_gayberne(const __global numtyp4 *restrict x_,
       }
 
       numtyp temp2 = factor_lj*eta*chi;
-      if (eflag>0)
+      if (EVFLAG && eflag)
         energy+=u_r*temp2;
       numtyp temp1 = -eta*u_r*factor_lj;
-      if (vflag>0) {
+      if (EVFLAG && vflag) {
         r12[0]*=-r;
         r12[1]*=-r;
         r12[2]*=-r;
@@ -356,8 +358,8 @@ __kernel void k_gayberne(const __global numtyp4 *restrict x_,
       tor.z+=temp1*tchi[2]+temp2*teta[2]+temp3*tUr[2];
 
     } // for nbor
-    store_answers_t(f,tor,energy,virial,ii,astride,tid,t_per_atom,offset,eflag,
-                    vflag,ans,engv);
   } // if ii
+  store_answers_t(f,tor,energy,virial,ii,astride,tid,t_per_atom,offset,eflag,
+                  vflag,ans,engv,inum);
 }
 

@@ -1,7 +1,7 @@
 /* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -12,13 +12,14 @@
 ------------------------------------------------------------------------- */
 
 #ifdef COMPUTE_CLASS
-
-ComputeStyle(temp/kk,ComputeTempKokkos<LMPDeviceType>)
-ComputeStyle(temp/kk/device,ComputeTempKokkos<LMPDeviceType>)
-ComputeStyle(temp/kk/host,ComputeTempKokkos<LMPHostType>)
-
+// clang-format off
+ComputeStyle(temp/kk,ComputeTempKokkos<LMPDeviceType>);
+ComputeStyle(temp/kk/device,ComputeTempKokkos<LMPDeviceType>);
+ComputeStyle(temp/kk/host,ComputeTempKokkos<LMPHostType>);
+// clang-format on
 #else
 
+// clang-format off
 #ifndef LMP_COMPUTE_TEMP_KOKKOS_H
 #define LMP_COMPUTE_TEMP_KOKKOS_H
 
@@ -26,35 +27,6 @@ ComputeStyle(temp/kk/host,ComputeTempKokkos<LMPHostType>)
 #include "kokkos_type.h"
 
 namespace LAMMPS_NS {
-
-  struct s_CTEMP {
-    double t0, t1, t2, t3, t4, t5;
-    KOKKOS_INLINE_FUNCTION
-    s_CTEMP() {
-      t0 = t1 = t2 = t3 = t4 = t5 = 0.0;
-    }
-    KOKKOS_INLINE_FUNCTION
-    s_CTEMP& operator+=(const s_CTEMP &rhs){
-      t0 += rhs.t0;
-      t1 += rhs.t1;
-      t2 += rhs.t2;
-      t3 += rhs.t3;
-      t4 += rhs.t4;
-      t5 += rhs.t5;
-      return *this;
-    }
-
-    KOKKOS_INLINE_FUNCTION
-    void operator+=(const volatile s_CTEMP &rhs) volatile {
-      t0 += rhs.t0;
-      t1 += rhs.t1;
-      t2 += rhs.t2;
-      t3 += rhs.t3;
-      t4 += rhs.t4;
-      t5 += rhs.t5;
-    }
-  };
-  typedef s_CTEMP CTEMP;
 
 template<int RMASS>
 struct TagComputeTempScalar{};
@@ -65,14 +37,34 @@ struct TagComputeTempVector{};
 template<class DeviceType>
 class ComputeTempKokkos : public ComputeTemp {
  public:
+
+  struct s_CTEMP {
+    double t0, t1, t2, t3, t4, t5;
+    KOKKOS_INLINE_FUNCTION
+    s_CTEMP() {
+      t0 = t1 = t2 = t3 = t4 = t5 = 0.0;
+    }
+    KOKKOS_INLINE_FUNCTION
+    s_CTEMP& operator+=(const s_CTEMP &rhs) {
+      t0 += rhs.t0;
+      t1 += rhs.t1;
+      t2 += rhs.t2;
+      t3 += rhs.t3;
+      t4 += rhs.t4;
+      t5 += rhs.t5;
+      return *this;
+    }
+  };
+
+  typedef s_CTEMP CTEMP;
   typedef DeviceType device_type;
   typedef CTEMP value_type;
   typedef ArrayTypes<DeviceType> AT;
 
   ComputeTempKokkos(class LAMMPS *, int, char **);
-  virtual ~ComputeTempKokkos() {}
-  double compute_scalar();
-  void compute_vector();
+
+  double compute_scalar() override;
+  void compute_vector() override;
 
   template<int RMASS>
   KOKKOS_INLINE_FUNCTION
@@ -83,23 +75,14 @@ class ComputeTempKokkos : public ComputeTemp {
   void operator()(TagComputeTempVector<RMASS>, const int&, CTEMP&) const;
 
  protected:
-  typename ArrayTypes<DeviceType>::t_v_array_randomread v;
-  typename ArrayTypes<DeviceType>::t_float_1d_randomread rmass;
-  typename ArrayTypes<DeviceType>::t_float_1d_randomread mass;
-  typename ArrayTypes<DeviceType>::t_int_1d_randomread type;
-  typename ArrayTypes<DeviceType>::t_int_1d_randomread mask;
+  typename AT::t_v_array_randomread v;
+  typename AT::t_float_1d_randomread rmass;
+  typename AT::t_float_1d_randomread mass;
+  typename AT::t_int_1d_randomread type;
+  typename AT::t_int_1d_randomread mask;
 };
 
 }
 
 #endif
 #endif
-
-/* ERROR/WARNING messages:
-
-E: Temperature compute degrees of freedom < 0
-
-This should not happen if you are calculating the temperature
-on a valid set of atoms.
-
-*/

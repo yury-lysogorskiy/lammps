@@ -6,7 +6,6 @@ fix indent command
 Syntax
 """"""
 
-
 .. parsed-literal::
 
    fix ID group-ID indent K keyword values ...
@@ -16,11 +15,11 @@ Syntax
 * K = force constant for indenter surface (force/distance\^2 units)
 * one or more keyword/value pairs may be appended
 * keyword = *sphere* or *cylinder* or *plane* or *side* or *units*
-  
+
   .. parsed-literal::
-  
+
        *sphere* args = x y z R
-         x,y,z = initial position of center of indenter (distance units)
+         x,y,z = position of center of indenter (distance units)
          R = sphere radius of indenter (distance units)
          any of x,y,z,R can be a variable (see below)
        *cylinder* args = dim c1 c2 R
@@ -40,13 +39,10 @@ Syntax
          lattice = the geometry is defined in lattice units
          box = the geometry is defined in simulation box units
 
-
-
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    fix 1 all indent 10.0 sphere 0.0 0.0 15.0 3.0
    fix 1 all indent 10.0 sphere v_x v_y 0.0 v_radius side in
@@ -66,10 +62,9 @@ must set one of those 3 keywords.
 
 A spherical indenter exerts a force of magnitude
 
+.. math::
 
-.. parsed-literal::
-
-   F(r) = - K (r - R)\^2
+   F(r) = - K \left( r - R \right)^2
 
 on each atom where *K* is the specified force constant, *r* is the
 distance from the atom to the center of the indenter, and *R* is the
@@ -101,11 +96,11 @@ the plane's current position will feel no force.  Vice versa if *side*
 is specified as *hi*\ .
 
 Any of the 4 quantities defining a spherical indenter's geometry can
-be specified as an equal-style :doc:`variable <variable>`, namely *x*\ ,
-*y*\ , *z*\ , or *R*\ .  Similarly, for a cylindrical indenter, any of *c1*\ ,
-*c2*\ , or *R*\ , can be a variable.  For a planar indenter, *pos* can be
+be specified as an equal-style :doc:`variable <variable>`, namely *x*,
+*y*, *z*, or *R*\ .  Similarly, for a cylindrical indenter, any of *c1*,
+*c2*, or *R*, can be a variable.  For a planar indenter, *pos* can be
 a variable.  If the value is a variable, it should be specified as
-v\_name, where name is the variable name.  In this case, the variable
+v_name, where name is the variable name.  In this case, the variable
 will be evaluated each timestep, and its value used to define the
 indenter geometry.
 
@@ -117,40 +112,37 @@ change as a function of time or span consecutive runs in a continuous
 fashion.  For the latter, see the *start* and *stop* keywords of the
 :doc:`run <run>` command and the *elaplong* keyword of :doc:`thermo_style custom <thermo_style>` for details.
 
-For example, if a spherical indenter's x-position is specified as v\_x,
+For example, if a spherical indenter's x-position is specified as v_x,
 then this variable definition will keep it's center at a relative
 position in the simulation box, 1/4 of the way from the left edge to
 the right edge, even if the box size changes:
 
+.. code-block:: LAMMPS
 
-.. parsed-literal::
-
-   variable x equal "xlo + 0.25\*lx"
+   variable x equal "xlo + 0.25*lx"
 
 Similarly, either of these variable definitions will move the indenter
 from an initial position at 2.5 at a constant velocity of 5:
 
+.. code-block:: LAMMPS
 
-.. parsed-literal::
-
-   variable x equal "2.5 + 5\*elaplong\*dt"
+   variable x equal "2.5 + 5*elaplong*dt"
    variable x equal vdisplace(2.5,5)
 
-If a spherical indenter's radius is specified as v\_r, then these
+If a spherical indenter's radius is specified as v_r, then these
 variable definitions will grow the size of the indenter at a specified
 rate.
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    variable r0 equal 0.0
    variable rate equal 1.0
-   variable r equal "v_r0 + step\*dt\*v_rate"
+   variable r equal "v_r0 + step*dt*v_rate"
 
-If the *side* keyword is specified as *out*\ , which is the default,
+If the *side* keyword is specified as *out*, which is the default,
 then particles outside the indenter are pushed away from its outer
 surface, as described above.  This only applies to spherical or
-cylindrical indenters.  If the *side* keyword is specified as *in*\ ,
+cylindrical indenters.  If the *side* keyword is specified as *in*,
 the action of the indenter is reversed.  Particles inside the indenter
 are pushed away from its inner surface.  In other words, the indenter
 is now a containing wall that traps the particles inside it.  If the
@@ -168,7 +160,7 @@ cylindrical indenter is scaled by the x lattice spacing.
 
 Note that the units keyword only affects indenter geometry parameters
 specified directly with numbers, not those specified as variables.  In
-the latter case, you should use the *xlat*\ , *ylat*\ , *zlat* keywords of
+the latter case, you should use the *xlat*, *ylat*, *zlat* keywords of
 the :doc:`thermo_style <thermo_style>` command if you want to include
 lattice spacings in a variable formula.
 
@@ -176,31 +168,36 @@ The force constant *K* is not affected by the *units* keyword.  It is
 always in force/distance\^2 units where force and distance are defined
 by the :doc:`units <units>` command.  If you wish K to be scaled by the
 lattice spacing, you can define K with a variable whose formula
-contains *xlat*\ , *ylat*\ , *zlat* keywords of the
+contains *xlat*, *ylat*, *zlat* keywords of the
 :doc:`thermo_style <thermo_style>` command, e.g.
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    variable k equal 100.0/xlat/xlat
    fix 1 all indent $k sphere ...
 
-**Restart, fix\_modify, output, run start/stop, minimize info:**
+Restart, fix_modify, output, run start/stop, minimize info
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-No information about this fix is written to :doc:`binary restart files <restart>`.
+No information about this fix is written to :doc:`binary restart files
+<restart>`.
 
-The :doc:`fix_modify <fix_modify>` *energy* option is supported by this
-fix to add the energy of interaction between atoms and the indenter to
-the system's potential energy as part of :doc:`thermodynamic output <thermo_style>`.  The energy of each particle interacting
-with the indenter is K/3 (r - R)\^3.
+The :doc:`fix_modify <fix_modify>` *energy* option is supported by
+this fix to add the energy of interaction between atoms and the
+indenter to the global potential energy of the system as part of
+:doc:`thermodynamic output <thermo_style>`.  The default setting for
+this fix is :doc:`fix_modify energy no <fix_modify>`. The energy of
+each particle interacting with the indenter is K/3 (r - R)\^3.
 
 The :doc:`fix_modify <fix_modify>` *respa* option is supported by this
-fix. This allows to set at which level of the :doc:`r-RESPA <run_style>`
-integrator the fix is adding its forces. Default is the outermost level.
+fix. This allows to set at which level of the :doc:`r-RESPA
+<run_style>` integrator the fix is adding its forces. Default is the
+outermost level.
 
 This fix computes a global scalar energy and a global 3-vector of
-forces (on the indenter), which can be accessed by various :doc:`output commands <Howto_output>`.  The scalar and vector values calculated
-by this fix are "extensive".
+forces (on the indenter), which can be accessed by various
+:doc:`output commands <Howto_output>`.  The scalar and vector values
+calculated by this fix are "extensive".
 
 The forces due to this fix are imposed during an energy minimization,
 invoked by the :doc:`minimize <minimize>` command.  Note that if you
@@ -212,16 +209,20 @@ check if you have done this.
 
 .. note::
 
-   If you want the atom/indenter interaction energy to be included
-   in the total potential energy of the system (the quantity being
-   minimized), you must enable the :doc:`fix_modify <fix_modify>` *energy*
-   option for this fix.
+   If you want the atom/indenter interaction energy to be included in
+   the total potential energy of the system (the quantity being
+   minimized), you must enable the :doc:`fix_modify <fix_modify>`
+   *energy* option for this fix.
 
 Restrictions
 """"""""""""
  none
 
-**Related commands:** none
+Related commands
+""""""""""""""""
+
+none
+
 
 Default
 """""""

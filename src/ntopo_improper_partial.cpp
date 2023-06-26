@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -12,15 +12,15 @@
 ------------------------------------------------------------------------- */
 
 #include "ntopo_improper_partial.h"
-#include <mpi.h>
+
 #include "atom.h"
-#include "force.h"
 #include "domain.h"
-#include "update.h"
+#include "error.h"
+#include "force.h"
+#include "memory.h"
 #include "output.h"
 #include "thermo.h"
-#include "memory.h"
-#include "error.h"
+#include "update.h"
 
 using namespace LAMMPS_NS;
 
@@ -28,8 +28,7 @@ using namespace LAMMPS_NS;
 
 /* ---------------------------------------------------------------------- */
 
-NTopoImproperPartial::NTopoImproperPartial(LAMMPS *lmp) :
-  NTopo(lmp)
+NTopoImproperPartial::NTopoImproperPartial(LAMMPS *lmp) : NTopo(lmp)
 {
   allocate_improper();
 }
@@ -38,7 +37,7 @@ NTopoImproperPartial::NTopoImproperPartial(LAMMPS *lmp) :
 
 void NTopoImproperPartial::build()
 {
-  int i,m,atom1,atom2,atom3,atom4;
+  int i, m, atom1, atom2, atom3, atom4;
 
   int nlocal = atom->nlocal;
   int *num_improper = atom->num_improper;
@@ -62,28 +61,20 @@ void NTopoImproperPartial::build()
       atom4 = atom->map(improper_atom4[i][m]);
       if (atom1 == -1 || atom2 == -1 || atom3 == -1 || atom4 == -1) {
         nmissing++;
-        if (lostbond == Thermo::ERROR) {
-          char str[128];
-          sprintf(str,"Improper atoms "
-                  TAGINT_FORMAT " " TAGINT_FORMAT " "
-                  TAGINT_FORMAT " " TAGINT_FORMAT
-                  " missing on proc %d at step " BIGINT_FORMAT,
-                  improper_atom1[i][m],improper_atom2[i][m],
-                  improper_atom3[i][m],improper_atom4[i][m],
-                  me,update->ntimestep);
-          error->one(FLERR,str);
-        }
+        if (lostbond == Thermo::ERROR)
+          error->one(FLERR, "Improper atoms {} {} {} {} missing on proc {} at step {}",
+                     improper_atom1[i][m], improper_atom2[i][m], improper_atom3[i][m],
+                     improper_atom4[i][m], me, update->ntimestep);
         continue;
       }
-      atom1 = domain->closest_image(i,atom1);
-      atom2 = domain->closest_image(i,atom2);
-      atom3 = domain->closest_image(i,atom3);
-      atom4 = domain->closest_image(i,atom4);
-      if (newton_bond ||
-          (i <= atom1 && i <= atom2 && i <= atom3 && i <= atom4)) {
+      atom1 = domain->closest_image(i, atom1);
+      atom2 = domain->closest_image(i, atom2);
+      atom3 = domain->closest_image(i, atom3);
+      atom4 = domain->closest_image(i, atom4);
+      if (newton_bond || (i <= atom1 && i <= atom2 && i <= atom3 && i <= atom4)) {
         if (nimproperlist == maximproper) {
           maximproper += DELTA;
-          memory->grow(improperlist,maximproper,5,"neigh_topo:improperlist");
+          memory->grow(improperlist, maximproper, 5, "neigh_topo:improperlist");
         }
         improperlist[nimproperlist][0] = atom1;
         improperlist[nimproperlist][1] = atom2;
@@ -94,15 +85,10 @@ void NTopoImproperPartial::build()
       }
     }
 
-  if (cluster_check) dihedral_check(nimproperlist,improperlist);
+  if (cluster_check) dihedral_check(nimproperlist, improperlist);
   if (lostbond == Thermo::IGNORE) return;
 
   int all;
-  MPI_Allreduce(&nmissing,&all,1,MPI_INT,MPI_SUM,world);
-  if (all) {
-    char str[128];
-    sprintf(str,
-            "Improper atoms missing at step " BIGINT_FORMAT,update->ntimestep);
-    if (me == 0) error->warning(FLERR,str);
-  }
+  MPI_Allreduce(&nmissing, &all, 1, MPI_INT, MPI_SUM, world);
+  if (all && me == 0) error->warning(FLERR, "Improper atoms missing at step {}", update->ntimestep);
 }

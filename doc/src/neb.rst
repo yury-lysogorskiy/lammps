@@ -6,10 +6,9 @@ neb command
 Syntax
 """"""
 
-
 .. parsed-literal::
 
-   neb etol ftol N1 N2 Nevery file-style arg keyword
+   neb etol ftol N1 N2 Nevery file-style arg keyword values
 
 * etol = stopping tolerance for energy (energy units)
 * ftol = stopping tolerance for force (force units)
@@ -17,9 +16,9 @@ Syntax
 * N2 = max # of iterations (timesteps) to run barrier-climbing NEB
 * Nevery = print replica energies and reaction coordinates every this many timesteps
 * file-style = *final* or *each* or *none*
-  
+
   .. parsed-literal::
-  
+
        *final* arg = filename
          filename = file with initial coords for final replica
            coords for intermediate replicas are linearly interpolated
@@ -30,13 +29,20 @@ Syntax
        *none* arg = no argument all replicas assumed to already have
            their initial coords
 
-keyword = *verbose*
+* zero or more keyword/value pairs may be appended
+* keyword = *verbosity*
+
+  .. parsed-literal::
+
+     *verbosity* value = *verbose* or *default* or *terse*
+       *verbose* = very detailed per-replica output
+       *default* = some per-replica output
+       *terse* = only global state output
 
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    neb 0.1 0.0 1000 500 50 final coords.final
    neb 0.0 0.001 1000 500 50 each coords.initial.$i
@@ -49,19 +55,21 @@ Perform a nudged elastic band (NEB) calculation using multiple
 replicas of a system.  Two or more replicas must be used; the first
 and last are the end points of the transition path.
 
-NEB is a method for finding both the atomic configurations and height
-of the energy barrier associated with a transition state, e.g. for an
-atom to perform a diffusive hop from one energy basin to another in a
+NEB is a method for finding both the atomic configurations and height of
+the energy barrier associated with a transition state, e.g. for an atom
+to perform a diffusive hop from one energy basin to another in a
 coordinated fashion with its neighbors.  The implementation in LAMMPS
-follows the discussion in these 4 papers: :ref:`(HenkelmanA) <HenkelmanA>`,
-:ref:`(HenkelmanB) <HenkelmanB>`, :ref:`(Nakano) <Nakano3>` and :ref:`(Maras) <Maras2>`.
+follows the discussion in these 4 papers: :ref:`(HenkelmanA)
+<HenkelmanA>`, :ref:`(HenkelmanB) <HenkelmanB>`, :ref:`(Nakano)
+<Nakano3>` and :ref:`(Maras) <Maras2>`.
 
 Each replica runs on a partition of one or more processors.  Processor
-partitions are defined at run-time using the :doc:`-partition command-line switch <Run_options>`.  Note that if you have MPI installed, you
-can run a multi-replica simulation with more replicas (partitions)
-than you have physical processors, e.g you can run a 10-replica
-simulation on just one or two processors.  You will simply not get the
-performance speed-up you would see with one or more physical
+partitions are defined at run-time using the :doc:`-partition
+command-line switch <Run_options>`.  Note that if you have MPI
+installed, you can run a multi-replica simulation with more replicas
+(partitions) than you have physical processors, e.g you can run a
+10-replica simulation on just one or two processors.  You will simply
+not get the performance speed-up you would see with one or more physical
 processors per replica.  See the :doc:`Howto replica <Howto_replica>`
 doc page for further discussion.
 
@@ -114,11 +122,9 @@ from such an initial path.  In this case, you will want to generate
 initial states for the intermediate replicas that are geometrically
 closer to the MEP and read them in.
 
-
 ----------
 
-
-For a *file-style* setting of *final*\ , a filename is specified which
+For a *file-style* setting of *final*, a filename is specified which
 contains atomic coordinates for zero or more atoms, in the format
 described below.  For each atom that appears in the file, the new
 coordinates are assigned to that atom in the final replica.  Each
@@ -127,7 +133,7 @@ interpolated manner.  This is done by using the current position of
 the atom as the starting point and the read-in position as the final
 point.  The distance between them is calculated, and the new position
 is assigned to be a fraction of the distance.  E.g. if there are 10
-replicas, the 2nd replica will assign a position that is 10% of the
+replicas, the second replica will assign a position that is 10% of the
 distance along a line between the starting and final point, and the
 9th replica will assign a position that is 90% of the distance along
 the line.  Note that for this procedure to produce consistent
@@ -147,12 +153,11 @@ case.
    interpolation is outside the periodic box, the atom will be wrapped
    back into the box when the NEB calculation begins.
 
-For a *file-style* setting of *each*\ , a filename is specified which is
+For a *file-style* setting of *each*, a filename is specified which is
 assumed to be unique to each replica.  This can be done by using a
 variable in the filename, e.g.
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    variable i equal part
    neb 0.0 0.001 1000 500 50 each coords.initial.$i
@@ -167,7 +172,7 @@ as described below, and for any atom that appears in the file, assign
 the specified coordinates to its atom.  The various files do not need
 to contain the same set of atoms.
 
-For a *file-style* setting of *none*\ , no filename is specified.  Each
+For a *file-style* setting of *none*, no filename is specified.  Each
 replica is assumed to already be in its initial configuration at the
 time the neb command is issued.  This allows each replica to define
 its own configuration by reading a replica-specific data or restart or
@@ -185,20 +190,18 @@ that a long calculation can be restarted if needed.
    must thus be in the correct initial configuration at the time the neb
    command is issued.
 
-
 ----------
-
 
 A NEB calculation proceeds in two stages, each of which is a
 minimization procedure, performed via damped dynamics.  To enable
 this, you must first define a damped dynamics
-:doc:`min_style <min_style>`, such as *quickmin* or *fire*\ .  The *cg*\ ,
-*sd*\ , and *hftn* styles cannot be used, since they perform iterative
+:doc:`min_style <min_style>`, such as *quickmin* or *fire*\ .  The *cg*,
+*sd*, and *hftn* styles cannot be used, since they perform iterative
 line searches in their inner loop, which cannot be easily synchronized
 across multiple replicas.
 
 The minimizer tolerances for energy and force are set by *etol* and
-*ftol*\ , the same as for the :doc:`minimize <minimize>` command.
+*ftol*, the same as for the :doc:`minimize <minimize>` command.
 
 A non-zero *etol* means that the NEB calculation will terminate if the
 energy criterion is met by every replica.  The energies being compared
@@ -246,9 +249,7 @@ configuration at (close to) the saddle point of the transition. The
 potential energies for the set of replicas represents the energy
 profile of the transition along the MEP.
 
-
 ----------
-
 
 A few other settings in your input script are required or advised to
 perform a NEB calculation.  See the NOTE about the choice of timestep
@@ -271,9 +272,7 @@ Euler integration step.  Thus you must define an appropriate
 will often converge more quickly if you use a timestep about 10x
 larger than you would normally use for dynamics simulations.
 
-
 ----------
-
 
 Each file read by the neb command containing atomic coordinates used
 to initialize one or more replicas must be formatted as follows.
@@ -283,7 +282,6 @@ suffix).  The file can contain initial blank lines or comment lines
 starting with "#" which are ignored.  The first non-blank, non-comment
 line should list N = the number of lines to follow.  The N successive
 lines contain the following information:
-
 
 .. parsed-literal::
 
@@ -306,9 +304,7 @@ Also note there is no requirement that the atoms in the file
 correspond to the NEB atoms in the group defined by the :doc:`fix neb <fix_neb>` command.  Not every NEB atom need be in the file,
 and non-NEB atoms can be listed in the file.
 
-
 ----------
-
 
 Four kinds of output can be generated during a NEB calculation: energy
 barrier statistics, thermodynamic output by each replica, dump files,
@@ -316,12 +312,26 @@ and restart files.
 
 When running with multiple partitions (each of which is a replica in
 this case), the print-out to the screen and master log.lammps file
-contains a line of output, printed once every *Nevery* timesteps.  It
-contains the timestep, the maximum force per replica, the maximum
-force per atom (in any replica), potential gradients in the initial,
-final, and climbing replicas, the forward and backward energy
-barriers, the total reaction coordinate (RDT), and the normalized
-reaction coordinate and potential energy of each replica.
+contains a line of output, printed once every *Nevery* timesteps.  The
+amount of information printed in this line can be selected with the
+*verbosity* keyword.  Available options are *terse*, *default*, and
+*verbose*.
+
+With the *terse* setting, it contains the timestep, the maximum force of
+a replica, the maximum force per atom (in any replica), potential
+gradients in the initial, final, and climbing replicas, the forward and
+backward energy barriers, the total reaction coordinate (RDT).
+
+With the *default* setting, additionally the normalized
+reaction coordinate and potential energy of each replica are printed.
+
+With the *verbose* setting, additional per-replica properties are
+printed: the "path angle" (pathangle), the angle between the 3N-length
+tangent vector and the 3N-length force vector at image *i*
+(angletangrad), the angle between the 3N-length energy gradient vector
+of replica *i* and that of replica *i*\ +1 (anglegrad), the norm of the
+energy gradient (gradV), the the two-norm of the 3N-length force vector
+(RepForce), and the maximum force component of any atom (MaxAtomForce).
 
 The "maximum force per replica" is the two-norm of the 3N-length force
 vector for the atoms in each replica, maximized across replicas, which
@@ -344,22 +354,21 @@ the fix neb command.
 The forward (reverse) energy barrier is the potential energy of the
 highest replica minus the energy of the first (last) replica.
 
-Supplementary information for all replicas can be printed out to the
-screen and master log.lammps file by adding the verbose keyword. This
-information include the following.  The "path angle" (pathangle) for
-the replica i which is the angle between the 3N-length vectors (Ri-1 -
-Ri) and (Ri+1 - Ri) (where Ri is the atomic coordinates of replica
-i). A "path angle" of 180 indicates that replicas i-1, i and i+1 are
-aligned.  "angletangrad" is the angle between the 3N-length tangent
-vector and the 3N-length force vector at image i. The tangent vector
-is calculated as in :ref:`(HenkelmanA) <HenkelmanA>` for all intermediate
-replicas and at R2 - R1 and RM - RM-1 for the first and last replica,
-respectively.  "anglegrad" is the angle between the 3N-length energy
-gradient vector of replica i and that of replica i+1. It is not
-defined for the final replica and reads nan.  gradV is the norm of the
-energy gradient of image i.  ReplicaForce is the two-norm of the
-3N-length force vector (including nudging forces) for replica i.
-MaxAtomForce is the maximum force component of any atom in replica i.
+The "path angle" (pathangle) for the replica i which is the angle
+between the 3N-length vectors :math:`(R_{i-1} - R_i)` and
+:math:`(R_{i+1} - R_i)` (where :math:`R_i` is the atomic coordinates of
+replica *i*). A "path angle" of 180 indicates that replicas *i*\ -1, *i*
+and *i*\ +1 are aligned.  "angletangrad" is the angle between the
+3N-length tangent vector and the 3N-length force vector at image
+*i*. The tangent vector is calculated as in :ref:`(HenkelmanA)
+<HenkelmanA>` for all intermediate replicas and at R2 - R1 and RM - RM-1
+for the first and last replica, respectively.  "anglegrad" is the angle
+between the 3N-length energy gradient vector of replica *i* and that of
+replica *i*\ +1. It is not defined for the final replica and reads nan.
+gradV is the norm of the energy gradient of image *i* (:math:`\nabla
+V`).  ReplicaForce is the two-norm of the 3N-length force vector
+(including nudging forces) for replica *i*.  MaxAtomForce is the maximum
+force component of any atom in replica *i*.
 
 When a NEB calculation does not converge properly, the supplementary
 information can help understanding what is going wrong. For instance
@@ -388,48 +397,49 @@ restart the calculation from an intermediate point with altered
 parameters.
 
 There are 2 Python scripts provided in the tools/python directory,
-neb\_combine.py and neb\_final.py, which are useful in analyzing output
+neb_combine.py and neb_final.py, which are useful in analyzing output
 from a NEB calculation.  Assume a NEB simulation with M replicas, and
 the NEB atoms labeled with a specific atom type.
 
-The neb\_combine.py script extracts atom coords for the NEB atoms from
+The neb_combine.py script extracts atom coords for the NEB atoms from
 all M dump files and creates a single dump file where each snapshot
 contains the NEB atoms from all the replicas and one copy of non-NEB
 atoms from the first replica (presumed to be identical in other
 replicas).  This can be visualized/animated to see how the NEB atoms
 relax as the NEB calculation proceeds.
 
-The neb\_final.py script extracts the final snapshot from each of the M
+The neb_final.py script extracts the final snapshot from each of the M
 dump files to create a single dump file with M snapshots.  This can be
 visualized to watch the system make its transition over the energy
 barrier.
 
 To illustrate, here are images from the final snapshot produced by the
-neb\_combine.py script run on the dump files produced by the two
-example input scripts in examples/neb.  Click on them to see a larger
-image.
+neb_combine.py script run on the dump files produced by the two
+example input scripts in examples/neb.
 
-.. image:: JPG/hop1_small.jpg
-   :target: JPG/hop1.jpg
 
-.. image:: JPG/hop2_small.jpg
-   :target: JPG/hop2.jpg
+.. |neb1| image:: img/hop1.jpg
+   :width: 48%
 
+.. |neb2| image:: img/hop2.jpg
+   :width: 48%
+
+|neb1|  |neb2|
+
+.. raw:: html
+
+   Click on them to see a larger image.
 
 ----------
 
-
 Restrictions
 """"""""""""
-
 
 This command can only be used if LAMMPS was built with the REPLICA
 package.  See the :doc:`Build package <Build_package>` doc
 page for more info.
 
-
 ----------
-
 
 Related commands
 """"""""""""""""
@@ -440,34 +450,24 @@ Related commands
 Default
 """""""
 
-none
-
+*verbosity* = *default*
 
 ----------
 
-
 .. _HenkelmanA:
-
-
 
 **(HenkelmanA)** Henkelman and Jonsson, J Chem Phys, 113, 9978-9985 (2000).
 
 .. _HenkelmanB:
-
-
 
 **(HenkelmanB)** Henkelman, Uberuaga, Jonsson, J Chem Phys, 113,
 9901-9904 (2000).
 
 .. _Nakano3:
 
-
-
 **(Nakano)** Nakano, Comp Phys Comm, 178, 280-289 (2008).
 
 .. _Maras2:
-
-
 
 **(Maras)** Maras, Trushin, Stukowski, Ala-Nissila, Jonsson,
 Comp Phys Comm, 205, 13-21 (2016)

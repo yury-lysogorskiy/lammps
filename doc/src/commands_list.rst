@@ -1,12 +1,12 @@
 Commands
 ########
 
-
 .. toctree::
    :maxdepth: 1
 
    angle_coeff
    angle_style
+   angle_write
    atom_modify
    atom_style
    balance
@@ -14,7 +14,6 @@ Commands
    bond_style
    bond_write
    boundary
-   box
    change_box
    clear
    comm_modify
@@ -29,6 +28,7 @@ Commands
    dielectric
    dihedral_coeff
    dihedral_style
+   dihedral_write
    dimension
    displace_atoms
    dump
@@ -44,6 +44,7 @@ Commands
    echo
    fix
    fix_modify
+   fitpod_command
    group
    group2ndx
    hyper
@@ -57,10 +58,11 @@ Commands
    kspace_modify
    kspace_style
    label
+   labelmap
    lattice
    log
    mass
-   message
+   mdi
    min_modify
    min_spin
    min_style
@@ -78,6 +80,7 @@ Commands
    pair_style
    pair_write
    partition
+   plugin
    prd
    print
    processors
@@ -89,14 +92,11 @@ Commands
    region
    replicate
    rerun
-   reset_ids
+   reset_atoms
    reset_timestep
    restart
    run
    run_style
-   server
-   server_mc
-   server_md
    set
    shell
    special_bonds

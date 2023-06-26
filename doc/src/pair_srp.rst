@@ -1,41 +1,51 @@
-.. index:: pair\_style srp
+.. index:: pair_style srp
+.. index:: pair_style srp/react
 
-pair\_style srp command
-=======================
+pair_style srp command
+======================
 
+pair_style srp/react command
+============================
 Syntax
 """"""
 
-pair\_style srp cutoff btype dist keyword value ...
+.. code-block:: LAMMPS
+
+   pair_style srp cutoff btype dist keyword value ...
+   pair_style srp/react cutoff btype dist react-id keyword value ...
 
 * cutoff = global cutoff for SRP interactions (distance units)
 * btype = bond type to apply SRP interactions to (can be wildcard, see below)
 * distance = *min* or *mid*
+* react-id = id of either fix bond/break or fix bond/create
 * zero or more keyword/value pairs may be appended
 * keyword = *exclude*
-  
+
   .. parsed-literal::
-  
+
        *bptype* value = atom type for bond particles
        *exclude* value = *yes* or *no*
-
-
 
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    pair_style hybrid dpd 1.0 1.0 12345 srp 0.8 1 mid exclude yes
    pair_coeff 1 1 dpd 60.0 4.5 1.0
    pair_coeff 1 2 none
    pair_coeff 2 2 srp 100.0 0.8
 
-   pair_style hybrid dpd 1.0 1.0 12345 srp 0.8 \* min exclude yes
+   pair_style hybrid dpd 1.0 1.0 12345 srp 0.8 * min exclude yes
    pair_coeff 1 1 dpd 60.0 50 1.0
    pair_coeff 1 2 none
    pair_coeff 2 2 srp 40.0
+
+   fix        create all bond/create   100  1  2  1.0 1 prob  0.2  19852
+   pair_style hybrid dpd 1.0 1.0 12345 srp/react 0.8 * min create exclude yes
+   pair_coeff 1 1 dpd 60.0 50 1.0
+   pair_coeff 1 2 none
+   pair_coeff 2 2 srp/react 40.0
 
    pair_style hybrid srp 0.8 2 mid
    pair_coeff 1 1 none
@@ -43,32 +53,36 @@ Examples
    pair_coeff 2 2 srp 100.0 0.8
 
 Description
-"""""""""""
+
 
 Style *srp* computes a soft segmental repulsive potential (SRP) that
 acts between pairs of bonds. This potential is useful for preventing
 bonds from passing through one another when a soft non-bonded
 potential acts between beads in, for example, DPD polymer chains.  An
 example input script that uses this command is provided in
-examples/USER/srp.
+examples/PACKAGES/srp.
 
 Bonds of specified type *btype* interact with one another through a
 bond-pairwise potential, such that the force on bond *i* due to bond
 *j* is as follows
 
-.. image:: Eqs/pair_srp1.jpg
-   :align: center
+.. math::
 
-where *r* and *rij* are the distance and unit vector between the two
-bonds.  Note that *btype* can be specified as an asterisk "\*", which
-case the interaction is applied to all bond types.  The *mid* option
-computes *r* and *rij* from the midpoint distance between bonds. The
-*min* option computes *r* and *rij* from the minimum distance between
-bonds. The force acting on a bond is mapped onto the two bond atoms
-according to the lever rule,
+   F^{\mathrm{SRP}}_{ij} = C(1-r/r_c)\hat{r}_{ij} \qquad r < r_c
 
-.. image:: Eqs/pair_srp2.jpg
-   :align: center
+where *r* and :math:`\hat{r}_{ij}` are the distance and unit vector
+between the two bonds.  Note that *btype* can be specified as an
+asterisk "\*", which case the interaction is applied to all bond types.
+The *mid* option computes *r* and :math:`\hat{r}_{ij}` from the midpoint
+distance between bonds. The *min* option computes *r* and
+:math:`\hat{r}_{ij}` from the minimum distance between bonds. The force
+acting on a bond is mapped onto the two bond atoms according to the
+lever rule,
+
+.. math::
+
+   F_{i1}^{\mathrm{SRP}} & = F^{\mathrm{SRP}}_{ij}(L) \\
+   F_{i2}^{\mathrm{SRP}} & = F^{\mathrm{SRP}}_{ij}(1-L)
 
 where *L* is the normalized distance from the atom to the point of
 closest approach of bond *i* and *j*\ . The *mid* option takes *L* as
@@ -80,7 +94,7 @@ the data file or restart file read by the :doc:`read_data <read_data>`
 or :doc:`read_restart <read_restart>` commands:
 
 * *C* (force units)
-* *rc* (distance units)
+* :math:`r_c` (distance units)
 
 The last coefficient is optional. If not specified, the global cutoff
 is used.
@@ -88,7 +102,7 @@ is used.
 .. note::
 
    Pair style srp considers each bond of type *btype* to be a
-   fictitious "particle" of type *bptype*\ , where *bptype* is either the
+   fictitious "particle" of type *bptype*, where *bptype* is either the
    largest atom type in the system, or the type set by the *bptype* flag.
    Any actual existing particles with this atom type will be deleted at
    the beginning of a run. This means you must specify the number of
@@ -105,7 +119,7 @@ is used.
 
 The optional *exclude* keyword determines if forces are computed
 between first neighbor (directly connected) bonds.  For a setting of
-*no*\ , first neighbor forces are computed; for *yes* they are not
+*no*, first neighbor forces are computed; for *yes* they are not
 computed. A setting of *no* cannot be used with the *min* option for
 distance calculation because the minimum distance between directly
 connected bonds is zero.
@@ -114,20 +128,33 @@ Pair style *srp* turns off normalization of thermodynamic properties
 by particle number, as if the command :doc:`thermo_modify norm no <thermo_modify>` had been issued.
 
 The pairwise energy associated with style *srp* is shifted to be zero
-at the cutoff distance *rc*\ .
-
+at the cutoff distance :math:`r_c`.
 
 ----------
 
+.. versionadded:: 3Aug2022
 
-**Mixing, shift, table, tail correction, restart, rRESPA info**\ :
+Pair style *srp/react* interfaces the pair style *srp* with the
+bond breaking and formation mechanisms provided by fix *bond/break*
+and fix *bond/create*, respectively. When using this pair style, whenever a
+bond breaking (or formation) reaction occurs, the corresponding fictitious
+particle is deleted (or inserted) during the same simulation time step as
+the reaction. This is useful in the simulation of reactive systems involving
+large polymeric molecules :ref:`(Palkar) <Palkar>`  where the segmental repulsive
+potential is necessary to minimize topological violations, and also needs to be
+turned on and off according to the progress of the reaction.
 
-This pair styles does not support mixing.
+----------
+
+Mixing, shift, table, tail correction, restart, rRESPA info
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+This pair style does not support mixing.
 
 This pair style does not support the :doc:`pair_modify <pair_modify>`
 shift option for the energy of the pair interaction. Note that as
 discussed above, the energy term is already shifted to be 0.0 at the
-cutoff distance *rc*\ .
+cutoff distance :math:`r_c`.
 
 The :doc:`pair_modify <pair_modify>` table option is not relevant for
 this pair style.
@@ -136,22 +163,19 @@ This pair style does not support the :doc:`pair_modify <pair_modify>`
 tail option for adding long-range tail corrections to energy and
 pressure.
 
-This pair style writes global and per-atom information to :doc:`binary restart files <restart>`. Pair srp should be used with :doc:`pair_style hybrid <pair_hybrid>`, thus the pair\_coeff commands need to be
+This pair style writes global and per-atom information to :doc:`binary restart files <restart>`. Pair srp should be used with :doc:`pair_style hybrid <pair_hybrid>`, thus the pair_coeff commands need to be
 specified in the input script when reading a restart file.
 
 This pair style can only be used via the *pair* keyword of the
 :doc:`run_style respa <run_style>` command.  It does not support the
-*inner*\ , *middle*\ , *outer* keywords.
-
+*inner*, *middle*, *outer* keywords.
 
 ----------
-
 
 Restrictions
 """"""""""""
 
-
-This pair style is part of the USER-MISC package. It is only enabled
+This pair style is part of the MISC package. It is only enabled
 if LAMMPS was built with that package. See the Making LAMMPS section
 for more info.
 
@@ -173,13 +197,14 @@ Default
 
 The default keyword value is exclude = yes.
 
-
 ----------
-
 
 .. _Sirk2:
 
-
-
 **(Sirk)** Sirk TW, Sliozberg YR, Brennan JK, Lisal M, Andzelm JW, J
 Chem Phys, 136 (13) 134903, 2012.
+
+.. _Palkar:
+
+**(Palkar)** Palkar V, Kuksenok O, J. Phys. Chem. B, 126 (1), 336-346, 2022
+

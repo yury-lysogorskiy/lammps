@@ -6,7 +6,6 @@ run command
 Syntax
 """"""
 
-
 .. parsed-literal::
 
    run N keyword values ...
@@ -14,9 +13,9 @@ Syntax
 * N = # of timesteps
 * zero or more keyword/value pairs may be appended
 * keyword = *upto* or *start* or *stop* or *pre* or *post* or *every*
-  
+
   .. parsed-literal::
-  
+
        *upto* value = none
        *start* value = N1
          N1 = timestep at which 1st run started
@@ -29,13 +28,10 @@ Syntax
          c1,c2,...,cN = one or more LAMMPS commands, each enclosed in quotes
          c1 = NULL means no command will be invoked
 
-
-
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    run 10000
    run 1000000 upto
@@ -49,7 +45,7 @@ Description
 
 Run or continue dynamics for a specified number of timesteps.
 
-When the :doc:`run style <run_style>` is *respa*\ , N refers to outer
+When the :doc:`run style <run_style>` is *respa*, N refers to outer
 loop (largest) timesteps.
 
 A value of N = 0 is acceptable; only the thermodynamics of the system
@@ -68,14 +64,13 @@ completes.
 The *start* or *stop* keywords can be used if multiple runs are being
 performed and you want a :doc:`fix <fix>` command that changes some
 value over time (e.g. temperature) to make the change across the
-entire set of runs and not just a single run.  See the doc page for
+entire set of runs and not just a single run.  See the page for
 individual fixes to see which ones can be used with the *start/stop*
 keywords.
 
 For example, consider this fix followed by 10 run commands:
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    fix         1 all nvt 200.0 300.0 1.0
    run         1000 start 0 stop 10000
@@ -102,14 +97,14 @@ just a continuation of a previous run (i.e. no settings are changed),
 the initial computation is not necessary; the old neighbor list is
 still valid as are the forces.  So if *pre* is specified as "no" then
 the initial setup is skipped, except for printing thermodynamic info.
-Note that if *pre* is set to "no" for the very 1st run LAMMPS
+Note that if *pre* is set to "no" for the very first run LAMMPS
 performs, then it is overridden, since the initial setup computations
 must be done.
 
 .. note::
 
    If your input script changes the system between 2 runs, then the
-   initial setup must be performed to insure the change is recognized by
+   initial setup must be performed to ensure the change is recognized by
    all parts of the code that are affected.  Examples are adding a
    :doc:`fix <fix>` or :doc:`dump <dump>` or :doc:`compute <compute>`, changing
    a :doc:`neighbor <neigh_modify>` list parameter, or writing restart file
@@ -141,7 +136,7 @@ be useful for invoking a command you have added to LAMMPS that wraps
 some other code (e.g. as a library) to perform a computation
 periodically during a long LAMMPS run.  See the :doc:`Modify <Modify>`
 doc page for info about how to add new commands to LAMMPS.  See the
-:doc:`Howto couple <Howto_couple>` doc page for ideas about how to
+:doc:`Howto couple <Howto_couple>` page for ideas about how to
 couple LAMMPS to other codes.
 
 With the *every* option, N total steps are simulated, in shorter runs
@@ -149,16 +144,14 @@ of M steps each.  After each M-length run, the specified commands are
 invoked.  If only a single command is specified as NULL, then no
 command is invoked.  Thus these lines:
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    variable q equal x[100]
    run 6000 every 2000 "print 'Coord = $q'"
 
 are the equivalent of:
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    variable q equal x[100]
    run 2000
@@ -176,8 +169,7 @@ Note that by using the line continuation character "&", the run every
 command can be spread across many lines, though it is still a single
 command:
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    run 100000 every 1000 &
      "print 'Minimum value = $a'" &
@@ -186,7 +178,7 @@ command:
      "print 'Press = $d'"
 
 If the *pre* and *post* options are set to "no" when used with the
-*every* keyword, then the 1st run will do the full setup and the last
+*every* keyword, then the first run will do the full setup and the last
 run will print the full timing summary, but these operations will be
 skipped for intermediate runs.
 
@@ -195,8 +187,7 @@ skipped for intermediate runs.
    You might wish to specify a command that exits the run by
    jumping out of the loop, e.g.
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    variable t equal temp
    run 10000 every 100 "if '$t < 300.0' then 'jump SELF afterrun'"
@@ -210,10 +201,9 @@ has additional options for how to exit the run.
 Restrictions
 """"""""""""
 
-
 When not using the *upto* keyword, the number of specified timesteps N
 must fit in a signed 32-bit integer, so you are limited to slightly
-more than 2 billion steps (2\^31) in a single run.  When using *upto*\ ,
+more than 2 billion steps (2\^31) in a single run.  When using *upto*,
 N can be larger than a signed 32-bit integer, however the difference
 between N and the current timestep must still be no larger than
 2\^31 steps.

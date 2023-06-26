@@ -1,7 +1,8 @@
+// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -12,18 +13,21 @@
 ------------------------------------------------------------------------- */
 
 #include "fix_press_berendsen.h"
-#include <cstring>
-#include <cmath>
+
 #include "atom.h"
-#include "force.h"
 #include "comm.h"
-#include "modify.h"
-#include "fix_deform.h"
 #include "compute.h"
-#include "kspace.h"
-#include "update.h"
 #include "domain.h"
 #include "error.h"
+#include "fix_deform.h"
+#include "force.h"
+#include "group.h"
+#include "kspace.h"
+#include "modify.h"
+#include "update.h"
+
+#include <cmath>
+#include <cstring>
 
 using namespace LAMMPS_NS;
 using namespace FixConst;
@@ -36,11 +40,9 @@ enum{ISO,ANISO};
 
 FixPressBerendsen::FixPressBerendsen(LAMMPS *lmp, int narg, char **arg) :
   Fix(lmp, narg, arg),
-  id_temp(NULL), id_press(NULL), tflag(0), pflag(0)
+  id_temp(nullptr), id_press(nullptr), tflag(0), pflag(0)
 {
   if (narg < 5) error->all(FLERR,"Illegal fix press/berendsen command");
-
-  box_change_size = 1;
 
   // Berendsen barostat applied every step
 
@@ -69,9 +71,9 @@ FixPressBerendsen::FixPressBerendsen(LAMMPS *lmp, int narg, char **arg) :
       if (iarg+4 > narg)
         error->all(FLERR,"Illegal fix press/berendsen command");
       pcouple = XYZ;
-      p_start[0] = p_start[1] = p_start[2] = force->numeric(FLERR,arg[iarg+1]);
-      p_stop[0] = p_stop[1] = p_stop[2] = force->numeric(FLERR,arg[iarg+2]);
-      p_period[0] = p_period[1] = p_period[2] = force->numeric(FLERR,arg[iarg+3]);
+      p_start[0] = p_start[1] = p_start[2] = utils::numeric(FLERR,arg[iarg+1],false,lmp);
+      p_stop[0] = p_stop[1] = p_stop[2] = utils::numeric(FLERR,arg[iarg+2],false,lmp);
+      p_period[0] = p_period[1] = p_period[2] = utils::numeric(FLERR,arg[iarg+3],false,lmp);
       p_flag[0] = p_flag[1] = p_flag[2] = 1;
       if (dimension == 2) {
         p_start[2] = p_stop[2] = p_period[2] = 0.0;
@@ -82,9 +84,9 @@ FixPressBerendsen::FixPressBerendsen(LAMMPS *lmp, int narg, char **arg) :
       if (iarg+4 > narg)
         error->all(FLERR,"Illegal fix press/berendsen command");
       pcouple = NONE;
-      p_start[0] = p_start[1] = p_start[2] = force->numeric(FLERR,arg[iarg+1]);
-      p_stop[0] = p_stop[1] = p_stop[2] = force->numeric(FLERR,arg[iarg+2]);
-      p_period[0] = p_period[1] = p_period[2] = force->numeric(FLERR,arg[iarg+3]);
+      p_start[0] = p_start[1] = p_start[2] = utils::numeric(FLERR,arg[iarg+1],false,lmp);
+      p_stop[0] = p_stop[1] = p_stop[2] = utils::numeric(FLERR,arg[iarg+2],false,lmp);
+      p_period[0] = p_period[1] = p_period[2] = utils::numeric(FLERR,arg[iarg+3],false,lmp);
       p_flag[0] = p_flag[1] = p_flag[2] = 1;
       if (dimension == 2) {
         p_start[2] = p_stop[2] = p_period[2] = 0.0;
@@ -95,25 +97,25 @@ FixPressBerendsen::FixPressBerendsen(LAMMPS *lmp, int narg, char **arg) :
     } else if (strcmp(arg[iarg],"x") == 0) {
       if (iarg+4 > narg)
         error->all(FLERR,"Illegal fix press/berendsen command");
-      p_start[0] = force->numeric(FLERR,arg[iarg+1]);
-      p_stop[0] = force->numeric(FLERR,arg[iarg+2]);
-      p_period[0] = force->numeric(FLERR,arg[iarg+3]);
+      p_start[0] = utils::numeric(FLERR,arg[iarg+1],false,lmp);
+      p_stop[0] = utils::numeric(FLERR,arg[iarg+2],false,lmp);
+      p_period[0] = utils::numeric(FLERR,arg[iarg+3],false,lmp);
       p_flag[0] = 1;
       iarg += 4;
     } else if (strcmp(arg[iarg],"y") == 0) {
       if (iarg+4 > narg)
         error->all(FLERR,"Illegal fix press/berendsen command");
-      p_start[1] = force->numeric(FLERR,arg[iarg+1]);
-      p_stop[1] = force->numeric(FLERR,arg[iarg+2]);
-      p_period[1] = force->numeric(FLERR,arg[iarg+3]);
+      p_start[1] = utils::numeric(FLERR,arg[iarg+1],false,lmp);
+      p_stop[1] = utils::numeric(FLERR,arg[iarg+2],false,lmp);
+      p_period[1] = utils::numeric(FLERR,arg[iarg+3],false,lmp);
       p_flag[1] = 1;
       iarg += 4;
     } else if (strcmp(arg[iarg],"z") == 0) {
       if (iarg+4 > narg)
         error->all(FLERR,"Illegal fix press/berendsen command");
-      p_start[2] = force->numeric(FLERR,arg[iarg+1]);
-      p_stop[2] = force->numeric(FLERR,arg[iarg+2]);
-      p_period[2] = force->numeric(FLERR,arg[iarg+3]);
+      p_start[2] = utils::numeric(FLERR,arg[iarg+1],false,lmp);
+      p_stop[2] = utils::numeric(FLERR,arg[iarg+2],false,lmp);
+      p_period[2] = utils::numeric(FLERR,arg[iarg+3],false,lmp);
       p_flag[2] = 1;
       iarg += 4;
       if (dimension == 2)
@@ -133,7 +135,7 @@ FixPressBerendsen::FixPressBerendsen(LAMMPS *lmp, int narg, char **arg) :
     } else if (strcmp(arg[iarg],"modulus") == 0) {
       if (iarg+2 > narg)
         error->all(FLERR,"Illegal fix press/berendsen command");
-      bulkmodulus = force->numeric(FLERR,arg[iarg+1]);
+      bulkmodulus = utils::numeric(FLERR,arg[iarg+1],false,lmp);
       if (bulkmodulus <= 0.0)
         error->all(FLERR,"Illegal fix press/berendsen command");
       iarg += 2;
@@ -204,6 +206,10 @@ FixPressBerendsen::FixPressBerendsen(LAMMPS *lmp, int narg, char **arg) :
       (p_flag[2] && p_period[2] <= 0.0))
     error->all(FLERR,"Fix press/berendsen damping parameters must be > 0.0");
 
+  if (p_flag[0]) box_change |= BOX_CHANGE_X;
+  if (p_flag[1]) box_change |= BOX_CHANGE_Y;
+  if (p_flag[2]) box_change |= BOX_CHANGE_Z;
+
   // pstyle = ISO if XYZ coupling or XY coupling in 2d -> 1 dof
   // else pstyle = ANISO -> 3 dof
 
@@ -215,53 +221,34 @@ FixPressBerendsen::FixPressBerendsen(LAMMPS *lmp, int narg, char **arg) :
   // compute group = all since pressure is always global (group all)
   //   and thus its KE/temperature contribution should use group all
 
-  int n = strlen(id) + 6;
-  id_temp = new char[n];
-  strcpy(id_temp,id);
-  strcat(id_temp,"_temp");
-
-  char **newarg = new char*[3];
-  newarg[0] = id_temp;
-  newarg[1] = (char *) "all";
-  newarg[2] = (char *) "temp";
-  modify->add_compute(3,newarg);
-  delete [] newarg;
+  id_temp = utils::strdup(std::string(id) + "_temp");
+  modify->add_compute(fmt::format("{} all temp",id_temp));
   tflag = 1;
 
   // create a new compute pressure style
   // id = fix-ID + press, compute group = all
   // pass id_temp as 4th arg to pressure constructor
 
-  n = strlen(id) + 7;
-  id_press = new char[n];
-  strcpy(id_press,id);
-  strcat(id_press,"_press");
-
-  newarg = new char*[4];
-  newarg[0] = id_press;
-  newarg[1] = (char *) "all";
-  newarg[2] = (char *) "pressure";
-  newarg[3] = id_temp;
-  modify->add_compute(4,newarg);
-  delete [] newarg;
+  id_press = utils::strdup(std::string(id) + "_press");
+  modify->add_compute(fmt::format("{} all pressure {}",id_press, id_temp));
   pflag = 1;
 
   nrigid = 0;
-  rfix = NULL;
+  rfix = nullptr;
 }
 
 /* ---------------------------------------------------------------------- */
 
 FixPressBerendsen::~FixPressBerendsen()
 {
-  delete [] rfix;
+  delete[] rfix;
 
   // delete temperature and pressure if fix created them
 
   if (tflag) modify->delete_compute(id_temp);
   if (pflag) modify->delete_compute(id_press);
-  delete [] id_temp;
-  delete [] id_press;
+  delete[] id_temp;
+  delete[] id_press;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -280,11 +267,11 @@ void FixPressBerendsen::init()
   if (domain->triclinic)
     error->all(FLERR,"Cannot use fix press/berendsen with triclinic box");
 
-  // insure no conflict with fix deform
+  // ensure no conflict with fix deform
 
-  for (int i = 0; i < modify->nfix; i++)
-    if (strcmp(modify->fix[i]->style,"deform") == 0) {
-      int *dimflag = ((FixDeform *) modify->fix[i])->dimflag;
+  for (const auto &ifix : modify->get_fix_list())
+    if (strcmp(ifix->style, "^deform") == 0) {
+      int *dimflag = static_cast<FixDeform *>(ifix)->dimflag;
       if ((p_flag[0] && dimflag[0]) || (p_flag[1] && dimflag[1]) ||
           (p_flag[2] && dimflag[2]))
         error->all(FLERR,"Cannot use fix press/berendsen and "
@@ -293,18 +280,16 @@ void FixPressBerendsen::init()
 
   // set temperature and pressure ptrs
 
-  int icompute = modify->find_compute(id_temp);
-  if (icompute < 0)
-    error->all(FLERR,"Temperature ID for fix press/berendsen does not exist");
-  temperature = modify->compute[icompute];
+  temperature = modify->get_compute_by_id(id_temp);
+  if (!temperature)
+    error->all(FLERR, "Temperature compute ID {} for fix press/berendsen does not exist", id_temp);
 
   if (temperature->tempbias) which = BIAS;
   else which = NOBIAS;
 
-  icompute = modify->find_compute(id_press);
-  if (icompute < 0)
-    error->all(FLERR,"Pressure ID for fix press/berendsen does not exist");
-  pressure = modify->compute[icompute];
+  pressure = modify->get_compute_by_id(id_press);
+  if (!pressure)
+    error->all(FLERR, "Pressure compute ID {} for fix press/berendsen does not exist", id_press);
 
   // Kspace setting
 
@@ -314,13 +299,13 @@ void FixPressBerendsen::init()
   // detect if any rigid fixes exist so rigid bodies move when box is remapped
   // rfix[] = indices to each fix rigid
 
-  delete [] rfix;
+  delete[] rfix;
   nrigid = 0;
-  rfix = NULL;
+  rfix = nullptr;
 
   for (int i = 0; i < modify->nfix; i++)
     if (modify->fix[i]->rigid_flag) nrigid++;
-  if (nrigid) {
+  if (nrigid > 0) {
     rfix = new int[nrigid];
     nrigid = 0;
     for (int i = 0; i < modify->nfix; i++)
@@ -474,26 +459,25 @@ int FixPressBerendsen::modify_param(int narg, char **arg)
       modify->delete_compute(id_temp);
       tflag = 0;
     }
-    delete [] id_temp;
-    int n = strlen(arg[1]) + 1;
-    id_temp = new char[n];
-    strcpy(id_temp,arg[1]);
+    delete[] id_temp;
+    id_temp = utils::strdup(arg[1]);
 
-    int icompute = modify->find_compute(arg[1]);
-    if (icompute < 0) error->all(FLERR,"Could not find fix_modify temperature ID");
-    temperature = modify->compute[icompute];
+    temperature = modify->get_compute_by_id(arg[1]);
+    if (!temperature)
+      error->all(FLERR,"Could not find fix_modify temperature compute ID: ", arg[1]);
 
     if (temperature->tempflag == 0)
-      error->all(FLERR,"Fix_modify temperature ID does not compute temperature");
+      error->all(FLERR,"Fix_modify temperature compute {} does not compute temperature", arg[1]);
     if (temperature->igroup != 0 && comm->me == 0)
-      error->warning(FLERR,"Temperature for NPT is not for group all");
+      error->warning(FLERR,"Temperature compute {} for fix {} is not for group all: {}",
+                     arg[1], style, group->names[temperature->igroup]);
 
     // reset id_temp of pressure to new temperature ID
 
-    icompute = modify->find_compute(id_press);
-    if (icompute < 0)
-      error->all(FLERR,"Pressure ID for fix press/berendsen does not exist");
-    modify->compute[icompute]->reset_extra_compute_fix(id_temp);
+    auto icompute = modify->get_compute_by_id(id_press);
+    if (!icompute)
+      error->all(FLERR,"Pressure compute ID {} for fix {} does not exist", id_press, style);
+    icompute->reset_extra_compute_fix(id_temp);
 
     return 2;
 
@@ -503,17 +487,13 @@ int FixPressBerendsen::modify_param(int narg, char **arg)
       modify->delete_compute(id_press);
       pflag = 0;
     }
-    delete [] id_press;
-    int n = strlen(arg[1]) + 1;
-    id_press = new char[n];
-    strcpy(id_press,arg[1]);
+    delete[] id_press;
+    id_press = utils::strdup(arg[1]);
 
-    int icompute = modify->find_compute(arg[1]);
-    if (icompute < 0) error->all(FLERR,"Could not find fix_modify pressure ID");
-    pressure = modify->compute[icompute];
-
+    pressure = modify->get_compute_by_id(arg[1]);
+    if (!pressure) error->all(FLERR,"Could not find fix_modify pressure compute ID: {}", arg[1]);
     if (pressure->pressflag == 0)
-      error->all(FLERR,"Fix_modify pressure ID does not compute pressure");
+      error->all(FLERR,"Fix_modify pressure compute {} does not compute pressure", arg[1]);
     return 2;
   }
   return 0;

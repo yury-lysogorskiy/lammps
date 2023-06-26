@@ -1,63 +1,63 @@
-.. index:: read\_restart
+.. index:: read_restart
 
-read\_restart command
-=====================
+read_restart command
+====================
 
 Syntax
 """"""
 
+.. code-block:: LAMMPS
 
-.. parsed-literal::
-
-   read_restart file flag
+   read_restart file
 
 * file = name of binary restart file to read in
-* flag = remap (optional)
 
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    read_restart save.10000
-   read_restart save.10000 remap
-   read_restart restart.\*
-   read_restart restart.\*.mpiio
-   read_restart poly.\*.% remap
+   read_restart restart.*
+   read_restart restart.*.mpiio
 
 Description
 """""""""""
 
 Read in a previously saved system configuration from a restart file.
 This allows continuation of a previous run.  Details about what
-information is stored (and not stored) in a restart file is given
-below.  Basically this operation will re-create the simulation box
-with all its atoms and their attributes as well as some related global
-settings, at the point in time it was written to the restart file by a
-previous simulation.  The simulation box will be partitioned into a
-regular 3d grid of rectangular bricks, one per processor, based on the
-number of processors in the current simulation and the settings of the
+information is stored (and not stored) in a restart file is given below.
+Basically this operation will re-create the simulation box with all its
+atoms and their attributes as well as some related global settings, at
+the point in time it was written to the restart file by a previous
+simulation.  The simulation box will be partitioned into a regular 3d
+grid of rectangular bricks, one per processor, based on the number of
+processors in the current simulation and the settings of the
 :doc:`processors <processors>` command.  The partitioning can later be
-changed by the :doc:`balance <balance>` or :doc:`fix balance <fix_balance>` commands.
+changed by the :doc:`balance <balance>` or :doc:`fix balance
+<fix_balance>` commands.
 
-.. note::
+.. deprecated:: 23Jun2022
 
-   Normally, restart files are written by the
-   :doc:`restart <restart>` or :doc:`write_restart <write_restart>` commands
-   so that all atoms in the restart file are inside the simulation box.
-   If this is not the case, the read\_restart command will print an error
-   that atoms were "lost" when the file is read.  This error should be
-   reported to the LAMMPS developers so the invalid writing of the
-   restart file can be fixed.  If you still wish to use the restart file,
-   the optional *remap* flag can be appended to the read\_restart command.
-   This should avoid the error, by explicitly remapping each atom back
-   into the simulation box, updating image flags for the atom
-   appropriately.
+Atom coordinates that are found to be outside the simulation box when
+reading the restart will be remapped back into the box and their image
+flags updated accordingly.  This previously required specifying the
+*remap* option, but that is no longer required.
 
 Restart files are saved in binary format to enable exact restarts,
 meaning that the trajectories of a restarted run will precisely match
 those produced by the original run had it continued on.
+
+The binary restart file format was not designed with backward, forward,
+or cross-platform compatibility in mind, so the files are only expected
+to be read correctly by the same LAMMPS executable on the same platform.
+Changes to the architecture, compilation settings, or LAMMPS version can
+render a restart file unreadable or it may read the data incorrectly.
+If you want a more portable format, you can use the data file format as
+created by the :doc:`write_data <write_data>` command.  Binary restart
+files can also be converted into a data file from the command line by
+the LAMMPS executable that wrote them using the :ref:`-restart2data
+<restart2data>` command line flag.
 
 Several things can prevent exact restarts due to round-off effects, in
 which case the trajectories in the 2 runs will slowly diverge.  These
@@ -67,7 +67,8 @@ certain settings such as those set by the :doc:`newton <newton>` or
 these cases.
 
 Certain fixes will not restart exactly, though they should provide
-statistically similar results.  These include :doc:`fix shake <fix_shake>` and :doc:`fix langevin <fix_langevin>`.
+statistically similar results.  These include :doc:`fix shake
+<fix_shake>` and :doc:`fix langevin <fix_langevin>`.
 
 Certain pair styles will not restart exactly, though they should
 provide statistically similar results.  This is because the forces
@@ -83,27 +84,28 @@ produced the restart file, it could be a LAMMPS bug, so consider
 :doc:`reporting it <Errors_bugs>` if you think the behavior is a bug.
 
 Because restart files are binary, they may not be portable to other
-machines.  In this case, you can use the :doc:`-restart command-line switch <Run_options>` to convert a restart file to a data file.
+machines.  In this case, you can use the :doc:`-restart command-line
+switch <Run_options>` to convert a restart file to a data file.
 
-Similar to how restart files are written (see the
-:doc:`write_restart <write_restart>` and :doc:`restart <restart>`
-commands), the restart filename can contain two wild-card characters.
-If a "\*" appears in the filename, the directory is searched for all
-filenames that match the pattern where "\*" is replaced with a timestep
-value.  The file with the largest timestep value is read in.  Thus,
-this effectively means, read the latest restart file.  It's useful if
-you want your script to continue a run from where it left off.  See
-the :doc:`run <run>` command and its "upto" option for how to specify
-the run command so it doesn't need to be changed either.
+Similar to how restart files are written (see the :doc:`write_restart
+<write_restart>` and :doc:`restart <restart>` commands), the restart
+filename can contain two wild-card characters.  If a "\*" appears in the
+filename, the directory is searched for all filenames that match the
+pattern where "\*" is replaced with a timestep value.  The file with the
+largest timestep value is read in.  Thus, this effectively means, read
+the latest restart file.  It's useful if you want your script to
+continue a run from where it left off.  See the :doc:`run <run>` command
+and its "upto" option for how to specify the run command so it does not
+need to be changed either.
 
 If a "%" character appears in the restart filename, LAMMPS expects a
 set of multiple files to exist.  The :doc:`restart <restart>` and
 :doc:`write_restart <write_restart>` commands explain how such sets are
-created.  Read\_restart will first read a filename where "%" is
+created.  Read_restart will first read a filename where "%" is
 replaced by "base".  This file tells LAMMPS how many processors
-created the set and how many files are in it.  Read\_restart then reads
+created the set and how many files are in it.  Read_restart then reads
 the additional files.  For example, if the restart file was specified
-as save.% when it was written, then read\_restart reads the files
+as save.% when it was written, then read_restart reads the files
 save.base, save.0, save.1, ... save.P-1, where P is the number of
 processors that created the restart file.
 
@@ -124,8 +126,7 @@ MPI-IO is part of the MPI standard for versions 2.0 and above.  Using
 MPI-IO requires two steps.  First, build LAMMPS with its MPIIO package
 installed, e.g.
 
-
-.. parsed-literal::
+.. code-block:: bash
 
    make yes-mpiio    # installs the MPIIO package
    make mpi          # build LAMMPS for your platform
@@ -135,9 +136,7 @@ does not have to end in ".mpiio", just contain those characters.
 Unlike MPI-IO dump files, a particular restart file must be both
 written and read using MPI-IO.
 
-
 ----------
-
 
 Here is the list of information included in a restart file, which
 means these quantities do not need to be re-specified in the input
@@ -174,7 +173,7 @@ reading the restart file.
 The :doc:`newton <newton>` command has two settings, one for pairwise
 interactions, the other for bonded.  Both settings are stored in the
 restart file.  For the bond setting, the value in the file will
-overwrite the current value (at the time the read\_restart command is
+overwrite the current value (at the time the read_restart command is
 issued) and warn if the two values are not the same and the current
 value is not the default.  For the pair setting, the value in the file
 will not overwrite the current value (so that you can override the
@@ -227,17 +226,17 @@ its calculations in a consistent manner.
 
 .. note::
 
-   There are a handful of commands which can be used before or
-   between runs which may require a system initialization.  Examples
-   include the "balance", "displace\_atoms", "delete\_atoms", "set" (some
-   options), and "velocity" (some options) commands.  This is because
-   they can migrate atoms to new processors.  Thus they will also discard
-   unused "state" information from fixes.  You will know the discard has
+   There are a handful of commands which can be used before or between
+   runs which may require a system initialization.  Examples include the
+   "balance", "displace_atoms", "delete_atoms", "set" (some options),
+   and "velocity" (some options) commands.  This is because they can
+   migrate atoms to new processors.  Thus they will also discard unused
+   "state" information from fixes.  You will know the discard has
    occurred because a list of discarded fixes will be printed to the
    screen and log file, as explained above.  This means that if you wish
    to retain that info in a restarted run, you must re-specify the
-   relevant fixes and computes (which create fixes) before those commands
-   are used.
+   relevant fixes and computes (which create fixes) before those
+   commands are used.
 
 Some pair styles, like the :doc:`granular pair styles <pair_gran>`, also
 use a fix to store "state" information that persists from timestep to
@@ -250,26 +249,24 @@ LAMMPS allows bond interactions (angle, etc) to be turned off or
 deleted in various ways, which can affect how their info is stored in
 a restart file.
 
-If bonds (angles, etc) have been turned off by the :doc:`fix shake <fix_shake>` or :doc:`delete_bonds <delete_bonds>` command,
-their info will be written to a restart file as if they are turned on.
-This means they will need to be turned off again in a new run after
-the restart file is read.
+If bonds (angles, etc) have been turned off by the :doc:`fix shake
+<fix_shake>` or :doc:`delete_bonds <delete_bonds>` command, their info
+will be written to a restart file as if they are turned on.  This means
+they will need to be turned off again in a new run after the restart
+file is read.
 
 Bonds that are broken (e.g. by a bond-breaking potential) are written
 to the restart file as broken bonds with a type of 0.  Thus these
 bonds will still be broken when the restart file is read.
 
-Bonds that have been broken by the :doc:`fix bond/break <fix_bond_break>` command have disappeared from the
-system.  No information about these bonds is written to the restart
-file.
-
+Bonds that have been broken by the :doc:`fix bond/break
+<fix_bond_break>` command have disappeared from the system.  No
+information about these bonds is written to the restart file.
 
 ----------
 
-
 Restrictions
 """"""""""""
-
 
 To write and read restart files in parallel with MPI-IO, the MPIIO
 package must be installed.
@@ -280,4 +277,7 @@ Related commands
 :doc:`read_data <read_data>`, :doc:`read_dump <read_dump>`,
 :doc:`write_restart <write_restart>`, :doc:`restart <restart>`
 
-**Default:** none
+Default
+"""""""
+
+none

@@ -11,22 +11,22 @@
 //
 //    begin                :
 //    email                : brownw@ornl.gov
-// ***************************************************************************/
+// ***************************************************************************
 
-#ifdef NV_KERNEL
+#if defined(NV_KERNEL) || defined(USE_HIP)
 
 #include "lal_preprocessor.h"
 #ifndef _DOUBLE_DOUBLE
-texture<float4> pos_tex;
-texture<float> q_tex;
+_texture( pos_tex,float4);
+_texture( q_tex,float);
 #else
-texture<int4,1> pos_tex;
-texture<int2> q_tex;
+_texture_2d( pos_tex,int4);
+_texture( q_tex,int2);
 #endif
 
 // Allow PPPM to compile without atomics for NVIDIA 1.0 cards, error
 // generated at runtime with use of pppm/gpu
-#if (__CUDA_ARCH__ < 110)
+#if defined(NV_KERNEL) && (__CUDA_ARCH__ < 110)
 #define atomicAdd(x,y) *(x)+=0
 #endif
 
@@ -35,10 +35,13 @@ texture<int2> q_tex;
 #define pos_tex x_
 #define q_tex q_
 #pragma OPENCL EXTENSION cl_khr_global_int32_base_atomics: enable
+
+#ifdef GRD_DBL
 #if defined(cl_amd_fp64)
 #pragma OPENCL EXTENSION cl_amd_fp64 : enable
 #else
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
+#endif
 #endif
 
 #endif
@@ -214,7 +217,7 @@ __kernel void interp(const __global numtyp4 *restrict x_,
                      const grdtyp delxinv,  const grdtyp delyinv,
                      const grdtyp delzinv, const int order,
                      const int order2, const grdtyp qqrd2e_scale,
-                     __global acctyp4 *restrict ans) {
+                     __global acctyp3 *restrict ans) {
   __local grdtyp rho_coeff[PPPM_MAX_SPLINE*PPPM_MAX_SPLINE];
   __local grdtyp rho1d_0[PPPM_MAX_SPLINE][PPPM_BLOCK_1D];
   __local grdtyp rho1d_1[PPPM_MAX_SPLINE][PPPM_BLOCK_1D];
@@ -236,7 +239,7 @@ __kernel void interp(const __global numtyp4 *restrict x_,
     fetch(qs,ii,q_tex);
     qs*=qqrd2e_scale;
 
-    acctyp4 ek;
+    acctyp3 ek;
     ek.x=(acctyp)0.0;
     ek.y=(acctyp)0.0;
     ek.z=(acctyp)0.0;
@@ -270,19 +273,19 @@ __kernel void interp(const __global numtyp4 *restrict x_,
         int my=mz+fast_mul(ny,npts_x);
         for (int m=0; m<order; m++) {
           grdtyp y0=z0*rho1d_1[m][tid];
-                for (int l=0; l<order; l++) {
-                  grdtyp x0=y0*rho1d_0[l][tid];
-                  grdtyp4 el=brick[my+l];
-                  ek.x-=x0*el.x;
-                  ek.y-=x0*el.y;
-                  ek.z-=x0*el.z;
-                }
+          for (int l=0; l<order; l++) {
+            grdtyp x0=y0*rho1d_0[l][tid];
+            grdtyp4 el=brick[my+l];
+            ek.x-=x0*el.x;
+            ek.y-=x0*el.y;
+            ek.z-=x0*el.z;
+          }
           my+=npts_x;
         }
         mz+=npts_yx;
-            }
+      }
     }
     ans[ii]=ek;
-        }
+  }
 }
 

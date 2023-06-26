@@ -6,24 +6,25 @@ bond_coeff command
 Syntax
 """"""
 
-
 .. code-block:: LAMMPS
 
    bond_coeff N args
 
-* N = bond type (see asterisk form below)
+* N = numeric bond type (see asterisk form below), or type label
 * args = coefficients for one or more bond types
 
 Examples
 """"""""
-
 
 .. code-block:: LAMMPS
 
    bond_coeff 5 80.0 1.2
    bond_coeff * 30.0 1.5 1.0 1.0
    bond_coeff 1*4 30.0 1.5 1.0 1.0
-   bond_coeff 1 harmonic 200.0 1.0
+   bond_coeff 1 harmonic 200.0 1.0 # (for bond_style hybrid)
+
+   labelmap bond 5 carbonyl
+   bond_coeff carbonyl 80.0 1.2
 
 Description
 """""""""""
@@ -33,19 +34,23 @@ The number and meaning of the coefficients depends on the bond style.
 Bond coefficients can also be set in the data file read by the
 :doc:`read_data <read_data>` command or in a restart file.
 
-N can be specified in one of two ways.  An explicit numeric value can
-be used, as in the 1st example above.  Or a wild-card asterisk can be
-used to set the coefficients for multiple bond types.  This takes the
-form "\*" or "\*n" or "n\*" or "m\*n".  If N = the number of bond types,
-then an asterisk with no numeric values means all types from 1 to N.  A
-leading asterisk means all types from 1 to n (inclusive).  A trailing
-asterisk means all types from n to N (inclusive).  A middle asterisk
-means all types from m to n (inclusive).
+:math:`N` can be specified in one of several ways.  An explicit numeric
+value can be used, as in the first example above.  Or :math:`N` can be a
+type label, which is an alphanumeric string defined by the
+:doc:`labelmap <labelmap>` command or in a section of a data file read
+by the :doc:`read_data <read_data>` command.
 
-Note that using a bond\_coeff command can override a previous setting
+For numeric values only, a wild-card asterisk can be used to set the
+coefficients for multiple bond types.  This takes the form "\*" or "\*n"
+or "n\*" or "m\*n".  If :math:`N` is the number of bond types, then an
+asterisk with no numeric values means all types from 1 to :math:`N`.  A
+leading asterisk means all types from 1 to n (inclusive).  A trailing
+asterisk means all types from n to :math:`N` (inclusive).  A middle
+asterisk means all types from m to n (inclusive).
+
+Note that using a bond_coeff command can override a previous setting
 for the same bond type.  For example, these commands set the coeffs
 for all bond types, then overwrite the coeffs for just bond type 2:
-
 
 .. code-block:: LAMMPS
 
@@ -53,20 +58,17 @@ for all bond types, then overwrite the coeffs for just bond type 2:
    bond_coeff 2 200.0 1.2
 
 A line in a data file that specifies bond coefficients uses the exact
-same format as the arguments of the bond\_coeff command in an input
+same format as the arguments of the bond_coeff command in an input
 script, except that wild-card asterisks should not be used since
-coefficients for all N types must be listed in the file.  For example,
-under the "Bond Coeffs" section of a data file, the line that
-corresponds to the 1st example above would be listed as
-
+coefficients for all :math:`N` types must be listed in the file.  For
+example, under the "Bond Coeffs" section of a data file, the line that
+corresponds to the first example above would be listed as
 
 .. parsed-literal::
 
    5 80.0 1.2
 
-
 ----------
-
 
 The list of all bond styles defined in LAMMPS is given on the
 :doc:`bond_style <bond_style>` doc page.  They are also listed in more
@@ -74,15 +76,12 @@ compact form on the :doc:`Commands bond <Commands_bond>` doc page.
 
 On either of those pages, click on the style to display the formula it
 computes and its coefficients as specified by the associated
-bond\_coeff command.
-
+bond_coeff command.
 
 ----------
 
-
 Restrictions
 """"""""""""
-
 
 This command must come after the simulation box is defined by a
 :doc:`read_data <read_data>`, :doc:`read_restart <read_restart>`, or
@@ -96,4 +95,7 @@ Related commands
 
 :doc:`bond_style <bond_style>`
 
-**Default:** none
+Default
+"""""""
+
+none

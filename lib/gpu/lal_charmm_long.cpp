@@ -44,19 +44,15 @@ int CHARMMLongT::bytes_per_atom(const int max_nbors) const {
 }
 
 template <class numtyp, class acctyp>
-int CHARMMLongT::init(const int ntypes,
-                           double host_cut_bothsq, double **host_lj1,
-                           double **host_lj2, double **host_lj3,
-                           double **host_lj4, double **host_offset,
-                           double *host_special_lj, const int nlocal,
-                           const int nall, const int max_nbors,
-                           const int maxspecial, const double cell_size,
-                           const double gpu_split, FILE *_screen,
-                           double host_cut_ljsq, const double host_cut_coulsq,
-                           double *host_special_coul, const double qqrd2e,
-                           const double g_ewald, const double cut_lj_innersq,
-                           const double denom_lj, double **epsilon,
-                           double **sigma, const bool mix_arithmetic) {
+int CHARMMLongT::init(const int ntypes, double host_cut_bothsq, double **host_lj1,
+                      double **host_lj2, double **host_lj3, double **host_lj4,
+                      double ** /*host_offset*/, double *host_special_lj, const int nlocal,
+                      const int nall, const int max_nbors, const int maxspecial,
+                      const double cell_size, const double gpu_split, FILE *_screen,
+                      double host_cut_ljsq, const double host_cut_coulsq,
+                      double *host_special_coul, const double qqrd2e, const double g_ewald,
+                      const double cut_lj_innersq, const double denom_lj, double **epsilon,
+                      double **sigma, const bool mix_arithmetic) {
   int success;
   success=this->init_atomic(nlocal,nall,max_nbors,maxspecial,cell_size,gpu_split,
                             _screen,charmm_long,"k_charmm_long");
@@ -131,20 +127,9 @@ double CHARMMLongT::host_memory_usage() const {
 // Calculate energies, forces, and torques
 // ---------------------------------------------------------------------------
 template <class numtyp, class acctyp>
-void CHARMMLongT::loop(const bool _eflag, const bool _vflag) {
+int CHARMMLongT::loop(const int eflag, const int vflag) {
   // Compute the block size and grid size to keep all cores busy
   const int BX=this->_block_bio_size;
-  int eflag, vflag;
-  if (_eflag)
-    eflag=1;
-  else
-    eflag=0;
-
-  if (_vflag)
-    vflag=1;
-  else
-    vflag=0;
-
   int GX=static_cast<int>(ceil(static_cast<double>(this->ans->inum())/
                                (BX/this->_threads_per_atom)));
 
@@ -152,8 +137,8 @@ void CHARMMLongT::loop(const bool _eflag, const bool _vflag) {
   int nbor_pitch=this->nbor->nbor_pitch();
   this->time_pair.start();
   if (shared_types) {
-    this->k_pair_fast.set_size(GX,BX);
-    this->k_pair_fast.run(&this->atom->x, &ljd, &sp_lj,
+    this->k_pair_sel->set_size(GX,BX);
+    this->k_pair_sel->run(&this->atom->x, &ljd, &sp_lj,
                           &this->nbor->dev_nbor, &this->_nbor_data->begin(),
                           &this->ans->force, &this->ans->engv, &eflag,
                           &vflag, &ainum, &nbor_pitch, &this->atom->q,
@@ -171,6 +156,7 @@ void CHARMMLongT::loop(const bool _eflag, const bool _vflag) {
                      &this->_threads_per_atom);
   }
   this->time_pair.stop();
+  return GX;
 }
 
 template class CHARMMLong<PRECISION,ACC_PRECISION>;

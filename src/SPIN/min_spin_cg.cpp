@@ -1,7 +1,8 @@
+// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -21,31 +22,28 @@
    preprint arXiv:1904.02669.
 ------------------------------------------------------------------------- */
 
-#include <mpi.h>
-#include <cmath>
-#include <cstdlib>
-#include <cstring>
 #include "min_spin_cg.h"
-#include "universe.h"
+
 #include "atom.h"
 #include "citeme.h"
 #include "comm.h"
+#include "error.h"
 #include "force.h"
-#include "update.h"
+#include "math_const.h"
+#include "memory.h"
 #include "output.h"
 #include "timer.h"
-#include "error.h"
-#include "memory.h"
-#include "modify.h"
-#include "math_special.h"
-#include "math_const.h"
 #include "universe.h"
+#include "update.h"
+
+#include <cmath>
+#include <cstring>
 
 using namespace LAMMPS_NS;
 using namespace MathConst;
 
 static const char cite_minstyle_spin_cg[] =
-  "min_style spin/cg command:\n\n"
+  "min_style spin/cg command: doi:10.48550/arXiv.1904.02669\n\n"
   "@article{ivanov2019fast,\n"
   "title={Fast and Robust Algorithm for the Minimisation of the Energy of "
   "Spin Systems},\n"
@@ -63,7 +61,7 @@ static const char cite_minstyle_spin_cg[] =
 /* ---------------------------------------------------------------------- */
 
 MinSpinCG::MinSpinCG(LAMMPS *lmp) :
-  Min(lmp), g_old(NULL), g_cur(NULL), p_s(NULL), sp_copy(NULL)
+  Min(lmp), g_old(nullptr), g_cur(nullptr), p_s(nullptr), sp_copy(nullptr)
 {
   if (lmp->citeme) lmp->citeme->add(cite_minstyle_spin_cg);
   nlocal_max = 0;
@@ -101,12 +99,12 @@ void MinSpinCG::init()
 
   // warning if line_search combined to gneb
 
-  if ((nreplica >= 1) && (linestyle != 4) && (comm->me == 0))
-    error->warning(FLERR,"Line search incompatible gneb");
+  if ((nreplica >= 1) && (linestyle != SPIN_NONE) && (comm->me == 0))
+    error->warning(FLERR,"Line search incompatible with gneb");
 
   // set back use_line_search to 0 if more than one replica
 
-  if (linestyle == 3 && nreplica == 1){
+  if (linestyle == SPIN_CUBIC && nreplica == 1) {
     use_line_search = 1;
   }
   else{
@@ -148,7 +146,7 @@ int MinSpinCG::modify_param(int narg, char **arg)
 {
   if (strcmp(arg[0],"discrete_factor") == 0) {
     if (narg < 2) error->all(FLERR,"Illegal fix_modify command");
-    discrete_factor = force->numeric(FLERR,arg[1]);
+    discrete_factor = utils::numeric(FLERR,arg[1],false,lmp);
     return 2;
   }
   return 0;
@@ -205,13 +203,13 @@ int MinSpinCG::iterate(int maxiter)
     ntimestep = ++update->ntimestep;
     niter++;
 
-    // optimize timestep accross processes / replicas
+    // optimize timestep across processes / replicas
     // need a force calculation for timestep optimization
 
     if (use_line_search) {
 
       // here we need to do line search
-      if (local_iter == 0){
+      if (local_iter == 0) {
         calc_gradient();
       }
 
@@ -347,7 +345,7 @@ void MinSpinCG::calc_search_direction()
       factor = 0.0;
 
 
-  if (local_iter == 0 || local_iter % 5 == 0){  // steepest descent direction
+  if (local_iter == 0 || local_iter % 5 == 0) {  // steepest descent direction
     for (int i = 0; i < 3 * nlocal; i++) {
       p_s[i] = -g_cur[i] * factor;
       g_old[i] = g_cur[i] * factor;
@@ -428,12 +426,12 @@ void MinSpinCG::rodrigues_rotation(const double *upp_tr, double *out)
 
   if (fabs(upp_tr[0]) < 1.0e-40 &&
       fabs(upp_tr[1]) < 1.0e-40 &&
-      fabs(upp_tr[2]) < 1.0e-40){
+      fabs(upp_tr[2]) < 1.0e-40) {
 
     // if upp_tr is zero, return unity matrix
 
-    for(int k = 0; k < 3; k++){
-      for(int m = 0; m < 3; m++){
+    for (int k = 0; k < 3; k++) {
+      for (int m = 0; m < 3; m++) {
         if (m == k) out[3 * k + m] = 1.0;
         else out[3 * k + m] = 0.0;
       }
@@ -484,9 +482,9 @@ void MinSpinCG::rodrigues_rotation(const double *upp_tr, double *out)
 
 void MinSpinCG::vm3(const double *m, const double *v, double *out)
 {
-  for(int i = 0; i < 3; i++){
+  for (int i = 0; i < 3; i++) {
     out[i] = 0.0;
-    for(int j = 0; j < 3; j++) out[i] += *(m + 3 * j + i) * v[j];
+    for (int j = 0; j < 3; j++) out[i] += *(m + 3 * j + i) * v[j];
   }
 }
 
@@ -553,7 +551,7 @@ int MinSpinCG::calc_and_make_step(double a, double b, int index)
   der_e_cur = e_and_d[1];
   index++;
 
-  if (adescent(eprevious,e_and_d[0]) || index == 5){
+  if (adescent(eprevious,e_and_d[0]) || index == 5) {
     MPI_Bcast(&b,1,MPI_DOUBLE,0,world);
     for (int i = 0; i < 3 * nlocal; i++) {
       p_s[i] = b * p_s[i];
@@ -593,7 +591,7 @@ int MinSpinCG::calc_and_make_step(double a, double b, int index)
   Approximate descent
 ------------------------------------------------------------------------- */
 
-int MinSpinCG::adescent(double phi_0, double phi_j){
+int MinSpinCG::adescent(double phi_0, double phi_j) {
 
   double eps = 1.0e-6;
 

@@ -6,7 +6,6 @@ dump molfile command
 Syntax
 """"""
 
-
 .. parsed-literal::
 
    dump ID group-ID molfile N file format path
@@ -19,15 +18,13 @@ Syntax
 * format = file format to be used
 * path = file path with plugins (optional)
 
-
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    dump mf1 all molfile 10 melt1.xml hoomd
-   dump mf2 all molfile 10 melt2-\*.pdb pdb .
+   dump mf2 all molfile 10 melt2-*.pdb pdb .
    dump mf3 all molfile 50 melt3.xyz xyz .:/home/akohlmey/vmd/plugins/LINUX/molfile
 
 Description
@@ -37,7 +34,7 @@ Dump a snapshot of atom coordinates and selected additional quantities
 to one or more files every N timesteps in one of several formats.
 Only information for atoms in the specified group is dumped.  This
 specific dump style uses molfile plugins that are bundled with the
-`VMD <http://www.ks.uiuc.edu/Research/vmd>`_ molecular visualization and
+`VMD <https://www.ks.uiuc.edu/Research/vmd>`_ molecular visualization and
 analysis program.
 
 Unless the filename contains a \* character, the output will be written
@@ -56,9 +53,7 @@ by this dump style: the number of atoms must not change, the atoms
 must be sorted, outside of the coordinates no change in atom properties
 (like type, mass, charge) will be recorded.
 
-
 ----------
-
 
 The *format* keyword determines what format is used to write out the
 dump. For this to work, LAMMPS must be able to find and load a
@@ -68,7 +63,7 @@ like element names.
 
 The *path* keyword determines which in directories. This is a "path"
 like other search paths, i.e. it can contain multiple directories
-separated by a colon (or semi-colon on windows). This keyword is
+separated by a colon (or semicolon on Windows). This keyword is
 optional and default to ".", the current directory.
 
 The *unwrap* option of the :doc:`dump_modify <dump_modify>` command allows
@@ -79,9 +74,7 @@ if it had not been wrapped back into the periodic box.  Note that these
 coordinates may thus be far outside the box size stored with the
 snapshot.
 
-
 ----------
-
 
 Dumps are performed on timesteps that are a multiple of N (including
 timestep 0) and on the last timestep of a minimization if the
@@ -94,20 +87,17 @@ an arbitrary timestep.  N can be changed between runs by using the
 :doc:`dump_modify every <dump_modify>` command. The :doc:`dump_modify every <dump_modify>` command also allows a variable to be used to
 determine the sequence of timesteps on which dump files are written.
 
-
 ----------
-
 
 Restrictions
 """"""""""""
 
-
-The *molfile* dump style is part of the USER-MOLFILE package.  It is
-only enabled if LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` doc page for more info.
+The *molfile* dump style is part of the MOLFILE package.  It is
+only enabled if LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` page for more info.
 
 Molfile plugins provide a consistent programming interface to read and
 write file formats commonly used in molecular simulations. The
-USER-MOLFILE package only provides the interface code, not the plugins.
+MOLFILE package only provides the interface code, not the plugins.
 These can be obtained from a VMD installation which has to match the
 platform that you are using to compile LAMMPS for. By adding plugins
 to VMD, support for new file formats can be added to LAMMPS (or VMD
@@ -125,9 +115,7 @@ application itself.  The plugins are installed in the directory:
    with a set of header files that are compatible with VMD 1.9 and 1.9.1
    (June 2012)
 
-
 ----------
-
 
 Related commands
 """"""""""""""""

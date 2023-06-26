@@ -1,7 +1,8 @@
+// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -13,25 +14,25 @@
 
 /* ----------------------------------------------------------------------
    Contributing author: Aidan Thompson (SNL)
+   Optimizations for two-body only: Jackson Elowitt (Univ. of Utah)
 ------------------------------------------------------------------------- */
 
 #include "pair_sw.h"
-#include <mpi.h>
-#include <cmath>
-#include <cstdlib>
-#include <cstring>
+
 #include "atom.h"
 #include "comm.h"
 #include "error.h"
 #include "force.h"
 #include "memory.h"
-#include "neighbor.h"
 #include "neigh_list.h"
-#include "neigh_request.h"
+#include "neighbor.h"
+#include "potential_file_reader.h"
+
+#include <cmath>
+#include <cstring>
 
 using namespace LAMMPS_NS;
 
-#define MAXLINE 1024
 #define DELTA 4
 
 /* ---------------------------------------------------------------------- */
@@ -42,16 +43,15 @@ PairSW::PairSW(LAMMPS *lmp) : Pair(lmp)
   restartinfo = 0;
   one_coeff = 1;
   manybody_flag = 1;
+  centroidstressflag = CENTROID_NOTAVAIL;
+  unit_convert_flag = utils::get_supported_conversions(utils::ENERGY);
+  skip_threebody_flag = false;
+  params_mapped = 0;
 
-  nelements = 0;
-  elements = NULL;
-  nparams = maxparam = 0;
-  params = NULL;
-  elem2param = NULL;
-  map = NULL;
+  params = nullptr;
 
   maxshort = 10;
-  neighshort = NULL;
+  neighshort = nullptr;
 }
 
 /* ----------------------------------------------------------------------
@@ -62,17 +62,13 @@ PairSW::~PairSW()
 {
   if (copymode) return;
 
-  if (elements)
-    for (int i = 0; i < nelements; i++) delete [] elements[i];
-  delete [] elements;
   memory->destroy(params);
-  memory->destroy(elem2param);
+  memory->destroy(elem3param);
 
   if (allocated) {
     memory->destroy(setflag);
     memory->destroy(cutsq);
     memory->destroy(neighshort);
-    delete [] map;
   }
 }
 
@@ -132,7 +128,7 @@ void PairSW::compute(int eflag, int vflag)
       rsq = delx*delx + dely*dely + delz*delz;
 
       jtype = map[type[j]];
-      ijparam = elem2param[itype][jtype][jtype];
+      ijparam = elem3param[itype][jtype][jtype];
       if (rsq >= params[ijparam].cutsq) {
         continue;
       } else {
@@ -144,14 +140,18 @@ void PairSW::compute(int eflag, int vflag)
       }
 
       jtag = tag[j];
-      if (itag > jtag) {
-        if ((itag+jtag) % 2 == 0) continue;
-      } else if (itag < jtag) {
-        if ((itag+jtag) % 2 == 1) continue;
-      } else {
-        if (x[j][2] < ztmp) continue;
-        if (x[j][2] == ztmp && x[j][1] < ytmp) continue;
-        if (x[j][2] == ztmp && x[j][1] == ytmp && x[j][0] < xtmp) continue;
+
+      // only need to skip if we have a full neighbor list
+      if (!skip_threebody_flag) {
+        if (itag > jtag) {
+          if ((itag+jtag) % 2 == 0) continue;
+        } else if (itag < jtag) {
+          if ((itag+jtag) % 2 == 1) continue;
+        } else {
+          if (x[j][2] < ztmp) continue;
+          if (x[j][2] == ztmp && x[j][1] < ytmp) continue;
+          if (x[j][2] == ztmp && x[j][1] == ytmp && x[j][0] < xtmp) continue;
+        }
       }
 
       twobody(&params[ijparam],rsq,fpair,eflag,evdwl);
@@ -166,13 +166,15 @@ void PairSW::compute(int eflag, int vflag)
       if (evflag) ev_tally(i,j,nlocal,newton_pair,
                            evdwl,0.0,fpair,delx,dely,delz);
     }
-
-    jnumm1 = numshort - 1;
-
+    if (skip_threebody_flag) {
+        jnumm1 = 0;
+    } else {
+        jnumm1 = numshort - 1;
+    }
     for (jj = 0; jj < jnumm1; jj++) {
       j = neighshort[jj];
       jtype = map[type[j]];
-      ijparam = elem2param[itype][jtype][jtype];
+      ijparam = elem3param[itype][jtype][jtype];
       delr1[0] = x[j][0] - xtmp;
       delr1[1] = x[j][1] - ytmp;
       delr1[2] = x[j][2] - ztmp;
@@ -184,8 +186,8 @@ void PairSW::compute(int eflag, int vflag)
       for (kk = jj+1; kk < numshort; kk++) {
         k = neighshort[kk];
         ktype = map[type[k]];
-        ikparam = elem2param[itype][ktype][ktype];
-        ijkparam = elem2param[itype][jtype][ktype];
+        ikparam = elem3param[itype][ktype][ktype];
+        ijkparam = elem3param[itype][jtype][ktype];
 
         delr2[0] = x[k][0] - xtmp;
         delr2[1] = x[k][1] - ytmp;
@@ -224,21 +226,33 @@ void PairSW::compute(int eflag, int vflag)
 void PairSW::allocate()
 {
   allocated = 1;
-  int n = atom->ntypes;
+  int np1 = atom->ntypes + 1;
 
-  memory->create(setflag,n+1,n+1,"pair:setflag");
-  memory->create(cutsq,n+1,n+1,"pair:cutsq");
-  memory->create(neighshort,maxshort,"pair:neighshort");
-  map = new int[n+1];
+  memory->create(setflag, np1, np1, "pair:setflag");
+  memory->create(cutsq, np1, np1, "pair:cutsq");
+  memory->create(neighshort, maxshort, "pair:neighshort");
+  map = new int[np1];
 }
 
 /* ----------------------------------------------------------------------
    global settings
 ------------------------------------------------------------------------- */
 
-void PairSW::settings(int narg, char **/*arg*/)
+void PairSW::settings(int narg, char ** arg)
 {
-  if (narg != 0) error->all(FLERR,"Illegal pair_style command");
+  // process optional keywords
+  int iarg = 0;
+  while (iarg < narg) {
+    if (strcmp(arg[iarg],"threebody") == 0) {
+      if (iarg+2 > narg) utils::missing_cmd_args(FLERR, "pair_style sw", error);
+      skip_threebody_flag = !utils::logical(FLERR,arg[iarg+1],false,lmp);
+      // without the threebody terms we don't need to enforce
+      // pair_coeff * * and can enable the single function.
+      one_coeff = skip_threebody_flag ? 0 : 1;
+      single_enable = skip_threebody_flag ? 1 : 0;
+      iarg += 2;
+    } else error->all(FLERR, "Illegal pair_style sw keyword: {}", arg[iarg]);
+  }
 }
 
 /* ----------------------------------------------------------------------
@@ -247,70 +261,51 @@ void PairSW::settings(int narg, char **/*arg*/)
 
 void PairSW::coeff(int narg, char **arg)
 {
-  int i,j,n;
-
   if (!allocated) allocate();
 
-  if (narg != 3 + atom->ntypes)
-    error->all(FLERR,"Incorrect args for pair coefficients");
-
-  // insure I,J args are * *
-
-  if (strcmp(arg[0],"*") != 0 || strcmp(arg[1],"*") != 0)
-    error->all(FLERR,"Incorrect args for pair coefficients");
-
-  // read args that map atom types to elements in potential file
-  // map[i] = which element the Ith atom type is, -1 if NULL
-  // nelements = # of unique elements
-  // elements = list of element names
-
-  if (elements) {
-    for (i = 0; i < nelements; i++) delete [] elements[i];
-    delete [] elements;
-  }
-  elements = new char*[atom->ntypes];
-  for (i = 0; i < atom->ntypes; i++) elements[i] = NULL;
-
-  nelements = 0;
-  for (i = 3; i < narg; i++) {
-    if (strcmp(arg[i],"NULL") == 0) {
-      map[i-2] = -1;
-      continue;
+  // read potential file and set up element maps only once
+  if (one_coeff || !params_mapped) {
+    // make certain that the setflag array is always fully initialized
+    // the sw/intel pair style depends on it
+    if (!one_coeff) {
+      for (int i = 0; i <= atom->ntypes; i++) {
+        for (int j = 0; j <= atom->ntypes; j++) {
+          setflag[i][j] = 0;
+        }
+      }
     }
-    for (j = 0; j < nelements; j++)
-      if (strcmp(arg[i],elements[j]) == 0) break;
-    map[i-2] = j;
-    if (j == nelements) {
-      n = strlen(arg[i]) + 1;
-      elements[j] = new char[n];
-      strcpy(elements[j],arg[i]);
-      nelements++;
-    }
+
+    map_element2type(narg-3, arg+3, (one_coeff != 0));
+
+    // read potential file and initialize potential parameters
+
+    read_file(arg[2]);
+    setup_params();
+    params_mapped = 1;
   }
 
-  // read potential file and initialize potential parameters
+  if (!one_coeff) {
+    int ilo, ihi, jlo, jhi;
+    utils::bounds(FLERR, arg[0], 1, atom->ntypes, ilo, ihi, error);
+    utils::bounds(FLERR, arg[1], 1, atom->ntypes, jlo, jhi, error);
 
-  read_file(arg[2]);
-  setup_params();
-
-  // clear setflag since coeff() called once with I,J = * *
-
-  n = atom->ntypes;
-  for (int i = 1; i <= n; i++)
-    for (int j = i; j <= n; j++)
-      setflag[i][j] = 0;
-
-  // set setflag i,j for type pairs where both are mapped to elements
-
-  int count = 0;
-  for (int i = 1; i <= n; i++)
-    for (int j = i; j <= n; j++)
-      if (map[i] >= 0 && map[j] >= 0) {
+    int count = 0;
+    for (int i = ilo; i <= ihi; i++) {
+      if (((map[i] >= 0) && (strcmp(arg[i+2], elements[map[i]]) != 0)) ||
+          ((map[i] < 0) && (strcmp(arg[i+2], "NULL") != 0)))
+        error->all(FLERR, "Must use consistent type to element mappings with threebody off");
+      if (map[i] < 0) error->all(FLERR, "Must not set pair_coeff mapped to NULL element");
+      for (int j = MAX(jlo, i); j <= jhi; j++) {
+        if (((map[j] >= 0) && (strcmp(arg[j+2], elements[map[j]]) != 0)) ||
+            ((map[j] < 0) && (strcmp(arg[j+2], "NULL") != 0)))
+          error->all(FLERR, "Must use consistent type to element mappings with threebody off");
+        if (map[j] < 0) error->all(FLERR, "Must not set pair_coeff mapped to NULL element");
         setflag[i][j] = 1;
         count++;
       }
-
-  if (count == 0) error->all(FLERR,"Incorrect args for pair coefficients");
+    }
+    if (count == 0) error->all(FLERR, "Incorrect args for pair coefficients");
+  }
 }
 
 /* ----------------------------------------------------------------------
@@ -324,11 +319,12 @@ void PairSW::init_style()
   if (force->newton_pair == 0)
     error->all(FLERR,"Pair style Stillinger-Weber requires newton pair on");
 
-  // need a full neighbor list
+  // need a full neighbor list for full threebody calculation
 
-  int irequest = neighbor->request(this,instance_me);
-  neighbor->requests[irequest]->half = 0;
-  neighbor->requests[irequest]->full = 1;
+  if (skip_threebody_flag)
+    neighbor->add_request(this);
+  else
+    neighbor->add_request(this, NeighConst::REQ_FULL);
 }
 
 /* ----------------------------------------------------------------------
@@ -344,130 +340,119 @@ double PairSW::init_one(int i, int j)
 
 /* ---------------------------------------------------------------------- */
 
+double PairSW::single(int /*i*/, int /*j*/, int itype, int jtype, double rsq,
+                      double /*factor_coul*/, double /*factor_lj*/, double &fforce)
+{
+  int ijparam = elem3param[map[itype]][map[jtype]][map[jtype]];
+  double phisw = 0.0;
+  fforce = 0.0;
+
+  if (rsq < params[ijparam].cutsq) twobody(&params[ijparam],rsq,fforce,1,phisw);
+  return phisw;
+}
+
+/* ---------------------------------------------------------------------- */
+
 void PairSW::read_file(char *file)
 {
-  int params_per_line = 14;
-  char **words = new char*[params_per_line+1];
-
   memory->sfree(params);
-  params = NULL;
+  params = nullptr;
   nparams = maxparam = 0;
 
   // open file on proc 0
 
-  FILE *fp;
   if (comm->me == 0) {
-    fp = force->open_potential(file);
-    if (fp == NULL) {
-      char str[128];
-      snprintf(str,128,"Cannot open Stillinger-Weber potential file %s",file);
-      error->one(FLERR,str);
-    }
-  }
+    PotentialFileReader reader(lmp, file, "sw", unit_convert_flag);
+    char *line;
 
-  // read each set of params from potential file
-  // one set of params can span multiple lines
-  // store params if all 3 element tags are in element list
+    if (skip_threebody_flag) utils::logmesg(lmp, "  disabling sw potential three-body terms\n");
 
-  int n,nwords,ielement,jelement,kelement;
-  char line[MAXLINE],*ptr;
-  int eof = 0;
+    // transparently convert units for supported conversions
 
-  while (1) {
-    if (comm->me == 0) {
-      ptr = fgets(line,MAXLINE,fp);
-      if (ptr == NULL) {
-        eof = 1;
-        fclose(fp);
-      } else n = strlen(line) + 1;
-    }
-    MPI_Bcast(&eof,1,MPI_INT,0,world);
-    if (eof) break;
-    MPI_Bcast(&n,1,MPI_INT,0,world);
-    MPI_Bcast(line,n,MPI_CHAR,0,world);
+    int unit_convert = reader.get_unit_convert();
+    double conversion_factor = utils::get_conversion_factor(utils::ENERGY,
+                                                            unit_convert);
 
-    // strip comment, skip line if blank
+    while ((line = reader.next_line(NPARAMS_PER_LINE))) {
+      try {
+        ValueTokenizer values(line);
 
-    if ((ptr = strchr(line,'#'))) *ptr = '\0';
-    nwords = atom->count_words(line);
-    if (nwords == 0) continue;
+        std::string iname = values.next_string();
+        std::string jname = values.next_string();
+        std::string kname = values.next_string();
 
-    // concatenate additional lines until have params_per_line words
+        // ielement,jelement,kelement = 1st args
+        // if all 3 args are in element list, then parse this line
+        // else skip to next entry in file
+        int ielement, jelement, kelement;
 
-    while (nwords < params_per_line) {
-      n = strlen(line);
-      if (comm->me == 0) {
-        ptr = fgets(&line[n],MAXLINE-n,fp);
-        if (ptr == NULL) {
-          eof = 1;
-          fclose(fp);
-        } else n = strlen(line) + 1;
+        for (ielement = 0; ielement < nelements; ielement++)
+          if (iname == elements[ielement]) break;
+        if (ielement == nelements) continue;
+        for (jelement = 0; jelement < nelements; jelement++)
+          if (jname == elements[jelement]) break;
+        if (jelement == nelements) continue;
+        for (kelement = 0; kelement < nelements; kelement++)
+          if (kname == elements[kelement]) break;
+        if (kelement == nelements) continue;
+
+        // load up parameter settings and error check their values
+
+        if (nparams == maxparam) {
+          maxparam += DELTA;
+          params = (Param *) memory->srealloc(params,maxparam*sizeof(Param),
+                                              "pair:params");
+
+          // make certain all addional allocated storage is initialized
+          // to avoid false positives when checking with valgrind
+
+          memset(params + nparams, 0, DELTA*sizeof(Param));
+        }
+
+        params[nparams].ielement = ielement;
+        params[nparams].jelement = jelement;
+        params[nparams].kelement = kelement;
+        params[nparams].epsilon  = values.next_double();
+        params[nparams].sigma    = values.next_double();
+        params[nparams].littlea  = values.next_double();
+        params[nparams].lambda   = values.next_double();
+        params[nparams].gamma    = values.next_double();
+        params[nparams].costheta = values.next_double();
+        params[nparams].biga     = values.next_double();
+        params[nparams].bigb     = values.next_double();
+        params[nparams].powerp   = values.next_double();
+        params[nparams].powerq   = values.next_double();
+        params[nparams].tol      = values.next_double();
+      } catch (TokenizerException &e) {
+        error->one(FLERR, e.what());
       }
-      MPI_Bcast(&eof,1,MPI_INT,0,world);
-      if (eof) break;
-      MPI_Bcast(&n,1,MPI_INT,0,world);
-      MPI_Bcast(line,n,MPI_CHAR,0,world);
-      if ((ptr = strchr(line,'#'))) *ptr = '\0';
-      nwords = atom->count_words(line);
+
+      if (unit_convert) {
+        params[nparams].epsilon *= conversion_factor;
+      }
+
+      // turn off three-body term
+      if (skip_threebody_flag) params[nparams].lambda = 0;
+
+      if (params[nparams].epsilon < 0.0 || params[nparams].sigma < 0.0 ||
+          params[nparams].littlea < 0.0 || params[nparams].lambda < 0.0 ||
+          params[nparams].gamma < 0.0 || params[nparams].biga < 0.0 ||
+          params[nparams].bigb < 0.0 || params[nparams].powerp < 0.0 ||
+          params[nparams].powerq < 0.0 || params[nparams].tol < 0.0)
+        error->one(FLERR,"Illegal Stillinger-Weber parameter");
+
+      nparams++;
     }
-
-    if (nwords != params_per_line)
-      error->all(FLERR,"Incorrect format in Stillinger-Weber potential file");
-
-    // words = ptrs to all words in line
-
-    nwords = 0;
-    words[nwords++] = strtok(line," \t\n\r\f");
-    while ((words[nwords++] = strtok(NULL," \t\n\r\f"))) continue;
-
-    // ielement,jelement,kelement = 1st args
-    // if all 3 args are in element list, then parse this line
-    // else skip to next entry in file
-
-    for (ielement = 0; ielement < nelements; ielement++)
-      if (strcmp(words[0],elements[ielement]) == 0) break;
-    if (ielement == nelements) continue;
-    for (jelement = 0; jelement < nelements; jelement++)
-      if (strcmp(words[1],elements[jelement]) == 0) break;
-    if (jelement == nelements) continue;
-    for (kelement = 0; kelement < nelements; kelement++)
-      if (strcmp(words[2],elements[kelement]) == 0) break;
-    if (kelement == nelements) continue;
-
-    // load up parameter settings and error check their values
-
-    if (nparams == maxparam) {
-      maxparam += DELTA;
-      params = (Param *) memory->srealloc(params,maxparam*sizeof(Param),
-                                          "pair:params");
-    }
-
-    params[nparams].ielement = ielement;
-    params[nparams].jelement = jelement;
-    params[nparams].kelement = kelement;
-    params[nparams].epsilon = atof(words[3]);
-    params[nparams].sigma = atof(words[4]);
-    params[nparams].littlea = atof(words[5]);
-    params[nparams].lambda = atof(words[6]);
-    params[nparams].gamma = atof(words[7]);
-    params[nparams].costheta = atof(words[8]);
-    params[nparams].biga = atof(words[9]);
-    params[nparams].bigb = atof(words[10]);
-    params[nparams].powerp = atof(words[11]);
-    params[nparams].powerq = atof(words[12]);
-    params[nparams].tol = atof(words[13]);
-
-    if (params[nparams].epsilon < 0.0 || params[nparams].sigma < 0.0 ||
-        params[nparams].littlea < 0.0 || params[nparams].lambda < 0.0 ||
-        params[nparams].gamma < 0.0 || params[nparams].biga < 0.0 ||
-        params[nparams].bigb < 0.0 || params[nparams].powerp < 0.0 ||
-        params[nparams].powerq < 0.0 || params[nparams].tol < 0.0)
-      error->all(FLERR,"Illegal Stillinger-Weber parameter");
-
-    nparams++;
   }
 
-  delete [] words;
+  MPI_Bcast(&nparams, 1, MPI_INT, 0, world);
+  MPI_Bcast(&maxparam, 1, MPI_INT, 0, world);
+
+  if (comm->me != 0) {
+    params = (Param *) memory->srealloc(params,maxparam*sizeof(Param), "pair:params");
+  }
+
+  MPI_Bcast(params, maxparam*sizeof(Param), MPI_BYTE, 0, world);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -477,12 +462,12 @@ void PairSW::setup_params()
   int i,j,k,m,n;
   double rtmp;
 
-  // set elem2param for all triplet combinations
+  // set elem3param for all triplet combinations
   // must be a single exact match to lines read from file
   // do not allow for ACB in place of ABC
 
-  memory->destroy(elem2param);
-  memory->create(elem2param,nelements,nelements,nelements,"pair:elem2param");
+  memory->destroy(elem3param);
+  memory->create(elem3param,nelements,nelements,nelements,"pair:elem3param");
 
   for (i = 0; i < nelements; i++)
     for (j = 0; j < nelements; j++)
@@ -491,12 +476,14 @@ void PairSW::setup_params()
         for (m = 0; m < nparams; m++) {
           if (i == params[m].ielement && j == params[m].jelement &&
               k == params[m].kelement) {
-            if (n >= 0) error->all(FLERR,"Potential file has duplicate entry");
+            if (n >= 0) error->all(FLERR,"Potential file has a duplicate entry for: {} {} {}",
+                                   elements[i], elements[j], elements[k]);
             n = m;
           }
         }
-        if (n < 0) error->all(FLERR,"Potential file is missing an entry");
-        elem2param[i][j][k] = n;
+        if (n < 0) error->all(FLERR,"Potential file is missing an entry for: {} {} {}",
+                              elements[i], elements[j], elements[k]);
+        elem3param[i][j][k] = n;
       }
 
 

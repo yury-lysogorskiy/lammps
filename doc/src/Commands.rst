@@ -4,7 +4,6 @@ Commands
 These pages describe how a LAMMPS input script is formatted and the
 commands in it are used to define a LAMMPS simulation.
 
-
 .. toctree::
    :maxdepth: 1
 
@@ -22,6 +21,7 @@ commands in it are used to define a LAMMPS simulation.
    Commands_pair
    Commands_bond
    Commands_kspace
+   Commands_dump
 
 .. toctree::
    :maxdepth: 1

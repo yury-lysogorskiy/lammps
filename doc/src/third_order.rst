@@ -1,13 +1,15 @@
-.. index:: third\_order
+.. index:: third_order
+.. index:: third_order/kk
 
-third\_order command
-====================
+third_order command
+===================
+
+Accelerator Variants: third_order/kk
 
 Syntax
 """"""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    third_order group-ID style delta args keyword value ...
 
@@ -15,20 +17,17 @@ Syntax
 * style = *regular* or *eskm*
 * delta = finite different displacement length (distance units)
 * one or more keyword/arg pairs may be appended
-  
+
   .. parsed-literal::
-  
+
        keyword = *file* or *binary*
          *file* name = name of output file for the third order tensor
          *binary* arg = *yes* or *no* or *gzip*
 
-
-
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    third_order 1 regular 0.000001
    third_order 1 eskm 0.000001
@@ -40,8 +39,9 @@ Description
 
 Calculate the third order force constant tensor by finite difference of the selected group,
 
-.. image:: JPG/third_order_force_constant.png
-   :align: center
+.. math::
+
+    \Phi^{\alpha\beta\gamma}_{ijk} = \frac{\partial^3 U}{\partial x_{i,\alpha} \partial x_{j,\beta} \partial x_{k, \gamma}}
 
 where Phi is the third order force constant tensor.
 
@@ -50,18 +50,23 @@ three elements correspond to the three gamma elements for a specific i/alpha/j/b
 The initial five numbers are i, alpha, j, beta, and k respectively.
 
 If the style eskm is selected, the tensor will be using energy units of 10 J/mol.
-These units conform to eskm style from the dynamical\_matrix command, which
+These units conform to eskm style from the dynamical_matrix command, which
 will simplify operations using dynamical matrices with third order tensors.
+
+----------
+
+.. include:: accel_styles.rst
+
+----------
 
 Restrictions
 """"""""""""
 
-
 The command collects a 9 times the number of atoms in the group on every single MPI rank,
 so the memory requirements can be very significant for large systems.
 
-This command is part of the USER-PHONON package.  It is only enabled if
-LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` doc page for more info.
+This command is part of the PHONON package.  It is only enabled if
+LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` page for more info.
 
 Related commands
 """"""""""""""""
@@ -71,4 +76,4 @@ Related commands
 Default
 """""""
 
-The default settings are file = "third\_order.dat", binary = no
+The default settings are file = "third_order.dat", binary = no

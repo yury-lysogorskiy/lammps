@@ -7,6 +7,9 @@
 // If you wish to distribute your changes, please submit them to the
 // Colvars repository at GitHub.
 
+#include <iostream>
+#include <cstring>
+
 #include "colvarmodule.h"
 #include "colvarproxy.h"
 #include "colvarvalue.h"
@@ -15,45 +18,54 @@
 
 
 colvarbias::colvarbias(char const *key)
-  : bias_type(to_lower_cppstr(key))
 {
-  description = "uninitialized " + cvm::to_str(key) + " bias";
-  init_dependencies();
-  rank = 1;
+  bias_type = colvarparse::to_lower_cppstr(key);
+  state_keyword = bias_type;
+
+  rank = -1;
+  description = "uninitialized " + bias_type + " bias";
+
+  colvarbias::init_dependencies();
+
+  time_step_factor = 1;
 
   has_data = false;
   b_output_energy = false;
-  reset();
+  output_freq = cvm::restart_out_freq;
+
+  colvarbias::reset();
   state_file_step = 0L;
+  matching_state = false;
+  biasing_force_scaling_factors = NULL;
 }
 
 
 int colvarbias::init(std::string const &conf)
 {
-  colvarparse::init(conf);
+  int error_code = COLVARS_OK;
+
+  name = bias_type + cvm::to_str(rank);
+  colvarparse::set_string(conf);
 
   size_t i = 0;
 
-  if (name.size() == 0) {
-
-    // first initialization
+  if (num_variables() == 0) {
+    // First initialization
 
     cvm::log("Initializing a new \""+bias_type+"\" instance.\n");
-    rank = cvm::main()->num_biases_type(bias_type);
-    get_keyval(conf, "name", name, bias_type+cvm::to_str(rank));
 
-    {
-      colvarbias *bias_with_name = cvm::bias_by_name(this->name);
-      if (bias_with_name != NULL) {
-        if ((bias_with_name->rank != this->rank) ||
-            (bias_with_name->bias_type != this->bias_type)) {
-          cvm::error("Error: this bias cannot have the same name, \""+this->name+
-                     "\", as another bias.\n", INPUT_ERROR);
-          return INPUT_ERROR;
-        }
+    // Only allow setting a non-default name on first init
+    get_keyval(conf, "name", name, name);
+
+    colvarbias *bias_with_name = cvm::bias_by_name(this->name);
+    if (bias_with_name != NULL) {
+      if ((bias_with_name->rank != this->rank) ||
+          (bias_with_name->bias_type != this->bias_type)) {
+        error_code |= cvm::error("Error: this bias cannot have the same name, \""+
+                                 this->name+"\", as another bias.\n",
+                                 COLVARS_INPUT_ERROR);
       }
     }
-
     description = "bias " + name;
 
     {
@@ -61,9 +73,9 @@ int colvarbias::init(std::string const &conf)
       std::vector<std::string> colvar_names;
       if (get_keyval(conf, "colvars", colvar_names)) {
         if (num_variables()) {
-          cvm::error("Error: cannot redefine the colvars that a bias was already defined on.\n",
-                     INPUT_ERROR);
-          return INPUT_ERROR;
+          error_code |= cvm::error("Error: cannot redefine the colvars that "
+                                   "a bias was already defined on.\n",
+                                   COLVARS_INPUT_ERROR);
         }
         for (i = 0; i < colvar_names.size(); i++) {
           add_colvar(colvar_names[i]);
@@ -72,29 +84,59 @@ int colvarbias::init(std::string const &conf)
     }
 
     if (!num_variables()) {
-      cvm::error("Error: no collective variables specified.\n", INPUT_ERROR);
-      return INPUT_ERROR;
+      error_code |= cvm::error("Error: no collective variables specified.\n",
+                               COLVARS_INPUT_ERROR);
     }
 
   } else {
     cvm::log("Reinitializing bias \""+name+"\".\n");
   }
 
+  colvar_values.resize(num_variables());
+  for (i = 0; i < num_variables(); i++) {
+    colvar_values[i].type(colvars[i]->value().type());
+    colvar_forces[i].type(colvar_values[i].type());
+    previous_colvar_forces[i].type(colvar_values[i].type());
+  }
+
   output_prefix = cvm::output_prefix();
 
+  get_keyval_feature(this, conf, "stepZeroData", f_cvb_step_zero_data, is_enabled(f_cvb_step_zero_data));
+
+  // Write energy to traj file?
   get_keyval(conf, "outputEnergy", b_output_energy, b_output_energy);
 
-  get_keyval(conf, "timeStepFactor", time_step_factor, 1);
+  // How often to write full output files?
+  get_keyval(conf, "outputFreq", output_freq, output_freq);
+
+  // Disabled by default in base class; default value can be overridden by derived class constructor
+  get_keyval_feature(this, conf, "bypassExtendedLagrangian", f_cvb_bypass_ext_lagrangian, is_enabled(f_cvb_bypass_ext_lagrangian), parse_echo);
+
+  get_keyval(conf, "timeStepFactor", time_step_factor, time_step_factor);
   if (time_step_factor < 1) {
-    cvm::error("Error: timeStepFactor must be 1 or greater.\n");
-    return COLVARS_ERROR;
+    error_code |= cvm::error("Error: timeStepFactor must be 1 or greater.\n",
+                             COLVARS_INPUT_ERROR);
+  }
+
+  // Use the scaling factors from a grid?
+  get_keyval_feature(this, conf, "scaledBiasingForce",
+                     f_cvb_scale_biasing_force,
+                     is_enabled(f_cvb_scale_biasing_force), parse_echo);
+  if (is_enabled(f_cvb_scale_biasing_force)) {
+    std::string biasing_force_scaling_factors_in_filename;
+    get_keyval(conf, "scaledBiasingForceFactorsGrid",
+               biasing_force_scaling_factors_in_filename, std::string());
+    biasing_force_scaling_factors = new colvar_grid_scalar(colvars);
+    error_code |= biasing_force_scaling_factors->read_multicol(biasing_force_scaling_factors_in_filename,
+                                                               "grid file");
+    biasing_force_scaling_factors_bin.assign(num_variables(), 0);
   }
 
   // Now that children are defined, we can solve dependencies
   enable(f_cvb_active);
   if (cvm::debug()) print_state();
 
-  return COLVARS_OK;
+  return error_code;
 }
 
 
@@ -111,33 +153,44 @@ int colvarbias::init_dependencies() {
     init_feature(f_cvb_awake, "awake", f_type_static);
     require_feature_self(f_cvb_awake, f_cvb_active);
 
-    init_feature(f_cvb_apply_force, "apply force", f_type_user);
+    init_feature(f_cvb_step_zero_data, "step_zero_data", f_type_user);
+
+    init_feature(f_cvb_apply_force, "apply_force", f_type_user);
     require_feature_children(f_cvb_apply_force, f_cv_gradient);
 
-    init_feature(f_cvb_get_total_force, "obtain total force", f_type_dynamic);
+    init_feature(f_cvb_bypass_ext_lagrangian, "bypass_extended_Lagrangian_coordinates", f_type_user);
+
+    // The exclusion below prevents the inconsistency where biasing forces are applied onto
+    // the actual colvar, while total forces are measured on the extended coordinate
+    exclude_feature_self(f_cvb_bypass_ext_lagrangian, f_cvb_get_total_force);
+
+    init_feature(f_cvb_get_total_force, "obtain_total_force", f_type_dynamic);
     require_feature_children(f_cvb_get_total_force, f_cv_total_force);
 
-    init_feature(f_cvb_output_acc_work, "output accumulated work", f_type_user);
+    init_feature(f_cvb_output_acc_work, "output_accumulated_work", f_type_user);
     require_feature_self(f_cvb_output_acc_work, f_cvb_apply_force);
 
-    init_feature(f_cvb_history_dependent, "history-dependent", f_type_static);
+    init_feature(f_cvb_history_dependent, "history_dependent", f_type_static);
 
-    init_feature(f_cvb_time_dependent, "time-dependent", f_type_static);
+    init_feature(f_cvb_time_dependent, "time_dependent", f_type_static);
 
-    init_feature(f_cvb_scalar_variables, "require scalar variables", f_type_static);
+    init_feature(f_cvb_scalar_variables, "require_scalar_variables", f_type_static);
     require_feature_children(f_cvb_scalar_variables, f_cv_scalar);
 
-    init_feature(f_cvb_calc_pmf, "calculate a PMF", f_type_static);
+    init_feature(f_cvb_calc_pmf, "calculate_a_PMF", f_type_static);
 
-    init_feature(f_cvb_calc_ti_samples, "calculate TI samples", f_type_dynamic);
+    init_feature(f_cvb_calc_ti_samples, "calculate_TI_samples", f_type_dynamic);
     require_feature_self(f_cvb_calc_ti_samples, f_cvb_get_total_force);
     require_feature_children(f_cvb_calc_ti_samples, f_cv_grid);
 
-    init_feature(f_cvb_write_ti_samples, "write TI samples ", f_type_user);
+    init_feature(f_cvb_write_ti_samples, "write_TI_samples_", f_type_user);
     require_feature_self(f_cvb_write_ti_samples, f_cvb_calc_ti_samples);
 
-    init_feature(f_cvb_write_ti_pmf, "write TI PMF", f_type_user);
+    init_feature(f_cvb_write_ti_pmf, "write_TI_PMF", f_type_user);
     require_feature_self(f_cvb_write_ti_pmf, f_cvb_calc_ti_samples);
+
+    init_feature(f_cvb_scale_biasing_force, "scale_biasing_force", f_type_user);
+    require_feature_children(f_cvb_scale_biasing_force, f_cv_grid);
 
     // check that everything is initialized
     for (i = 0; i < colvardeps::f_cvb_ntot; i++) {
@@ -157,6 +210,12 @@ int colvarbias::init_dependencies() {
 
   // only compute TI samples when deriving from colvarbias_ti
   feature_states[f_cvb_calc_ti_samples].available = false;
+
+  // The feature f_cvb_bypass_ext_lagrangian is only implemented by some derived classes
+  // (initially, harmonicWalls)
+  feature_states[f_cvb_bypass_ext_lagrangian].available = false;
+  // disabled by default; can be changed by derived classes that implement it
+  feature_states[f_cvb_bypass_ext_lagrangian].enabled = false;
 
   return COLVARS_OK;
 }
@@ -212,6 +271,14 @@ int colvarbias::clear()
     }
   }
 
+  if (biasing_force_scaling_factors != NULL) {
+    delete biasing_force_scaling_factors;
+    biasing_force_scaling_factors = NULL;
+    biasing_force_scaling_factors_bin.clear();
+  }
+
+  cv->config_changed();
+
   return COLVARS_OK;
 }
 
@@ -247,8 +314,8 @@ int colvarbias::add_colvar(std::string const &cv_name)
 
   } else {
     cvm::error("Error: cannot find a colvar named \""+
-               cv_name+"\".\n", INPUT_ERROR);
-    return INPUT_ERROR;
+               cv_name+"\".\n", COLVARS_INPUT_ERROR);
+    return COLVARS_INPUT_ERROR;
   }
 
   return COLVARS_OK;
@@ -265,10 +332,26 @@ int colvarbias::update()
 
   has_data = true;
 
+  // Update the cached colvar values
+  for (size_t i = 0; i < num_variables(); i++) {
+    colvar_values[i] = colvars[i]->value();
+  }
+
   error_code |= calc_energy(NULL);
   error_code |= calc_forces(NULL);
 
   return error_code;
+}
+
+
+bool colvarbias::can_accumulate_data()
+{
+  colvarproxy *proxy = cvm::main()->proxy;
+  if (((cvm::step_relative() > 0) && !proxy->simulation_continuing()) ||
+      is_enabled(f_cvb_step_zero_data)) {
+    return true;
+  }
+  return false;
 }
 
 
@@ -288,12 +371,22 @@ int colvarbias::calc_forces(std::vector<colvarvalue> const *)
 }
 
 
-void colvarbias::communicate_forces()
+int colvarbias::communicate_forces()
 {
+  int error_code = COLVARS_OK;
   if (! is_enabled(f_cvb_apply_force)) {
-    return;
+    return error_code;
   }
+  cvm::real biasing_force_factor = 1.0;
   size_t i = 0;
+  if (is_enabled(f_cvb_scale_biasing_force)) {
+    for (i = 0; i < num_variables(); i++) {
+      biasing_force_scaling_factors_bin[i] = biasing_force_scaling_factors->current_bin_scalar(i);
+    }
+    if (biasing_force_scaling_factors->index_ok(biasing_force_scaling_factors_bin)) {
+      biasing_force_factor *= biasing_force_scaling_factors->value(biasing_force_scaling_factors_bin);
+    }
+  }
   for (i = 0; i < num_variables(); i++) {
     if (cvm::debug()) {
       cvm::log("Communicating a force to colvar \""+
@@ -304,11 +397,14 @@ void colvarbias::communicate_forces()
     // may send forces to the same colvar
     // which is why rescaling has to happen now: the colvar is not
     // aware of this bias' time_step_factor
-    variables(i)->add_bias_force(cvm::real(time_step_factor) * colvar_forces[i]);
-  }
-  for (i = 0; i < num_variables(); i++) {
+    if (is_enabled(f_cvb_bypass_ext_lagrangian)) {
+      variables(i)->add_bias_force_actual_value(cvm::real(time_step_factor) * colvar_forces[i] * biasing_force_factor);
+    } else {
+      variables(i)->add_bias_force(cvm::real(time_step_factor) * colvar_forces[i] * biasing_force_factor);
+    }
     previous_colvar_forces[i] = colvar_forces[i];
   }
+  return error_code;
 }
 
 
@@ -368,19 +464,26 @@ std::string const colvarbias::get_state_params() const
 
 int colvarbias::set_state_params(std::string const &conf)
 {
-  std::string new_name = "";
-  if (colvarparse::get_keyval(conf, "name", new_name,
-                              std::string(""), colvarparse::parse_silent) &&
-      (new_name != this->name)) {
-    cvm::error("Error: in the state file, the "
-               "\""+bias_type+"\" block has a different name, \""+new_name+
-               "\": different system?\n", INPUT_ERROR);
+  matching_state = false;
+
+  std::string check_name = "";
+  colvarparse::get_keyval(conf, "name", check_name,
+                          std::string(""), colvarparse::parse_silent);
+
+  if (check_name.size() == 0) {
+    cvm::error("Error: \""+bias_type+"\" block within the restart file "
+               "has no identifiers.\n", COLVARS_INPUT_ERROR);
   }
 
-  if (name.size() == 0) {
-    cvm::error("Error: \""+bias_type+"\" block within the restart file "
-               "has no identifiers.\n", INPUT_ERROR);
+  if (check_name != this->name) {
+    if (cvm::debug()) {
+      cvm::log("Ignoring state of bias \""+check_name+
+               "\": this bias is named \""+name+"\".\n");
+    }
+    return COLVARS_OK;
   }
+
+  matching_state = true;
 
   colvarparse::get_keyval(conf, "step", state_file_step,
                           cvm::step_absolute(), colvarparse::parse_silent);
@@ -396,7 +499,7 @@ std::ostream & colvarbias::write_state(std::ostream &os)
   }
   os.setf(std::ios::scientific, std::ios::floatfield);
   os.precision(cvm::cv_prec);
-  os << bias_type << " {\n"
+  os << state_keyword << " {\n"
      << "  configuration {\n";
   std::istringstream is(get_state_params());
   std::string line;
@@ -412,30 +515,38 @@ std::ostream & colvarbias::write_state(std::ostream &os)
 
 std::istream & colvarbias::read_state(std::istream &is)
 {
-  size_t const start_pos = is.tellg();
+  std::streampos const start_pos = is.tellg();
 
   std::string key, brace, conf;
-  if ( !(is >> key)   || !(key == bias_type) ||
+  if ( !(is >> key)   || !(key == state_keyword || key == bias_type) ||
        !(is >> brace) || !(brace == "{") ||
-       !(is >> colvarparse::read_block("configuration", conf)) ||
+       !(is >> colvarparse::read_block("configuration", &conf)) ||
        (set_state_params(conf) != COLVARS_OK) ) {
-    if (key != bias_type)
-      cvm::log("Found key \"" + key + "\" instead of \"" + bias_type + "\"\n");
-    cvm::error("Error: in reading state configuration for \""+bias_type+"\" bias \""+
+    cvm::error("Error: in reading state configuration for \""+bias_type+
+               "\" bias \""+
                this->name+"\" at position "+
                cvm::to_str(static_cast<size_t>(is.tellg()))+
-               " in stream.\n", INPUT_ERROR);
+               " in stream.\n", COLVARS_INPUT_ERROR);
     is.clear();
     is.seekg(start_pos, std::ios::beg);
     is.setstate(std::ios::failbit);
     return is;
   }
 
+  if (matching_state == false) {
+    // This state is not for this bias
+    is.seekg(start_pos, std::ios::beg);
+    return is;
+  }
+
+  cvm::log("Restarting "+bias_type+" bias \""+name+"\" from step number "+
+           cvm::to_str(state_file_step)+".\n");
+
   if (!read_state_data(is)) {
     cvm::error("Error: in reading state data for \""+bias_type+"\" bias \""+
                this->name+"\" at position "+
                cvm::to_str(static_cast<size_t>(is.tellg()))+
-               " in stream.\n", INPUT_ERROR);
+               " in stream.\n", COLVARS_INPUT_ERROR);
     is.clear();
     is.seekg(start_pos, std::ios::beg);
     is.setstate(std::ios::failbit);
@@ -454,16 +565,86 @@ std::istream & colvarbias::read_state(std::istream &is)
 }
 
 
+int colvarbias::write_state_prefix(std::string const &prefix)
+{
+  std::string const filename =
+    cvm::state_file_prefix(prefix.c_str())+".colvars.state";
+  std::ostream &os = cvm::proxy->output_stream(filename.c_str(), "bias state file");
+  int error_code = COLVARS_OK;
+  if (os) {
+    os.setf(std::ios::scientific, std::ios::floatfield);
+    error_code = write_state(os) ? COLVARS_OK : COLVARS_FILE_ERROR;
+  } else {
+    error_code = COLVARS_FILE_ERROR;
+  }
+  cvm::proxy->close_output_stream(filename.c_str());
+  return error_code;
+}
+
+
+int colvarbias::write_state_string(std::string &output)
+{
+  std::ostringstream os;
+  if (!write_state(os)) {
+    return cvm::error("Error: in writing state of bias \""+name+
+                      "\" to buffer.\n", COLVARS_FILE_ERROR);
+  }
+  output = os.str();
+  return COLVARS_OK;
+}
+
+
+int colvarbias::read_state_prefix(std::string const &prefix)
+{
+  std::string filename(prefix+std::string(".colvars.state"));
+  std::istream *is = &(cvm::main()->proxy->input_stream(filename,
+                                                        "bias state file",
+                                                        false));
+  if (!*is) {
+    filename = prefix;
+    is = &(cvm::main()->proxy->input_stream(filename, "bias state file"));
+  }
+
+  if (read_state(*is)) {
+    return cvm::main()->proxy->close_input_stream(filename);
+  }
+  return COLVARS_FILE_ERROR;
+}
+
+
+int colvarbias::read_state_string(char const *buffer)
+{
+  if (buffer != NULL) {
+    size_t const buffer_size = strlen(buffer);
+    if (cvm::debug()) {
+      cvm::log("colvarbias::read_state_string() with argument:\n");
+      cvm::log(buffer);
+    }
+
+    if (buffer_size > 0) {
+      std::istringstream is;
+      is.rdbuf()->pubsetbuf(const_cast<char *>(buffer), buffer_size);
+      return read_state(is).good() ? COLVARS_OK :
+        cvm::error("Error: in reading state for \""+name+"\" from buffer.\n",
+                   COLVARS_FILE_ERROR);
+    }
+    return COLVARS_OK;
+  }
+  return cvm::error("Error: NULL pointer for colvarbias::read_state_string()",
+                    COLVARS_BUG_ERROR);
+}
+
+
 std::istream & colvarbias::read_state_data_key(std::istream &is, char const *key)
 {
-  size_t const start_pos = is.tellg();
+  std::streampos const start_pos = is.tellg();
   std::string key_in;
   if ( !(is >> key_in) ||
-       !(key_in == to_lower_cppstr(std::string(key))) ) {
+       !(to_lower_cppstr(key_in) == to_lower_cppstr(std::string(key))) ) {
     cvm::error("Error: in reading restart configuration for "+
                bias_type+" bias \""+this->name+"\" at position "+
                cvm::to_str(static_cast<size_t>(is.tellg()))+
-               " in stream.\n", INPUT_ERROR);
+               " in stream.\n", COLVARS_INPUT_ERROR);
     is.clear();
     is.seekg(start_pos, std::ios::beg);
     is.setstate(std::ios::failbit);
@@ -499,7 +680,12 @@ std::ostream & colvarbias::write_traj(std::ostream &os)
 colvarbias_ti::colvarbias_ti(char const *key)
   : colvarbias(key)
 {
+  colvarproxy *proxy = cvm::main()->proxy;
   provide(f_cvb_calc_ti_samples);
+  if (!proxy->total_forces_same_step()) {
+    // Samples at step zero can not be collected
+    feature_states[f_cvb_step_zero_data].available = false;
+  }
   ti_avg_forces = NULL;
   ti_count = NULL;
 }
@@ -561,11 +747,15 @@ int colvarbias_ti::init(std::string const &conf)
             return cvm::error("Error: cannot collect TI samples while other "
                               "time-dependent biases are active and not all "
                               "variables have subtractAppliedForces on.\n",
-                              INPUT_ERROR);
+                              COLVARS_INPUT_ERROR);
           }
         }
       }
     }
+  }
+
+  if (is_enabled(f_cvb_write_ti_pmf) || is_enabled(f_cvb_write_ti_samples)) {
+    cvm::main()->cite_feature("Internal-forces free energy estimator");
   }
 
   return error_code;
@@ -636,7 +826,9 @@ int colvarbias_ti::update_system_forces(std::vector<colvarvalue> const
              (*subtract_forces)[i] : previous_colvar_forces[i]);
         }
       }
-      ti_avg_forces->acc_value(ti_bin, ti_system_forces);
+      if (cvm::step_relative() > 0 || is_enabled(f_cvb_step_zero_data)) {
+        ti_avg_forces->acc_value(ti_bin, ti_system_forces);
+      }
     }
   }
 
@@ -705,6 +897,8 @@ std::istream & colvarbias_ti::read_state_data(std::istream &is)
 
 int colvarbias_ti::write_output_files()
 {
+  int error_code = COLVARS_OK;
+
   if (!has_data) {
     // nothing to write
     return COLVARS_OK;
@@ -712,38 +906,30 @@ int colvarbias_ti::write_output_files()
 
   std::string const ti_output_prefix = cvm::output_prefix()+"."+this->name;
 
-  std::ostream *os = NULL;
-
   if (is_enabled(f_cvb_write_ti_samples)) {
     std::string const ti_count_file_name(ti_output_prefix+".ti.count");
-    os = cvm::proxy->output_stream(ti_count_file_name);
-    if (os) {
-      ti_count->write_multicol(*os);
-      cvm::proxy->close_output_stream(ti_count_file_name);
-    }
+    error_code |= ti_count->write_multicol(ti_count_file_name, "TI count file");
 
     std::string const ti_grad_file_name(ti_output_prefix+".ti.force");
-    os = cvm::proxy->output_stream(ti_grad_file_name);
-    if (os) {
-      ti_avg_forces->write_multicol(*os);
-      cvm::proxy->close_output_stream(ti_grad_file_name);
-    }
+    error_code |= ti_avg_forces->write_multicol(ti_grad_file_name, "TI gradient file");
   }
 
   if (is_enabled(f_cvb_write_ti_pmf)) {
     std::string const pmf_file_name(ti_output_prefix+".ti.pmf");
     cvm::log("Writing TI PMF to file \""+pmf_file_name+"\".\n");
-    os = cvm::proxy->output_stream(pmf_file_name);
+    std::ostream &os = cvm::proxy->output_stream(pmf_file_name, "TI PMF");
     if (os) {
       // get the FE gradient
       ti_avg_forces->multiply_constant(-1.0);
-      ti_avg_forces->write_1D_integral(*os);
+      ti_avg_forces->write_1D_integral(os);
       ti_avg_forces->multiply_constant(-1.0);
       cvm::proxy->close_output_stream(pmf_file_name);
+    } else {
+      error_code |= COLVARS_FILE_ERROR;
     }
   }
 
-  return COLVARS_OK;
+  return error_code;
 }
 
 

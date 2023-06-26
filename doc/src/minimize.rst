@@ -9,7 +9,6 @@ minimize/kk command
 Syntax
 """"""
 
-
 .. parsed-literal::
 
    minimize etol ftol maxiter maxeval
@@ -22,8 +21,7 @@ Syntax
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    minimize 1.0e-4 1.0e-6 100 1000
    minimize 0.0 1.0e-8 1000 100000
@@ -34,56 +32,76 @@ Description
 Perform an energy minimization of the system, by iteratively adjusting
 atom coordinates.  Iterations are terminated when one of the stopping
 criteria is satisfied.  At that point the configuration will hopefully
-be in local potential energy minimum.  More precisely, the
+be in a local potential energy minimum.  More precisely, the
 configuration should approximate a critical point for the objective
 function (see below), which may or may not be a local minimum.
 
-The minimization algorithm used is set by the
-:doc:`min_style <min_style>` command.  Other options are set by the
-:doc:`min_modify <min_modify>` command.  Minimize commands can be
-interspersed with :doc:`run <run>` commands to alternate between
-relaxation and dynamics.  The minimizers bound the distance atoms move
-in one iteration, so that you can relax systems with highly overlapped
-atoms (large energies and forces) by pushing the atoms off of each
-other.
+The minimization algorithm used is set by the :doc:`min_style
+<min_style>` command.  Other options are set by the :doc:`min_modify
+<min_modify>` command.  Minimize commands can be interspersed with
+:doc:`run <run>` commands to alternate between relaxation and dynamics.
+The minimizers bound the distance atoms may move in one iteration, so
+that you can relax systems with highly overlapped atoms (large energies
+and forces) by pushing the atoms off of each other.
 
-Alternate means of relaxing a system are to run dynamics with a small
-or :doc:`limited timestep <fix_nve_limit>`.  Or dynamics can be run
-using :doc:`fix viscous <fix_viscous>` to impose a damping force that
-slowly drains all kinetic energy from the system.  The :doc:`pair_style soft <pair_soft>` potential can be used to un-overlap atoms while
-running dynamics.
-un-overlap atoms while running dynamics.
+.. admonition:: Neighbor list update settings
+   :class: note
+
+   The distance that atoms can move during individual minimization steps
+   can be quite large, especially at the beginning of a minimization.
+   Thus :doc:`neighbor list settings <neigh_modify>` of *every = 1* and
+   *delay = 0* are **required**.  This may be combined with either
+   *check = no* (always update the neighbor list) or *check = yes* (only
+   update the neighbor list if at least one atom has moved more than
+   half the :doc:`neighbor list skin <neighbor>` distance since the last
+   reneighboring).  Using *check = yes* is recommended since it avoids
+   unneeded reneighboring steps when the system is closer to the minimum
+   and thus atoms move only small distances.  Using *check = no* may be
+   required for debugging or when coupling LAMMPS with external codes
+   that require a predictable sequence of neighbor list updates.
+
+   If the settings are **not** *every = 1* and *delay = 0*, LAMMPS will
+   temporarily apply a :doc:`neigh_modify every 1 delay 0 check yes
+   <neigh_modify>` setting during the minimization and restore the
+   original setting at the end of the minimization.  A corresponding
+   message will be printed to the screen and log file, if this happens.
+
+Alternate means of relaxing a system are to run dynamics with a small or
+:doc:`limited timestep <fix_nve_limit>`.  Or dynamics can be run using
+:doc:`fix viscous <fix_viscous>` to impose a damping force that slowly
+drains all kinetic energy from the system.  The :doc:`pair_style soft
+<pair_soft>` potential can be used to un-overlap atoms while running
+dynamics.
 
 Note that you can minimize some atoms in the system while holding the
-coordinates of other atoms fixed by applying :doc:`fix setforce
-<fix_setforce>` to the other atoms.  See a fuller discussion of using
-fixes while minimizing below.
+coordinates of other atoms fixed by applying :doc:`fix setforce 0.0 0.0
+0.0 <fix_setforce>` to the other atoms.  See a more detailed discussion
+of :ref:`using fixes while minimizing below <fix_minimize>`.
 
-The :doc:`minimization styles <min_style>` *cg*\ , *sd*\ , and *hftn*
+The :doc:`minimization styles <min_style>` *cg*, *sd*, and *hftn*
 involves an outer iteration loop which sets the search direction along
 which atom coordinates are changed.  An inner iteration is then
 performed using a line search algorithm.  The line search typically
 evaluates forces and energies several times to set new coordinates.
 Currently, a backtracking algorithm is used which may not be optimal
 in terms of the number of force evaluations performed, but appears to
-be more robust than previous line searches we've tried.  The
+be more robust than previous line searches we have tried.  The
 backtracking method is described in Nocedal and Wright's Numerical
 Optimization (Procedure 3.1 on p 41).
 
-The :doc:`minimization styles <min_style>` *quickmin*\ , *fire* and
+The :doc:`minimization styles <min_style>` *quickmin*, *fire* and
 *fire/old* perform damped dynamics using an Euler integration step.  Thus
 they require a :doc:`timestep <timestep>` be defined.
 
 .. note::
 
-   The damped dynamic minimizers use whatever timestep you have
-   defined via the :doc:`timestep <timestep>` command.  Often they
-   will converge more quickly if you use a timestep about 10x larger
-   than you would normally use for dynamics simulations.
-
+   The damped dynamic minimizer algorithms will use the timestep you
+   have defined via the :doc:`timestep <timestep>` command or its
+   default value.  Often they will converge more quickly if you use a
+   timestep about 10x larger than you would normally use for regular
+   molecular dynamics simulations.
 
 ----------
-
 
 In all cases, the objective function being minimized is the total
 potential energy of the system as a function of the N atom
@@ -97,10 +115,9 @@ coordinates:
                               \sum_{ijkl} E_{\it improper}(r_i,r_j,r_k,r_l) +
                               \sum_i E_{\it fix}(r_i)
 
-
 where the first term is the sum of all non-bonded :doc:`pairwise
 interactions <pair_style>` including :doc:`long-range Coulombic
-interactions <kspace_style>`, the 2nd through 5th terms are :doc:`bond
+interactions <kspace_style>`, the second through fifth terms are :doc:`bond
 <bond_style>`, :doc:`angle <angle_style>`, :doc:`dihedral
 <dihedral_style>`, and :doc:`improper <improper_style>` interactions
 respectively, and the last term is energy due to :doc:`fixes <fix>`
@@ -111,9 +128,7 @@ commands affect minimization.
 The starting point for the minimization is the current configuration
 of the atoms.
 
-
 ----------
-
 
 The minimization procedure stops if any of several criteria are met:
 
@@ -125,12 +140,12 @@ The minimization procedure stops if any of several criteria are met:
 
 .. note::
 
-   the :doc:`minimization style <min_style>` *spin*\ ,
-   *spin/cg*\ , and *spin/lbfgs* replace
+   the :doc:`minimization style <min_style>` *spin*,
+   *spin/cg*, and *spin/lbfgs* replace
    the force tolerance *ftol* by a torque tolerance.
    The minimization procedure stops if the 2-norm (length) of the torque vector on atom
    (defined as the cross product between the
-   atomic spin and its precession vectors omega) is less than *ftol*\ ,
+   atomic spin and its precession vectors omega) is less than *ftol*,
    or if any of the other criteria are met. Torque have the same units as the energy.
 
 .. note::
@@ -176,7 +191,6 @@ which convergence criterion caused the minimizer to stop, as well as
 information about the energy, force, final line search, and iteration
 counts.  An example is as follows:
 
-
 .. parsed-literal::
 
    Minimization stats:
@@ -214,39 +228,45 @@ reduced.
 The iterations and force evaluation values are what is checked by the
 *maxiter* and *maxeval* parameters.
 
-
 ----------
-
 
 .. note::
 
-   There are several force fields in LAMMPS which have
-   discontinuities or other approximations which may prevent you from
-   performing an energy minimization to high tolerances.  For example,
-   you should use a :doc:`pair style <pair_style>` that goes to 0.0 at the
-   cutoff distance when performing minimization (even if you later change
-   it when running dynamics).  If you do not do this, the total energy of
+   There are several force fields in LAMMPS which have discontinuities
+   or other approximations which may prevent you from performing an
+   energy minimization to tight tolerances.  For example, you should use
+   a :doc:`pair style <pair_style>` that goes to 0.0 at the cutoff
+   distance when performing minimization (even if you later change it
+   when running dynamics).  If you do not do this, the total energy of
    the system will have discontinuities when the relative distance
-   between any pair of atoms changes from cutoff+epsilon to
-   cutoff-epsilon and the minimizer may behave poorly.  Some of the
-   many-body potentials use splines and other internal cutoffs that
-   inherently have this problem.  The :doc:`long-range Coulombic styles <kspace_style>` (PPPM, Ewald) are approximate to within the
-   user-specified tolerance, which means their energy and forces may not
-   agree to a higher precision than the Kspace-specified tolerance.  In
-   all these cases, the minimizer may give up and stop before finding a
-   minimum to the specified energy or force tolerance.
+   between any pair of atoms changes from cutoff *plus* epsilon to
+   cutoff *minus* epsilon and the minimizer may thus behave poorly.
+   Some of the many-body potentials use splines and other internal
+   cutoffs that inherently have this problem.  The :doc:`long-range
+   Coulombic styles <kspace_style>` (PPPM, Ewald) are approximate to
+   within the user-specified tolerance, which means their energy and
+   forces may not agree to a higher precision than the Kspace-specified
+   tolerance.  This agreement is further reduced when using tabulation
+   to speed up the computation of the real-space part of the Coulomb
+   interactions, which is enabled by default.  In all these cases, the
+   minimizer may give up and stop before finding a minimum to the
+   specified energy or force tolerance.
 
 Note that a cutoff Lennard-Jones potential (and others) can be shifted
-so that its energy is 0.0 at the cutoff via the
-:doc:`pair_modify <pair_modify>` command.  See the doc pages for
-individual :doc:`pair styles <pair_style>` for details.  Note that
-Coulombic potentials always have a cutoff, unless versions with a
-long-range component are used (e.g. :doc:`pair_style lj/cut/coul/long <pair_lj>`).  The CHARMM potentials go to 0.0 at
-the cutoff (e.g. :doc:`pair_style lj/charmm/coul/charmm <pair_charmm>`),
-as do the GROMACS potentials (e.g. :doc:`pair_style lj/gromacs <pair_gromacs>`).
+so that its energy is 0.0 at the cutoff via the :doc:`pair_modify
+<pair_modify>` command.  See the doc pages for individual :doc:`pair
+styles <pair_style>` for details.  Note that most Coulombic potentials
+have a cutoff, unless versions with a long-range component are used
+(e.g. :doc:`pair_style lj/cut/coul/long <pair_lj_cut_coul>`) or some
+other damping/smoothing schemes are used.  The CHARMM potentials go to
+0.0 at the cutoff (e.g. :doc:`pair_style lj/charmm/coul/charmm
+<pair_charmm>`), as do the GROMACS potentials (e.g. :doc:`pair_style
+lj/gromacs <pair_gromacs>`).
 
 If a soft potential (:doc:`pair_style soft <pair_soft>`) is used the
 Astop value is used for the prefactor (no time dependence).
+
+.. _fix_minimize:
 
 The :doc:`fix box/relax <fix_box_relax>` command can be used to apply an
 external pressure to the simulation box and allow it to shrink/expand
@@ -287,35 +307,14 @@ that can be used include:
    :doc:`fix shake <fix_shake>` or :doc:`fix rigid <fix_rigid>`.  See more
    info in the Restrictions section below.
 
-
 ----------
 
-
-Styles with a *gpu*\ , *intel*\ , *kk*\ , *omp*\ , or *opt* suffix are
-functionally the same as the corresponding style without the suffix.
-They have been optimized to run faster, depending on your available
-hardware, as discussed on the :doc:`Speed packages <Speed_packages>` doc
-page.  The accelerated styles take the same arguments and should
-produce the same results, except for round-off and precision issues.
-
-These accelerated styles are part of the GPU, USER-INTEL, KOKKOS,
-USER-OMP and OPT packages, respectively.  They are only enabled if
-LAMMPS was built with those packages.  See the :doc:`Build package <Build_package>` doc page for more info.
-
-You can specify the accelerated styles explicitly in your input script
-by including their suffix, or you can use the :doc:`-suffix command-line switch <Run_options>` when you invoke LAMMPS, or you can use the
-:doc:`suffix <suffix>` command in your input script.
-
-See the :doc:`Speed packages <Speed_packages>` doc page for more
-instructions on how to use the accelerated styles effectively.
-
+.. include:: accel_styles.rst
 
 ----------
-
 
 Restrictions
 """"""""""""
-
 
 Features that are not yet implemented are listed here, in case someone
 knows how they could be coded:
@@ -346,4 +345,7 @@ Related commands
 :doc:`min_modify <min_modify>`, :doc:`min_style <min_style>`,
 :doc:`run_style <run_style>`
 
-**Default:** none
+Default
+"""""""
+
+none

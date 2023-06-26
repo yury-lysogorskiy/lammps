@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -12,11 +12,11 @@
 ------------------------------------------------------------------------- */
 
 #include "npair_skip_size_off2on.h"
-#include "neigh_list.h"
+
 #include "atom.h"
-#include "atom_vec.h"
-#include "my_page.h"
 #include "error.h"
+#include "my_page.h"
+#include "neigh_list.h"
 
 using namespace LAMMPS_NS;
 
@@ -32,9 +32,9 @@ NPairSkipSizeOff2on::NPairSkipSizeOff2on(LAMMPS *lmp) : NPair(lmp) {}
 
 void NPairSkipSizeOff2on::build(NeighList *list)
 {
-  int i,j,ii,jj,n,itype,jnum,joriginal;
-  tagint itag,jtag;
-  int *neighptr,*jlist;
+  int i, j, ii, jj, n, itype, jnum, joriginal;
+  tagint itag, jtag;
+  int *neighptr, *jlist;
 
   tagint *tag = atom->tag;
   int *type = atom->type;
@@ -91,9 +91,7 @@ void NPairSkipSizeOff2on::build(NeighList *list)
     firstneigh[i] = neighptr;
     numneigh[i] = n;
     ipage->vgot(n);
-    if (ipage->status())
-      error->one(FLERR,"Neighbor list overflow, boost neigh_modify one");
+    if (ipage->status()) error->one(FLERR, "Neighbor list overflow, boost neigh_modify one");
   }
-
   list->inum = inum;
 }

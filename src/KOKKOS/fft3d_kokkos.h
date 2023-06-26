@@ -1,7 +1,8 @@
-/* ----------------------------------------------------------------------
+// clang-format off
+/* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -59,6 +60,10 @@ struct fft_plan_3d_kokkos {
   cufftHandle plan_fast;
   cufftHandle plan_mid;
   cufftHandle plan_slow;
+#elif defined(FFT_HIPFFT)
+  hipfftHandle plan_fast;
+  hipfftHandle plan_mid;
+  hipfftHandle plan_slow;
 #else
   kiss_fft_state_kokkos<DeviceType> cfg_fast_forward;
   kiss_fft_state_kokkos<DeviceType> cfg_fast_backward;
@@ -72,13 +77,14 @@ struct fft_plan_3d_kokkos {
 template<class DeviceType>
 class FFT3dKokkos : protected Pointers {
  public:
+  enum{FORWARD=1,BACKWARD=-1};
   typedef DeviceType device_type;
   typedef FFTArrayTypes<DeviceType> FFT_AT;
 
   FFT3dKokkos(class LAMMPS *, MPI_Comm,
         int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,
-        int,int,int *,int);
-  ~FFT3dKokkos();
+        int,int,int *,int,int);
+  ~FFT3dKokkos() override;
   void compute(typename FFT_AT::t_FFT_SCALAR_1d, typename FFT_AT::t_FFT_SCALAR_1d, int);
   void timing1d(typename FFT_AT::t_FFT_SCALAR_1d, int, int);
 
@@ -95,7 +101,7 @@ class FFT3dKokkos : protected Pointers {
   struct fft_plan_3d_kokkos<DeviceType> *fft_3d_create_plan_kokkos(MPI_Comm, int, int, int,
                                          int, int, int, int, int,
                                          int, int, int, int, int, int, int,
-                                         int, int, int *, int, int);
+                                         int, int, int *, int, int, int);
 
   void fft_3d_destroy_plan_kokkos(struct fft_plan_3d_kokkos<DeviceType> *);
 
@@ -108,22 +114,3 @@ class FFT3dKokkos : protected Pointers {
 
 #endif
 
-/* ERROR/WARNING messages:
-
-E: Could not create 3d FFT plan
-
-The FFT setup for the PPPM solver failed, typically due
-to lack of memory.  This is an unusual error.  Check the
-size of the FFT grid you are requesting.
-
-E: Cannot use the FFTW library with Kokkos CUDA on GPUs
-
-Kokkos CUDA doesn't support using the FFTW library to calculate FFTs for
-PPPM on GPUs.
-
-E: Cannot use the cuFFT library with Kokkos CUDA on the host CPUs
-
-Kokkos CUDA doesn't support using the cuFFT library to calculate FFTs
-for PPPM on the host CPUs, use KISS FFT instead.
-
-*/

@@ -1,7 +1,8 @@
+// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -21,28 +22,29 @@
 ------------------------------------------------------------------------- */
 
 #include "pair_body_rounded_polyhedron.h"
-#include <mpi.h>
-#include <cmath>
-#include <cstring>
+
 #include "atom.h"
 #include "atom_vec_body.h"
 #include "body_rounded_polyhedron.h"
 #include "comm.h"
-#include "force.h"
-#include "fix.h"
-#include "modify.h"
-#include "neighbor.h"
-#include "neigh_list.h"
-#include "memory.h"
 #include "error.h"
-#include "math_extra.h"
+#include "fix.h"
+#include "force.h"
 #include "math_const.h"
+#include "math_extra.h"
+#include "memory.h"
+#include "modify.h"
+#include "neigh_list.h"
+#include "neighbor.h"
+
+#include <cmath>
+#include <cstring>
 
 using namespace LAMMPS_NS;
 using namespace MathConst;
 
 #define DELTA 10000
-#define EPSILON 1e-3
+#define EPSILON 1e-3     // dimensionless threshold (dot products, end point checks, contact checks)
 #define MAX_FACE_SIZE 4  // maximum number of vertices per face (same as BodyRoundedPolyhedron)
 #define MAX_CONTACTS 32  // for 3D models (including duplicated counts)
 
@@ -57,20 +59,20 @@ enum {EF_INVALID=0,EF_NONE,EF_PARALLEL,EF_SAME_SIDE_OF_FACE,
 PairBodyRoundedPolyhedron::PairBodyRoundedPolyhedron(LAMMPS *lmp) : Pair(lmp)
 {
   dmax = nmax = 0;
-  discrete = NULL;
-  dnum = dfirst = NULL;
+  discrete = nullptr;
+  dnum = dfirst = nullptr;
 
   edmax = ednummax = 0;
-  edge = NULL;
-  ednum = edfirst = NULL;
+  edge = nullptr;
+  ednum = edfirst = nullptr;
 
   facmax = facnummax = 0;
-  face = NULL;
-  facnum = facfirst = NULL;
+  face = nullptr;
+  facnum = facfirst = nullptr;
 
-  enclosing_radius = NULL;
-  rounded_radius = NULL;
-  maxerad = NULL;
+  enclosing_radius = nullptr;
+  rounded_radius = nullptr;
+  maxerad = nullptr;
 
   single_enable = 0;
   restartinfo = 0;
@@ -80,8 +82,8 @@ PairBodyRoundedPolyhedron::PairBodyRoundedPolyhedron(LAMMPS *lmp) : Pair(lmp)
   mu = 0.0;
   A_ua = 1.0;
 
-  k_n = NULL;
-  k_na = NULL;
+  k_n = nullptr;
+  k_na = nullptr;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -343,11 +345,11 @@ void PairBodyRoundedPolyhedron::settings(int narg, char **arg)
 {
   if (narg < 5) error->all(FLERR,"Illegal pair_style command");
 
-  c_n = force->numeric(FLERR,arg[0]);
-  c_t = force->numeric(FLERR,arg[1]);
-  mu = force->numeric(FLERR,arg[2]);
-  A_ua = force->numeric(FLERR,arg[3]);
-  cut_inner = force->numeric(FLERR,arg[4]);
+  c_n = utils::numeric(FLERR,arg[0],false,lmp);
+  c_t = utils::numeric(FLERR,arg[1],false,lmp);
+  mu = utils::numeric(FLERR,arg[2],false,lmp);
+  A_ua = utils::numeric(FLERR,arg[3],false,lmp);
+  cut_inner = utils::numeric(FLERR,arg[4],false,lmp);
 
   if (A_ua < 0) A_ua = 1;
 }
@@ -363,11 +365,11 @@ void PairBodyRoundedPolyhedron::coeff(int narg, char **arg)
   if (!allocated) allocate();
 
   int ilo,ihi,jlo,jhi;
-  force->bounds(FLERR,arg[0],atom->ntypes,ilo,ihi);
-  force->bounds(FLERR,arg[1],atom->ntypes,jlo,jhi);
+  utils::bounds(FLERR,arg[0],1,atom->ntypes,ilo,ihi,error);
+  utils::bounds(FLERR,arg[1],1,atom->ntypes,jlo,jhi,error);
 
-  double k_n_one = force->numeric(FLERR,arg[2]);
-  double k_na_one = force->numeric(FLERR,arg[3]);
+  double k_n_one = utils::numeric(FLERR,arg[2],false,lmp);
+  double k_na_one = utils::numeric(FLERR,arg[3],false,lmp);
 
   int count = 0;
   for (int i = ilo; i <= ihi; i++) {
@@ -388,13 +390,13 @@ void PairBodyRoundedPolyhedron::coeff(int narg, char **arg)
 
 void PairBodyRoundedPolyhedron::init_style()
 {
-  avec = (AtomVecBody *) atom->style_match("body");
+  avec = dynamic_cast<AtomVecBody *>(atom->style_match("body"));
   if (!avec) error->all(FLERR,"Pair body/rounded/polyhedron requires "
                         "atom style body");
   if (strcmp(avec->bptr->style,"rounded/polyhedron") != 0)
     error->all(FLERR,"Pair body/rounded/polyhedron requires "
                "body style rounded/polyhedron");
-  bptr = (BodyRoundedPolyhedron *) avec->bptr;
+  bptr = dynamic_cast<BodyRoundedPolyhedron *>(avec->bptr);
 
   if (force->newton_pair == 0)
     error->all(FLERR,"Pair style body/rounded/polyhedron requires "
@@ -404,7 +406,7 @@ void PairBodyRoundedPolyhedron::init_style()
     error->all(FLERR,"Pair body/rounded/polyhedron requires "
                "ghost atoms store velocity");
 
-  neighbor->request(this);
+  neighbor->add_request(this);
 
   // find the maximum enclosing radius for each atom type
 
@@ -439,7 +441,7 @@ void PairBodyRoundedPolyhedron::init_style()
   for (i = 0; i < nlocal; i++)
     dnum[i] = ednum[i] = facnum[i] = 0;
 
-  double *merad = NULL;
+  double *merad = nullptr;
   memory->create(merad,ntypes+1,"pair:merad");
   for (i = 1; i <= ntypes; i++)
     maxerad[i] = merad[i] = 0;
@@ -555,6 +557,10 @@ void PairBodyRoundedPolyhedron::body2space(int i)
     memory->grow(edge,edmax,6,"pair:edge");
   }
 
+  if ((body_num_edges > 0) && (edge_ends == nullptr))
+    error->one(FLERR,"Inconsistent edge data for body of atom {}",
+                                 atom->tag[i]);
+
   for (int m = 0; m < body_num_edges; m++) {
     edge[nedge][0] = static_cast<int>(edge_ends[2*m+0]);
     edge[nedge][1] = static_cast<int>(edge_ends[2*m+1]);
@@ -577,6 +583,10 @@ void PairBodyRoundedPolyhedron::body2space(int i)
     facmax += DELTA;
     memory->grow(face,facmax,MAX_FACE_SIZE,"pair:face");
   }
+
+  if ((body_num_faces > 0) && (face_pts == nullptr))
+    error->one(FLERR,"Inconsistent face data for body of atom {}",
+                                 atom->tag[i]);
 
   for (int m = 0; m < body_num_faces; m++) {
     for (int k = 0; k < MAX_FACE_SIZE; k++)
@@ -883,7 +893,7 @@ void PairBodyRoundedPolyhedron::sphere_against_face(int ibody, int jbody,
 
     project_pt_plane(x[jbody], xi1, xi2, xi3, h, d, inside);
 
-    inside_polygon(ibody, ni, x[ibody], h, NULL, inside, tmp);
+    inside_polygon(ibody, ni, x[ibody], h, nullptr, inside, tmp);
     if (inside == 0) continue;
 
     delx = h[0] - x[jbody][0];
@@ -1176,7 +1186,13 @@ int PairBodyRoundedPolyhedron::interaction_edge_to_edge(int ibody,
 
   // singularity case, ignore interactions
 
-  if (r < EPSILON) return interact;
+  double rmin = MIN(rounded_radius_i, rounded_radius_j);
+  if (r < EPSILON*rmin) {
+    #ifdef _POLYHEDRON_DEBUG
+    printf("ignore interaction: r = %0.16f\n", r);
+    #endif
+    return interact;
+  }
 
   // include the vertices for interactions
 
@@ -1202,10 +1218,7 @@ int PairBodyRoundedPolyhedron::interaction_edge_to_edge(int ibody,
       contact_list[num_contacts].unique = 1;
       num_contacts++;
     }
-  } else {
-
   }
-
   return interact;
 }
 
@@ -1879,7 +1892,7 @@ void PairBodyRoundedPolyhedron::project_pt_plane(const double* q,
     face_index  = face index of the body
     xmi         = atom i's coordinates
     q1          = tested point on the face (e.g. the projection of a point)
-    q2          = another point (can be NULL) for face-edge intersection
+    q2          = another point (can be a null pointer) for face-edge intersection
   Output:
     inside1     = 1 if q1 is inside the polygon, 0 otherwise
     inside2     = 1 if q2 is inside the polygon, 0 otherwise
@@ -1891,10 +1904,12 @@ void PairBodyRoundedPolyhedron::inside_polygon(int ibody, int face_index,
 
 {
   int i,n,ifirst,iffirst,npi1,npi2;
-  double xi1[3],xi2[3],u[3],v[3],costheta,anglesum1,anglesum2,magu,magv;
+  double xi1[3],xi2[3],u[3],v[3],costheta,anglesum1,anglesum2,magu,magv,rradi;
 
   ifirst = dfirst[ibody];
   iffirst = facfirst[ibody];
+  rradi = rounded_radius[ibody];
+  double rradsq = rradi*rradi;
   anglesum1 = anglesum2 = 0;;
   for (i = 0; i < MAX_FACE_SIZE; i++) {
     npi1 = static_cast<int>(face[iffirst+face_index][i]);
@@ -1922,18 +1937,18 @@ void PairBodyRoundedPolyhedron::inside_polygon(int ibody, int face_index,
 
     // the point is at either vertices
 
-    if (magu * magv < EPSILON) inside1 = 1;
+    if (magu * magv < EPSILON*rradsq) inside1 = 1;
     else {
       costheta = MathExtra::dot3(u,v)/(magu*magv);
       anglesum1 += acos(costheta);
     }
 
-    if (q2 != NULL) {
+    if (q2 != nullptr) {
       MathExtra::sub3(xi1,q2,u);
       MathExtra::sub3(xi2,q2,v);
       magu = MathExtra::len3(u);
       magv = MathExtra::len3(v);
-      if (magu * magv < EPSILON) inside2 = 1;
+      if (magu * magv < EPSILON*rradsq) inside2 = 1;
       else {
         costheta = MathExtra::dot3(u,v)/(magu*magv);
         anglesum2 += acos(costheta);
@@ -1944,7 +1959,7 @@ void PairBodyRoundedPolyhedron::inside_polygon(int ibody, int face_index,
   if (fabs(anglesum1 - MY_2PI) < EPSILON) inside1 = 1;
   else inside1 = 0;
 
-  if (q2 != NULL) {
+  if (q2 != nullptr) {
     if (fabs(anglesum2 - MY_2PI) < EPSILON) inside2 = 1;
     else inside2 = 0;
   }
@@ -2331,7 +2346,12 @@ void PairBodyRoundedPolyhedron::find_unique_contacts(Contact* contact_list,
     for (int j = i + 1; j < n; j++) {
       if (contact_list[i].unique == 0) continue;
       double d = contact_separation(contact_list[i], contact_list[j]);
-      if (d < EPSILON) contact_list[j].unique = 0;
+      int ibody = contact_list[i].ibody;
+      int jbody = contact_list[i].jbody;
+      double rradi = rounded_radius[ibody];
+      double rradj = rounded_radius[jbody];
+      double rmin = MIN(rradi, rradj);
+      if (d < EPSILON*rmin) contact_list[j].unique = 0;
     }
   }
 }

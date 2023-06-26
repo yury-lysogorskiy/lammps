@@ -6,8 +6,7 @@ compute ackland/atom command
 Syntax
 """"""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    compute ID group-ID ackland/atom keyword/value
 
@@ -15,18 +14,15 @@ Syntax
 * ackland/atom = style name of this compute command
 * zero or more keyword/value pairs may be appended
 * keyword = *legacy*
-  
+
   .. parsed-literal::
-  
-       *legacy* yes/no = use (\ *yes*\ ) or do not use (\ *no*\ ) legacy ackland algorithm implementation
 
-
+       *legacy* args = *yes* or *no* = use (\ *yes*\ ) or do not use (\ *no*\ ) legacy Ackland algorithm implementation
 
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    compute 1 all ackland/atom
    compute 1 all ackland/atom legacy yes
@@ -62,19 +58,19 @@ is dumped).  Thus it can be inefficient to compute/dump this quantity
 too frequently or to have multiple compute/dump commands, each of
 which computes this quantity.-
 
-**Output info:**
+Output info
+"""""""""""
 
 This compute calculates a per-atom vector, which can be accessed by
 any command that uses per-atom values from a compute as input.  See
-the :doc:`Howto output <Howto_output>` doc page for an overview of
+the :doc:`Howto output <Howto_output>` page for an overview of
 LAMMPS output options.
 
 Restrictions
 """"""""""""
 
-
-This compute is part of the USER-MISC package.  It is only enabled if
-LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` doc page for more info.
+This compute is part of the EXTRA-COMPUTE package.  It is only enabled if
+LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` page for more info.
 
 The per-atom vector values will be unitless since they are the
 integers defined above.
@@ -88,12 +84,8 @@ Default
 """""""
 The keyword *legacy* defaults to *no*\ .
 
-
 ----------
 
-
 .. _Ackland:
-
-
 
 **(Ackland)** Ackland, Jones, Phys Rev B, 73, 054104 (2006).

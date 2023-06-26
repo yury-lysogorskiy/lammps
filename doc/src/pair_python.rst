@@ -1,13 +1,12 @@
-.. index:: pair\_style python
+.. index:: pair_style python
 
-pair\_style python command
-==========================
+pair_style python command
+=========================
 
 Syntax
 """"""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    pair_style python cutoff
 
@@ -16,15 +15,17 @@ cutoff = global cutoff for interactions in python potential classes
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    pair_style python 2.5
-   pair_coeff \* \* py_pot.LJCutMelt lj
+   pair_coeff * * py_pot.LJCutMelt lj
+
+   pair_style python 10.0
+   pair_coeff * * py_pot.HarmonicCut A B
 
    pair_style hybrid/overlay coul/long 12.0 python 12.0
-   pair_coeff \* \* coul/long
-   pair_coeff \* \* python py_pot.LJCutSPCE OW NULL
+   pair_coeff * * coul/long
+   pair_coeff * * python py_pot.LJCutSPCE OW NULL
 
 Description
 """""""""""
@@ -40,35 +41,34 @@ corresponding compiled code. This penalty can be significantly reduced
 through generating tabulations from the python code through the
 :doc:`pair_write <pair_write>` command, which is supported by this style.
 
-Only a single pair\_coeff command is used with the *python* pair style
-which specifies a python class inside a python module or file that
-LAMMPS will look up in the current directory, the folder pointed to by
-the LAMMPS\_POTENTIALS environment variable or somewhere in your python
-path.  A single python module can hold multiple python pair class
-definitions. The class definitions itself have to follow specific
+Only a single :doc:`pair_coeff <pair_coeff>` command is used with the
+*python* pair style which specifies a python class inside a python module
+or a file that LAMMPS will look up in the current directory, a folder
+pointed to by the ``LAMMPS_POTENTIALS`` environment variable or somewhere
+in your python path.  A single python module can hold multiple python pair
+class definitions.  The class definitions itself have to follow specific
 rules that are explained below.
 
 Atom types in the python class are specified through symbolic
 constants, typically strings. These are mapped to LAMMPS atom types by
 specifying N additional arguments after the class name in the
-pair\_coeff command, where N must be the number of currently defined
+pair_coeff command, where N must be the number of currently defined
 atom types:
 
-As an example, imagine a file *py\_pot.py* has a python potential class
+As an example, imagine a file *py_pot.py* has a python potential class
 names *LJCutMelt* with parameters and potential functions for a two
 Lennard-Jones atom types labeled as 'LJ1' and 'LJ2'. In your LAMMPS
 input and you would have defined 3 atom types, out of which the first
 two are supposed to be using the 'LJ1' parameters and the third the
-'LJ2' parameters, then you would use the following pair\_coeff command:
+'LJ2' parameters, then you would use the following pair_coeff command:
 
+.. code-block:: LAMMPS
 
-.. parsed-literal::
-
-   pair_coeff \* \* py_pot.LJCutMelt LJ1 LJ1 LJ2
+   pair_coeff * * py_pot.LJCutMelt LJ1 LJ1 LJ2
 
 The first two arguments **must** be \* \* so as to span all LAMMPS atom
 types.  The first two LJ1 arguments map LAMMPS atom types 1 and 2 to
-the LJ1 atom type in the LJCutMelt class of the py\_pot.py file.  The
+the LJ1 atom type in the LJCutMelt class of the py_pot.py file.  The
 final LJ2 argument maps LAMMPS atom type 3 to the LJ2 atom type the
 python file.  If a mapping value is specified as NULL, the mapping is
 not performed, any pair interaction with this atom type will be
@@ -76,17 +76,14 @@ skipped. This can be used when a *python* potential is used as part of
 the *hybrid* or *hybrid/overlay* pair style. The NULL values are then
 placeholders for atom types that will be used with other potentials.
 
-
 ----------
-
 
 The python potential file has to start with the following code:
 
+.. code-block:: python
 
-.. parsed-literal::
+   from __future__ import print_function
 
-   from __future_\_ import print_function
-   #
    class LAMMPSPairPotential(object):
        def __init__(self):
            self.pmap=dict()
@@ -114,104 +111,156 @@ Here is an example for a single type Lennard-Jones potential class
 *LJCutMelt* in reduced units, which defines an atom type *lj* for
 which the parameters epsilon and sigma are both 1.0:
 
-
-.. parsed-literal::
+.. code-block:: python
 
    class LJCutMelt(LAMMPSPairPotential):
        def __init__(self):
            super(LJCutMelt,self).__init__()
-           # set coeffs: 48\*eps\*sig\*\*12, 24\*eps\*sig\*\*6,
-           #              4\*eps\*sig\*\*12,  4\*eps\*sig\*\*6
+           # set coeffs: 48*eps*sig**12, 24*eps*sig**6,
+           #              4*eps*sig**12,  4*eps*sig**6
            self.units = 'lj'
            self.coeff = {'lj'  : {'lj'  : (48.0,24.0,4.0,4.0)}}
 
 The class also has to provide two methods for the computation of the
-potential energy and forces, which have be named *compute\_force*,
-and *compute\_energy*, which both take 3 numerical arguments:
+potential energy and forces, which have be named *compute_force*,
+and *compute_energy*, which both take 3 numerical arguments:
 
 * rsq   = the square of the distance between a pair of atoms (float)
 * itype = the (numerical) type of the first atom
 * jtype = the (numerical) type of the second atom
 
-This functions need to compute the force and the energy, respectively,
-and use the result as return value. The functions need to use the
-*pmap* dictionary to convert the LAMMPS atom type number to the symbolic
-value of the internal potential parameter data structure. Following
-the *LJCutMelt* example, here are the two functions:
+This functions need to compute the (scaled) force and the energy,
+respectively, and use the result as return value. The functions need
+to use the *pmap* dictionary to convert the LAMMPS atom type number
+to the symbolic value of the internal potential parameter data structure.
+Following the *LJCutMelt* example, here are the two functions:
 
-
-.. parsed-literal::
+.. code-block:: python
 
       def compute_force(self,rsq,itype,jtype):
            coeff = self.coeff[self.pmap[itype]][self.pmap[jtype]]
            r2inv  = 1.0/rsq
-           r6inv  = r2inv\*r2inv\*r2inv
+           r6inv  = r2inv*r2inv*r2inv
            lj1 = coeff[0]
            lj2 = coeff[1]
-           return (r6inv \* (lj1\*r6inv - lj2))\*r2inv
+           return (r6inv * (lj1*r6inv - lj2))*r2inv
 
        def compute_energy(self,rsq,itype,jtype):
            coeff = self.coeff[self.pmap[itype]][self.pmap[jtype]]
            r2inv  = 1.0/rsq
-           r6inv  = r2inv\*r2inv\*r2inv
+           r6inv  = r2inv*r2inv*r2inv
            lj3 = coeff[2]
            lj4 = coeff[3]
-           return (r6inv \* (lj3\*r6inv - lj4))
+           return (r6inv * (lj3*r6inv - lj4))
 
 .. note::
 
    for consistency with the C++ pair styles in LAMMPS, the
-   *compute\_force* function follows the conventions of the Pair::single()
-   methods and does not return the full force, but the force scaled by
-   the distance between the two atoms, so this value only needs to be
-   multiplied by delta x, delta y, and delta z to conveniently obtain the
-   three components of the force vector between these two atoms.
+   *compute_force* function follows the conventions of the Pair::single()
+   methods and does not return the pairwise force directly, but the force
+   divided by the distance between the two atoms, so this value only needs
+   to be  multiplied by delta x, delta y, and delta z to conveniently obtain
+   the three components of the force vector between these two atoms.
 
+Below is a more complex example using *real* units and defines an interaction
+equivalent to:
+
+.. code-block:: LAMMPS
+
+   units real
+   pair_style harmonic/cut
+   pair_coeff 1 1 0.2 9.0
+   pair_coeff 2 2 0.4 9.0
+
+This uses the default geometric mixing.  The equivalent input with pair
+style *python* is:
+
+.. code-block:: LAMMPS
+
+   units real
+   pair_style python 10.0
+   pair_coeff * * py_pot.Harmonic A B
+
+Note that while for pair style *harmonic/cut* the cutoff is implicitly
+set to the minimum of the harmonic potential, for pair style python a
+global cutoff must be set and it must be equal or larger to the implicit
+cutoff of the potential in python, which has to explicitly return zero
+force and energy beyond the cutoff.  Also, the mixed parameters have to
+be explicitly provided.  The corresponding python code is:
+
+.. code-block:: python
+
+   class Harmonic(LAMMPSPairPotential):
+       def __init__(self):
+           super(Harmonic,self).__init__()
+           self.units = 'real'
+           # set coeffs: K, r0
+           self.coeff = {'A'  : {'A'  : (0.2,9.0),
+                                 'B'  : (math.sqrt(0.2*0.4),9.0)},
+                         'B'  : {'A'  : (math.sqrt(0.2*0.4),9.0),
+                                 'B'  : (0.4,9.0)}}
+
+       def compute_force(self,rsq,itype,jtype):
+           coeff = self.coeff[self.pmap[itype]][self.pmap[jtype]]
+           r = math.sqrt(rsq)
+           delta = coeff[1]-r
+           if (r < coeff[1]):
+               return 2.0*delta*coeff[0]/r
+           else:
+               return 0.0
+
+       def compute_energy(self,rsq,itype,jtype):
+           coeff = self.coeff[self.pmap[itype]][self.pmap[jtype]]
+           r = math.sqrt(rsq)
+           delta = coeff[1]-r
+           if (r < coeff[1]):
+               return delta*delta*coeff[0]
+           else:
+               return 0.0
 
 ----------
 
+.. admonition:: Performance Impact
+   :class: note
 
-.. note::
+   The evaluation of scripted python code will slow down the computation
+   of pairwise interactions quite significantly. However, this performance
+   penalty can be worked around through using the python pair style not
+   for the actual simulation, but to generate tabulated potentials using
+   the :doc:`pair_write <pair_write>` command.  This will also enable
+   GPU or multi-thread acceleration through the GPU, KOKKOS, or OPENMP
+   package versions of the *table* pair style.  Please see below for a
+   LAMMPS input example demonstrating how to build a table file:
 
-   The evaluation of scripted python code will slow down the
-   computation pair-wise interactions quite significantly. However, this
-   can be largely worked around through using the python pair style not
-   for the actual simulation, but to generate tabulated potentials on the
-   fly using the :doc:`pair_write <pair_write>` command. Please see below
-   for an example LAMMPS input of how to build a table file:
-
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    pair_style python 2.5
-   pair_coeff \* \* py_pot.LJCutMelt lj
-   shell rm -f melt.table
-   pair_write  1 1 2000 rsq 0.01 2.5 lj1_lj2.table lj
+   pair_coeff * * py_pot.LJCutMelt lj
+   shell rm -f lj.table
+   pair_write  1 1 2000 rsq 0.01 2.5 lj.table lj
 
 Note that it is strongly recommended to try to **delete** the potential
-table file before generating it. Since the *pair\_write* command will
+table file before generating it. Since the *pair_write* command will
 always **append** to a table file, while pair style table will use the
 **first match**\ . Thus when changing the potential function in the python
 class, the table pair style will still read the old variant unless the
 table file is first deleted.
 
-After switching the pair style to *table*\ , the potential tables need
+After switching the pair style to *table*, the potential tables need
 to be assigned to the LAMMPS atom types like this:
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    pair_style      table linear 2000
-   pair_coeff      1  1  melt.table lj
+   pair_coeff      1  1  lj.table lj
 
 This can also be done for more complex systems.  Please see the
 *examples/python* folders for a few more examples.
 
-
 ----------
 
-
-**Mixing, shift, table, tail correction, restart, rRESPA info**\ :
+Mixing, shift, table, tail correction, restart, rRESPA info
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 Mixing of potential parameters has to be handled inside the provided
 python module. The python pair style simply assumes that force and
@@ -223,23 +272,20 @@ This pair style does not support the :doc:`pair_modify <pair_modify>`
 shift, table, and tail options.
 
 This pair style does not write its information to :doc:`binary restart files <restart>`, since it is stored in potential files.  Thus, you
-need to re-specify the pair\_style and pair\_coeff commands in an input
+need to re-specify the pair_style and pair_coeff commands in an input
 script that reads a restart file.
 
 This pair style can only be used via the *pair* keyword of the
 :doc:`run_style respa <run_style>` command.  It does not support the
-*inner*\ , *middle*\ , *outer* keywords.
-
+*inner*, *middle*, *outer* keywords.
 
 ----------
-
 
 Restrictions
 """"""""""""
 
-
 This pair style is part of the PYTHON package.  It is only enabled if
-LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` doc page for more info.
+LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` page for more info.
 
 Related commands
 """"""""""""""""
@@ -247,4 +293,7 @@ Related commands
 :doc:`pair_coeff <pair_coeff>`, :doc:`pair_write <pair_write>`,
 :doc:`pair style table <pair_table>`
 
-**Default:** none
+Default
+"""""""
+
+none

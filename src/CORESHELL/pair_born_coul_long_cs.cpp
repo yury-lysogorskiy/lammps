@@ -1,7 +1,8 @@
+// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -41,7 +42,8 @@ using namespace LAMMPS_NS;
 PairBornCoulLongCS::PairBornCoulLongCS(LAMMPS *lmp) : PairBornCoulLong(lmp)
 {
   ewaldflag = pppmflag = 1;
-  ftable = NULL;
+  single_enable = 0; // TODO: single function does not match compute
+  ftable = nullptr;
   writedata = 1;
 }
 

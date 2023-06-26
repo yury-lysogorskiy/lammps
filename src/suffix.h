@@ -1,7 +1,7 @@
 /* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
+   https://www.lammps.org/, Sandia National Laboratories
+   LAMMPS development team: developers@lammps.org
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
@@ -16,15 +16,9 @@
 
 namespace LAMMPS_NS {
 
-enum Suffix {
-  NONE   = 0,
-  OPT    = 1<<0,
-  GPU    = 1<<1,
-  OMP    = 1<<2,
-  INTEL  = 1<<3,
-  KOKKOS = 1<<4
-};
-
+namespace Suffix {
+  enum { NONE = 0, OPT = 1 << 0, GPU = 1 << 1, OMP = 1 << 2, INTEL = 1 << 3, KOKKOS = 1 << 4 };
 }
+}    // namespace LAMMPS_NS
 
 #endif

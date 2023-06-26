@@ -3,27 +3,14 @@ Howto discussions
 
 These doc pages describe how to perform various tasks with LAMMPS,
 both for users and developers.  The
-`glossary <http://lammps.sandia.gov>`_ website page also lists MD
-terminology with links to corresponding LAMMPS manual pages.  The
-example input scripts included in the examples dir of the LAMMPS
-distribution and highlighted on the :doc:`Examples <Examples>` doc page
-also show how to setup and run various kinds of simulations.
-
-Tutorials howto
-===============
-
-
-.. toctree::
-   :name: tutorials
-   :maxdepth: 1
-
-   Howto_github
-   Howto_pylammps
-   Howto_bash
+`glossary <https://www.lammps.org/glossary.html>`_ website page also lists MD
+terminology, with links to corresponding LAMMPS manual pages.  The
+example input scripts included in the ``examples`` directory of the LAMMPS
+source code distribution and highlighted on the :doc:`Examples` page
+also show how to set up and run various kinds of simulations.
 
 General howto
 =============
-
 
 .. toctree::
    :name: general_howto
@@ -35,17 +22,18 @@ General howto
    Howto_replica
    Howto_library
    Howto_couple
-   Howto_client_server
+   Howto_mdi
+   Howto_broken_bonds
 
 Settings howto
 ==============
 
-
 .. toctree::
-   :name: settings
+   :name: settings_howto
    :maxdepth: 1
 
    Howto_2d
+   Howto_type_labels
    Howto_triclinic
    Howto_thermostat
    Howto_barostat
@@ -56,46 +44,62 @@ Settings howto
 Analysis howto
 ==============
 
-
 .. toctree::
-   :name: analysis
+   :name: analysis_howto
    :maxdepth: 1
 
    Howto_output
    Howto_chunk
+   Howto_grid
    Howto_temperature
    Howto_elastic
    Howto_kappa
    Howto_viscosity
    Howto_diffusion
+   Howto_structured_data
 
 Force fields howto
 ==================
 
-
 .. toctree::
-   :name: force
+   :name: force_howto
    :maxdepth: 1
 
    Howto_bioFF
+   Howto_amoeba
    Howto_tip3p
    Howto_tip4p
+   Howto_tip5p
    Howto_spc
 
 Packages howto
 ==============
 
-
 .. toctree::
-   :name: packages
+   :name: packages_howto
    :maxdepth: 1
 
    Howto_spherical
    Howto_granular
    Howto_body
+   Howto_bpm
    Howto_polarizable
    Howto_coreshell
    Howto_drude
    Howto_drude2
+   Howto_peri
    Howto_manifold
    Howto_spins
+
+Tutorials howto
+===============
+
+.. toctree::
+   :name: tutorials
+   :maxdepth: 1
+
+   Howto_cmake
+   Howto_github
+   Howto_pylammps
+   Howto_wsl
+

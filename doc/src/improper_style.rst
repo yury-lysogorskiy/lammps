@@ -1,13 +1,12 @@
-.. index:: improper\_style
+.. index:: improper_style
 
-improper\_style command
-=======================
+improper_style command
+======================
 
 Syntax
 """"""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    improper_style style
 
@@ -16,8 +15,7 @@ Syntax
 Examples
 """"""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    improper_style harmonic
    improper_style cvff
@@ -43,11 +41,11 @@ a data or restart file or via the :doc:`improper_coeff <improper_coeff>`
 command.
 
 All improper potentials store their coefficient data in binary restart
-files which means improper\_style and
+files which means improper_style and
 :doc:`improper_coeff <improper_coeff>` commands do not need to be
 re-specified in an input script that restarts a simulation.  See the
 :doc:`read_restart <read_restart>` command for details on how to do
-this.  The one exception is that improper\_style *hybrid* only stores
+this.  The one exception is that improper_style *hybrid* only stores
 the list of sub-styles in the restart file; improper coefficients need
 to be re-specified.
 
@@ -58,9 +56,7 @@ to be re-specified.
    turn off (or weight) the pairwise interaction that would otherwise
    exist between a group of 4 bonded atoms.
 
-
 ----------
-
 
 Here is an alphabetic list of improper styles defined in LAMMPS.
 Click on the style to display the formula it computes and coefficients
@@ -68,19 +64,20 @@ specified by the associated :doc:`improper_coeff <improper_coeff>`
 command.
 
 Click on the style to display the formula it computes, any additional
-arguments specified in the improper\_style command, and coefficients
+arguments specified in the improper_style command, and coefficients
 specified by the associated :doc:`improper_coeff <improper_coeff>`
 command.
 
 There are also additional accelerated pair styles included in the
 LAMMPS distribution for faster performance on CPUs, GPUs, and KNLs.
-The individual style names on the :ref:`Commands improper <improper>` doc page are followed by one or
+The individual style names on the :ref:`Commands improper <improper>` page are followed by one or
 more of (g,i,k,o,t) to indicate which accelerated styles exist.
 
 * :doc:`none <improper_none>` - turn off improper interactions
 * :doc:`zero <improper_zero>` - topology but no interactions
 * :doc:`hybrid <improper_hybrid>` - define multiple styles of improper interactions
 
+* :doc:`amoeba <improper_amoeba>` - AMOEBA out-of-plane improper
 * :doc:`class2 <improper_class2>` - COMPASS (class 2) improper
 * :doc:`cossq <improper_cossq>` - improper with a cosine squared term
 * :doc:`cvff <improper_cvff>` - CVFF improper
@@ -94,19 +91,16 @@ more of (g,i,k,o,t) to indicate which accelerated styles exist.
 
 :doc:`sqdistharm <improper_sqdistharm>` - improper that is harmonic in the square of the out-of-plane distance
 
-
 ----------
-
 
 Restrictions
 """"""""""""
 
-
-Improper styles can only be set for atom\_style choices that allow
+Improper styles can only be set for atom_style choices that allow
 impropers to be defined.
 
 Most improper styles are part of the MOLECULE package.  They are only
-enabled if LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` doc page for more info.  The doc pages for
+enabled if LAMMPS was built with that package.  See the :doc:`Build package <Build_package>` page for more info.  The doc pages for
 individual improper potentials tell if it is part of a package.
 
 Related commands
@@ -117,7 +111,6 @@ Related commands
 Default
 """""""
 
-
-.. parsed-literal::
+.. code-block:: LAMMPS
 
    improper_style none
