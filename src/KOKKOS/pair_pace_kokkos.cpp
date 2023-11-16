@@ -608,8 +608,37 @@ void PairPACEKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
     Kokkos::deep_copy(d_d_min, PairPACE::aceimpl->basis_set->cutoffmax);
     Kokkos::deep_copy(d_jj_min, -1);
 ////    //TODO: print d_jj_min
-    auto h_jj_min =  Kokkos::create_mirror_view(d_jj_min);
-    auto h_d_min =  Kokkos::create_mirror_view(d_d_min);
+//    auto h_jj_min =  Kokkos::create_mirror_view(d_jj_min);
+//    auto h_d_min =  Kokkos::create_mirror_view(d_d_min);
+//
+//    auto h_ilist = Kokkos::create_mirror_view(d_ilist);
+//    Kokkos::deep_copy(h_ilist, d_ilist);
+//
+//    auto h_x = Kokkos::create_mirror_view(x);
+//    Kokkos::deep_copy(h_x, x);
+//
+//    auto h_neigh = Kokkos::create_mirror_view(d_neighbors);
+//    Kokkos::deep_copy(h_neigh, d_neighbors);
+//
+//    auto h_numneigh = Kokkos::create_mirror_view(d_numneigh);
+//    Kokkos::deep_copy(h_numneigh,d_numneigh);
+//
+//
+//    printf("NEIGHBOURS:\n");
+//    printf("x.extent(0)=%d\n",x.extent_int(0));
+//    for(int ii=0; ii<inum; ++ii) {
+//      const int i = h_ilist[ii];
+//      const int jnum = h_numneigh[i];
+//      printf("atom ii=%d, i=%d, jnum=%d:\n  ",i,ii,jnum);
+//      printf("zpos=(%.3f)\n  ",h_x(i,2));
+//
+//      for(int jj=0;jj<jnum;++jj) {
+//        int j = h_neigh(i, jj);
+//        j &= NEIGHMASK;
+//        printf("(jj=%d, j=%d, z=%.3f) ", jj, j, h_x(j,2));
+//      }
+//      printf("\n");
+//    }
 
     EV_FLOAT ev_tmp;
 
@@ -627,12 +656,34 @@ void PairPACEKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
       Kokkos::parallel_for("ComputeNeigh",policy_neigh,*this);
     }
 
-      printf("After ComputeNeigh\n");
-      Kokkos::deep_copy(h_jj_min,d_jj_min);
-      Kokkos::deep_copy(h_d_min,d_d_min);
-      for(int tt=0;tt<inum;++tt) {
-          printf("atom i=%d,  jj_min=%d, d_min=%f\n", tt, h_jj_min(tt), h_d_min(tt));
-      }
+//    printf("After ComputeNeigh\n");
+
+    // r_norm = d_rnorms(ii, jj);
+//    auto h_rnorms = Kokkos::create_mirror_view(d_rnorms); Kokkos::deep_copy(h_rnorms,d_rnorms);
+//    d_ncount(ii)
+//    auto h_ncount = Kokkos::create_mirror_view(d_ncount); Kokkos::deep_copy(h_ncount,d_ncount);
+
+//    Kokkos::deep_copy(h_jj_min,d_jj_min);
+//    Kokkos::deep_copy(h_d_min,d_d_min);
+//
+//    printf("d_neighbors:\n");
+//    for(int ii=0; ii<inum; ++ii) {
+//      const int i = h_ilist[ii];
+//      const int jnum = h_numneigh[i];
+//      printf("atom ii=%d, i=%d, jnum=%d, h_ncount=%d:\n  ",i,ii,jnum,h_ncount(ii));
+//      for(int jj=0;jj<jnum;++jj) {
+//        int j = h_neigh(i, jj) & NEIGHMASK;
+//        double r_norm = h_rnorms(i, jj);
+//        printf("(jj=%d, j=%d, r=%f) ", jj, j, r_norm);
+//      }
+//      printf("\n");
+//    }
+//
+//    for(int i=0;i<inum;++i) {
+//          int j = h_neigh(i, h_jj_min(i));
+//          j &= NEIGHMASK;
+//        printf("atom i=%d,  jj_min=%d, j_min=%d, d_min=%f\n", i, h_jj_min(i),j, h_d_min(i));
+//    }
 
     //ComputeRadial
     {
@@ -678,13 +729,13 @@ void PairPACEKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
       typename Kokkos::RangePolicy<DeviceType,TagPairPACEComputeFS> policy_fs(0,chunk_size);
       Kokkos::parallel_for("ComputeFS",policy_fs,*this);
     }
-    printf("After TagPairPACEComputeFS\n");
-      auto h_dF_drho_core = Kokkos::create_mirror_view(dF_drho_core);
-      auto h_dF_dfcut = Kokkos::create_mirror_view(dF_dfcut);
-    Kokkos::deep_copy(h_dF_drho_core,dF_drho_core);
-    Kokkos::deep_copy(h_dF_dfcut,dF_dfcut);
-    for(int tt=0;tt<inum;++tt)
-      printf("atom i=%d,  dF_drho_core=%f, dF_dfcut=%f\n", tt, h_dF_drho_core(tt), h_dF_dfcut(tt));
+//    printf("After TagPairPACEComputeFS\n");
+//      auto h_dF_drho_core = Kokkos::create_mirror_view(dF_drho_core);
+//      auto h_dF_dfcut = Kokkos::create_mirror_view(dF_dfcut);
+//    Kokkos::deep_copy(h_dF_drho_core,dF_drho_core);
+//    Kokkos::deep_copy(h_dF_dfcut,dF_dfcut);
+//    for(int tt=0;tt<inum;++tt)
+//      printf("atom i=%d,  dF_drho_core=%f, dF_dfcut=%f\n", tt, h_dF_drho_core(tt), h_dF_dfcut(tt));
 
     //ComputeWeights
     {
@@ -701,13 +752,13 @@ void PairPACEKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
       Kokkos::parallel_for("ComputeDerivative",policy_derivative,*this);
     }
 
-    auto d_f_ij = Kokkos::create_mirror_view(f_ij);
-    Kokkos::deep_copy(d_f_ij,f_ij);
-    for(int ii=0;ii<chunk_size;++ii) {
-      for(int jj=0;jj<maxneigh;++jj)
-        printf("f_ij(%d,%d,2)=%f\n",ii,jj,d_f_ij(ii,jj,2));
-      printf("\n");
-    }
+//    auto d_f_ij = Kokkos::create_mirror_view(f_ij);
+//    Kokkos::deep_copy(d_f_ij,f_ij);
+//    for(int ii=0;ii<chunk_size;++ii) {
+//      for(int jj=0;jj<maxneigh;++jj)
+//        printf("f_ij(%d,%d,2)=%f\n",ii,jj,d_f_ij(ii,jj,2));
+//      printf("\n");
+//    }
 
     //ComputeForce
     {
@@ -852,31 +903,22 @@ void PairPACEKokkos<DeviceType>::operator() (TagPairPACEComputeNeigh,const typen
      djjmin.val=1e20;
      djjmin.loc=-1;
      Kokkos::MinLoc<F_FLOAT,int> reducer_scalar(djjmin);
-     Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, jnum),
-             [&](const int jj, minloc_value_type &min_d_dist) {
-               int j = d_neighbors(i,jj);
+     Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, ncount), // jnum -> ncount
+             [&](const int offset, minloc_value_type &min_d_dist) {
+               int j = d_nearest(ii,offset);
                j &= NEIGHMASK;
-
                const int jtype = type(j);
-
-               const F_FLOAT delx = xtmp - x(j,0);
-               const F_FLOAT dely = ytmp - x(j,1);
-               const F_FLOAT delz = ztmp - x(j,2);
-               const F_FLOAT rsq = delx*delx + dely*dely + delz*delz;
-
-               inside[jj] = -1;
-               if (rsq < d_cutsq(itype,jtype)) {
-                 const F_FLOAT r = sqrt(rsq);
-                 const int mu_j = d_mu(ii, jj);
-                 const F_FLOAT d = r - (d_cut_in(mu_i, mu_j) - d_dcut_in(mu_i, mu_j));
-                 if (d < min_d_dist.val) {
+               auto r = d_rnorms(ii,offset);
+               const int mu_j = d_map(type(j));
+               const F_FLOAT d = r - (d_cut_in(mu_i, mu_j) - d_dcut_in(mu_i, mu_j));
+               if (d < min_d_dist.val) {
                    min_d_dist.val = d;
-                   min_d_dist.loc = jj;
-                 }
+                   min_d_dist.loc = offset;
                }
+
      }, reducer_scalar);
       d_d_min(ii) = djjmin.val;
-      d_jj_min(ii) = djjmin.loc;
+      d_jj_min(ii) = djjmin.loc;// d_jj_min should be NOT in 0..jnum range, but in 0..d_ncount(<=jnum)
   }
 }
 
