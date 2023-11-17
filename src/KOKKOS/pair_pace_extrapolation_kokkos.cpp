@@ -886,12 +886,14 @@ void PairPACEExtrapolationKokkos<DeviceType>::operator() (TagPairPACEComputeNeig
   });
 
   if(is_zbl) {
+    //adapted from https://www.osti.gov/servlets/purl/1429450
     using minloc_value_type=Kokkos::MinLoc<F_FLOAT,int>::value_type;
     minloc_value_type djjmin;
     djjmin.val=1e20;
     djjmin.loc=-1;
     Kokkos::MinLoc<F_FLOAT,int> reducer_scalar(djjmin);
-    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, ncount), // jnum -> ncount
+    // loop over ncount (actual neighbours withing cutoff) rather than jnum (total number of neigh in cutoff+skin)
+    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, ncount),
                             [&](const int offset, minloc_value_type &min_d_dist) {
                               int j = d_nearest(ii,offset);
                               j &= NEIGHMASK;
