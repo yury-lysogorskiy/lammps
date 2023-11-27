@@ -27,9 +27,19 @@ namespace LAMMPS_NS {
 class Set2 : public Command {
  public:
   Set2(class LAMMPS *lmp) : Command(lmp){};
+  ~Set2();
+  
   void command(int, char **) override;
 
- private:
+  void process_args(int, int, char **);
+  void selection(int);
+  void invoke_actions();
+
+ private: 
+  int caller;           // SETCOMMAND or FIXSET
+
+  // params for atom selection
+
   int style;
   char *id;
   int nlo,nhi;
@@ -37,39 +47,42 @@ class Set2 : public Command {
   int groupbit;
   class Region *region;
 
-  int caller;
-
-  struct Action {
-    
-  };
-  
-  int naction,maxaction;
-  Action *actions;
-  
-  int *select;
-
-  typedef void (Set2::*FnPtrPack)();
-  FnPtrPack *invoke_choice;    // list of ptrs to invoke functions
-
+  // atom property setting params for keyword/value pairs
 
   int ivalue, newtype, count, index_custom, icol_custom;
   int ximage, yimage, zimage, ximageflag, yimageflag, zimageflag;
   int cc_index;
   bigint nsubset;
   double dvalue, xvalue, yvalue, zvalue, wvalue, fraction;
-  
-  int varflag, varflag1, varflag2, varflag3, varflag4;
-  int ivar1, ivar2, ivar3, ivar4;
-  double *vec1, *vec2, *vec3, *vec4;
-
-  int custom_flag;
   int discflag;
 
-  void process_args(int, int, char **);
-  void invoke_actions();
+  // one Action = one keyword/value pair
   
-  void selection(int);
-  void set(int);
+  struct Action {
+    int keyword;
+    int varflag;
+    int varflag1, varflag2, varflag3, varflag4;
+    int ivar1, ivar2, ivar3, ivar4;
+    int ivalue1;
+    double dvalue1,dvalue2,dvalue3,dvalue4;
+  };
+  
+  int naction,maxaction;
+  Action *actions;
+
+  typedef void (Set2::*FnPtrPack)();
+  FnPtrPack *invoke_choice;    // list of ptrs to invoke functions
+
+  // storage for evaluated variables
+  
+  double *vec1, *vec2, *vec3, *vec4;
+
+  // flag for selected atoms
+  
+  int *select;
+
+  // private functions
+  
   void setrandom(int);
   void topology(int);
   void varparse(const char *, int);
