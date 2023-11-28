@@ -64,6 +64,7 @@ class Set2 : public Command {
     int varflag1, varflag2, varflag3, varflag4;
     int ivar1, ivar2, ivar3, ivar4;
     int ivalue1;
+    tagint tvalue1;
     double dvalue1,dvalue2,dvalue3,dvalue4;
   };
   
