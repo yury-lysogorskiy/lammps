@@ -47,15 +47,6 @@ class Set2 : public Command {
   int groupbit;
   class Region *region;
 
-  // atom property setting params for keyword/value pairs
-
-  int ivalue, newtype, count, index_custom, icol_custom;
-  int ximage, yimage, zimage, ximageflag, yimageflag, zimageflag;
-  int cc_index;
-  bigint nsubset;
-  double dvalue, xvalue, yvalue, zvalue, wvalue, fraction;
-  int discflag;
-
   // one Action = one keyword/value pair
   
   struct Action {
@@ -63,13 +54,14 @@ class Set2 : public Command {
     int varflag;
     int varflag1, varflag2, varflag3, varflag4;
     int ivar1, ivar2, ivar3, ivar4;
-    int ivalue1;
+    int ivalue1, ivalue2, ivalue3, ivalue4, ivalue5, ivalue6;
     tagint tvalue1;
     double dvalue1,dvalue2,dvalue3,dvalue4;
   };
   
   int naction,maxaction;
   Action *actions;
+  Action *action;
 
   typedef void (Set2::*FnPtrPack)();
   FnPtrPack *invoke_choice;    // list of ptrs to invoke functions

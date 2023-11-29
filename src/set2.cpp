@@ -47,10 +47,10 @@ enum{SET,FIXSET};
 enum{ATOM_SELECT,MOL_SELECT,TYPE_SELECT,GROUP_SELECT,REGION_SELECT};
 
 enum{ANGLE,ANGMOM,BOND,CC,CHARGE,DENSITY,DIAMETER,DIHEDRAL,DIPOLE,
-  DIPOLE_RANDOM,DPDTHETA,EDPD_CV,EDPD_TEMP,EPSILON,IMAGE,IMPROPER,LENGTH,
+  DIPOLE_RANDOM,DPD_THETA,EDPD_CV,EDPD_TEMP,EPSILON,IMAGE,IMPROPER,LENGTH,
   MASS,MOLECULE,OMEGA,QUAT,QUAT_RANDOM,RADIUS_ELECTRON,SHAPE,
   SMD_CONTACT_RADIUS,SMD_MASS_DENSITY,SPH_CV,SPH_E,SPH_RHO,
-  SPIN_ATOM,SPIN_ELECTRON,SPIN_RANDOM,TEMPERATURE,THETA,THETA_RANDOM,
+  SPIN_ATOM,SPIN_ATOM_RANDOM,SPIN_ELECTRON,TEMPERATURE,THETA,THETA_RANDOM,
   TRI,TYPE,TYPE_FRACTION,TYPE_RATIO,TYPE_SUBSET,VOLUME,VX,VY,VZ,X,Y,Z,
   IVEC,DVEC,IARRAY,DARRAY};
 
@@ -186,187 +186,187 @@ void Set2::process_args(int caller_flag, int narg, char **arg)
       process_angle(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_angle;
     } else if (strcmp(arg[iarg],"angmom") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = ANGMOM;
       process_angmom(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_angmom;
     } else if (strcmp(arg[iarg],"bond") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = BOND;
       process_bond(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_bond;
     } else if (strcmp(arg[iarg],"cc") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = CC;
       process_cc(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_cc;
     } else if (strcmp(arg[iarg],"charge") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = CHARGE;
       process_charge(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_charge;
     } else if (strcmp(arg[iarg],"density") == 0 ||(strcmp(arg[iarg],"density/disc") == 0)) {
-      action->keyword = ANGLE;
+      action->keyword = DENSITY;
       process_density(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_density;
     } else if (strcmp(arg[iarg],"diameter") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = DIAMETER;
       process_diameter(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_diameter;
     } else if (strcmp(arg[iarg],"dihedral") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = DIHEDRAL;
       process_dihedral(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_dihedral;
     } else if (strcmp(arg[iarg],"dipole") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = DIPOLE;
       process_dipole(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_dipole;
     } else if (strcmp(arg[iarg],"dipole/random") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = DIPOLE_RANDOM;
       process_dipole_random(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_dipole_random;
     } else if (strcmp(arg[iarg],"dpd/theta") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = DPD_THETA;
       process_dpd_theta(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_dpd_theta;
     } else if (strcmp(arg[iarg],"edpd/cv") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = EDPD_CV;
       process_edpd_cv(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_edpd_cv;
     } else if (strcmp(arg[iarg],"edpd/temp") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = EDPD_TEMP;
       process_edpd_temp(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_edpd_temp;
     } else if (strcmp(arg[iarg],"epsilon") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = EPSILON;
       process_epsilon(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_epsilon;
     } else if (strcmp(arg[iarg],"image") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = IMAGE;
       process_image(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_image;
     } else if (strcmp(arg[iarg],"improper") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = IMPROPER;
       process_improper(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_improper;
     } else if (strcmp(arg[iarg],"length") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = LENGTH;
       process_length(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_length;
     } else if (strcmp(arg[iarg],"mass") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = MASS;
       process_mass(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_mass;
     } else if (strcmp(arg[iarg],"mol") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = MOLECULE;
       process_mol(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_mol;
     } else if (strcmp(arg[iarg],"omega") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = OMEGA;
       process_omega(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_omega;
     } else if (strcmp(arg[iarg],"quat") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = QUAT;
       process_quat(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_quat;
     } else if (strcmp(arg[iarg],"quat/random") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = QUAT_RANDOM;
       process_quat_random(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_quat_random;
     } else if (strcmp(arg[iarg],"radius/electron") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = RADIUS_ELECTRON;
       process_radius_election(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_radius_election;
     } else if (strcmp(arg[iarg],"shape") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = SHAPE;
       process_shape(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_shape;
     } else if (strcmp(arg[iarg],"smd/contact/radius") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = SMD_CONTACT_RADIUS;
       process_smd_contact_radius(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_smd_contact_radius;
     } else if (strcmp(arg[iarg],"smd/mass/density") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = SMD_MASS_DENSITY;
       process_smd_mass_density(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_density;
     } else if (strcmp(arg[iarg],"sph/cv") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = SPH_CV;
       process_sph_cv(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_sph_cv;
     } else if (strcmp(arg[iarg],"sph/e") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = SPH_E;
       process_sph_e(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_sph_e;
     } else if (strcmp(arg[iarg],"sph/rho") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = SPH_RHO;
       process_sph_rho(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_sph_rho;
     } else if ((strcmp(arg[iarg],"spin/atom") == 0) || (strcmp(arg[iarg],"spin") == 0)) {
-      action->keyword = ANGLE;
+      action->keyword = SPIN_ATOM;
       process_spin_atom(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_spin_atom;
     } else if ((strcmp(arg[iarg],"spin/atom/random") == 0) || (strcmp(arg[iarg],"spin/random") == 0)) {
-      action->keyword = ANGLE;
+      action->keyword = SPIN_ATOM_RANDOM;
       process_spin_atom_random(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_spin_atom_random;
     } else if (strcmp(arg[iarg],"spin/electron") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = SPIN_ELECTRON;
       process_spin_electron(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_spin_electron;
     } else if (strcmp(arg[iarg],"temperature") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = TEMPERATURE;
       process_temperature(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_temperature;
     } else if (strcmp(arg[iarg],"theta") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = THETA;
       process_theta(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_theta;
     } else if (strcmp(arg[iarg],"theta/random") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = THETA_RANDOM;
       process_theta_random(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_theta_random;
     } else if (strcmp(arg[iarg],"tri") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = TRI;
       process_tri(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_tri;
     } else if (strcmp(arg[iarg],"type") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = TYPE;
       process_type(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_type;
     } else if (strcmp(arg[iarg],"type/fraction") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = TYPE_FRACTION;
       process_type_fraction(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_type_fraction;
     } else if (strcmp(arg[iarg],"type/ratio") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = TYPE_RATIO;
       process_type_ratio(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_type_ratio;
     } else if (strcmp(arg[iarg],"type/subset") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = TYPE_SUBSET;
       process_type_subset(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_type_subset;
     } else if (strcmp(arg[iarg],"volume") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = VOLUME;
       process_volume(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_volume;
     } else if (strcmp(arg[iarg],"vx") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = VX;
       process_vx(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_vx;
     } else if (strcmp(arg[iarg],"vy") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = VY;
       process_vy(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_vy;
     } else if (strcmp(arg[iarg],"vz") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = VZ;
       process_vz(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_vz;
     } else if (strcmp(arg[iarg],"x") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = X;
       process_x(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_x;
     } else if (strcmp(arg[iarg],"y") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = Y;
       process_y(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_y;
     } else if (strcmp(arg[iarg],"z") == 0) {
-      action->keyword = ANGLE;
+      action->keyword = Z;
       process_z(iarg,narg,arg);
       invoke_choice[naction++] = &Set2::invoke_z;
       
@@ -398,7 +398,7 @@ void Set2::process_args(int caller_flag, int narg, char **arg)
     case QUAT:
     case IMAGE:
       if (modify->check_rigid_list_overlap(select))
-        error->warning(FLERR,"Changing a property of atoms in rigid bodies "
+        error->warning(FLERR,"Setting a property of atoms in rigid bodies "
                        "that has no effect unless rigid bodies are re-initialized");
       break;
     default:
@@ -414,13 +414,12 @@ void Set2::process_args(int caller_flag, int narg, char **arg)
 void Set2::invoke_actions()
 {
   int nlocal = atom->nlocal;
-  Action *action;
 
   // NOTE: need to create vec1234 ahead of time
   
   for (int i = 0; i < naction; i++) {
 
-    action = &actions[i];
+    Action *action = &actions[i];
     
     // evaluate atom-style variable(s) if necessary
 
@@ -507,7 +506,7 @@ void Set2::setrandom(int keyword)
   auto avec_body = dynamic_cast<AtomVecBody *>(atom->style_match("body"));
 
   double **x = atom->x;
-  int seed = ivalue;
+  int seed = action->ivalue1;
 
   auto ranpark = new RanPark(lmp,1);
   auto ranmars = new RanMars(lmp,seed + comm->me);
@@ -516,7 +515,8 @@ void Set2::setrandom(int keyword)
 
   if (keyword == TYPE_FRACTION) {
     int nlocal = atom->nlocal;
-
+    double fraction = action->dvalue1;
+    
     for (i = 0; i < nlocal; i++)
       if (select[i]) {
         ranpark->reset(seed,x[i]);
@@ -544,9 +544,12 @@ void Set2::setrandom(int keyword)
     bigint allcount;
     MPI_Allreduce(&bcount,&allcount,1,MPI_LMP_BIGINT,MPI_SUM,world);
 
+    bigint nsubset;
     if (keyword == TYPE_RATIO) {
+      double fraction = action->dvalue1;
       nsubset = static_cast<bigint> (fraction * allcount);
     } else if (keyword == TYPE_SUBSET) {
+      nsubset = action->bvalue1;
       if (nsubset > allcount)
         error->all(FLERR,"Set type/subset value exceeds eligible atoms");
     }
@@ -622,7 +625,7 @@ void Set2::setrandom(int keyword)
   // set spin moments to random orientations in 3d or 2d
   // spin length is fixed to unity
 
-  } else if (keyword == SPIN_RANDOM) {
+  } else if (keyword == SPIN_ATOM_RANDOM) {
     double **sp = atom->sp;
     int nlocal = atom->nlocal;
 
@@ -991,7 +994,7 @@ void Set2::invoke_bond()
 
 /* ---------------------------------------------------------------------- */
 
-// NOT DONE
+// DONE
 
 void Set2::process_cc(int &iarg, int narg, char **arg)
 {
@@ -999,29 +1002,44 @@ void Set2::process_cc(int &iarg, int narg, char **arg)
     error->all(FLERR,"Cannot set attribute {} for atom style {}", arg[iarg], atom->get_style());
   if (iarg+3 > narg) utils::missing_cmd_args(FLERR, "set cc", error);
 
-  // NOTE: seems like error to not set cc_index for all 3 cases
-  //       syntax is iarg+1 is index, iarg+2 is value
-  //       doc page does not talk about NULL as valid value
-  //       check package DPD-MESO package examples for tDPD for use of this command
-  if (strcmp(arg[iarg+1],"NULL") == 0) dvalue = -1.0;
-  else if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1);
+  Action *action = &actions[naction];
+  
+  action->ivalue1 = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
+  if (action->ivalue1 < 1) error->all(FLERR,"Invalid cc index in set command");
+
+  if (utils::strmatch(arg[iarg+2],"^v_")) varparse(arg[iarg+2],1);
   else {
-    cc_index = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
-    dvalue = utils::numeric(FLERR,arg[iarg+2],false,lmp);
-    if (cc_index < 1) error->all(FLERR,"Illegal set command");
+    action->dvalue1 = utils::numeric(FLERR,arg[iarg+2],false,lmp);
+    if (action->dvalue1 < 0.0) error->all(FLERR,"Invalid cc value in set command");
   }
 
   iarg += 3;
 }
+
+// DONE
 
 void Set2::invoke_cc()
 {
   int nlocal = atom->nlocal;
   double **cc = atom->cc;
 
+  Action *action = &actions[naction];
+  int cc_index = action->ivalue1 - 1;
+  // NOTE: need to check if cc_index exceeds cc array allocation
+  
+  int varflag = action->varflag;
+  double ccvalue;
+  if (!action->varflag1) ccvalue = action->dvalue1;
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
-    cc[i][cc_index-1] = dvalue;
+
+    if (varflag) {
+      ccvalue = vec1[i];
+      if (ccvalue < 0.0) error->all(FLERR,"Invalid cc value in set command");
+    }
+    
+    cc[i][cc_index] = ccvalue;
   }
 }
 
@@ -1096,7 +1114,7 @@ void Set2::process_density(int &iarg, int narg, char **arg)
   iarg += 2;
 }
 
-// NOT DONE
+// DONE
 
 void Set2::invoke_density()
 {
@@ -1116,6 +1134,12 @@ void Set2::invoke_density()
   auto avec_line = dynamic_cast<AtomVecLine *>(atom->style_match("line"));
   auto avec_tri = dynamic_cast<AtomVecTri *>(atom->style_match("tri"));
 
+  Action *action = &actions[naction];
+  int varflag = action->varflag;
+  double density;
+  if (!action->varflag1) density = action->dvalue1;
+  int discflag = action->ivalue1;
+  
   // set rmass via density
   // if radius > 0.0, treat as sphere or disc
   // if shape > 0.0, treat as ellipsoid (or ellipse, when uncomment below)
@@ -1123,25 +1147,31 @@ void Set2::invoke_density()
   // if area > 0.0, treat as tri
   // else set rmass to density directly
 
-  // VARIABLE option
-  
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
-    if (dvalue <= 0.0) error->one(FLERR,"Invalid density in set command");
+
+    if (varflag) {
+      density = vec1[i];
+      if (density <= 0.0) error->one(FLERR,"Invalid density in set command");
+    }
+    
     if (radius_flag && radius[i] > 0.0)
-      if (discflag) rmass[i] = MY_PI*radius[i]*radius[i] * dvalue;
-      else rmass[i] = 4.0*MY_PI/3.0 * radius[i]*radius[i]*radius[i] * dvalue;
+      if (discflag) rmass[i] = MY_PI*radius[i]*radius[i] * density;
+      else rmass[i] = 4.0*MY_PI/3.0 * radius[i]*radius[i]*radius[i] * density;
+    
     else if (ellipsoid_flag && ellipsoid[i] >= 0) {
       double *shape = avec_ellipsoid->bonus[ellipsoid[i]].shape;
-      // enable 2d ellipse (versus 3d ellipsoid) when time integration
+      // could enable 2d ellipse (versus 3d ellipsoid) when time integration
       //   options (fix nve/asphere, fix nh/asphere) are also implemented
       // if (discflag)
       // atom->rmass[i] = MY_PI*shape[0]*shape[1] * dvalue;
       // else
-      rmass[i] = 4.0*MY_PI/3.0 * shape[0]*shape[1]*shape[2] * dvalue;
+      rmass[i] = 4.0*MY_PI/3.0 * shape[0]*shape[1]*shape[2] * density;
+      
     } else if (line_flag && line[i] >= 0) {
       double length = avec_line->bonus[line[i]].length;
-      rmass[i] = length * dvalue;
+      rmass[i] = length * density;
+      
     } else if (tri_flag && tri[i] >= 0) {
       double *c1 = avec_tri->bonus[tri[i]].c1;
       double *c2 = avec_tri->bonus[tri[i]].c2;
@@ -1152,8 +1182,9 @@ void Set2::invoke_density()
       double norm[3];
       MathExtra::cross3(c2mc1,c3mc1,norm);
       double area = 0.5 * MathExtra::len3(norm);
-      rmass[i] = area * dvalue;
-    } else rmass[i] = dvalue;
+      rmass[i] = area * density;
+      
+    } else rmass[i] = density;
   }
 }
 
@@ -1250,6 +1281,8 @@ void Set2::process_dipole(int &iarg, int narg, char **arg)
   iarg += 4;
 }
 
+// DONE
+
 void Set2::invoke_dipole()
 {
   int nlocal = atom->nlocal;
@@ -1278,9 +1311,9 @@ void Set2::invoke_dipole()
   }
 }
 
-// DONE
-
 /* ---------------------------------------------------------------------- */
+
+// DONE
 
 void Set2::process_dipole_random(int &iarg, int narg, char **arg)
 {
@@ -1329,7 +1362,7 @@ void Set2::process_dpd_theta(int &iarg, int narg, char **arg)
   iarg += 2;
 }
 
-// NOT DONE
+// DONE
 
 void Set2::invoke_dpd_theta()
 {
@@ -1344,12 +1377,22 @@ void Set2::invoke_dpd_theta()
   double onemass;
   double vx,vy,vz;
 
-  // is doc page correct then dvalue1  = -1.0 ?  i.e. NULL setting
+  Action *action = &actions[naction];
+  int varflag = action->varflag;
+  double theta;
+  if (!action->varflag1) theta = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
 
-    if (dvalue >= 0.0) dpdTheta[i] = dvalue;
+    if (varflag) {
+      theta = vec1[i];
+      if (theta < 0.0) error->one(FLERR,"Invalid dpd/theta value in set command");
+    }
+
+    // if theta is negative, NULL was used, set dpdTheta to KE of particle
+    
+    if (theta >= 0.0) dpdTheta[i] = theta;
     else {
       if (rmass) onemass = rmass[i];
       else onemass = mass[type[i]];
@@ -1373,8 +1416,7 @@ void Set2::process_edpd_cv(int &iarg, int narg, char **arg)
 
   Action *action = &actions[naction];
   
-  if (strcmp(arg[iarg+1],"NULL") == 0) dvalue = -1.0;
-  else if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1);
+  if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1);
   else {
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
     if (action->dvalue1 < 0.0) error->all(FLERR,"Invalid edpd/cv value in set command");
@@ -1383,7 +1425,7 @@ void Set2::process_edpd_cv(int &iarg, int narg, char **arg)
   iarg += 2;
 }
 
-// NOT DONE
+// DONE
 
 void Set2::invoke_edpd_cv()
 {
@@ -1394,8 +1436,6 @@ void Set2::invoke_edpd_cv()
   int varflag = action->varflag;
   double cv;
   if (!action->varflag1) cv = action->dvalue1;
-
-  // is doc page correct then dvalue1  = -1.0 ?  i.e. NULL setting
 
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
@@ -1421,8 +1461,7 @@ void Set2::process_edpd_temp(int &iarg, int narg, char **arg)
 
   Action *action = &actions[naction];
 
-  if (strcmp(arg[iarg+1],"NULL") == 0) action->dvalue1 = -1.0;
-  else if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1);
+  if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1);
   else {
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
     if (action->dvalue1 < 0.0) error->all(FLERR,"Invalid edpd/temp value in set command");
@@ -1430,19 +1469,27 @@ void Set2::process_edpd_temp(int &iarg, int narg, char **arg)
   iarg += 2;
 }
 
-// NOT DONE
+// DONE
 
 void Set2::invoke_edpd_temp()
 {
   int nlocal = atom->nlocal;
   double *edpd_temp = atom->edpd_temp;
 
-  // VARIABLE option or NULL to set temp to KE of particle
-  // is doc page correct then dvalue1  = -1.0 ?  i.e. NULL setting
-  
+  Action *action = &actions[naction];
+  int varflag = action->varflag;
+  double temp;
+  if (!action->varflag1) temp = action->dvalue1;
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
-    edpd_temp[i] = dvalue;
+
+    if (varflag) {
+      temp = vec1[i];
+      if (temp < 0.0) error->one(FLERR,"Invalid edpd/temp value in set command");
+    }
+
+    edpd_temp[i] = temp;
   }
 }
 
@@ -1458,17 +1505,16 @@ void Set2::process_epsilon(int &iarg, int narg, char **arg)
 
   Action *action = &actions[naction];
 
-  if (strcmp(arg[iarg+1],"NULL") == 0) action->dvalue1 = -1.0;
-  else if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1);
+  if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1);
   else {
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-    if (action->dvalue1 < 0.0) error->all(FLERR,"Invalid epsilon in set command");
+    if (action->dvalue1 <= 0.0) error->all(FLERR,"Invalid epsilon in set command");
   }
   
   iarg += 2;
 }
 
-// NOT DONE
+// DONE
 
 void Set2::invoke_epsilon()
 {
@@ -1477,83 +1523,115 @@ void Set2::invoke_epsilon()
   double *q = atom->q;
   double *q_scaled = atom->q_scaled;
 
+  Action *action = &actions[naction];
+  int varflag = action->varflag;
+  double eps;
+  if (!action->varflag1) eps = action->dvalue1;
+
   // assign local dielectric constant
   // also update scaled charge value
 
-  // VARIABLE option
-  // is doc page correct then dvalue1  = -1.0 ?  i.e. NULL setting
-  
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
-    // NOTE: should it be error if dvalue < 0.0 ?
-    if (dvalue >= 0.0) {
-      epsilon[i] = dvalue;
-      q_scaled[i] = q[i] / dvalue;
+
+    if (varflag) {
+      eps = vec1[i];
+      if (eps <= 0.0) error->one(FLERR,"Invalid epsilon in set command");
     }
+    
+    epsilon[i] = eps;
+    q_scaled[i] = q[i] / eps;
   }
 }
 
 /* ---------------------------------------------------------------------- */
 
-// NOT DONE
+// DONE
 
 void Set2::process_image(int &iarg, int narg, char **arg)
 {
   if (iarg+4 > narg) utils::missing_cmd_args(FLERR, "set image", error);
 
   Action *action = &actions[naction];
-
-  ximageflag = yimageflag = zimageflag = 0;
-  if (strcmp(arg[iarg+1],"NULL") != 0) {
-    ximageflag = 1;
-    if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1);
-    else ximage = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
-  }
-  if (strcmp(arg[iarg+2],"NULL") != 0) {
-    yimageflag = 1;
-    if (utils::strmatch(arg[iarg+2],"^v_")) varparse(arg[iarg+2],2);
-    else yimage = utils::inumeric(FLERR,arg[iarg+2],false,lmp);
-  }
-  if (strcmp(arg[iarg+3],"NULL") != 0) {
-    zimageflag = 1;
-    if (utils::strmatch(arg[iarg+3],"^v_")) varparse(arg[iarg+3],3);
-    else zimage = utils::inumeric(FLERR,arg[iarg+3],false,lmp);
+  
+  if (strcmp(arg[iarg+1],"NULL") == 0) action->ivalue4 = 0;
+  else {
+    action->ivalue4 = 1;
+    if (utils::strmatch(arg[iarg+1],"^v_")) {
+      if (!domain->xperiodic)
+        error->all(FLERR,"Cannot set variable image flag for non-periodic dimension");
+      varparse(arg[iarg+1],1);
+    } else {
+      action->ivalue1 = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
+      if (action->ivalue1 && !domain->xperiodic)
+        error->all(FLERR,"Cannot set non-zero image flag for non-periodic dimension");
+    }
   }
   
-  if (ximageflag && ximage && !domain->xperiodic)
-    error->all(FLERR,
-               "Cannot set non-zero image flag for non-periodic dimension");
-  if (yimageflag && yimage && !domain->yperiodic)
-    error->all(FLERR,
-               "Cannot set non-zero image flag for non-periodic dimension");
-  if (zimageflag && zimage && !domain->zperiodic)
-    error->all(FLERR,
-               "Cannot set non-zero image flag for non-periodic dimension");
+  if (strcmp(arg[iarg+2],"NULL") == 0) action->ivalue5 = 0;
+  else {
+    action->ivalue5 = 1;
+    if (utils::strmatch(arg[iarg+2],"^v_")) {
+      if (!domain->yperiodic)
+        error->all(FLERR,"Cannot set variable image flag for non-periodic dimension");
+      varparse(arg[iarg+2],2);
+    } else {
+      action->ivalue2 = utils::inumeric(FLERR,arg[iarg+2],false,lmp);
+      if (action->ivalue2 && !domain->yperiodic)
+        error->all(FLERR,"Cannot set non-zero image flag for non-periodic dimension");
+    }
+  }
+  
+  if (strcmp(arg[iarg+1],"NULL") == 0) action->ivalue6 = 0;
+  else {
+    action->ivalue6 = 1;
+    if (utils::strmatch(arg[iarg+3],"^v_")) {
+      if (!domain->zperiodic)
+        error->all(FLERR,"Cannot set variable image flag for non-periodic dimension");
+      varparse(arg[iarg+3],3);
+    } else {
+      action->ivalue3 = utils::inumeric(FLERR,arg[iarg+3],false,lmp);
+      if (action->ivalue3 && !domain->zperiodic)
+        error->all(FLERR,"Cannot set non-zero image flag for non-periodic dimension");
+    }
+  }
   
   iarg += 4;
 }
 
-// NOT DONE
-
+// DONE
+  
 void Set2::invoke_image()
 {
   int nlocal = atom->nlocal;
   imageint *image = atom->image;
-
   int xbox,ybox,zbox;
+
+  Action *action = &actions[naction];
+  int ximageflag = action->ivalue4;
+  int yimageflag = action->ivalue5;
+  int zimageflag = action->ivalue6;
+  
+  int varflag = action->varflag;
+  int ximage,yimage,zimage;
+  if (!action->varflag1) ximage = action->ivalue1;
+  if (!action->varflag2) yimage = action->ivalue2;
+  if (!action->varflag3) zimage = action->ivalue3;
 
   // reset any or all of 3 image flags
 
-  Action *action = &actions[naction];
-  
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
+
+    if (varflag) {
+      if (action->varflag1) ximage = static_cast<int> (vec1[i]);
+      if (action->varflag2) yimage = static_cast<int> (vec2[i]);
+      if (action->varflag3) zimage = static_cast<int> (vec3[i]);
+    }
+    
     xbox = (image[i] & IMGMASK) - IMGMAX;
     ybox = (image[i] >> IMGBITS & IMGMASK) - IMGMAX;
     zbox = (image[i] >> IMG2BITS) - IMGMAX;
-    if (action->varflag1) ximage = static_cast<int>(xvalue);
-    if (action->varflag2) yimage = static_cast<int>(yvalue);
-    if (action->varflag3) zimage = static_cast<int>(zvalue);
     if (ximageflag) xbox = ximage;
     if (yimageflag) ybox = yimage;
     if (zimageflag) zbox = zimage;
@@ -1767,15 +1845,13 @@ void Set2::invoke_omega()
   if (!action->varflag2) yvalue = action->dvalue2;
   if (!action->varflag3) zvalue = action->dvalue3;
 
-  // VARIABLE option
-  
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
 
     if (varflag) {
       if (action->varflag1) xvalue = vec1[i];
-      if (action->varflag1) yvalue = vec2[i];
-      if (action->varflag1) zvalue = vec3[i];
+      if (action->varflag2) yvalue = vec2[i];
+      if (action->varflag3) zvalue = vec3[i];
     }
 
     omega[i][0] = xvalue;
@@ -1793,13 +1869,22 @@ void Set2::process_quat(int &iarg, int narg, char **arg)
   if (!atom->ellipsoid_flag && !atom->tri_flag && !atom->body_flag && !atom->quat_flag)
     error->all(FLERR,"Cannot set attribute {} for atom style {}", arg[iarg], atom->get_style());
   if (iarg+5 > narg) utils::missing_cmd_args(FLERR, "set quat", error);
+  int dimension = domain->dimension;
 
   Action *action = &actions[naction];
 
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1);
-  else action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
+  else {
+    action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
+    if (dimension == 2 && action->dvalue1 != 0.0)
+      error->one(FLERR,"Cannot set quaternion with xy components for 2d system");
+  }
   if (utils::strmatch(arg[iarg+2],"^v_")) varparse(arg[iarg+2],2);
-  else action->dvalue2 = utils::numeric(FLERR,arg[iarg+2],false,lmp);
+  else {
+    action->dvalue2 = utils::numeric(FLERR,arg[iarg+2],false,lmp);
+    if (dimension == 2 && action->dvalue2 != 0.0)
+      error->one(FLERR,"Cannot set quaternion with xy components for 2d system");
+  }
   if (utils::strmatch(arg[iarg+3],"^v_")) varparse(arg[iarg+3],3);
   else action->dvalue3 = utils::numeric(FLERR,arg[iarg+3],false,lmp);
   if (utils::strmatch(arg[iarg+4],"^v_")) varparse(arg[iarg+4],4);
@@ -1808,7 +1893,7 @@ void Set2::process_quat(int &iarg, int narg, char **arg)
   iarg += 5;
 }
 
-// NOT DONE
+// DONE
 
 void Set2::invoke_quat()
 {
@@ -1824,37 +1909,47 @@ void Set2::invoke_quat()
   auto avec_body = dynamic_cast<AtomVecBody *>(atom->style_match("body"));
 
   int dimension = domain->dimension;
-  double theta2,sintheta2;
+  double radians,sintheta;
   double *quat_one;
   
-  // VARIABLE option
-  
+  Action *action = &actions[naction];
+  int varflag = action->varflag;
+  double xvalue,yvalue,zvalue,theta;
+  if (!action->varflag1) xvalue = action->dvalue1;
+  if (!action->varflag2) yvalue = action->dvalue2;
+  if (!action->varflag3) zvalue = action->dvalue3;
+  if (!action->varflag4) theta = action->dvalue4;
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
 
-      if (avec_ellipsoid && ellipsoid[i] >= 0)
-        quat_one = avec_ellipsoid->bonus[ellipsoid[i]].quat;
-      else if (avec_tri && tri[i] >= 0)
-        quat_one = avec_tri->bonus[tri[i]].quat;
-      else if (avec_body && body[i] >= 0)
-        quat_one = avec_body->bonus[body[i]].quat;
-      else if (quat_flag)
-        quat_one = quat[i];
-      else
-        error->one(FLERR,"Cannot set quaternion for atom that has none");
+    if (avec_ellipsoid && ellipsoid[i] >= 0)
+      quat_one = avec_ellipsoid->bonus[ellipsoid[i]].quat;
+    else if (avec_tri && tri[i] >= 0)
+      quat_one = avec_tri->bonus[tri[i]].quat;
+    else if (avec_body && body[i] >= 0)
+      quat_one = avec_body->bonus[body[i]].quat;
+    else if (quat_flag)
+      quat_one = quat[i];
+    else
+      error->one(FLERR,"Cannot set quaternion for atom that has none");
 
-      // quat rotation vector must be only in z dir for 2d systems
-
+    if (varflag) {
+      if (action->varflag1) xvalue = vec1[i];
+      if (action->varflag2) yvalue = vec2[i];
+      if (action->varflag3) zvalue = vec3[i];
+      if (action->varflag4) theta = vec4[i];
       if (dimension == 2 && (xvalue != 0.0 || yvalue != 0.0))
         error->one(FLERR,"Cannot set quaternion with xy components for 2d system");
+    }
 
-      theta2 = MY_PI2 * wvalue/180.0;
-      sintheta2 = sin(theta2);
-      quat_one[0] = cos(theta2);
-      quat_one[1] = xvalue * sintheta2;
-      quat_one[2] = yvalue * sintheta2;
-      quat_one[3] = zvalue * sintheta2;
-      MathExtra::qnormalize(quat_one);
+    radians = MY_PI2 * theta/180.0;
+    sintheta = sin(radians);
+    quat_one[0] = cos(radians);
+    quat_one[1] = xvalue * sintheta;
+    quat_one[2] = yvalue * sintheta;
+    quat_one[3] = zvalue * sintheta;
+    MathExtra::qnormalize(quat_one);
   }
 }
 
@@ -2271,28 +2366,32 @@ void Set2::invoke_spin_atom()
 
 /* ---------------------------------------------------------------------- */
 
+// DONE
+
 void Set2::process_spin_atom_random(int &iarg, int narg, char **arg)
 {
+  if ((strcmp(arg[iarg],"spin/random") == 0) && (comm->me == 0))
+    error->warning(FLERR, "Set attribute spin/random is deprecated -- use spin/atom/random instead");
   if (!atom->sp_flag)
     error->all(FLERR,"Cannot set attribute {} for atom style {}", arg[iarg], atom->get_style());
   if (iarg+3 > narg) utils::missing_cmd_args(FLERR, "set spin/atom/random", error);
+
+  Action *action = &actions[naction];
+
+  action->ivalue1 = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
+  action->dvalue1 = utils::numeric(FLERR,arg[iarg+2],false,lmp);
   
-  ivalue = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
-  dvalue = utils::numeric(FLERR,arg[iarg+2],false,lmp);
-  if ((strcmp(arg[iarg],"spin/random") == 0) && (comm->me == 0))
-    error->warning(FLERR, "Set attribute spin/random is deprecated. "
-                   "Please use spin/atom/random instead.");
-  if (ivalue <= 0)
-    error->all(FLERR,"Invalid random number seed {} in set {} command", ivalue, arg[iarg]);
-  if (dvalue <= 0.0)
-    error->all(FLERR,"Invalid spin magnitude {} in set {} command", dvalue, arg[iarg]);
+  if (action->ivalue1 <= 0) error->all(FLERR,"Invalid random number seed in set command");
+  if (action->dvalue1 <= 0.0) error->all(FLERR,"Invalid spin magnitude in set command");
   
   iarg += 3;
 }
 
+// DONE
+
 void Set2::invoke_spin_atom_random()
 {
-  setrandom(SPIN_RANDOM);
+  setrandom(SPIN_ATOM_RANDOM);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -2454,6 +2553,8 @@ void Set2::invoke_theta_random()
 
 /* ---------------------------------------------------------------------- */
 
+// NOT DONE
+
 void Set2::process_tri(int &iarg, int narg, char **arg)
 {
   if (iarg+2 > narg) utils::missing_cmd_args(FLERR, "set tri", error);
@@ -2464,6 +2565,8 @@ void Set2::process_tri(int &iarg, int narg, char **arg)
   iarg += 2;
 }
 
+// NOT DONE
+
 void Set2::invoke_tri()
 {
   int nlocal = atom->nlocal;
@@ -2473,7 +2576,7 @@ void Set2::invoke_tri()
   
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
-    if (dvalue < 0.0) error->one(FLERR,"Invalid tri size in set command");
+    //if (dvalue < 0.0) error->one(FLERR,"Invalid tri size in set command");
     avec_tri->set_equilateral(i,dvalue);
   }
 
@@ -2485,17 +2588,21 @@ void Set2::invoke_tri()
 
 /* ---------------------------------------------------------------------- */
 
+// NOT DONE
+
 void Set2::process_type(int &iarg, int narg, char **arg)
 {
   if (iarg+2 > narg) utils::missing_cmd_args(FLERR, "set type", error);
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1);
   else {
     char *typestr = utils::expand_type(FLERR,arg[iarg+1],Atom::ATOM,lmp);
-    ivalue = utils::inumeric(FLERR,typestr?typestr:arg[iarg+1],false,lmp);
+    //ivalue = utils::inumeric(FLERR,typestr?typestr:arg[iarg+1],false,lmp);
     delete[] typestr;
   }
   iarg += 2;
 }
+
+// NOT DONE
 
 void Set2::invoke_type()
 {
@@ -2507,13 +2614,15 @@ void Set2::invoke_type()
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
     if (action->varflag)
-      if (ivalue <= 0 || ivalue > atom->ntypes)
+      if (action->ivalue1 <= 0 || action->ivalue1 > atom->ntypes)
         error->one(FLERR,"Invalid value in set command");
-    type[i] = ivalue;
+    type[i] = action->ivalue1;
   }
 }
 
 /* ---------------------------------------------------------------------- */
+
+// NOT DONE
 
 void Set2::process_type_fraction(int &iarg, int narg, char **arg)
 {
@@ -2521,7 +2630,8 @@ void Set2::process_type_fraction(int &iarg, int narg, char **arg)
   char *typestr = utils::expand_type(FLERR,arg[iarg+1],Atom::ATOM,lmp);
   newtype = utils::inumeric(FLERR,typestr?typestr:arg[iarg+1],false,lmp);
   delete[] typestr;
-  fraction = utils::numeric(FLERR,arg[iarg+2],false,lmp);
+  double fraction = utils::numeric(FLERR,arg[iarg+2],false,lmp);
+  int ivalue;
   ivalue = utils::inumeric(FLERR,arg[iarg+3],false,lmp);
   if (newtype <= 0 || newtype > atom->ntypes)
     error->all(FLERR,"Invalid type value {} in set type/fraction command", newtype);
@@ -2538,6 +2648,8 @@ void Set2::invoke_type_fraction()
 }
 
 /* ---------------------------------------------------------------------- */
+
+// NOT DONE
 
 void Set2::process_type_ratio(int &iarg, int narg, char **arg)
 {
@@ -2562,6 +2674,8 @@ void Set2::invoke_type_ratio()
 }
 
 /* ---------------------------------------------------------------------- */
+
+// NOT DONE
 
 void Set2::process_type_subset(int &iarg, int narg, char **arg)
 {
@@ -2842,6 +2956,8 @@ void Set2::invoke_z()
 
 /* ---------------------------------------------------------------------- */
 
+// DONE
+
 void Set2::process_custom(int &iarg, int narg, char **arg)
 {
   int flag,cols;
@@ -2854,13 +2970,14 @@ void Set2::process_custom(int &iarg, int narg, char **arg)
     error->all(FLERR,"Set keyword or custom property {} does not exist",pname);
 
   Action *action = &actions[naction];
+  action->ivalue2 = index_custom;
 
   switch (argi.get_type()) {
 
   case ArgInfo::INAME:
-    if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1);
-    else ivalue = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
     if (flag != 0) error->all(FLERR,"Set command custom property {} is not integer",pname);
+    if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1);
+    else action->ivalue1 = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
     
     if (argi.get_dim() == 0) {
       if (cols > 0)
@@ -2869,18 +2986,19 @@ void Set2::process_custom(int &iarg, int narg, char **arg)
     } else if (argi.get_dim() == 1) {
       if (cols == 0)
         error->all(FLERR,"Set command custom integer property {} is not an array",pname);
-      icol_custom = argi.get_index1();
+      int icol_custom = argi.get_index1();
       if (icol_custom <= 0 || icol_custom > cols)
         error->all(FLERR,"Set command per-atom custom integer array {} is accessed "
                    "out-of-range",pname);
+      action->ivalue3 = icol_custom;
       action->keyword = IARRAY;
     } else error->all(FLERR,"Illegal set command");
     break;
 
   case ArgInfo::DNAME:
-    if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1);
-    else dvalue = utils::numeric(FLERR,arg[iarg+1],false,lmp);
     if (flag != 1) error->all(FLERR,"Custom property {} is not floating-point",argi.get_name());
+    if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1);
+    else action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
     
     if (argi.get_dim() == 0) {
       if (cols > 0)
@@ -2889,10 +3007,11 @@ void Set2::process_custom(int &iarg, int narg, char **arg)
     } else if (argi.get_dim() == 1) {
       if (cols == 0)
         error->all(FLERR,"Set command custom double property {} is not an array",pname);
-      icol_custom = argi.get_index1();
+      int icol_custom = argi.get_index1();
       if (icol_custom <= 0 || icol_custom > cols)
         error->all(FLERR,"Set command per-atom custom double array {} is "
                    "accessed out-of-range",pname);
+      action->ivalue3 = icol_custom;
       action->keyword = DARRAY;
     } else error->all(FLERR,"Illegal set command");
     break;
@@ -2905,37 +3024,54 @@ void Set2::process_custom(int &iarg, int narg, char **arg)
   iarg += 2;
 }
 
+// DONE
+
 void Set2::invoke_custom()
 {
   int nlocal = atom->nlocal;
-
+  int ivalue;
+  double dvalue;
+  
   Action *action = &actions[naction];
-
-  // NOTE: what about icol_custom
+  int varflag = action->varflag;
+  int index_custom = action->ivalue2;
   
   if (action->keyword == IVEC) {
+    if (!varflag) ivalue = action->ivalue1;
     int *ivector = atom->ivector[index_custom];
     for (int i = 0; i < nlocal; i++) {
       if (!select[i]) continue;
+      if (varflag) ivalue = static_cast<int> (vec1[i]);
       ivector[i] = ivalue;
     }
+    
   } else if (action->keyword == DVEC) {
+    if (!varflag) dvalue = action->dvalue1;
     double *dvector = atom->dvector[index_custom];
     for (int i = 0; i < nlocal; i++) {
       if (!select[i]) continue;
+      if (varflag) dvalue = vec1[i];
       dvector[i] = dvalue;
     }
+    
   } else if (action->keyword == IARRAY) {
+    if (!varflag) ivalue = action->ivalue1;
     int **iarray = atom->iarray[index_custom];
+    int icol_custom = action->ivalue3 - 1;
     for (int i = 0; i < nlocal; i++) {
       if (!select[i]) continue;
-      iarray[i][icol_custom-1] = ivalue;
+      if (varflag) ivalue = static_cast<int> (vec1[i]);
+      iarray[i][icol_custom] = ivalue;
     }
+    
   } else if (action->keyword == DARRAY) {
+    if (!varflag) dvalue = action->dvalue1;
     double **darray = atom->darray[index_custom];
+    int icol_custom = action->ivalue3 - 1;
     for (int i = 0; i < nlocal; i++) {
       if (!select[i]) continue;
-      darray[i][icol_custom-1] = dvalue;
+      if (varflag) dvalue = vec1[i];
+      darray[i][icol_custom] = dvalue;
     }
   }
 }
