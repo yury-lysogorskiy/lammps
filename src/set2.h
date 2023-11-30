@@ -26,12 +26,12 @@ namespace LAMMPS_NS {
 
 class Set2 : public Command {
  public:
-  Set2(class LAMMPS *lmp) : Command(lmp){};
+  Set2(class LAMMPS *lmp);
   ~Set2();
   
   void command(int, char **) override;
 
-  void process_args(int, int, char **);
+  int process_args(int, int, char **);
   void selection(int);
   void invoke_actions();
 
@@ -51,138 +51,138 @@ class Set2 : public Command {
   
   struct Action {
     int keyword;
+    int argindex;
+    int count_select,count_action;
     int varflag;
     int varflag1, varflag2, varflag3, varflag4;
     int ivar1, ivar2, ivar3, ivar4;
     int ivalue1, ivalue2, ivalue3, ivalue4, ivalue5, ivalue6;
     tagint tvalue1;
+    bigint bvalue1;
     double dvalue1,dvalue2,dvalue3,dvalue4;
   };
   
   int naction,maxaction;
   Action *actions;
-  Action *action;
 
-  typedef void (Set2::*FnPtrPack)();
+  typedef void (Set2::*FnPtrPack)(Action *);
   FnPtrPack *invoke_choice;    // list of ptrs to invoke functions
 
-  // storage for evaluated variables
-  
-  double *vec1, *vec2, *vec3, *vec4;
+  double *vec1, *vec2, *vec3, *vec4;     // storage for evaluated peratom variables
 
-  // flag for selected atoms
+  int *select;              // flag for selected atoms
+  int count_select;         // count of selected atoms on this proc
+  int count_action;         // count of actions on this proc, only if different than selected
   
-  int *select;
-
   // private functions
   
-  void setrandom(int);
-  void topology(int);
   void varparse(const char *, int);
+  void setrandom(int, Action *);
+  void topology(int, Action *);
  
-  // customize by adding a process method prototype
+  // customize by adding a process method
 
-  void process_angle(int &, int, char **);
-  void process_angmom(int &, int, char **);
-  void process_bond(int &, int, char **);
-  void process_cc(int &, int, char **);
-  void process_charge(int &, int, char **);
-  void process_density(int &, int, char **);
-  void process_diameter(int &, int, char **);
-  void process_dihedral(int &, int, char **);
-  void process_dipole(int &, int, char **);
-  void process_dipole_random(int &, int, char **);
-  void process_dpd_theta(int &, int, char **);
-  void process_edpd_cv(int &, int, char **);
-  void process_edpd_temp(int &, int, char **);
-  void process_epsilon(int &, int, char **);
-  void process_image(int &, int, char **);
-  void process_improper(int &, int, char **);
-  void process_length(int &, int, char **);
-  void process_mass(int &, int, char **);
-  void process_mol(int &, int, char **);
-  void process_omega(int &, int, char **);
-  void process_quat(int &, int, char **);
-  void process_quat_random(int &, int, char **);
-  void process_radius_election(int &, int, char **);
-  void process_shape(int &, int, char **);
-  void process_smd_contact_radius(int &, int, char **);
-  void process_smd_mass_density(int &, int, char **);
-  void process_sph_cv(int &, int, char **);
-  void process_sph_e(int &, int, char **);
-  void process_sph_rho(int &, int, char **);
-  void process_spin_atom(int &, int, char **);
-  void process_spin_atom_random(int &, int, char **);
-  void process_spin_electron(int &, int, char **);
-  void process_temperature(int &, int, char **);
-  void process_theta(int &, int, char **);
-  void process_theta_random(int &, int, char **);
-  void process_tri(int &, int, char **);
-  void process_type(int &, int, char **);
-  void process_type_fraction(int &, int, char **);
-  void process_type_ratio(int &, int, char **);
-  void process_type_subset(int &, int, char **);
-  void process_volume(int &, int, char **);
-  void process_vx(int &, int, char **);
-  void process_vy(int &, int, char **);
-  void process_vz(int &, int, char **);
-  void process_x(int &, int, char **);
-  void process_y(int &, int, char **);
-  void process_z(int &, int, char **);
+  void process_angle(int &, int, char **, Action *);
+  void process_angmom(int &, int, char **, Action *);
+  void process_bond(int &, int, char **, Action *);
+  void process_cc(int &, int, char **, Action *);
+  void process_charge(int &, int, char **, Action *);
+  void process_density(int &, int, char **, Action *);
+  void process_diameter(int &, int, char **, Action *);
+  void process_dihedral(int &, int, char **, Action *);
+  void process_dipole(int &, int, char **, Action *);
+  void process_dipole_random(int &, int, char **, Action *);
+  void process_dpd_theta(int &, int, char **, Action *);
+  void process_edpd_cv(int &, int, char **, Action *);
+  void process_edpd_temp(int &, int, char **, Action *);
+  void process_epsilon(int &, int, char **, Action *);
+  void process_image(int &, int, char **, Action *);
+  void process_improper(int &, int, char **, Action *);
+  void process_length(int &, int, char **, Action *);
+  void process_mass(int &, int, char **, Action *);
+  void process_mol(int &, int, char **, Action *);
+  void process_omega(int &, int, char **, Action *);
+  void process_quat(int &, int, char **, Action *);
+  void process_quat_random(int &, int, char **, Action *);
+  void process_radius_election(int &, int, char **, Action *);
+  void process_shape(int &, int, char **, Action *);
+  void process_smd_contact_radius(int &, int, char **, Action *);
+  void process_smd_mass_density(int &, int, char **, Action *);
+  void process_sph_cv(int &, int, char **, Action *);
+  void process_sph_e(int &, int, char **, Action *);
+  void process_sph_rho(int &, int, char **, Action *);
+  void process_spin_atom(int &, int, char **, Action *);
+  void process_spin_atom_random(int &, int, char **, Action *);
+  void process_spin_electron(int &, int, char **, Action *);
+  void process_temperature(int &, int, char **, Action *);
+  void process_theta(int &, int, char **, Action *);
+  void process_theta_random(int &, int, char **, Action *);
+  void process_tri(int &, int, char **, Action *);
+  void process_type(int &, int, char **, Action *);
+  void process_type_fraction(int &, int, char **, Action *);
+  void process_type_ratio(int &, int, char **, Action *);
+  void process_type_subset(int &, int, char **, Action *);
+  void process_volume(int &, int, char **, Action *);
+  void process_vx(int &, int, char **, Action *);
+  void process_vy(int &, int, char **, Action *);
+  void process_vz(int &, int, char **, Action *);
+  void process_x(int &, int, char **, Action *);
+  void process_y(int &, int, char **, Action *);
+  void process_z(int &, int, char **, Action *);
 
-  void process_custom(int &, int, char **);
+  void process_custom(int &, int, char **, Action *);
 
-  // customize by adding an invoke method prototype
+  // customize by adding an invoke method
 
-  void invoke_angle();
-  void invoke_angmom();
-  void invoke_bond();
-  void invoke_cc();
-  void invoke_charge();
-  void invoke_density();
-  void invoke_diameter();
-  void invoke_dihedral();
-  void invoke_dipole();
-  void invoke_dipole_random();
-  void invoke_dpd_theta();
-  void invoke_edpd_cv();
-  void invoke_edpd_temp();
-  void invoke_epsilon();
-  void invoke_image();
-  void invoke_improper();
-  void invoke_length();
-  void invoke_mass();
-  void invoke_mol();
-  void invoke_omega();
-  void invoke_quat();
-  void invoke_quat_random();
-  void invoke_radius_election();
-  void invoke_shape();
-  void invoke_smd_contact_radius();
-  void invoke_smd_mass_density();
-  void invoke_sph_cv();
-  void invoke_sph_e();
-  void invoke_sph_rho();
-  void invoke_spin_atom();
-  void invoke_spin_atom_random();
-  void invoke_spin_electron();
-  void invoke_temperature();
-  void invoke_theta();
-  void invoke_theta_random();
-  void invoke_tri();
-  void invoke_type();
-  void invoke_type_fraction();
-  void invoke_type_ratio();
-  void invoke_type_subset();
-  void invoke_volume();
-  void invoke_vx();
-  void invoke_vy();
-  void invoke_vz();
-  void invoke_x();
-  void invoke_y();
-  void invoke_z();
+  void invoke_angle(Action *);
+  void invoke_angmom(Action *);
+  void invoke_bond(Action *);
+  void invoke_cc(Action *);
+  void invoke_charge(Action *);
+  void invoke_density(Action *);
+  void invoke_diameter(Action *);
+  void invoke_dihedral(Action *);
+  void invoke_dipole(Action *);
+  void invoke_dipole_random(Action *);
+  void invoke_dpd_theta(Action *);
+  void invoke_edpd_cv(Action *);
+  void invoke_edpd_temp(Action *);
+  void invoke_epsilon(Action *);
+  void invoke_image(Action *);
+  void invoke_improper(Action *);
+  void invoke_length(Action *);
+  void invoke_mass(Action *);
+  void invoke_mol(Action *);
+  void invoke_omega(Action *);
+  void invoke_quat(Action *);
+  void invoke_quat_random(Action *);
+  void invoke_radius_election(Action *);
+  void invoke_shape(Action *);
+  void invoke_smd_contact_radius(Action *);
+  void invoke_smd_mass_density(Action *);
+  void invoke_sph_cv(Action *);
+  void invoke_sph_e(Action *);
+  void invoke_sph_rho(Action *);
+  void invoke_spin_atom(Action *);
+  void invoke_spin_atom_random(Action *);
+  void invoke_spin_electron(Action *);
+  void invoke_temperature(Action *);
+  void invoke_theta(Action *);
+  void invoke_theta_random(Action *);
+  void invoke_tri(Action *);
+  void invoke_type(Action *);
+  void invoke_type_fraction(Action *);
+  void invoke_type_ratio(Action *);
+  void invoke_type_subset(Action *);
+  void invoke_volume(Action *);
+  void invoke_vx(Action *);
+  void invoke_vy(Action *);
+  void invoke_vz(Action *);
+  void invoke_x(Action *);
+  void invoke_y(Action *);
+  void invoke_z(Action *);
 
-  void invoke_custom();
+  void invoke_custom(Action *);
 };
 
 }    // namespace LAMMPS_NS
