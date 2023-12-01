@@ -126,6 +126,7 @@ void PairPACEExtrapolationKokkos<DeviceType>::grow(int natom, int maxneigh)
     MemKK::realloc_kokkos(dF_dfcut, "pace:dF_dfcut", natom);
     MemKK::realloc_kokkos(d_d_min, "pace:r_min_pair", natom);
     MemKK::realloc_kokkos(d_jj_min, "pace:j_min_pair", natom);
+    MemKK::realloc_kokkos(d_corerep, "pace:corerep", natom); // per-atom corerep
 
     MemKK::realloc_kokkos(dB_flatten, "pace:dB_flatten", natom, idx_ms_combs_max, basis_set->rankmax);
 
@@ -461,9 +462,9 @@ void PairPACEExtrapolationKokkos<DeviceType>::init_style()
   neighflag = lmp->kokkos->neighflag;
 
   auto request = neighbor->add_request(this, NeighConst::REQ_FULL);
-  request->set_kokkos_host(std::is_same<DeviceType,LMPHostType>::value &&
-                           !std::is_same<DeviceType,LMPDeviceType>::value);
-  request->set_kokkos_device(std::is_same<DeviceType,LMPDeviceType>::value);
+  request->set_kokkos_host(std::is_same_v<DeviceType,LMPHostType> &&
+                           !std::is_same_v<DeviceType,LMPDeviceType>);
+  request->set_kokkos_device(std::is_same_v<DeviceType,LMPDeviceType>);
   if (neighflag == FULL)
     error->all(FLERR,"Must use half neighbor list style with pair pace/kk");
 
@@ -594,12 +595,19 @@ void PairPACEExtrapolationKokkos<DeviceType>::compute(int eflag_in, int vflag_in
     d_vatom = k_vatom.view<DeviceType>();
   }
 
-  if (gamma_flag && atom->nlocal > nmax) {
+  if (flag_compute_extrapolation_grade && atom->nlocal > nmax) {
         memory->destroy(extrapolation_grade_gamma);
         nmax = atom->nlocal;
         memory->create(extrapolation_grade_gamma, nmax, "pace/atom:gamma");
         //zeroify array
         memset(extrapolation_grade_gamma, 0, nmax * sizeof(*extrapolation_grade_gamma));
+  }
+  if (flag_corerep_factor && atom->nlocal > nmax_corerep) {
+    memory->destroy(corerep_factor);
+    nmax_corerep = atom->nlocal;
+    memory->create(corerep_factor, nmax_corerep, "pace/atom:corerep");
+    //zeroify array
+    memset(corerep_factor, 0, nmax_corerep * sizeof(*corerep_factor));
   }
 
   copymode = 1;
@@ -658,6 +666,7 @@ void PairPACEExtrapolationKokkos<DeviceType>::compute(int eflag_in, int vflag_in
 
     Kokkos::deep_copy(projections, 0.0);
     Kokkos::deep_copy(d_gamma, 0.0);
+    Kokkos::deep_copy(d_corerep, 0.0);
 
     EV_FLOAT ev_tmp;
 
@@ -721,7 +730,7 @@ void PairPACEExtrapolationKokkos<DeviceType>::compute(int eflag_in, int vflag_in
     }
 
     //ComputeGamma
-    if (gamma_flag) {
+    if (flag_compute_extrapolation_grade) {
       typename Kokkos::RangePolicy<DeviceType,TagPairPACEComputeGamma> policy_gamma(0,chunk_size);
       Kokkos::parallel_for("ComputeGamma",policy_gamma,*this);
     }
@@ -763,11 +772,16 @@ void PairPACEExtrapolationKokkos<DeviceType>::compute(int eflag_in, int vflag_in
     }
     ev += ev_tmp;
 
-    //if gamma_flag - copy current d_gamma to extrapolation_grade_gamma
-    if (gamma_flag){
+    //if flag_compute_extrapolation_grade - copy current d_gamma to extrapolation_grade_gamma
+    if (flag_compute_extrapolation_grade){
         h_gamma = Kokkos::create_mirror_view(d_gamma);
         Kokkos::deep_copy(h_gamma, d_gamma);
         memcpy(extrapolation_grade_gamma+chunk_offset, (void *) h_gamma.data(), sizeof(double)*chunk_size);
+    }
+    if (flag_corerep_factor) {
+        h_corerep = Kokkos::create_mirror_view(d_corerep);
+        Kokkos::deep_copy(h_corerep,d_corerep);
+        memcpy(corerep_factor+chunk_offset, (void *) h_corerep.data(), sizeof(double)*chunk_size);
     }
 
     chunk_offset += chunk_size;
@@ -887,28 +901,33 @@ void PairPACEExtrapolationKokkos<DeviceType>::operator() (TagPairPACEComputeNeig
 
   if(is_zbl) {
     //adapted from https://www.osti.gov/servlets/purl/1429450
-    using minloc_value_type=Kokkos::MinLoc<F_FLOAT,int>::value_type;
-    minloc_value_type djjmin;
-    djjmin.val=1e20;
-    djjmin.loc=-1;
-    Kokkos::MinLoc<F_FLOAT,int> reducer_scalar(djjmin);
-    // loop over ncount (actual neighbours withing cutoff) rather than jnum (total number of neigh in cutoff+skin)
-    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, ncount),
-                            [&](const int offset, minloc_value_type &min_d_dist) {
-                              int j = d_nearest(ii,offset);
-                              j &= NEIGHMASK;
-                              const int jtype = type(j);
-                              auto r = d_rnorms(ii,offset);
-                              const int mu_j = d_map(type(j));
-                              const F_FLOAT d = r - (d_cut_in(mu_i, mu_j) - d_dcut_in(mu_i, mu_j));
-                              if (d < min_d_dist.val) {
-                                min_d_dist.val = d;
-                                min_d_dist.loc = offset;
-                              }
+    if(ncount>0) {
+      using minloc_value_type=Kokkos::MinLoc<F_FLOAT,int>::value_type;
+      minloc_value_type djjmin;
+      djjmin.val=1e20;
+      djjmin.loc=-1;
+      Kokkos::MinLoc<F_FLOAT,int> reducer_scalar(djjmin);
+      // loop over ncount (actual neighbours withing cutoff) rather than jnum (total number of neigh in cutoff+skin)
+      Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, ncount),
+                              [&](const int offset, minloc_value_type &min_d_dist) {
+                                int j = d_nearest(ii,offset);
+                                j &= NEIGHMASK;
+                                const int jtype = type(j);
+                                auto r = d_rnorms(ii,offset);
+                                const int mu_j = d_map(type(j));
+                                const F_FLOAT d = r - (d_cut_in(mu_i, mu_j) - d_dcut_in(mu_i, mu_j));
+                                if (d < min_d_dist.val) {
+                                  min_d_dist.val = d;
+                                  min_d_dist.loc = offset;
+                                }
 
-                            }, reducer_scalar);
-    d_d_min(ii) = djjmin.val;
-    d_jj_min(ii) = djjmin.loc;// d_jj_min should be NOT in 0..jnum range, but in 0..d_ncount(<=jnum)
+                              }, reducer_scalar);
+      d_d_min(ii) = djjmin.val;
+      d_jj_min(ii) = djjmin.loc;// d_jj_min should be NOT in 0..jnum range, but in 0..d_ncount(<=jnum)
+    } else {
+      d_d_min(ii) = 1e20;
+      d_jj_min(ii) = -1;
+    }
   }
 }
 
@@ -1050,7 +1069,7 @@ void PairPACEExtrapolationKokkos<DeviceType>::operator() (TagPairPACEComputeRho,
 
 
     //gamma_i
-    if (gamma_flag)
+    if (flag_compute_extrapolation_grade)
         Kokkos::atomic_add(&projections(ii, func_ind),  d_gen_cgs(mu_i, idx_ms_comb) * A_cur);
 
   } else { // rank > 1
@@ -1089,7 +1108,7 @@ void PairPACEExtrapolationKokkos<DeviceType>::operator() (TagPairPACEComputeRho,
       Kokkos::atomic_add(&rhos(ii, p), B.real_part_product(d_coeffs(mu_i, func_ind, p) * d_gen_cgs(mu_i, idx_ms_comb)));
     }
     //gamma_i
-    if (gamma_flag)
+    if (flag_compute_extrapolation_grade)
       Kokkos::atomic_add(&projections(ii, func_ind),  B.real_part_product(d_gen_cgs(mu_i, idx_ms_comb)));
   }
 }
@@ -1144,6 +1163,9 @@ void PairPACEExtrapolationKokkos<DeviceType>::operator() (TagPairPACEComputeFS, 
     evdwl_cut += d_E0vals(mu_i);
     e_atom(ii) = evdwl_cut;
   }
+
+  if (flag_corerep_factor)
+    d_corerep(ii) = 1-fcut;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1170,6 +1192,7 @@ void PairPACEExtrapolationKokkos<DeviceType>::operator() (TagPairPACEComputeGamm
       gamma_max = current_gamma;
   }
 
+  // tally energy contribution
   d_gamma(ii) = gamma_max;
 }
 
@@ -1329,8 +1352,8 @@ KOKKOS_INLINE_FUNCTION
 void PairPACEExtrapolationKokkos<DeviceType>::operator() (TagPairPACEComputeForce<NEIGHFLAG,EVFLAG>, const int& ii, EV_FLOAT& ev) const
 {
   // The f array is duplicated for OpenMP, atomic for CUDA, and neither for Serial
-  const auto v_f = ScatterViewHelper<typename NeedDup<NEIGHFLAG,DeviceType>::value,decltype(dup_f),decltype(ndup_f)>::get(dup_f,ndup_f);
-  const auto a_f = v_f.template access<typename AtomicDup<NEIGHFLAG,DeviceType>::value>();
+  const auto v_f = ScatterViewHelper<NeedDup_v<NEIGHFLAG,DeviceType>,decltype(dup_f),decltype(ndup_f)>::get(dup_f,ndup_f);
+  const auto a_f = v_f.template access<AtomicDup_v<NEIGHFLAG,DeviceType>>();
 
   const int i = d_ilist[ii + chunk_offset];
   const int itype = type(i);
@@ -1857,6 +1880,7 @@ double PairPACEExtrapolationKokkos<DeviceType>::memory_usage()
   bytes += MemKK::memory_usage(rho_core);
   bytes += MemKK::memory_usage(dF_drho_core);
   bytes += MemKK::memory_usage(dF_dfcut);
+  bytes += MemKK::memory_usage(d_corerep);
   bytes += MemKK::memory_usage(dB_flatten);
   bytes += MemKK::memory_usage(fr);
   bytes += MemKK::memory_usage(dfr);
@@ -1924,9 +1948,10 @@ double PairPACEExtrapolationKokkos<DeviceType>::memory_usage()
 template<class DeviceType>
 void *PairPACEExtrapolationKokkos<DeviceType>::extract(const char *str, int &dim)
 {
-  //check if str=="gamma_flag" then compute extrapolation grades on this iteration
   dim = 0;
-  if (strcmp(str, "gamma_flag") == 0) return (void *) &gamma_flag;
+  //check if str=="flag_compute_extrapolation_grade" then compute extrapolation grades on this iteration
+  if (strcmp(str, "gamma_flag") == 0) return (void *) &flag_compute_extrapolation_grade;
+  if (strcmp(str, "corerep_flag") == 0) return (void *) &flag_corerep_factor;
 
   dim = 2;
   if (strcmp(str, "scale") == 0) return (void *) scale;
@@ -1948,6 +1973,10 @@ void *PairPACEExtrapolationKokkos<DeviceType>::extract_peratom(const char *str, 
   if (strcmp(str, "gamma") == 0) {
     ncol = 0;
     return (void *) extrapolation_grade_gamma;
+  }
+  if (strcmp(str, "corerep") == 0) {
+    ncol = 0;
+    return (void *) corerep_factor;
   }
 
   return nullptr;

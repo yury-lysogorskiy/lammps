@@ -124,6 +124,8 @@ void PairPACEKokkos<DeviceType>::grow(int natom, int maxneigh)
     MemKK::realloc_kokkos(dF_dfcut, "pace:dF_dfcut", natom);
     MemKK::realloc_kokkos(d_d_min, "pace:r_min_pair", natom);
     MemKK::realloc_kokkos(d_jj_min, "pace:j_min_pair", natom);
+    MemKK::realloc_kokkos(d_corerep, "pace:corerep", natom); // per-atom corerep
+
     MemKK::realloc_kokkos(dB_flatten, "pace:dB_flatten", natom, idx_rho_max, basis_set->rankmax);
   }
 
@@ -256,6 +258,9 @@ void PairPACEKokkos<DeviceType>::copy_splines()
   k_splines_hc = Kokkos::DualView<SplineInterpolatorKokkos**, DeviceType>("pace:splines_hc", nelements, nelements);
 
   ACERadialFunctions* radial_functions = dynamic_cast<ACERadialFunctions*>(basis_set->radial_functions);
+
+  if (radial_functions == nullptr)
+    error->all(FLERR,"Chosen radial basis style not supported by pair style pace/kk");
 
   for (int i = 0; i < nelements; i++) {
     for (int j = 0; j < nelements; j++) {
@@ -423,9 +428,9 @@ void PairPACEKokkos<DeviceType>::init_style()
   neighflag = lmp->kokkos->neighflag;
 
   auto request = neighbor->add_request(this, NeighConst::REQ_FULL);
-  request->set_kokkos_host(std::is_same<DeviceType,LMPHostType>::value &&
-                           !std::is_same<DeviceType,LMPDeviceType>::value);
-  request->set_kokkos_device(std::is_same<DeviceType,LMPDeviceType>::value);
+  request->set_kokkos_host(std::is_same_v<DeviceType,LMPHostType> &&
+                           !std::is_same_v<DeviceType,LMPDeviceType>);
+  request->set_kokkos_device(std::is_same_v<DeviceType,LMPDeviceType>);
   if (neighflag == FULL)
     error->all(FLERR,"Must use half neighbor list style with pair pace/kk");
 
@@ -552,6 +557,13 @@ void PairPACEKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
     memoryKK->create_kokkos(k_vatom,vatom,maxvatom,"pair:vatom");
     d_vatom = k_vatom.view<DeviceType>();
   }
+  if (flag_corerep_factor && atom->nlocal > nmax_corerep) {
+    memory->destroy(corerep_factor);
+    nmax_corerep = atom->nlocal;
+    memory->create(corerep_factor, nmax_corerep, "pace/atom:corerep");
+    //zeroify array
+    memset(corerep_factor, 0, nmax_corerep * sizeof(*corerep_factor));
+  }
 
   copymode = 1;
   if (!force->newton_pair)
@@ -607,6 +619,7 @@ void PairPACEKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
     Kokkos::deep_copy(rho_core, 0.0);
     Kokkos::deep_copy(d_d_min, PairPACE::aceimpl->basis_set->cutoffmax);
     Kokkos::deep_copy(d_jj_min, -1);
+    Kokkos::deep_copy(d_corerep, 0.0);
 
     EV_FLOAT ev_tmp;
 
@@ -706,6 +719,13 @@ void PairPACEKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
       }
     }
     ev += ev_tmp;
+
+    if (flag_corerep_factor) {
+      h_corerep = Kokkos::create_mirror_view(d_corerep);
+      Kokkos::deep_copy(h_corerep,d_corerep);
+      memcpy(corerep_factor+chunk_offset, (void *) h_corerep.data(), sizeof(double)*chunk_size);
+    }
+
     chunk_offset += chunk_size;
 
   } // end while
@@ -824,28 +844,33 @@ void PairPACEKokkos<DeviceType>::operator() (TagPairPACEComputeNeigh,const typen
 
   if(is_zbl) {
      //adapted from https://www.osti.gov/servlets/purl/1429450
-     using minloc_value_type=Kokkos::MinLoc<F_FLOAT,int>::value_type;
-     minloc_value_type djjmin;
-     djjmin.val=1e20;
-     djjmin.loc=-1;
-     Kokkos::MinLoc<F_FLOAT,int> reducer_scalar(djjmin);
-     // loop over ncount (actual neighbours withing cutoff) rather than jnum (total number of neigh in cutoff+skin)
-     Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, ncount),
-             [&](const int offset, minloc_value_type &min_d_dist) {
-               int j = d_nearest(ii,offset);
-               j &= NEIGHMASK;
-               const int jtype = type(j);
-               auto r = d_rnorms(ii,offset);
-               const int mu_j = d_map(type(j));
-               const F_FLOAT d = r - (d_cut_in(mu_i, mu_j) - d_dcut_in(mu_i, mu_j));
-               if (d < min_d_dist.val) {
-                   min_d_dist.val = d;
-                   min_d_dist.loc = offset;
-               }
+     if(ncount>0) {
+       using minloc_value_type=Kokkos::MinLoc<F_FLOAT,int>::value_type;
+       minloc_value_type djjmin;
+       djjmin.val=1e20;
+       djjmin.loc=-1;
+       Kokkos::MinLoc<F_FLOAT,int> reducer_scalar(djjmin);
+       // loop over ncount (actual neighbours withing cutoff) rather than jnum (total number of neigh in cutoff+skin)
+       Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, ncount),
+               [&](const int offset, minloc_value_type &min_d_dist) {
+                 int j = d_nearest(ii,offset);
+                 j &= NEIGHMASK;
+                 const int jtype = type(j);
+                 auto r = d_rnorms(ii,offset);
+                 const int mu_j = d_map(type(j));
+                 const F_FLOAT d = r - (d_cut_in(mu_i, mu_j) - d_dcut_in(mu_i, mu_j));
+                 if (d < min_d_dist.val) {
+                     min_d_dist.val = d;
+                     min_d_dist.loc = offset;
+                 }
 
-     }, reducer_scalar);
+       }, reducer_scalar);
       d_d_min(ii) = djjmin.val;
       d_jj_min(ii) = djjmin.loc;// d_jj_min should be NOT in 0..jnum range, but in 0..d_ncount(<=jnum)
+    } else {
+      d_d_min(ii) = 1e20;
+      d_jj_min(ii) = -1;
+    }
   }
 }
 
@@ -1070,6 +1095,9 @@ void PairPACEKokkos<DeviceType>::operator() (TagPairPACEComputeFS, const int& ii
       evdwl_cut += d_E0vals(mu_i);
       e_atom(ii) = evdwl_cut;
   }
+
+  if (flag_corerep_factor)
+    d_corerep(ii) = 1-fcut;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1228,8 +1256,8 @@ KOKKOS_INLINE_FUNCTION
 void PairPACEKokkos<DeviceType>::operator() (TagPairPACEComputeForce<NEIGHFLAG,EVFLAG>, const int& ii, EV_FLOAT& ev) const
 {
   // The f array is duplicated for OpenMP, atomic for CUDA, and neither for Serial
-  const auto v_f = ScatterViewHelper<typename NeedDup<NEIGHFLAG,DeviceType>::value,decltype(dup_f),decltype(ndup_f)>::get(dup_f,ndup_f);
-  const auto a_f = v_f.template access<typename AtomicDup<NEIGHFLAG,DeviceType>::value>();
+  const auto v_f = ScatterViewHelper<NeedDup_v<NEIGHFLAG,DeviceType>,decltype(dup_f),decltype(ndup_f)>::get(dup_f,ndup_f);
+  const auto a_f = v_f.template access<AtomicDup_v<NEIGHFLAG,DeviceType>>();
 
   const int i = d_ilist[ii + chunk_offset];
   const int itype = type(i);
@@ -1756,6 +1784,7 @@ double PairPACEKokkos<DeviceType>::memory_usage()
   bytes += MemKK::memory_usage(rho_core);
   bytes += MemKK::memory_usage(dF_drho_core);
   bytes += MemKK::memory_usage(dF_dfcut);
+  bytes += MemKK::memory_usage(d_corerep);
   bytes += MemKK::memory_usage(dB_flatten);
   bytes += MemKK::memory_usage(fr);
   bytes += MemKK::memory_usage(dfr);
@@ -1809,6 +1838,42 @@ double PairPACEKokkos<DeviceType>::memory_usage()
   }
 
   return bytes;
+}
+
+
+/* ----------------------------------------------------------------------
+    extract method for extracting value of scale variable
+ ---------------------------------------------------------------------- */
+
+template<class DeviceType>
+void *PairPACEKokkos<DeviceType>::extract(const char *str, int &dim)
+{
+  dim = 0;
+  if (strcmp(str, "corerep_flag") == 0) return (void *) &flag_corerep_factor;
+
+  dim = 2;
+  if (strcmp(str, "scale") == 0) return (void *) scale;
+  return nullptr;
+}
+
+/* ----------------------------------------------------------------------
+   peratom requests from FixPair
+   return ptr to requested data
+   also return ncol = # of quantites per atom
+     0 = per-atom vector
+     1 or more = # of columns in per-atom array
+   return NULL if str is not recognized
+---------------------------------------------------------------------- */
+
+template<class DeviceType>
+void *PairPACEKokkos<DeviceType>::extract_peratom(const char *str, int &ncol)
+{
+  if (strcmp(str, "corerep") == 0) {
+    ncol = 0;
+    return (void *) corerep_factor;
+  }
+
+  return nullptr;
 }
 
 /* ---------------------------------------------------------------------- */

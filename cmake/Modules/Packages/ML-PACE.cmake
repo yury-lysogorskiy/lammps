@@ -1,6 +1,6 @@
-set(PACELIB_URL "https://github.com/ICAMS/lammps-user-pace/archive/refs/tags/v.2023.11.22.tar.gz" CACHE STRING "URL for PACE evaluator library sources")
+set(PACELIB_URL "https://github.com/ICAMS/lammps-user-pace/archive/refs/tags/v.2023.11.25.fix.tar.gz" CACHE STRING "URL for PACE evaluator library sources")
 
-set(PACELIB_MD5 "c8e811f96d761ef8863f5b88a3fd36f4" CACHE STRING "MD5 checksum of PACE evaluator library tarball")
+set(PACELIB_MD5 "b45de9a633f42ed65422567e3ce56f9f" CACHE STRING "MD5 checksum of PACE evaluator library tarball")
 mark_as_advanced(PACELIB_URL)
 mark_as_advanced(PACELIB_MD5)
 GetFallbackURL(PACELIB_URL PACELIB_FALLBACK)
@@ -8,7 +8,7 @@ GetFallbackURL(PACELIB_URL PACELIB_FALLBACK)
 # LOCAL_ML-PACE points to top-level dir with local lammps-user-pace repo,
 # to make it easier to check local build without going through the public github releases
 if(LOCAL_ML-PACE)
-  set(lib-pace "${LOCAL_ML-PACE}")
+ set(lib-pace "${LOCAL_ML-PACE}")
 else()
   # download library sources to build folder
   if(EXISTS ${CMAKE_BINARY_DIR}/libpace.tar.gz)
@@ -29,9 +29,9 @@ else()
 
   # uncompress downloaded sources
   execute_process(
-          COMMAND ${CMAKE_COMMAND} -E remove_directory lammps-user-pace*
-          COMMAND ${CMAKE_COMMAND} -E tar xzf libpace.tar.gz
-          WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E remove_directory lammps-user-pace*
+    COMMAND ${CMAKE_COMMAND} -E tar xzf libpace.tar.gz
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   )
   get_newest_file(${CMAKE_BINARY_DIR}/lammps-user-pace-* lib-pace)
 endif()
