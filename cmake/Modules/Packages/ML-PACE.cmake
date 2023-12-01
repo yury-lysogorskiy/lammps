@@ -39,6 +39,29 @@ endif()
 add_subdirectory(${lib-pace} build-pace)
 set_target_properties(pace PROPERTIES CXX_EXTENSIONS ON OUTPUT_NAME lammps_pace${LAMMPS_MACHINE})
 
+set(tf_c_path "/home/users/lysogy36/miniconda3/envs/ace2/lib/python3.9/site-packages/tensorflow") # tensorflowc-gpu
+#set(tf_c_path "/home/yury/miniconda3/envs/aceworks/lib/python3.9/site-packages/tensorflow") # tensorflowc-gpu
+add_library(tensorflow SHARED IMPORTED)
+set_target_properties(tensorflow PROPERTIES
+        IMPORTED_LOCATION "${tf_c_path}/libtensorflow_cc.so.2"
+        #        IMPORTED_LOCATION "${tf_c_path}/lib/libtensorflow_framework.so"
+        INTERFACE_INCLUDE_DIRECTORIES "${tf_c_path}/include"
+)
+###############################
+set(cppflow_path "/home/users/lysogy36/CLionProjects/tf_from_cpp/lib/cppflow")
+add_library(cppflow INTERFACE)
+target_include_directories(cppflow
+        INTERFACE
+        ${tensorflow_INCLUDE_DIRS}
+        $<BUILD_INTERFACE:${cppflow_path}/include>
+)
+target_compile_features(cppflow INTERFACE cxx_std_17)
+target_link_libraries(cppflow INTERFACE
+        ${tensorflow_LIBRARIES}
+)
+
 if(CMAKE_PROJECT_NAME STREQUAL "lammps")
   target_link_libraries(lammps PRIVATE pace)
+  target_link_libraries(lammps PRIVATE tensorflow)
+  target_link_libraries(lammps PRIVATE cppflow)
 endif()
