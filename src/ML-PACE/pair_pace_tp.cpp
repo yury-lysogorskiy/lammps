@@ -217,9 +217,11 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
 
     // number of atoms in cell
     int nlocal = atom->nlocal;
-//    n_nodes = atom->nlocal + atom->nghost;
     int n_atoms_extended = atom->nlocal + atom->nghost;
-
+    int n_fake_atoms = 1;
+    int n_real_neighbours;
+    int n_fake_neighbours;
+    int n_tot_neighbours;
 
     int newton_pair = force->newton_pair;
 
@@ -238,101 +240,127 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
 
     std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
 
-    // atomic_mu_i: per-atom species type (+ padding?)
-    std::vector<int32_t> atomic_mu_i_vector(type, type + n_atoms_extended);
+    // atomic_mu_i: per-atom species type + padding with type[0]
+    std::vector<int32_t> atomic_mu_i_vector(n_atoms_extended + n_fake_atoms, type[0]-1);
+    for (i = 0; i < n_atoms_extended; ++i)
+        atomic_mu_i_vector[i] = type[i]-1;
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "atomic_mu_i" + ":0",
-                        cppflow::tensor(atomic_mu_i_vector, {n_atoms_extended}));
+                        cppflow::tensor(atomic_mu_i_vector, {n_atoms_extended + n_fake_atoms}));
 
-    // batch_nat: number of extened atoms (+ padding?)
+    // batch_nat = number of extened atoms + padding
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "batch_nat" + ":0",
-                        cppflow::tensor(std::vector<int32_t>{n_atoms_extended}, {}));
+                        cppflow::tensor(std::vector<int32_t>{n_atoms_extended + n_fake_atoms}, {}));
 
     // batch_nreal_atoms_per_structure: number of extened atoms (w/o padding)
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "batch_nreal_atoms_per_structure" + ":0",
-                        cppflow::tensor(std::vector<int32_t>{n_atoms_extended}, {1}));
+                        cppflow::tensor(std::vector<int32_t>{n_atoms_extended + n_fake_atoms}, {1}));
 
     // ind_i, ind_j: bonds
     //determine the maximum number of neighbours (within cutoff)
-    int tot_number_of_neighbours = 0;
+    n_real_neighbours = 0;
     double cutoff_sq = cutoff * cutoff;
     for (ii = 0; ii < inum; ii++) {
         i = ilist[ii];
-//        double xtmp = atom->x[i][0];
-//        double ytmp = atom->x[i][1];
-//        double ztmp = atom->x[i][2];
-//        jlist = list->firstneigh[i];
+        double xtmp = atom->x[i][0];
+        double ytmp = atom->x[i][1];
+        double ztmp = atom->x[i][2];
+        jlist = list->firstneigh[i];
         jnum = list->numneigh[i];
-        tot_number_of_neighbours += jnum;
-//        for (jj=0; jj<jnum; ++jj) {
-//            j = jlist[jj];
-//            j &= NEIGHMASK;
-//            delx = xtmp - atom->x[j][0];
-//            dely = ytmp - atom->x[j][1];
-//            delz = ztmp - atom->x[j][2];
-//            double rsq = delx * delx + dely * dely + delz * delz;
-//            if (rsq < cutoff_sq) {
-//                tot_number_of_neighbours += 1;
-//            }
-//        }
+//        tot_number_of_neighbours += jnum;
+        for (jj = 0; jj < jnum; ++jj) {
+            j = jlist[jj];
+            j &= NEIGHMASK;
+            delx = xtmp - atom->x[j][0];
+            dely = ytmp - atom->x[j][1];
+            delz = ztmp - atom->x[j][2];
+            double rsq = delx * delx + dely * dely + delz * delz;
+            if (rsq < cutoff_sq) {
+                n_real_neighbours += 1;
+            }
+        }
     }
+    if (n_real_neighbours <= tot_neighbours) {
+        n_fake_neighbours = tot_neighbours - n_real_neighbours;
+    } else { // n_real_neighbours > tot_neighbours
+        tot_neighbours = (int) std::round(n_real_neighbours * 1.01); // add 10% of fake neighbours
+//        tot_neighbours = n_real_neighbours + 1;
+        printf("Increase tot_neighbours = %d, because n_real_neighbours=%d\n", tot_neighbours, n_real_neighbours);
+        n_fake_neighbours = tot_neighbours - n_real_neighbours;
+    }
+    n_tot_neighbours = tot_neighbours;
 
-    std::vector<int32_t> ind_i_vector(tot_number_of_neighbours);
-    std::vector<int32_t> ind_j_vector(tot_number_of_neighbours);
-    std::vector<int32_t> mu_i_vector(tot_number_of_neighbours);
-    std::vector<int32_t> mu_j_vector(tot_number_of_neighbours);
+    std::vector<int32_t> ind_i_vector(n_tot_neighbours);
+    std::vector<int32_t> ind_j_vector(n_tot_neighbours);
+    std::vector<int32_t> mu_i_vector(n_tot_neighbours);
+    std::vector<int32_t> mu_j_vector(n_tot_neighbours);
     int tot_ind = 0;
     for (ii = 0; ii < inum; ++ii) {
         i = ilist[ii];
+        double xtmp = atom->x[i][0];
+        double ytmp = atom->x[i][1];
+        double ztmp = atom->x[i][2];
         jlist = list->firstneigh[i];
         jnum = list->numneigh[i];
-        for (jj = 0; jj < jnum; ++jj, ++tot_ind) {
+        for (jj = 0; jj < jnum; ++jj) {
             j = jlist[jj];
-            ind_i_vector[tot_ind] = i;
-            ind_j_vector[tot_ind] = j;
-            mu_i_vector[tot_ind] = type[i];
-            mu_j_vector[tot_ind] = type[j];
+            delx = xtmp - atom->x[j][0];
+            dely = ytmp - atom->x[j][1];
+            delz = ztmp - atom->x[j][2];
+            double rsq = delx * delx + dely * dely + delz * delz;
+            if (rsq < cutoff_sq) {
+                ind_i_vector[tot_ind] = i;
+                ind_j_vector[tot_ind] = j;
+                mu_i_vector[tot_ind] = type[i]-1;
+                mu_j_vector[tot_ind] = type[j]-1;
+                ++tot_ind;
+            }
         }
     }
+
+    // add fake bonds
+    int fake_atom_ind = n_atoms_extended + n_fake_atoms - 1;
+    for (; tot_ind < n_tot_neighbours; tot_ind++) {
+        ind_i_vector[tot_ind] = fake_atom_ind; // fake atom ind
+        ind_j_vector[tot_ind] = fake_atom_ind; // fake atom ind
+        mu_i_vector[tot_ind] = 0;
+        mu_j_vector[tot_ind] = 0;
+    }
+
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_i" + ":0",
-                        cppflow::tensor(ind_i_vector, {tot_number_of_neighbours}));
+                        cppflow::tensor(ind_i_vector, {n_tot_neighbours}));
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_j" + ":0",
-                        cppflow::tensor(ind_j_vector, {tot_number_of_neighbours}));
+                        cppflow::tensor(ind_j_vector, {n_tot_neighbours}));
 
 
     // mu_i, mu_j: bonds
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "mu_i" + ":0",
-                        cppflow::tensor(mu_i_vector, {tot_number_of_neighbours}));
+                        cppflow::tensor(mu_i_vector, {n_tot_neighbours}));
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "mu_j" + ":0",
-                        cppflow::tensor(mu_j_vector, {tot_number_of_neighbours}));
+                        cppflow::tensor(mu_j_vector, {n_tot_neighbours}));
 
 
     // mu_ij: bonds - stub
-    std::vector<int32_t> mu_ij_vector(tot_number_of_neighbours, 0);
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "mu_ij" + ":0",
-                        cppflow::tensor(mu_ij_vector, {tot_number_of_neighbours}));
+//    std::vector<int32_t> mu_ij_vector(n_tot_neighbours, 0);
+//    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "mu_ij" + ":0",
+//                        cppflow::tensor(mu_ij_vector, {n_tot_neighbours}));
 
     // num_struc: 1
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "num_struc" + ":0", cppflow::tensor(std::vector<int32_t>{1}, {}));
+    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "num_struc" + ":0",
+                        cppflow::tensor(std::vector<int32_t>{1}, {}));
 
 
-    // positions: [n_extened_atoms, 3]
-    std::vector<double> positions_vec(3 * n_atoms_extended);
+    // positions: [n_extened_atoms+n_fake_atoms, 3]
+    std::vector<double> positions_vec(3 * (n_atoms_extended + n_fake_atoms), 0.);
     for (i = 0, tot_ind = 0; i < n_atoms_extended; ++i) {
         for (int k = 0; k < 3; ++k, ++tot_ind)
             positions_vec[tot_ind] = x[i][k];
     }
+
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "positions" + ":0",
-                        cppflow::tensor(positions_vec, {n_atoms_extended, 3}));
+                        cppflow::tensor(positions_vec, {n_atoms_extended + n_fake_atoms, 3}));
 
 
-    // slice_mu_ij: MOCK
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "slice_mu_ij" + ":0", cppflow::tensor(std::vector<int32_t>{0}, {1}));
-
-    //vector_offsets: (-1,3)
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "vector_offsets" + ":0",
-                        cppflow::tensor(std::vector<double>(3 * tot_number_of_neighbours, 0),
-                                        {tot_number_of_neighbours, 3}));
-
+//    printf("tot_number_of_neighbours=%d, n_atoms_extended=%d\n", tot_number_of_neighbours, n_atoms_extended);
     //CALL MODEL
     std::vector<cppflow::tensor> output = aceimpl->model->operator()(
             inputs,
@@ -373,26 +401,26 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
             dely = x[j][1] - ytmp;
             delz = x[j][2] - ztmp;
 
-//            fij[0] = scale[itype][itype] * aceimpl->ace->neighbours_forces(jj, 0);
-//            fij[1] = scale[itype][itype] * aceimpl->ace->neighbours_forces(jj, 1);
-//            fij[2] = scale[itype][itype] * aceimpl->ace->neighbours_forces(jj, 2);
-            fij[0] = -f_data[tot_ind];
-            fij[1] = -f_data[tot_ind+1];
-            fij[2] = -f_data[tot_ind+2];
+            double rsq = delx * delx + dely * dely + delz * delz;
+            if (rsq < cutoff_sq) {
+                fij[0] = -scale[itype][itype] * f_data[tot_ind];
+                fij[1] = -scale[itype][itype] * f_data[tot_ind + 1];
+                fij[2] = -scale[itype][itype] * f_data[tot_ind + 2];
 
-            tot_ind += 3;
+                tot_ind += 3;
 
-            f[i][0] += fij[0];
-            f[i][1] += fij[1];
-            f[i][2] += fij[2];
-            f[j][0] -= fij[0];
-            f[j][1] -= fij[1];
-            f[j][2] -= fij[2];
+                f[i][0] += fij[0];
+                f[i][1] += fij[1];
+                f[i][2] += fij[2];
+                f[j][0] -= fij[0];
+                f[j][1] -= fij[1];
+                f[j][2] -= fij[2];
 
-            // tally per-atom virial contribution
-            if (vflag_either)
-                ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fij[0], fij[1], fij[2], -delx, -dely,
-                             -delz);
+                // tally per-atom virial contribution
+                if (vflag_either)
+                    ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fij[0], fij[1], fij[2], -delx, -dely,
+                                 -delz);
+            }
         }
 
         // tally energy contribution

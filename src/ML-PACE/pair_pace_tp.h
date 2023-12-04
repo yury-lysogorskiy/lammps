@@ -62,6 +62,8 @@ class PairPACETensorPotential : public Pair {
   double **scale;
   double cutoff = 6;
 
+  int tot_neighbours = 0;
+
   int chunksize;
 };
 }    // namespace LAMMPS_NS
