@@ -60,8 +60,14 @@ target_link_libraries(cppflow INTERFACE
         ${tensorflow_LIBRARIES}
 )
 
+find_package(OpenMP)
+
 if(CMAKE_PROJECT_NAME STREQUAL "lammps")
   target_link_libraries(lammps PRIVATE pace)
   target_link_libraries(lammps PRIVATE tensorflow)
   target_link_libraries(lammps PRIVATE cppflow)
+  if(OpenMP_CXX_FOUND)
+    target_link_libraries(lammps PUBLIC OpenMP::OpenMP_CXX)
+  endif()
+
 endif()

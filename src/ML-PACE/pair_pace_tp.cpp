@@ -17,6 +17,7 @@
 
 #include <cstring>
 #include <exception>
+#include <numeric>
 
 const std::string DEFAULT_INPUT_PREFIX = "serving_default_";
 
@@ -241,9 +242,9 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
     std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
 
     // atomic_mu_i: per-atom species type + padding with type[0]
-    std::vector<int32_t> atomic_mu_i_vector(n_atoms_extended + n_fake_atoms, type[0]-1);
+    std::vector<int32_t> atomic_mu_i_vector(n_atoms_extended + n_fake_atoms, type[0] - 1);
     for (i = 0; i < n_atoms_extended; ++i)
-        atomic_mu_i_vector[i] = type[i]-1;
+        atomic_mu_i_vector[i] = type[i] - 1;
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "atomic_mu_i" + ":0",
                         cppflow::tensor(atomic_mu_i_vector, {n_atoms_extended + n_fake_atoms}));
 
@@ -257,35 +258,43 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
 
     // ind_i, ind_j: bonds
     //determine the maximum number of neighbours (within cutoff)
-    n_real_neighbours = 0;
+    std::vector<int> actual_jnum(inum, 0);
     double cutoff_sq = cutoff * cutoff;
+#pragma omp parallel for default(none) shared(inum, ilist, jlist, cutoff_sq, numneigh, firstneigh, actual_jnum, x) \
+                         private(i, jnum, jj, j, delx, dely, delz)
     for (ii = 0; ii < inum; ii++) {
         i = ilist[ii];
-        double xtmp = atom->x[i][0];
-        double ytmp = atom->x[i][1];
-        double ztmp = atom->x[i][2];
-        jlist = list->firstneigh[i];
-        jnum = list->numneigh[i];
-//        tot_number_of_neighbours += jnum;
+        double xtmp = x[i][0];
+        double ytmp = x[i][1];
+        double ztmp = x[i][2];
+        jlist = firstneigh[i];
+        jnum = numneigh[i];
+        int cur_actual_jnum = 0;
         for (jj = 0; jj < jnum; ++jj) {
             j = jlist[jj];
             j &= NEIGHMASK;
-            delx = xtmp - atom->x[j][0];
-            dely = ytmp - atom->x[j][1];
-            delz = ztmp - atom->x[j][2];
+            delx = xtmp - x[j][0];
+            dely = ytmp - x[j][1];
+            delz = ztmp - x[j][2];
             double rsq = delx * delx + dely * dely + delz * delz;
             if (rsq < cutoff_sq) {
-                n_real_neighbours += 1;
+                cur_actual_jnum += 1;
             }
         }
+        actual_jnum[ii] = cur_actual_jnum;
     }
+    n_real_neighbours = std::accumulate(actual_jnum.begin(), actual_jnum.end(), 0);
+
+    std::vector<int> actual_jnum_shift(actual_jnum.size(), 0);
+    std::partial_sum(actual_jnum.begin(), actual_jnum.end() - 1, actual_jnum_shift.begin() + 1);
+
     if (n_real_neighbours <= tot_neighbours) {
         n_fake_neighbours = tot_neighbours - n_real_neighbours;
     } else { // n_real_neighbours > tot_neighbours
-        tot_neighbours = (int) std::round(n_real_neighbours * 1.01); // add 10% of fake neighbours
-//        tot_neighbours = n_real_neighbours + 1;
+        n_fake_neighbours = (int) std::round(n_real_neighbours * 0.01);
+        if (n_fake_neighbours < 1) n_fake_neighbours = 1;
+        tot_neighbours = n_real_neighbours + n_fake_neighbours; // add 10% of fake neighbours
         printf("Increase tot_neighbours = %d, because n_real_neighbours=%d\n", tot_neighbours, n_real_neighbours);
-        n_fake_neighbours = tot_neighbours - n_real_neighbours;
     }
     n_tot_neighbours = tot_neighbours;
 
@@ -293,25 +302,29 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
     std::vector<int32_t> ind_j_vector(n_tot_neighbours);
     std::vector<int32_t> mu_i_vector(n_tot_neighbours);
     std::vector<int32_t> mu_j_vector(n_tot_neighbours);
-    int tot_ind = 0;
+#pragma omp parallel for default(none)  \
+    shared(inum, ilist, firstneigh, numneigh, actual_jnum_shift, cutoff_sq, type, x, \
+    ind_i_vector, ind_j_vector, mu_i_vector, mu_j_vector) \
+    private(i, jlist, jnum, jj, j, delx, dely, delz)
     for (ii = 0; ii < inum; ++ii) {
         i = ilist[ii];
-        double xtmp = atom->x[i][0];
-        double ytmp = atom->x[i][1];
-        double ztmp = atom->x[i][2];
-        jlist = list->firstneigh[i];
-        jnum = list->numneigh[i];
+        const double xtmp = x[i][0];
+        const double ytmp = x[i][1];
+        const double ztmp = x[i][2];
+        jlist = firstneigh[i];
+        jnum = numneigh[i];
+        int tot_ind = actual_jnum_shift[ii];
         for (jj = 0; jj < jnum; ++jj) {
             j = jlist[jj];
-            delx = xtmp - atom->x[j][0];
-            dely = ytmp - atom->x[j][1];
-            delz = ztmp - atom->x[j][2];
-            double rsq = delx * delx + dely * dely + delz * delz;
+            delx = xtmp - x[j][0];
+            dely = ytmp - x[j][1];
+            delz = ztmp - x[j][2];
+            const double rsq = delx * delx + dely * dely + delz * delz;
             if (rsq < cutoff_sq) {
                 ind_i_vector[tot_ind] = i;
                 ind_j_vector[tot_ind] = j;
-                mu_i_vector[tot_ind] = type[i]-1;
-                mu_j_vector[tot_ind] = type[j]-1;
+                mu_i_vector[tot_ind] = type[i] - 1;
+                mu_j_vector[tot_ind] = type[j] - 1;
                 ++tot_ind;
             }
         }
@@ -319,7 +332,9 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
 
     // add fake bonds
     int fake_atom_ind = n_atoms_extended + n_fake_atoms - 1;
-    for (; tot_ind < n_tot_neighbours; tot_ind++) {
+#pragma omp parallel for default(none) shared(n_real_neighbours, n_tot_neighbours, fake_atom_ind, \
+        ind_i_vector, ind_j_vector, mu_i_vector, mu_j_vector)
+    for (int tot_ind = n_real_neighbours; tot_ind < n_tot_neighbours; tot_ind++) {
         ind_i_vector[tot_ind] = fake_atom_ind; // fake atom ind
         ind_j_vector[tot_ind] = fake_atom_ind; // fake atom ind
         mu_i_vector[tot_ind] = 0;
@@ -339,11 +354,6 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
                         cppflow::tensor(mu_j_vector, {n_tot_neighbours}));
 
 
-    // mu_ij: bonds - stub
-//    std::vector<int32_t> mu_ij_vector(n_tot_neighbours, 0);
-//    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "mu_ij" + ":0",
-//                        cppflow::tensor(mu_ij_vector, {n_tot_neighbours}));
-
     // num_struc: 1
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "num_struc" + ":0",
                         cppflow::tensor(std::vector<int32_t>{1}, {}));
@@ -351,7 +361,7 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
 
     // positions: [n_extened_atoms+n_fake_atoms, 3]
     std::vector<double> positions_vec(3 * (n_atoms_extended + n_fake_atoms), 0.);
-    for (i = 0, tot_ind = 0; i < n_atoms_extended; ++i) {
+    for (int tot_ind = 0, i = 0; i < n_atoms_extended; ++i) {
         for (int k = 0; k < 3; ++k, ++tot_ind)
             positions_vec[tot_ind] = x[i][k];
     }
@@ -360,7 +370,6 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
                         cppflow::tensor(positions_vec, {n_atoms_extended + n_fake_atoms, 3}));
 
 
-//    printf("tot_number_of_neighbours=%d, n_atoms_extended=%d\n", tot_number_of_neighbours, n_atoms_extended);
     //CALL MODEL
     std::vector<cppflow::tensor> output = aceimpl->model->operator()(
             inputs,
@@ -378,13 +387,13 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
 
     auto f_tens = f_out.get_tensor();
     const double *f_data = static_cast<double *>(TF_TensorData(f_tens.get()));
-
-    //loop over atoms
-    tot_ind = 0;
+    //(parallel) loop over atoms
+#pragma omp parallel for default(none) shared(inum, ilist, firstneigh, numneigh, x, actual_jnum_shift, cutoff_sq, \
+                e_data, f_data, f, nlocal, newton_pair, type)     private(i, jlist, jnum, jj, delx, dely, delz, j, fij)
     for (ii = 0; ii < inum; ii++) {
         i = ilist[ii];
-        jlist = list->firstneigh[i];
-        jnum = list->numneigh[i];
+        jlist = firstneigh[i];
+        jnum = numneigh[i];
 
         const int itype = type[i];
 
@@ -392,8 +401,7 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
         const double ytmp = x[i][1];
         const double ztmp = x[i][2];
 
-        // 'compute_atom' will update the `aceimpl->ace->e_atom` and `aceimpl->ace->neighbours_forces(jj, alpha)` arrays
-
+        int tot_ind = actual_jnum_shift[ii] * 3;
         for (jj = 0; jj < jnum; ++jj) {
             j = jlist[jj];
             j &= NEIGHMASK;
@@ -412,24 +420,33 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
                 f[i][0] += fij[0];
                 f[i][1] += fij[1];
                 f[i][2] += fij[2];
+                //OpenMP atomic
+#pragma omp atomic
                 f[j][0] -= fij[0];
+#pragma omp atomic
                 f[j][1] -= fij[1];
+#pragma omp atomic
                 f[j][2] -= fij[2];
 
-                // tally per-atom virial contribution
+                // tally per-atom virial contribution, OpenMP critical !
                 if (vflag_either)
-                    ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fij[0], fij[1], fij[2], -delx, -dely,
-                                 -delz);
+#pragma omp critical
+                {
+                    ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fij[0], fij[1], fij[2], -delx, -dely, -delz);
+                }
             }
         }
 
         // tally energy contribution
         if (eflag_either) {
             // evdwl = energy of atom I
-            evdwl = scale[itype][itype] * e_data[i];
-            ev_tally_full(i, 2.0 * evdwl, 0.0, 0.0, 0.0, 0.0, 0.0);
+#pragma omp critical
+            {
+                double evdwl = scale[itype][itype] * e_data[i];
+                ev_tally_full(i, 2.0 * evdwl, 0.0, 0.0, 0.0, 0.0, 0.0);
+            }
         }
-    }
+    } // end #pragma omp parallel for
 
     if (vflag_fdotr) virial_fdotr_compute();
 
