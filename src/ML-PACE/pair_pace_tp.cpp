@@ -19,6 +19,8 @@
 #include <exception>
 #include <numeric>
 
+#define PACE_TP_OMP 1
+
 const std::string DEFAULT_INPUT_PREFIX = "serving_default_";
 
 
@@ -50,6 +52,9 @@ PairPACETensorPotential::PairPACETensorPotential(LAMMPS *lmp) : Pair(lmp) {
     scale = nullptr;
 
     chunksize = 4096;
+
+    data_timer.init();
+    tp_timer.init();
 }
 
 /* ----------------------------------------------------------------------
@@ -65,6 +70,8 @@ PairPACETensorPotential::~PairPACETensorPotential() {
         memory->destroy(cutsq);
         memory->destroy(scale);
     }
+//    std::cout<<"Data timer: "<<data_timer.as_microseconds()<<std::endl;
+//    std::cout<<"TP timer: "<<tp_timer.as_microseconds()<<std::endl;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -118,7 +125,7 @@ void PairPACETensorPotential::coeff(int narg, char **arg) {
     delete aceimpl->model;
     //load potential file
     if (comm->me == 0) utils::logmesg(lmp, "Loading {}\n", potential_file_name);
-    // TODO: load cppflow model
+    // load cppflow model
     aceimpl->model = new cppflow::model(potential_file_name);
 
     if (comm->me == 0) {
@@ -164,7 +171,6 @@ void PairPACETensorPotential::coeff(int narg, char **arg) {
         for (int j = i; j <= n; j++) scale[i][j] = 1.0;
     }
 
-//    aceimpl->ace->set_basis(*aceimpl->basis_set, 1);
 }
 
 
@@ -238,7 +244,7 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
     // the pointer to the list of neighbors of "i"
     firstneigh = list->firstneigh;
 
-
+    data_timer.start();
     std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
 
     // atomic_mu_i: per-atom species type + padding with type[0]
@@ -260,8 +266,10 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
     //determine the maximum number of neighbours (within cutoff)
     std::vector<int> actual_jnum(inum, 0);
     double cutoff_sq = cutoff * cutoff;
+#ifdef PACE_TP_OMP
 #pragma omp parallel for default(none) shared(inum, ilist, jlist, cutoff_sq, numneigh, firstneigh, actual_jnum, x) \
                          private(i, jnum, jj, j, delx, dely, delz)
+#endif
     for (ii = 0; ii < inum; ii++) {
         i = ilist[ii];
         double xtmp = x[i][0];
@@ -302,10 +310,12 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
     std::vector<int32_t> ind_j_vector(n_tot_neighbours);
     std::vector<int32_t> mu_i_vector(n_tot_neighbours);
     std::vector<int32_t> mu_j_vector(n_tot_neighbours);
+#ifdef PACE_TP_OMP
 #pragma omp parallel for default(none)  \
     shared(inum, ilist, firstneigh, numneigh, actual_jnum_shift, cutoff_sq, type, x, \
     ind_i_vector, ind_j_vector, mu_i_vector, mu_j_vector) \
     private(i, jlist, jnum, jj, j, delx, dely, delz)
+#endif
     for (ii = 0; ii < inum; ++ii) {
         i = ilist[ii];
         const double xtmp = x[i][0];
@@ -332,8 +342,10 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
 
     // add fake bonds
     int fake_atom_ind = n_atoms_extended + n_fake_atoms - 1;
+#ifdef PACE_TP_OMP
 #pragma omp parallel for default(none) shared(n_real_neighbours, n_tot_neighbours, fake_atom_ind, \
         ind_i_vector, ind_j_vector, mu_i_vector, mu_j_vector)
+#endif
     for (int tot_ind = n_real_neighbours; tot_ind < n_tot_neighbours; tot_ind++) {
         ind_i_vector[tot_ind] = fake_atom_ind; // fake atom ind
         ind_j_vector[tot_ind] = fake_atom_ind; // fake atom ind
@@ -369,7 +381,9 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "positions" + ":0",
                         cppflow::tensor(positions_vec, {n_atoms_extended + n_fake_atoms, 3}));
 
+    data_timer.stop();
 
+    tp_timer.start();
     //CALL MODEL
     std::vector<cppflow::tensor> output = aceimpl->model->operator()(
             inputs,
@@ -378,7 +392,9 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
                     "StatefulPartitionedCall:1",
             }
     );
+    tp_timer.stop();
 
+    data_timer.start();
     auto &e_out = output[0];
     auto &f_out = output[1];
 
@@ -388,8 +404,11 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
     auto f_tens = f_out.get_tensor();
     const double *f_data = static_cast<double *>(TF_TensorData(f_tens.get()));
     //(parallel) loop over atoms
-#pragma omp parallel for default(none) shared(inum, ilist, firstneigh, numneigh, x, actual_jnum_shift, cutoff_sq, \
-                e_data, f_data, f, nlocal, newton_pair, type)     private(i, jlist, jnum, jj, delx, dely, delz, j, fij)
+//#ifdef PACE_TP_OMP
+//    #pragma omp parallel for default(none) shared(inum, ilist, firstneigh, numneigh, x, actual_jnum_shift, cutoff_sq, \
+//                e_data, f_data, f, nlocal, newton_pair, type)     private(i, jlist, jnum, jj, delx, dely, delz, j, fij) \
+//                reduction (+: f[:nlocal][:3])
+//#endif
     for (ii = 0; ii < inum; ii++) {
         i = ilist[ii];
         jlist = firstneigh[i];
@@ -420,18 +439,13 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
                 f[i][0] += fij[0];
                 f[i][1] += fij[1];
                 f[i][2] += fij[2];
-                //OpenMP atomic
-#pragma omp atomic
+                //OpenMP atomic or critical
                 f[j][0] -= fij[0];
-#pragma omp atomic
                 f[j][1] -= fij[1];
-#pragma omp atomic
                 f[j][2] -= fij[2];
 
                 // tally per-atom virial contribution, OpenMP critical !
-                if (vflag_either)
-#pragma omp critical
-                {
+                if (vflag_either) {
                     ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fij[0], fij[1], fij[2], -delx, -dely, -delz);
                 }
             }
@@ -440,15 +454,12 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
         // tally energy contribution
         if (eflag_either) {
             // evdwl = energy of atom I
-#pragma omp critical
-            {
-                double evdwl = scale[itype][itype] * e_data[i];
-                ev_tally_full(i, 2.0 * evdwl, 0.0, 0.0, 0.0, 0.0, 0.0);
-            }
+            evdwl = scale[itype][itype] * e_data[i];
+            ev_tally_full(i, 2.0 * evdwl, 0.0, 0.0, 0.0, 0.0, 0.0);
         }
     } // end #pragma omp parallel for
 
     if (vflag_fdotr) virial_fdotr_compute();
-
+    data_timer.stop();
     // end modifications YL
 }
