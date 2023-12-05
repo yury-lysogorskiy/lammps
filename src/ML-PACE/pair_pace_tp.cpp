@@ -70,8 +70,11 @@ PairPACETensorPotential::~PairPACETensorPotential() {
         memory->destroy(cutsq);
         memory->destroy(scale);
     }
-//    std::cout<<"Data timer: "<<data_timer.as_microseconds()<<std::endl;
-//    std::cout<<"TP timer: "<<tp_timer.as_microseconds()<<std::endl;
+    auto data_t = data_timer.as_microseconds();
+    auto tp_t = tp_timer.as_microseconds();
+    std::cout << "Data prep. timer: " << data_t << " mcs" << std::endl;
+    std::cout << "TP call timer: " << tp_t << " mcs" << std::endl;
+    std::cout << "Data prep time fraction: " << ((double) data_t / (data_t + tp_t) * 1e2) << " %" << std::endl;
 }
 
 /* ---------------------------------------------------------------------- */
