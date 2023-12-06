@@ -60,7 +60,7 @@ set(TF_PATH ${TF_DISCOVER})
 set(TF_LIB_FILE "${TF_PATH}/libtensorflow_cc.so.2")
 
 if(EXISTS ${TF_LIB_FILE})
-  message("TensorFlow library is FOUND at ${TF_LIB_FILE}")
+  message("-- TensorFlow library is FOUND at ${TF_LIB_FILE}")
   add_library(tensorflow SHARED IMPORTED)
   set_target_properties(tensorflow PROPERTIES
           IMPORTED_LOCATION ${TF_LIB_FILE}
@@ -102,7 +102,7 @@ if(EXISTS ${TF_LIB_FILE})
   set(PACE_TP ON)
   find_package(OpenMP)
 else()
-  message("TensorFlow library is NOT found at ${TF_LIB_FILE}")
+  message("-- TensorFlow library is NOT found at ${TF_LIB_FILE}")
 endif()
 
 if(CMAKE_PROJECT_NAME STREQUAL "lammps")
