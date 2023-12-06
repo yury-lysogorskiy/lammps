@@ -218,7 +218,6 @@ double PairPACETensorPotential::init_one(int i, int j) {
     if (setflag[i][j] == 0) error->all(FLERR, "All pair coeffs are not set");
     //cutoff from the basis set's radial functions settings
     scale[j][i] = scale[i][j];
-    //TODO: need info on cutoff
     return cutoff;
 }
 
