@@ -18,6 +18,9 @@
 #include <cstring>
 #include <exception>
 #include <numeric>
+#include "yaml-cpp/yaml.h"
+
+#include "utils_pace.h"
 
 #define PACE_TP_OMP 1
 
@@ -103,12 +106,18 @@ void PairPACETensorPotential::settings(int narg, char **arg) {
         if (strcmp(arg[iarg], "chunksize") == 0) {
             chunksize = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
             iarg += 2;
+        } else if (strcmp(arg[iarg], "padding") == 0) {
+            neigh_padding_fraction = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
+            do_padding = (neigh_padding_fraction > 0);
+            if (do_padding && comm->me == 0)
+                utils::logmesg(lmp, "Neighbour padding is ON, padding fraction: {}\n", neigh_padding_fraction);
+            iarg += 2;
         } else
             error->all(FLERR, "Unknown pair_style pace keyword: {}", arg[iarg]);
     }
 
     if (comm->me == 0) {
-        utils::logmesg(lmp, "ACE/TensorPotential");
+        utils::logmesg(lmp, "ACE/TensorPotential\n");
     }
 }
 
@@ -122,52 +131,61 @@ void PairPACETensorPotential::coeff(int narg, char **arg) {
 
     map_element2type(narg - 3, arg + 3);
 
-    auto potential_file_name = utils::get_potential_file_path(arg[2]);
+    auto potential_path = utils::get_potential_file_path(arg[2]);
 
     //load potential file
     delete aceimpl->model;
     //load potential file
-    if (comm->me == 0) utils::logmesg(lmp, "Loading {}\n", potential_file_name);
+    if (comm->me == 0) utils::logmesg(lmp, "Loading {}\n", potential_path);
     // load cppflow model
-    aceimpl->model = new cppflow::model(potential_file_name);
+    aceimpl->model = new cppflow::model(potential_path);
+
+    // read elements from metadata.yaml
+    YAML_PACE::Node metadata_yaml = YAML_PACE::LoadFile(potential_path + "/metadata.yaml");
+    auto elements_yaml = metadata_yaml["chemical_symbols"];
+    elements_name = elements_yaml.as<std::vector<std::string>>();
+    nelements = (int) elements_name.size();
+    for (int mu = 0; mu < nelements; mu++) {
+        elements_to_index_map[elements_name.at(mu)] = mu;
+    }
 
     if (comm->me == 0) {
         utils::logmesg(lmp, "Model loaded\n");
     }
 
+
     // read args that map atom types to PACE elements
     // map[i] = which element the Ith atom type is, -1 if not mapped
     // map[0] is not used
 
-    // TODO: aceimpl->ace->element_type_mapping.init(atom->ntypes + 1);
-
     const int n = atom->ntypes;
-    //TODO: elements to species-type map
-//    for (int i = 1; i <= n; i++) {
-//        char *elemname = arg[2 + i];
-//        if (strcmp(elemname, "NULL") == 0) {
-//            // species_type=-1 value will not reach ACE Evaluator::compute_atom,
-//            // but if it will ,then error will be thrown there
-//            aceimpl->ace->element_type_mapping(i) = -1;
-//            map[i] = -1;
-//            if (comm->me == 0) utils::logmesg(lmp, "Skipping LAMMPS atom type #{}(NULL)\n", i);
-//        } else {
-//            int atomic_number = AtomicNumberByName_pace(elemname);
-//            if (atomic_number == -1) error->all(FLERR, "'{}' is not a valid element\n", elemname);
-//            SPECIES_TYPE mu = aceimpl->basis_set->get_species_index_by_name(elemname);
-//            if (mu != -1) {
-//                if (comm->me == 0)
-//                    utils::logmesg(lmp, "Mapping LAMMPS atom type #{}({}) -> ACE species type #{}\n", i,
-//                                   elemname, mu);
-//                map[i] = mu;
-//                // set up LAMMPS atom type to ACE species  mapping for ace evaluator
-//                aceimpl->ace->element_type_mapping(i) = mu;
-//            } else {
-//                error->all(FLERR, "Element {} is not supported by ACE-potential from file {}", elemname,
-//                           potential_file_name);
-//            }
-//        }
-//    }
+    element_type_mapping.resize(n + 1);
+    // elements to species-type map
+    for (int i = 1; i <= n; i++) {
+        char *elemname = arg[2 + i];
+        if (strcmp(elemname, "NULL") == 0) {
+            // species_type=-1 value will not reach ACE Evaluator::compute_atom,
+            // but if it will ,then error will be thrown there
+            element_type_mapping[i] = -1;
+            map[i] = -1;
+            if (comm->me == 0) utils::logmesg(lmp, "Skipping LAMMPS atom type #{}(NULL)\n", i);
+        } else {
+            int atomic_number = PACE::AtomicNumberByName(elemname);
+            if (atomic_number == -1) error->all(FLERR, "'{}' is not a valid element\n", elemname);
+            int mu = elements_to_index_map.at(elemname);
+            if (mu != -1) {
+                if (comm->me == 0)
+                    utils::logmesg(lmp, "Mapping LAMMPS atom type #{}({}) -> ACE species type #{}\n", i,
+                                   elemname, mu);
+                map[i] = mu;
+                // set up LAMMPS atom type to ACE species  mapping for ace evaluator
+                element_type_mapping[i] = mu;
+            } else {
+                error->all(FLERR, "Element {} is not supported by ACE-potential from file {}", elemname,
+                           potential_path);
+            }
+        }
+    }
 
     // initialize scale factor
     for (int i = 1; i <= n; i++) {
@@ -251,9 +269,9 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
     std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
 
     // atomic_mu_i: per-atom species type + padding with type[0]
-    std::vector<int32_t> atomic_mu_i_vector(n_atoms_extended + n_fake_atoms, type[0] - 1);
+    std::vector<int32_t> atomic_mu_i_vector(n_atoms_extended + n_fake_atoms, element_type_mapping[type[0]]);
     for (i = 0; i < n_atoms_extended; ++i)
-        atomic_mu_i_vector[i] = type[i] - 1;
+        atomic_mu_i_vector[i] = element_type_mapping[type[i]];
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "atomic_mu_i" + ":0",
                         cppflow::tensor(atomic_mu_i_vector, {n_atoms_extended + n_fake_atoms}));
 
@@ -336,8 +354,8 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
             if (rsq < cutoff_sq) {
                 ind_i_vector[tot_ind] = i;
                 ind_j_vector[tot_ind] = j;
-                mu_i_vector[tot_ind] = type[i] - 1;
-                mu_j_vector[tot_ind] = type[j] - 1;
+                mu_i_vector[tot_ind] = element_type_mapping[type[i]];
+                mu_j_vector[tot_ind] = element_type_mapping[type[j]];
                 ++tot_ind;
             }
         }
@@ -357,16 +375,16 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
     }
 
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_i" + ":0",
-                        cppflow::tensor(ind_i_vector, {n_tot_neighbours}));
+                        cppflow::tensor(ind_i_vector, {tot_neighbours}));
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_j" + ":0",
-                        cppflow::tensor(ind_j_vector, {n_tot_neighbours}));
+                        cppflow::tensor(ind_j_vector, {tot_neighbours}));
 
 
     // mu_i, mu_j: bonds
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "mu_i" + ":0",
-                        cppflow::tensor(mu_i_vector, {n_tot_neighbours}));
+                        cppflow::tensor(mu_i_vector, {tot_neighbours}));
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "mu_j" + ":0",
-                        cppflow::tensor(mu_j_vector, {n_tot_neighbours}));
+                        cppflow::tensor(mu_j_vector, {tot_neighbours}));
 
 
     // num_struc: 1
@@ -391,8 +409,8 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
     std::vector<cppflow::tensor> output = aceimpl->model->operator()(
             inputs,
             {
-                    "StatefulPartitionedCall:0",
-                    "StatefulPartitionedCall:1",
+                    "StatefulPartitionedCall:0", // energy [nat]
+                    "StatefulPartitionedCall:1", // force-per-bond [n_neigh, 3]
             }
     );
     tp_timer.stop();
@@ -406,7 +424,8 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
 
     auto f_tens = f_out.get_tensor();
     const double *f_data = static_cast<double *>(TF_TensorData(f_tens.get()));
-    //(parallel) loop over atoms
+    // parallel loop over atoms, does not work because atomic addition on f[j][0..2]+=f_ij, does not work properly...
+    // this section remains serial
 //#ifdef PACE_TP_OMP
 //    #pragma omp parallel for default(none) shared(inum, ilist, firstneigh, numneigh, x, actual_jnum_shift, cutoff_sq, \
 //                e_data, f_data, f, nlocal, newton_pair, type)     private(i, jlist, jnum, jj, delx, dely, delz, j, fij) \
@@ -442,7 +461,7 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
                 f[i][0] += fij[0];
                 f[i][1] += fij[1];
                 f[i][2] += fij[2];
-                //OpenMP atomic or critical
+                //for OpenMP it should be atomic (critical is too slow), but it does no work with f[j][0..2] array
                 f[j][0] -= fij[0];
                 f[j][1] -= fij[1];
                 f[j][2] -= fij[2];
@@ -460,7 +479,7 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
             evdwl = scale[itype][itype] * e_data[i];
             ev_tally_full(i, 2.0 * evdwl, 0.0, 0.0, 0.0, 0.0, 0.0);
         }
-    } // end #pragma omp parallel for
+    } // end for(ii)
 
     if (vflag_fdotr) virial_fdotr_compute();
     data_timer.stop();

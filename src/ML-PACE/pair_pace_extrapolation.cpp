@@ -44,6 +44,8 @@ Copyright 2022 Yury Lysogorskiy^1, Anton Bochkarev^1, Matous Mrovec^1, Ralf Drau
 #include "ace-evaluator/ace_recursive.h"
 #include "ace-evaluator/ace_version.h"
 
+#include "utils_pace.h"
+
 namespace LAMMPS_NS {
 struct ACEALImpl {
   ACEALImpl() : basis_set(nullptr), ace(nullptr), ctilde_basis_set(nullptr), rec_ace(nullptr) {}
@@ -67,22 +69,6 @@ struct ACEALImpl {
 using namespace LAMMPS_NS;
 using namespace MathConst;
 
-static char const *const elements_pace_al[] = {
-    "X",  "H",  "He", "Li", "Be", "B",  "C",  "N",  "O",  "F",  "Ne", "Na", "Mg", "Al", "Si",
-    "P",  "S",  "Cl", "Ar", "K",  "Ca", "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu",
-    "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y",  "Zr", "Nb", "Mo", "Tc", "Ru",
-    "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I",  "Xe", "Cs", "Ba", "La", "Ce", "Pr",
-    "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W",
-    "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac",
-    "Th", "Pa", "U",  "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"};
-static constexpr int elements_num_pace_al = sizeof(elements_pace_al) / sizeof(const char *);
-
-int AtomicNumberByName_pace_al(char *elname)
-{
-  for (int i = 1; i < elements_num_pace_al; i++)
-    if (strcmp(elname, elements_pace_al[i]) == 0) return i;
-  return -1;
-}
 
 /* ---------------------------------------------------------------------- */
 PairPACEExtrapolation::PairPACEExtrapolation(LAMMPS *lmp) : Pair(lmp)
@@ -386,7 +372,7 @@ void PairPACEExtrapolation::coeff(int narg, char **arg)
       if (comm->me == 0) utils::logmesg(lmp, "Skipping LAMMPS atom type #{}(NULL)\n", i);
     } else {
       // dump species types for reconstruction of atomic configurations
-      int atomic_number = AtomicNumberByName_pace_al(elemname);
+      int atomic_number = PACE::AtomicNumberByName(elemname);
       if (atomic_number == -1) error->all(FLERR, "'{}' is not a valid element\n", elemname);
       SPECIES_TYPE mu = aceimpl->basis_set->get_species_index_by_name(elemname);
       if (mu != -1) {

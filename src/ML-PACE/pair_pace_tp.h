@@ -37,7 +37,7 @@ PairStyle(pace/tp,PairPACETensorPotential);
 #include <cppflow/ops.h>
 #include <cppflow/model.h>
 #include <cppflow/tensor.h>
-
+#include <map>
 #include <chrono>
 
 using namespace std::chrono;
@@ -111,6 +111,13 @@ class PairPACETensorPotential : public Pair {
   int tot_neighbours = 0;
 
   int chunksize;
+  double neigh_padding_fraction = 0.01;
+  bool do_padding = true;
+
+  int nelements;
+  std::vector<std::string> elements_name;
+  std::map<std::string, int> elements_to_index_map;
+  std::vector<int> element_type_mapping; // LAMMPS's type to ACE's mu
 
   ACETimer data_timer;
   ACETimer tp_timer;

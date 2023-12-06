@@ -46,7 +46,9 @@ Copyright 2021 Yury Lysogorskiy^1, Cas van der Oord^2, Anton Bochkarev^1,
 #include "ace-evaluator/ace_recursive.h"
 #include "ace-evaluator/ace_version.h"
 #include "ace/ace_b_basis.h"
-#include <unistd.h>
+
+#include "utils_pace.h"
+
 namespace LAMMPS_NS {
 struct ACEImpl {
   ACEImpl() : basis_set(nullptr), ace(nullptr) {}
@@ -63,22 +65,7 @@ struct ACEImpl {
 using namespace LAMMPS_NS;
 using namespace MathConst;
 
-static char const *const elements_pace[] = {
-    "X",  "H",  "He", "Li", "Be", "B",  "C",  "N",  "O",  "F",  "Ne", "Na", "Mg", "Al", "Si",
-    "P",  "S",  "Cl", "Ar", "K",  "Ca", "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu",
-    "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y",  "Zr", "Nb", "Mo", "Tc", "Ru",
-    "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I",  "Xe", "Cs", "Ba", "La", "Ce", "Pr",
-    "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W",
-    "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac",
-    "Th", "Pa", "U",  "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"};
-static constexpr int elements_num_pace = sizeof(elements_pace) / sizeof(const char *);
 
-static int AtomicNumberByName_pace(char *elname)
-{
-  for (int i = 1; i < elements_num_pace; i++)
-    if (strcmp(elname, elements_pace[i]) == 0) return i;
-  return -1;
-}
 
 /* ---------------------------------------------------------------------- */
 PairPACE::PairPACE(LAMMPS *lmp) : Pair(lmp)
@@ -343,7 +330,7 @@ void PairPACE::coeff(int narg, char **arg)
       map[i] = -1;
       if (comm->me == 0) utils::logmesg(lmp, "Skipping LAMMPS atom type #{}(NULL)\n", i);
     } else {
-      int atomic_number = AtomicNumberByName_pace(elemname);
+      int atomic_number = PACE::AtomicNumberByName(elemname);
       if (atomic_number == -1) error->all(FLERR, "'{}' is not a valid element\n", elemname);
       SPECIES_TYPE mu = aceimpl->basis_set->get_species_index_by_name(elemname);
       if (mu != -1) {
