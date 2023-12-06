@@ -39,35 +39,81 @@ endif()
 add_subdirectory(${lib-pace} build-pace)
 set_target_properties(pace PROPERTIES CXX_EXTENSIONS ON OUTPUT_NAME lammps_pace${LAMMPS_MACHINE})
 
-set(tf_c_path "/home/users/lysogy36/miniconda3/envs/ace2/lib/python3.9/site-packages/tensorflow") # tensorflowc-gpu
-#set(tf_c_path "/home/yury/miniconda3/envs/aceworks/lib/python3.9/site-packages/tensorflow") # tensorflowc-gpu
-add_library(tensorflow SHARED IMPORTED)
-set_target_properties(tensorflow PROPERTIES
-        IMPORTED_LOCATION "${tf_c_path}/libtensorflow_cc.so.2"
-        #        IMPORTED_LOCATION "${tf_c_path}/lib/libtensorflow_framework.so"
-        INTERFACE_INCLUDE_DIRECTORIES "${tf_c_path}/include"
+# get default python
+execute_process(
+        COMMAND which python
+        OUTPUT_VARIABLE python_name_default
+        OUTPUT_STRIP_TRAILING_WHITESPACE
 )
-###############################
-set(cppflow_path "/home/users/lysogy36/CLionProjects/tf_from_cpp/lib/cppflow")
-add_library(cppflow INTERFACE)
-target_include_directories(cppflow
-        INTERFACE
-        ${tensorflow_INCLUDE_DIRS}
-        $<BUILD_INTERFACE:${cppflow_path}/include>
+set(PACE_PYTHON_EXEC  ${python_name_default})
+#message("PACE_PYTHON_EXEC=${PACE_PYTHON_EXEC}")
+execute_process(
+  COMMAND ${PACE_PYTHON_EXEC} -c "import os;import pkgutil;package = pkgutil.get_loader('tensorflow');print(os.path.dirname(package.get_filename()))"
+  OUTPUT_VARIABLE TF_DISCOVER
+  OUTPUT_STRIP_TRAILING_WHITESPACE
 )
-target_compile_features(cppflow INTERFACE cxx_std_17)
-target_link_libraries(cppflow INTERFACE
-        ${tensorflow_LIBRARIES}
-)
+#message("TF_DISCOVER=${TF_DISCOVER}")
+string(STRIP "${TF_DISCOVER}" TF_DISCOVER)
+set(TF_PATH ${TF_DISCOVER})
 
-find_package(OpenMP)
+#message("TF_PATH=${TF_PATH}")
+set(TF_LIB_FILE "${TF_PATH}/libtensorflow_cc.so.2")
+
+if(EXISTS ${TF_LIB_FILE})
+  message("TensorFlow library is FOUND at ${TF_LIB_FILE}")
+  add_library(tensorflow SHARED IMPORTED)
+  set_target_properties(tensorflow PROPERTIES
+          IMPORTED_LOCATION ${TF_LIB_FILE}
+          INTERFACE_INCLUDE_DIRECTORIES "${TF_PATH}/include"
+  )
+  ###############################
+  # download cppflow
+  if(NOT EXISTS ${CMAKE_BINARY_DIR}/cppflow-2.0.0)
+      if(NOT EXISTS ${CMAKE_BINARY_DIR}/libcppflow.tar.gz)
+          set(CPPFLOW_URL "https://github.com/serizba/cppflow/archive/refs/tags/v2.0.0.tar.gz" CACHE STRING "URL for cppflow")
+          message(STATUS "Downloading ${CPPFLOW_URL}")
+          file(DOWNLOAD ${CPPFLOW_URL} ${CMAKE_BINARY_DIR}/libcppflow.tar.gz STATUS DL_CPPFLOW_STATUS)
+          # uncompress downloaded sources
+          execute_process(
+                  COMMAND ${CMAKE_COMMAND} -E remove_directory cppflow-*
+                  COMMAND ${CMAKE_COMMAND} -E tar xzf libcppflow.tar.gz
+                  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+          )
+      else()
+        message(STATUS "Using already downloaded archive  ${CMAKE_BINARY_DIR}/libcppflow.tar.gz")
+      endif()
+  else()
+    message(STATUS "Using already existing CPPFLOW ${CMAKE_BINARY_DIR}/cppflow-2.0.0")
+  endif()
+
+  set(cppflow_path "${CMAKE_BINARY_DIR}/cppflow-2.0.0")
+  add_library(cppflow INTERFACE)
+  target_include_directories(cppflow
+          INTERFACE
+          ${tensorflow_INCLUDE_DIRS}
+          $<BUILD_INTERFACE:${cppflow_path}/include>
+  )
+
+  target_compile_features(cppflow INTERFACE cxx_std_17)
+  target_link_libraries(cppflow INTERFACE
+          ${tensorflow_LIBRARIES}
+  )
+
+  set(PACE_TP ON)
+  find_package(OpenMP)
+else()
+  message("TensorFlow library is NOT found at ${TF_LIB_FILE}")
+endif()
 
 if(CMAKE_PROJECT_NAME STREQUAL "lammps")
   target_link_libraries(lammps PRIVATE pace)
-  target_link_libraries(lammps PRIVATE tensorflow)
-  target_link_libraries(lammps PRIVATE cppflow)
-  if(OpenMP_CXX_FOUND)
-    target_link_libraries(lammps PUBLIC OpenMP::OpenMP_CXX)
+  if(DEFINED PACE_TP)
+    add_definitions(-DPACE_TP)
+    target_link_libraries(lammps PRIVATE tensorflow)
+    target_link_libraries(lammps PRIVATE cppflow)
+    if(OpenMP_CXX_FOUND)
+      target_link_libraries(lammps PUBLIC OpenMP::OpenMP_CXX)
+    endif()
   endif()
 
 endif()

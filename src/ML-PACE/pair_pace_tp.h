@@ -20,9 +20,10 @@ Copyright 2021 Yury Lysogorskiy^1, Cas van der Oord^2, Anton Bochkarev^1,
 */
 
 //
-// Created by Lysogorskiy Yury on 27.02.20.
+// Created by Lysogorskiy Yury on 01.12.23.
 //
 
+#ifdef PACE_TP
 #ifdef PAIR_CLASS
 // clang-format off
 PairStyle(pace/tp,PairPACETensorPotential);
@@ -126,3 +127,4 @@ class PairPACETensorPotential : public Pair {
 
 #endif
 #endif
+#endif //#ifdef PACE_TP

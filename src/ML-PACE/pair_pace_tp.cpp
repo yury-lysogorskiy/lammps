@@ -1,7 +1,7 @@
 //
-// Created by lysogy36 on 01.12.23.
+// Created by Yury Lysogorskiy on 01.12.23.
 //
-
+#ifdef PACE_TP
 #include "pair_pace_tp.h"
 
 #include "atom.h"
@@ -489,3 +489,4 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
     data_timer.stop();
     // end modifications YL
 }
+#endif // #ifdef PACE_TP
