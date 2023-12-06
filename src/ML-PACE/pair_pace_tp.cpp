@@ -2,6 +2,7 @@
 // Created by Yury Lysogorskiy on 01.12.23.
 //
 #ifdef PACE_TP
+
 #include "pair_pace_tp.h"
 
 #include "atom.h"
@@ -150,7 +151,7 @@ void PairPACETensorPotential::coeff(int narg, char **arg) {
     for (int mu = 0; mu < nelements; mu++) {
         elements_to_index_map[elements_name.at(mu)] = mu;
     }
-
+    cutoff = metadata_yaml["cutoff"].as<double>();
     if (comm->me == 0) {
         utils::logmesg(lmp, "Model loaded\n");
     }
@@ -489,4 +490,5 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
     data_timer.stop();
     // end modifications YL
 }
+
 #endif // #ifdef PACE_TP
