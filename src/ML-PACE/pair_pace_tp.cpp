@@ -101,6 +101,10 @@ void PairPACETensorPotential::settings(int narg, char **arg) {
     if (strcmp("metal", update->unit_style) != 0)
         error->all(FLERR, "ACE potentials require 'metal' units");
 
+    if (comm->me == 0) {
+        utils::logmesg(lmp, "ACE/TensorPotential\n");
+    }
+
     int iarg = 0;
     while (iarg < narg) {
         if (strcmp(arg[iarg], "chunksize") == 0) {
@@ -108,17 +112,15 @@ void PairPACETensorPotential::settings(int narg, char **arg) {
             iarg += 2;
         } else if (strcmp(arg[iarg], "padding") == 0) {
             neigh_padding_fraction = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
-            do_padding = (neigh_padding_fraction > 0);
-            if (do_padding && comm->me == 0)
-                utils::logmesg(lmp, "Neighbour padding is ON, padding fraction: {}\n", neigh_padding_fraction);
+
             iarg += 2;
         } else
             error->all(FLERR, "Unknown pair_style pace keyword: {}", arg[iarg]);
     }
 
-    if (comm->me == 0) {
-        utils::logmesg(lmp, "ACE/TensorPotential\n");
-    }
+    do_padding = (neigh_padding_fraction > 0);
+    if (do_padding && comm->me == 0)
+        utils::logmesg(lmp, "Neighbour padding is ON, padding fraction: {}\n", neigh_padding_fraction);
 }
 
 /* ----------------------------------------------------------------------
@@ -246,10 +248,9 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
     // number of atoms in cell
     int nlocal = atom->nlocal;
     int n_atoms_extended = atom->nlocal + atom->nghost;
-    int n_fake_atoms = 1;
+    int n_fake_atoms = (do_padding ? 1 : 0);
     int n_real_neighbours;
     int n_fake_neighbours;
-    int n_tot_neighbours;
 
     int newton_pair = force->newton_pair;
 
@@ -317,20 +318,23 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
     std::vector<int> actual_jnum_shift(actual_jnum.size(), 0);
     std::partial_sum(actual_jnum.begin(), actual_jnum.end() - 1, actual_jnum_shift.begin() + 1);
 
-    if (n_real_neighbours <= tot_neighbours) {
-        n_fake_neighbours = tot_neighbours - n_real_neighbours;
-    } else { // n_real_neighbours > tot_neighbours
-        n_fake_neighbours = (int) std::round(n_real_neighbours * 0.01);
-        if (n_fake_neighbours < 1) n_fake_neighbours = 1;
-        tot_neighbours = n_real_neighbours + n_fake_neighbours; // add 10% of fake neighbours
-        printf("Increase tot_neighbours = %d, because n_real_neighbours=%d\n", tot_neighbours, n_real_neighbours);
+    if (do_padding) {
+        if (n_real_neighbours > tot_neighbours) {
+            n_fake_neighbours = static_cast<int>(std::round(n_real_neighbours * neigh_padding_fraction));
+            n_fake_neighbours = std::max(n_fake_neighbours, 1);
+            tot_neighbours = n_real_neighbours + n_fake_neighbours; // add fake neighbours
+            utils::logmesg(lmp,
+                           "Neighbours padding: new num. of neighbours = {} (+{:.3f}% fake neighbours)\n",
+                           tot_neighbours, 100. * (double) n_fake_neighbours / n_real_neighbours);
+        }
+    } else {
+        tot_neighbours = n_real_neighbours;
     }
-    n_tot_neighbours = tot_neighbours;
 
-    std::vector<int32_t> ind_i_vector(n_tot_neighbours);
-    std::vector<int32_t> ind_j_vector(n_tot_neighbours);
-    std::vector<int32_t> mu_i_vector(n_tot_neighbours);
-    std::vector<int32_t> mu_j_vector(n_tot_neighbours);
+    std::vector<int32_t> ind_i_vector(tot_neighbours);
+    std::vector<int32_t> ind_j_vector(tot_neighbours);
+    std::vector<int32_t> mu_i_vector(tot_neighbours);
+    std::vector<int32_t> mu_j_vector(tot_neighbours);
 #ifdef PACE_TP_OMP
 #pragma omp parallel for default(none)  \
     shared(inum, ilist, firstneigh, numneigh, actual_jnum_shift, cutoff_sq, type, x, \
@@ -364,10 +368,10 @@ void PairPACETensorPotential::compute(int eflag, int vflag) {
     // add fake bonds
     int fake_atom_ind = n_atoms_extended + n_fake_atoms - 1;
 #ifdef PACE_TP_OMP
-#pragma omp parallel for default(none) shared(n_real_neighbours, n_tot_neighbours, fake_atom_ind, \
+#pragma omp parallel for default(none) shared(n_real_neighbours, tot_neighbours, fake_atom_ind, \
         ind_i_vector, ind_j_vector, mu_i_vector, mu_j_vector)
 #endif
-    for (int tot_ind = n_real_neighbours; tot_ind < n_tot_neighbours; tot_ind++) {
+    for (int tot_ind = n_real_neighbours; tot_ind < tot_neighbours; tot_ind++) {
         ind_i_vector[tot_ind] = fake_atom_ind; // fake atom ind
         ind_j_vector[tot_ind] = fake_atom_ind; // fake atom ind
         mu_i_vector[tot_ind] = 0;
