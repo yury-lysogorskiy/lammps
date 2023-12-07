@@ -20,18 +20,18 @@ Copyright 2021 Yury Lysogorskiy^1, Cas van der Oord^2, Anton Bochkarev^1,
 */
 
 //
-// Created by Lysogorskiy Yury on 01.12.23.
+// Created by Lysogorskiy Yury on 6.12.23.
 //
 
 #ifdef PACE_TP
 #ifdef PAIR_CLASS
 // clang-format off
-PairStyle(pace/tp,PairPACETensorPotential);
+PairStyle(pace/tp_rij,PairPACETensorPotentialRij);
 // clang-format on
 #else
 
-#ifndef LMP_PAIR_PACE_TP_H
-#define LMP_PAIR_PACE_TP_H
+#ifndef LMP_PAIR_PACE_TP_RIJ_H
+#define LMP_PAIR_PACE_TP_RIJ_H
 
 #include "pair.h"
 // CppFlow headers
@@ -44,10 +44,10 @@ PairStyle(pace/tp,PairPACETensorPotential);
 
 namespace LAMMPS_NS {
 
-class PairPACETensorPotential : public Pair {
+class PairPACETensorPotentialRij : public Pair {
  public:
-  PairPACETensorPotential(class LAMMPS *);
-  ~PairPACETensorPotential() override;
+  PairPACETensorPotentialRij(class LAMMPS *);
+  ~PairPACETensorPotentialRij() override;
 
 
   void compute(int, int) override;
