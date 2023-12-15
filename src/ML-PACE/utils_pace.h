@@ -8,6 +8,8 @@
 #include <cstring>
 #include <chrono>
 
+#include "ace-evaluator/ace_arraynd.h"
+
 namespace PACE {
     static char const *const elements_pace[] = {
             "X", "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si",
@@ -68,6 +70,33 @@ namespace PACE {
         long as_nanoseconds() const { return std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count(); }
 
     };
+
+
+    inline Array2D<double> inv3x3(Array2D<double>& a) {
+        DOUBLE_TYPE det = a(0,0) * (a(2,2) * a(1,1) - a(2,1) * a(1,2))
+                          - a(1,0) * (a(2,2) * a(0,1) - a(2,1) * a(0,2))
+                          + a(2,0) * (a(1,2) * a(0,1) - a(1,1) * a(0,2));
+        if (fabs(det) < 1e-9)
+            throw std::overflow_error("Couldn't invert matrix - determinant is almost zero");
+
+        Array2D<double> ainv(3,3);
+        ainv.fill(0);
+
+        ainv(0,0) = (a(2,2) * a(1,1) - a(2,1) * a(1,2)) / det;
+        ainv(0,1) = -(a(2,2) * a(0,1) - a(2,1) * a(0,2)) / det;
+        ainv(0,2) = (a(1,2) * a(0,1) - a(1,1) * a(0,2)) / det;
+
+        ainv(1,0) = -(a(2,2) * a(1,0) - a(2,0) * a(1,2)) / det;
+        ainv(1,1) = (a(2,2) * a(0,0) - a(2,0) * a(0,2)) / det;
+        ainv(1,2) = -(a(1,2) * a(0,0) - a(1,0) * a(0,2)) / det;
+
+        ainv(2,0) = (a(2,1) * a(1,0) - a(2,0) * a(1,1)) / det;
+        ainv(2,1) = -(a(2,1) * a(0,0) - a(2,0) * a(0,1)) / det;
+        ainv(2,2) = (a(1,1) * a(0,0) - a(1,0) * a(0,1)) / det;
+
+        return ainv;
+    };
+
 }
 
 #endif //LAMMPS_PACE_UTILS_H

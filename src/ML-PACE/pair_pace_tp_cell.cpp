@@ -3,7 +3,7 @@
 //
 #ifdef PACE_TP
 
-#include "pair_pace_tp_rij.h"
+#include "pair_pace_tp_cell.h"
 
 #include "atom.h"
 #include "comm.h"
@@ -14,12 +14,14 @@
 #include "neigh_list.h"
 #include "neighbor.h"
 #include "update.h"
-
+#include "domain.h"
 
 #include <cstring>
 #include <exception>
 #include <numeric>
 #include "yaml-cpp/yaml.h"
+
+#include "ace-evaluator/ace_arraynd.h"
 
 #include "utils_pace.h"
 
@@ -45,7 +47,7 @@ using namespace LAMMPS_NS;
 using namespace MathConst;
 
 /* ---------------------------------------------------------------------- */
-PairPACETensorPotentialRij::PairPACETensorPotentialRij(LAMMPS *lmp) : Pair(lmp) {
+PairPACETensorPotentialCell::PairPACETensorPotentialCell(LAMMPS *lmp) : Pair(lmp) {
     single_enable = 0;
     restartinfo = 0;
     one_coeff = 1;
@@ -64,7 +66,7 @@ PairPACETensorPotentialRij::PairPACETensorPotentialRij(LAMMPS *lmp) : Pair(lmp) 
 /* ----------------------------------------------------------------------
    check if allocated, since class can be destructed when incomplete
 ------------------------------------------------------------------------- */
-PairPACETensorPotentialRij::~PairPACETensorPotentialRij() {
+PairPACETensorPotentialCell::~PairPACETensorPotentialCell() {
     if (copymode) return;
 
     delete aceimpl;
@@ -82,7 +84,7 @@ PairPACETensorPotentialRij::~PairPACETensorPotentialRij() {
 }
 
 /* ---------------------------------------------------------------------- */
-void PairPACETensorPotentialRij::allocate() {
+void PairPACETensorPotentialCell::allocate() {
     allocated = 1;
     int n = atom->ntypes + 1;
 
@@ -95,7 +97,7 @@ void PairPACETensorPotentialRij::allocate() {
 /* ----------------------------------------------------------------------
    global settings
 ------------------------------------------------------------------------- */
-void PairPACETensorPotentialRij::settings(int narg, char **arg) {
+void PairPACETensorPotentialCell::settings(int narg, char **arg) {
     if (narg > 3) utils::missing_cmd_args(FLERR, "pair_style pace/tp", error);
 
     // ACE potentials are parameterized in metal units
@@ -128,7 +130,7 @@ void PairPACETensorPotentialRij::settings(int narg, char **arg) {
    set coeffs for one or more type pairs
 ------------------------------------------------------------------------- */
 
-void PairPACETensorPotentialRij::coeff(int narg, char **arg) {
+void PairPACETensorPotentialCell::coeff(int narg, char **arg) {
 
     if (!allocated) allocate();
 
@@ -202,19 +204,25 @@ void PairPACETensorPotentialRij::coeff(int narg, char **arg) {
    init specific to this pair style
 ------------------------------------------------------------------------- */
 
-void PairPACETensorPotentialRij::init_style() {
+void PairPACETensorPotentialCell::init_style() {
     if (atom->tag_enable == 0) error->all(FLERR, "Pair style pace/tp requires atom IDs");
     if (force->newton_pair == 0) error->all(FLERR, "Pair style pace/tp requires newton pair on");
 
     // request a full neighbor list
     neighbor->add_request(this, NeighConst::REQ_FULL);
+
+    // request atom map (maybe?)
+    if (atom->map_style == Atom::MAP_NONE) {
+        atom->map_init();
+        atom->map_set();
+    }
 }
 
 /* ----------------------------------------------------------------------
    init for one type pair i,j and corresponding j,i
 ------------------------------------------------------------------------- */
 
-double PairPACETensorPotentialRij::init_one(int i, int j) {
+double PairPACETensorPotentialCell::init_one(int i, int j) {
     if (setflag[i][j] == 0) error->all(FLERR, "All pair coeffs are not set");
     //cutoff from the basis set's radial functions settings
     scale[j][i] = scale[i][j];
@@ -224,7 +232,7 @@ double PairPACETensorPotentialRij::init_one(int i, int j) {
 /* ----------------------------------------------------------------------
     extract method for extracting value of scale variable
  ---------------------------------------------------------------------- */
-void *PairPACETensorPotentialRij::extract(const char *str, int &dim) {
+void *PairPACETensorPotentialCell::extract(const char *str, int &dim) {
     dim = 2;
     if (strcmp(str, "scale") == 0) return (void *) scale;
     return nullptr;
@@ -233,7 +241,7 @@ void *PairPACETensorPotentialRij::extract(const char *str, int &dim) {
 
 /* ---------------------------------------------------------------------- */
 
-void PairPACETensorPotentialRij::compute(int eflag, int vflag) {
+void PairPACETensorPotentialCell::compute(int eflag, int vflag) {
     int i, j, ii, jj, inum, jnum;
     double delx, dely, delz, evdwl;
     double fij[3];
@@ -244,10 +252,11 @@ void PairPACETensorPotentialRij::compute(int eflag, int vflag) {
     double **x = atom->x;
     double **f = atom->f;
     int *type = atom->type;
+//    tagint *tag = atom->tag;
 
     // number of atoms in cell
     int nlocal = atom->nlocal;
-    int n_atoms_extended = atom->nlocal + atom->nghost;
+//    int n_atoms_extended = atom->nlocal + atom->nghost;
     int n_fake_atoms = (do_padding ? 1 : 0);
     int n_real_neighbours;
     int n_fake_neighbours;
@@ -270,19 +279,40 @@ void PairPACETensorPotentialRij::compute(int eflag, int vflag) {
     std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
 
     // atomic_mu_i: per-atom species type + padding with type[0]
-    std::vector<int32_t> atomic_mu_i_vector(n_atoms_extended + n_fake_atoms, element_type_mapping[type[0]]);
-    for (i = 0; i < n_atoms_extended; ++i)
+    std::vector<int32_t> atomic_mu_i_vector(nlocal + n_fake_atoms, element_type_mapping[type[0]]);
+    for (i = 0; i < nlocal; ++i)
         atomic_mu_i_vector[i] = element_type_mapping[type[i]];
+
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "atomic_mu_i" + ":0",
-                        cppflow::tensor(atomic_mu_i_vector, {n_atoms_extended + n_fake_atoms}));
+                        cppflow::tensor(atomic_mu_i_vector, {nlocal + n_fake_atoms}));
 
     // batch_nat = number of extened atoms + padding
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "batch_nat" + ":0",
-                        cppflow::tensor(std::vector<int32_t>{n_atoms_extended + n_fake_atoms}, {}));
+                        cppflow::tensor(std::vector<int32_t>{nlocal + n_fake_atoms}, {}));
 
     // batch_nreal_atoms_per_structure: number of extened atoms (w/o padding)
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "batch_nreal_atoms_per_structure" + ":0",
-                        cppflow::tensor(std::vector<int32_t>{n_atoms_extended + n_fake_atoms}, {1}));
+                        cppflow::tensor(std::vector<int32_t>{nlocal + n_fake_atoms}, {1}));
+
+//    Array2D<double> cell(3, 3);
+//    cell.fill(0);
+    //from MACE: https://github.com/ACEsuit/lammps/blob/mace/src/ML-MACE/pair_mace.cpp#L80
+
+//    cell(0, 0) = domain->h[0];
+//    cell(0, 1) = 0.0;
+//    cell(0, 2) = 0.0;
+//    cell(1, 0) = domain->h[5];
+//    cell(1, 1) = domain->h[1];
+//    cell(1, 2) = 0.0;
+//    cell(2, 0) = domain->h[4];
+//    cell(2, 1) = domain->h[3];
+//    cell(2, 2) = domain->h[2];
+//
+//    auto cell_inv = PACE::inv3x3(cell);
+
+    //Nequip: https://github.com/mir-group/pair_nequip/blob/main/pair_nequip.cpp#L352C2-L360C52
+
+
 
     // ind_i, ind_j: bonds
     //determine the maximum number of neighbours (within cutoff)
@@ -335,11 +365,11 @@ void PairPACETensorPotentialRij::compute(int eflag, int vflag) {
     std::vector<int32_t> ind_j_vector(tot_neighbours);
     std::vector<int32_t> mu_i_vector(tot_neighbours);
     std::vector<int32_t> mu_j_vector(tot_neighbours);
-    std::vector<double> r_ij_vec(3 * tot_neighbours, 0.);
+    std::vector<double> vector_offset(tot_neighbours * 3);
 #ifdef PACE_TP_OMP
 #pragma omp parallel for default(none)  \
     shared(inum, ilist, firstneigh, numneigh, actual_jnum_shift, cutoff_sq, type, x, \
-    ind_i_vector, ind_j_vector, mu_i_vector, mu_j_vector, r_ij_vec) \
+    ind_i_vector, ind_j_vector, mu_i_vector, mu_j_vector, vector_offset) \
     private(i, jlist, jnum, jj, j, delx, dely, delz)
 #endif
     for (ii = 0; ii < inum; ++ii) {
@@ -352,59 +382,49 @@ void PairPACETensorPotentialRij::compute(int eflag, int vflag) {
         int tot_ind = actual_jnum_shift[ii];
         for (jj = 0; jj < jnum; ++jj) {
             j = jlist[jj];
-            delx = x[j][0] - xtmp;
-            dely = x[j][1] - ytmp;
-            delz = x[j][2] - ztmp;
+            j &= NEIGHMASK;
+            delx = xtmp - x[j][0];
+            dely = ytmp - x[j][1];
+            delz = ztmp - x[j][2];
             const double rsq = delx * delx + dely * dely + delz * delz;
             if (rsq < cutoff_sq) {
                 ind_i_vector[tot_ind] = i;
-                ind_j_vector[tot_ind] = j;
+                // remap j to j_local
+                int j_local = atom->map(atom->tag[j]);
+                ind_j_vector[tot_ind] = j_local;
                 mu_i_vector[tot_ind] = element_type_mapping[type[i]];
                 mu_j_vector[tot_ind] = element_type_mapping[type[j]];
-                r_ij_vec[3 * tot_ind] = delx;
-                r_ij_vec[3 * tot_ind + 1] = dely;
-                r_ij_vec[3 * tot_ind + 2] = delz;
 
+                double shiftx = atom->x[j][0] - atom->x[j_local][0];
+                double shifty = atom->x[j][1] - atom->x[j_local][1];
+                double shiftz = atom->x[j][2] - atom->x[j_local][2];
+//                double shiftxs = std::round(
+//                        domain->h_inv[0] * shiftx + domain->h_inv[5] * shifty + domain->h_inv[4] * shiftz);
+//                double shiftys = std::round(domain->h_inv[1] * shifty + domain->h_inv[3] * shiftz);
+//                double shiftzs = std::round(domain->h_inv[2] * shiftz);
+//                vector_offset[3 * tot_ind + 0] = domain->h[0] * shiftxs + domain->h[5] * shiftys + domain->h[4] * shiftzs;
+//                vector_offset[3 * tot_ind + 1] = domain->h[1] * shiftys + domain->h[3] * shiftzs;
+//                vector_offset[3 * tot_ind + 2] = domain->h[2] * shiftzs;
+                vector_offset[3 * tot_ind + 0] = shiftx;
+                vector_offset[3 * tot_ind + 1] = shifty;
+                vector_offset[3 * tot_ind + 2] = shiftz;
                 ++tot_ind;
             }
         }
     }
 
     // add fake bonds
-    int fake_atom_ind = n_atoms_extended + n_fake_atoms - 1;
+    int fake_atom_ind = nlocal + n_fake_atoms - 1;
 #ifdef PACE_TP_OMP
 #pragma omp parallel for default(none) shared(n_real_neighbours, tot_neighbours, fake_atom_ind, \
-        ind_i_vector, ind_j_vector, mu_i_vector, mu_j_vector, r_ij_vec)
+        ind_i_vector, ind_j_vector, mu_i_vector, mu_j_vector)
 #endif
     for (int tot_ind = n_real_neighbours; tot_ind < tot_neighbours; tot_ind++) {
         ind_i_vector[tot_ind] = fake_atom_ind; // fake atom ind
         ind_j_vector[tot_ind] = fake_atom_ind; // fake atom ind
         mu_i_vector[tot_ind] = 0;
         mu_j_vector[tot_ind] = 0;
-
-        r_ij_vec[3 * tot_ind] = 2 * cutoff;
-        r_ij_vec[3 * tot_ind + 1] = 2 * cutoff;
-        r_ij_vec[3 * tot_ind + 2] = 2 * cutoff;
     }
-#if 0
-    printf("int_i=[");
-    for(int t=0;t<ind_i_vector.size();++t){
-        printf("%d,",ind_i_vector[t]);
-    }
-    printf("\n");
-
-    printf("int_j=[");
-    for(int t=0;t<ind_j_vector.size();++t){
-        printf("%d,",ind_j_vector[t]);
-    }
-    printf("\n");
-
-    printf("positions=[");
-    for(int t=0;t<r_ij_vec.size();++t){
-        printf("%f,",r_ij_vec[t]);
-    }
-    printf("\n");
-#endif
 
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_i" + ":0",
                         cppflow::tensor(ind_i_vector, {tot_neighbours}));
@@ -423,9 +443,20 @@ void PairPACETensorPotentialRij::compute(int eflag, int vflag) {
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "num_struc" + ":0",
                         cppflow::tensor(std::vector<int32_t>{1}, {}));
 
+    // num_struc: 1
+    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "vector_offsets" + ":0",
+                        cppflow::tensor(vector_offset, {tot_neighbours, 3}));
+
+
+    // positions: [n_extened_atoms+n_fake_atoms, 3]
+    std::vector<double> positions_vec(3 * (nlocal + n_fake_atoms), 0.);
+    for (int tot_ind = 0, i = 0; i < nlocal; ++i) {
+        for (int k = 0; k < 3; ++k, ++tot_ind)
+            positions_vec[tot_ind] = x[i][k];
+    }
 
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "positions" + ":0",
-                        cppflow::tensor(r_ij_vec, {tot_neighbours, 3}));
+                        cppflow::tensor(positions_vec, {nlocal + n_fake_atoms, 3}));
 
     data_timer.stop();
 
