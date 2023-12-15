@@ -57,8 +57,11 @@ string(STRIP "${TF_DISCOVER}" TF_DISCOVER)
 set(TF_PATH ${TF_DISCOVER})
 
 #message("TF_PATH=${TF_PATH}")
-set(TF_LIB_FILE "${TF_PATH}/libtensorflow_cc.so.2")
-
+if(APPLE)
+  set(TF_LIB_FILE "${TF_PATH}/libtensorflow_cc.2.dylib")
+else()
+  set(TF_LIB_FILE "${TF_PATH}/libtensorflow_cc.so.2")
+endif()
 if(EXISTS ${TF_LIB_FILE})
   message("-- TensorFlow library is FOUND at ${TF_LIB_FILE}")
   add_library(tensorflow SHARED IMPORTED)
