@@ -443,7 +443,7 @@ void PairPACETensorPotentialCell::compute(int eflag, int vflag) {
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "num_struc" + ":0",
                         cppflow::tensor(std::vector<int32_t>{1}, {}));
 
-    // num_struc: 1
+    // vector_offsets: 1
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "vector_offsets" + ":0",
                         cppflow::tensor(vector_offset, {tot_neighbours, 3}));
 
