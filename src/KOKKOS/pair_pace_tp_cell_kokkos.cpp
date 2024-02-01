@@ -1,7 +1,7 @@
 //
 // Created by Lysogorskiy Yry on 14.01.24.
 //
-#ifdef 0
+#ifdef ACE_TP_KOKKOS
 #include "pair_pace_tp_cell_kokkos.h"
 
 

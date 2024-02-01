@@ -1,7 +1,7 @@
 //
 // Created by Lysogorskiy Yry on 14.01.24.
 //
-#ifdef 0
+#ifdef ACE_TP_KOKKOS
 #ifdef PAIR_CLASS
 // clang-format off
 PairStyle(pace/tp_cell/kk,PairPACETensorPotentialCellKokkos<LMPDeviceType>);
