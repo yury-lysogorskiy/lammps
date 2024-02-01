@@ -1,7 +1,7 @@
 //
 // Created by Lysogorskiy Yry on 14.01.24.
 //
-
+#ifdef 0
 #ifdef PAIR_CLASS
 // clang-format off
 PairStyle(pace/tp_cell/kk,PairPACETensorPotentialCellKokkos<LMPDeviceType>);
@@ -50,25 +50,28 @@ namespace LAMMPS_NS {
         typedef Kokkos::View<F_FLOAT**, DeviceType> t_fparams;
         t_fparams d_cutsq;
 
-        typename AT::t_int_1d d_map;
-
-        typename AT::t_int_1d d_atomic_mu_i_vector;
-        typename AT::t_int_1d d_ind_i_vector;
-        typename AT::t_int_1d d_ind_j_vector;
-        typename AT::t_int_1d d_mu_i_vector;
-        typename AT::t_int_1d d_mu_j_vector;
-
-        typename AT::t_int_1d d_actual_jnum;
-        typename AT::t_int_1d d_actual_jnum_shift;
+        typedef Kokkos::View<int*, DeviceType> t_ace_1i;
 
 
-        typedef Kokkos::View<double*[3], DeviceType> t_double_2d3;
-        t_double_2d3 d_vector_offset;
-        t_double_2d3 d_positions;
-        t_double_2d3 d_fpair;
+        t_ace_1i d_map;
 
-        typedef Kokkos::View<double*, DeviceType> t_double_1d;
-        t_double_1d d_atom_energy;
+//        t_ace_1i d_atomic_mu_i_vector;
+//        t_ace_1i d_ind_i_vector;
+//        t_ace_1i d_ind_j_vector;
+//        t_ace_1i d_mu_i_vector;
+//        t_ace_1i d_mu_j_vector;
+
+//        t_ace_1i d_actual_jnum;
+//        t_ace_1i d_actual_jnum_shift;
+
+
+//        typedef Kokkos::View<double*[3], DeviceType> t_double_2d3;
+//        t_double_2d3 d_vector_offset;
+//        t_double_2d3 d_positions;
+//        t_double_2d3 d_fpair;
+
+//        typedef Kokkos::View<double*, DeviceType> t_double_1d;
+//        t_double_1d d_atom_energy;
 
 
 
@@ -77,5 +80,6 @@ namespace LAMMPS_NS {
     };
 }    // namespace LAMMPS_NS
 
+#endif
 #endif
 #endif
