@@ -42,7 +42,7 @@ test-md-energy-conservation:
   script:
     - cd test/md-run
     - ../../build/lmp -in in.md.forces
-    - python analyse_energy_convergence.py log.lammps
+    - python ../analyse_energy_convergence.py log.lammps
 
 test-md-Ti-energy-conservation-defaul-eval:
   stage: test
@@ -51,7 +51,7 @@ test-md-Ti-energy-conservation-defaul-eval:
   script:
     - cd test/md-run-Ti
     - ../../build/lmp -in in.md.forces
-    - python analyse_energy_convergence.py log.lammps
+    - python ../analyse_energy_convergence.py log.lammps
 
 test-md-Ti-energy-conservation-product-eval:
   stage: test
@@ -60,7 +60,7 @@ test-md-Ti-energy-conservation-product-eval:
   script:
     - cd test/md-run-Ti
     - ../../build/lmp -in in.md.forces.product
-    - python analyse_energy_convergence.py log.lammps
+    - python ../analyse_energy_convergence.py log.lammps
 
 test-two-atom-types:
   stage: test
@@ -95,7 +95,7 @@ test-md-energy-conservation-mpi:
   script:
     - cd test/md-run
     - mpirun -np 2 ../../build-mpi/lmp -in in.md.forces
-    - python analyse_energy_convergence.py log.lammps
+    - python ../analyse_energy_convergence.py log.lammps
 
 
 test-md-energy-conservation-multispecies:
@@ -105,7 +105,7 @@ test-md-energy-conservation-multispecies:
   script:
     - cd test/md-run-FeCrH/
     - ../../build/lmp -in in.lammps
-    - python analyse_energy_convergence.py log.lammps
+    - python ../analyse_energy_convergence.py log.lammps
 
 test-md-energy-conservation-multispecies-mpi:
   stage: test
@@ -114,7 +114,7 @@ test-md-energy-conservation-multispecies-mpi:
   script:
     - cd test/md-run-FeCrH/
     - mpirun -np 2 ../../build-mpi/lmp -in in.lammps
-    - python analyse_energy_convergence.py log.lammps
+    - python ../analyse_energy_convergence.py log.lammps
 
 test-md-pace_al:
   stage: test

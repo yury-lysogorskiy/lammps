@@ -1,4 +1,5 @@
 import math
+import sys
 
 
 def mean(lst):
@@ -11,32 +12,29 @@ def std(lst):
     return math.sqrt(var)
 
 
-import sys
-
 with open(sys.argv[1]) as f:
     lines = f.readlines()
 
-found = False
+start_list = []
 for i, line in enumerate(lines):
-    if 'Step TotEng PotEng KinEng Pxx Pyy Pzz Press Temp Volume' in line:
-        found = True
-        break
+    if '   Step' in line:
+        start_list.append(i + 1)
 
-i += 1
-
-if not found:
+if not start_list:
     raise ValueError("Begin of MD trajectory not found")
 
-found = False
-for j in range(i, len(lines)):
-    line = lines[j]
-    if 'Loop time of' in line:
-        found = True
-        break
+stop_list = []
+for i, line in enumerate(lines):
+    if 'Loop time' in line:
+        stop_list.append(i + 1)
 
-if not found:
+if not stop_list:
     raise ValueError("End of MD trajectory not found")
+print("start_list=", start_list)
+print("stop_list=", stop_list)
 
+i = start_list[-1]
+j = stop_list[-1] - 1
 data_lines = lines[i:j]
 
 data_lines = list(map(lambda s: s.strip().split(), data_lines))
