@@ -117,6 +117,9 @@ void PairPACETensorPotentialCell::settings(int narg, char **arg) {
             neigh_padding_fraction = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
 
             iarg += 2;
+        } else if (strcmp(arg[iarg], "pad_verbose") == 0) {
+            pad_verbose = true;
+            iarg += 1;
         } else
             error->all(FLERR, "Unknown pair_style pace keyword: {}", arg[iarg]);
     }
@@ -353,9 +356,10 @@ void PairPACETensorPotentialCell::compute(int eflag, int vflag) {
             n_fake_neighbours = static_cast<int>(std::round(n_real_neighbours * neigh_padding_fraction));
             n_fake_neighbours = std::max(n_fake_neighbours, 1);
             tot_neighbours = n_real_neighbours + n_fake_neighbours; // add fake neighbours
-            utils::logmesg(lmp,
-                           "Neighbours padding: new num. of neighbours = {} (+{:.3f}% fake neighbours)\n",
-                           tot_neighbours, 100. * (double) n_fake_neighbours / n_real_neighbours);
+            if (pad_verbose)
+                utils::logmesg(lmp,
+                               "Neighbours padding: new num. of neighbours = {} (+{:.3f}% fake neighbours)\n",
+                               tot_neighbours, 100. * (double) n_fake_neighbours / n_real_neighbours);
         }
     } else {
         tot_neighbours = n_real_neighbours;

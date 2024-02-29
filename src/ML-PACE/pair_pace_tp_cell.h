@@ -70,6 +70,7 @@ class PairPACETensorPotentialCell : public Pair {
   int chunksize;
   double neigh_padding_fraction = 0.01;
   bool do_padding = true;
+  bool pad_verbose = false;
 
   int nelements;
   std::vector<std::string> elements_name;
