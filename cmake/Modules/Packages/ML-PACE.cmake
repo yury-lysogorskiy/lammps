@@ -45,8 +45,8 @@ execute_process(
         OUTPUT_VARIABLE python_name_default
         OUTPUT_STRIP_TRAILING_WHITESPACE
 )
-set(PACE_PYTHON_EXEC  ${python_name_default})
-#message("PACE_PYTHON_EXEC=${PACE_PYTHON_EXEC}")
+option(PACE_PYTHON_EXEC  ${python_name_default})
+message("PACE_PYTHON_EXEC=${PACE_PYTHON_EXEC}")
 execute_process(
   COMMAND ${PACE_PYTHON_EXEC} -c "import os;import pkgutil;package = pkgutil.get_loader('tensorflow');print(os.path.dirname(package.get_filename()))"
   OUTPUT_VARIABLE TF_DISCOVER
