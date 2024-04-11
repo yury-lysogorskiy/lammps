@@ -39,28 +39,31 @@ endif()
 add_subdirectory(${lib-pace} build-pace)
 set_target_properties(pace PROPERTIES CXX_EXTENSIONS ON OUTPUT_NAME lammps_pace${LAMMPS_MACHINE})
 
-# get default python
-execute_process(
-        COMMAND which python
-        OUTPUT_VARIABLE python_name_default
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-option(PACE_PYTHON_EXEC  ${python_name_default})
-message("PACE_PYTHON_EXEC=${PACE_PYTHON_EXEC}")
-execute_process(
-  COMMAND ${PACE_PYTHON_EXEC} -c "import os;import pkgutil;package = pkgutil.get_loader('tensorflow');print(os.path.dirname(package.get_filename()))"
-  OUTPUT_VARIABLE TF_DISCOVER
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-#message("TF_DISCOVER=${TF_DISCOVER}")
-string(STRIP "${TF_DISCOVER}" TF_DISCOVER)
-set(TF_PATH ${TF_DISCOVER})
+if(NOT TF_LIB_FILE)
+  # get default python
+  execute_process(
+          COMMAND which python
+          OUTPUT_VARIABLE python_name_default
+          OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  if(NOT PACE_PYTHON_EXEC)
+    set(PACE_PYTHON_EXEC ${python_name_default})
+  endif()
+  #message("PACE_PYTHON_EXEC=${PACE_PYTHON_EXEC}")
+  execute_process(
+    COMMAND ${PACE_PYTHON_EXEC} -c "import os;import pkgutil;package = pkgutil.get_loader('tensorflow');print(os.path.dirname(package.get_filename()))"
+    OUTPUT_VARIABLE TF_DISCOVER
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  #message("TF_DISCOVER=${TF_DISCOVER}")
+  string(STRIP "${TF_DISCOVER}" TF_DISCOVER)
+  set(TF_PATH ${TF_DISCOVER})
 
-#message("TF_PATH=${TF_PATH}")
-if(APPLE)
-  set(TF_LIB_FILE "${TF_PATH}/libtensorflow_cc.2.dylib")
-else()
-  set(TF_LIB_FILE "${TF_PATH}/libtensorflow_cc.so.2")
+  if(APPLE)
+    set(TF_LIB_FILE "${TF_PATH}/libtensorflow_cc.2.dylib")
+  else()
+    set(TF_LIB_FILE "${TF_PATH}/libtensorflow_cc.so.2")
+  endif()
 endif()
 if(EXISTS ${TF_LIB_FILE})
   message("-- TensorFlow library is FOUND at ${TF_LIB_FILE}")
