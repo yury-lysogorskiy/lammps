@@ -25,7 +25,7 @@
 
 #include "utils_pace.h"
 
-#define PACE_TP_OMP 1
+//#define PACE_TP_OMP 1
 
 const std::string DEFAULT_INPUT_PREFIX = "serving_default_";
 
@@ -322,7 +322,7 @@ void PairGRACE::compute(int eflag, int vflag) {
     // number of atoms in cell
     int nlocal = atom->nlocal;
 //    int n_atoms_extended = atom->nlocal + atom->nghost;
-    int n_fake_atoms = 0 ; // no fake atoms needed. fake bonds will be 1e6
+    int n_fake_atoms = 0; // no fake atoms needed. fake bonds will be 1e6
     int n_real_neighbours;
     int n_fake_neighbours;
 
@@ -352,8 +352,8 @@ void PairGRACE::compute(int eflag, int vflag) {
                         cppflow::tensor(atomic_mu_i_vector, {nlocal + n_fake_atoms}));
 
     //    map_atoms_to_structure
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "map_atoms_to_structure" + ":0",
-                        cppflow::tensor(std::vector<int32_t>(nlocal + n_fake_atoms, 0), {nlocal + n_fake_atoms}));
+//    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "map_atoms_to_structure" + ":0",
+//                        cppflow::tensor(std::vector<int32_t>(nlocal + n_fake_atoms, 0), {nlocal + n_fake_atoms}));
 
     // batch_nat = number of extened atoms + padding
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "batch_tot_nat" + ":0",
@@ -413,9 +413,9 @@ void PairGRACE::compute(int eflag, int vflag) {
 
     std::vector<int32_t> ind_i_vector(tot_neighbours);
     std::vector<int32_t> ind_j_vector(tot_neighbours);
-    std::vector<int32_t> mu_i_vector(tot_neighbours);
+//    std::vector<int32_t> mu_i_vector(tot_neighbours);
     std::vector<int32_t> mu_j_vector(tot_neighbours);
-    std::vector<double> bond_vector(tot_neighbours * 3, 1e6);
+    std::vector<double> bond_vector(tot_neighbours *3, 1e6);
 
 #ifdef PACE_TP_OMP
 #pragma omp parallel for default(none)  \
@@ -443,7 +443,7 @@ void PairGRACE::compute(int eflag, int vflag) {
                 // remap j to j_local
                 int j_local = atom->map(atom->tag[j]);
                 ind_j_vector[tot_ind] = j_local;
-                mu_i_vector[tot_ind] = element_type_mapping[type[i]];
+//                mu_i_vector[tot_ind] = element_type_mapping[type[i]];
                 mu_j_vector[tot_ind] = element_type_mapping[type[j]];
                 double bondx = atom->x[j][0] - atom->x[i][0];
                 double bondy = atom->x[j][1] - atom->x[i][1];
@@ -467,7 +467,7 @@ void PairGRACE::compute(int eflag, int vflag) {
     for (int tot_ind = n_real_neighbours; tot_ind < tot_neighbours; tot_ind++) {
         ind_i_vector[tot_ind] = fake_atom_ind; // fake atom ind
         ind_j_vector[tot_ind] = fake_atom_ind; // fake atom ind
-        mu_i_vector[tot_ind] = 0;
+//        mu_i_vector[tot_ind] = 0;
         mu_j_vector[tot_ind] = 0;
     }
 
@@ -485,8 +485,8 @@ void PairGRACE::compute(int eflag, int vflag) {
 
 
     // num_struc: 1
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "n_struct_total" + ":0",
-                        cppflow::tensor(std::vector<int32_t>{1}, {}));
+//    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "n_struct_total" + ":0",
+//                        cppflow::tensor(std::vector<int32_t>{1}, {}));
 
     // vector_offsets: 1
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "bond_vector" + ":0",
@@ -494,7 +494,6 @@ void PairGRACE::compute(int eflag, int vflag) {
 
 
     data_timer.stop();
-
     tp_timer.start();
     //CALL MODEL
     std::vector<cppflow::tensor> output = aceimpl->model->operator()(
@@ -507,6 +506,7 @@ void PairGRACE::compute(int eflag, int vflag) {
             }
     );
     tp_timer.stop();
+//    std::cout << "Ave.timing: " << (double) tp_timer.as_microseconds() / nlocal << " mcs/at" << std::endl;
 
     data_timer.start();
     auto &e_out = output[0]; // atomic_energy
