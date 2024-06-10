@@ -41,6 +41,17 @@ namespace LAMMPS_NS {
 
         cppflow::model *model;
     };
+
+    bool check_tf_graph_input_presented(cppflow::model* model, const std::string& op_name) {
+        try {
+            auto op_shape = model->get_operation_shape(op_name);
+            return true;
+        } catch (std::runtime_error& exc) {
+            return false;
+        }
+    }
+
+
 }    // namespace LAMMPS_NS
 
 using namespace LAMMPS_NS;
@@ -203,6 +214,25 @@ void PairGRACE::coeff(int narg, char **arg) {
         for (int j = i; j <= n; j++) scale[i][j] = 1.0;
     }
 
+//    auto operations_vec = aceimpl->model->get_operations();
+//    std::cout<<"List of operations "<<std::endl;
+//    for(const auto& op_name: operations_vec){
+//        std::cout<<"Operation `"<<op_name<<"`"<<endl;
+//    }
+
+    //
+    has_map_atoms_to_structure_op = check_tf_graph_input_presented(aceimpl->model,
+                                                                   "serving_default_map_atoms_to_structure");
+    std::cout<<"[DEBUG] has_map_atoms_to_structure_op="<<has_map_atoms_to_structure_op<<endl;
+
+    has_nstruct_total_op = check_tf_graph_input_presented(aceimpl->model,
+                                                                   "serving_default_n_struct_total");
+    std::cout<<"[DEBUG] has_nstruct_total_op="<<has_nstruct_total_op<<endl;
+
+
+    has_mu_i_op = check_tf_graph_input_presented(aceimpl->model,
+                                                          "serving_default_mu_i");
+    std::cout<<"[DEBUG] has_mu_i_op="<<has_mu_i_op<<endl;
 }
 
 
@@ -352,8 +382,10 @@ void PairGRACE::compute(int eflag, int vflag) {
                         cppflow::tensor(atomic_mu_i_vector, {nlocal + n_fake_atoms}));
 
     //    map_atoms_to_structure
-//    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "map_atoms_to_structure" + ":0",
-//                        cppflow::tensor(std::vector<int32_t>(nlocal + n_fake_atoms, 0), {nlocal + n_fake_atoms}));
+    if(has_map_atoms_to_structure_op) {
+        inputs.emplace_back(DEFAULT_INPUT_PREFIX + "map_atoms_to_structure" + ":0",
+                            cppflow::tensor(std::vector<int32_t>(nlocal + n_fake_atoms, 0), {nlocal + n_fake_atoms}));
+    }
 
     // batch_nat = number of extened atoms + padding
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "batch_tot_nat" + ":0",
@@ -413,7 +445,7 @@ void PairGRACE::compute(int eflag, int vflag) {
 
     std::vector<int32_t> ind_i_vector(tot_neighbours);
     std::vector<int32_t> ind_j_vector(tot_neighbours);
-//    std::vector<int32_t> mu_i_vector(tot_neighbours);
+    std::vector<int32_t> mu_i_vector(tot_neighbours);
     std::vector<int32_t> mu_j_vector(tot_neighbours);
     std::vector<double> bond_vector(tot_neighbours *3, 1e6);
 
@@ -443,7 +475,7 @@ void PairGRACE::compute(int eflag, int vflag) {
                 // remap j to j_local
                 int j_local = atom->map(atom->tag[j]);
                 ind_j_vector[tot_ind] = j_local;
-//                mu_i_vector[tot_ind] = element_type_mapping[type[i]];
+                mu_i_vector[tot_ind] = element_type_mapping[type[i]];
                 mu_j_vector[tot_ind] = element_type_mapping[type[j]];
                 double bondx = atom->x[j][0] - atom->x[i][0];
                 double bondy = atom->x[j][1] - atom->x[i][1];
@@ -467,7 +499,7 @@ void PairGRACE::compute(int eflag, int vflag) {
     for (int tot_ind = n_real_neighbours; tot_ind < tot_neighbours; tot_ind++) {
         ind_i_vector[tot_ind] = fake_atom_ind; // fake atom ind
         ind_j_vector[tot_ind] = fake_atom_ind; // fake atom ind
-//        mu_i_vector[tot_ind] = 0;
+        mu_i_vector[tot_ind] = 0;
         mu_j_vector[tot_ind] = 0;
     }
 
@@ -478,15 +510,19 @@ void PairGRACE::compute(int eflag, int vflag) {
 
 
     // mu_i, mu_j: bonds
-//    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "mu_i" + ":0",
-//                        cppflow::tensor(mu_i_vector, {tot_neighbours}));
+    if (has_mu_i_op) {
+        inputs.emplace_back(DEFAULT_INPUT_PREFIX + "mu_i" + ":0",
+                            cppflow::tensor(mu_i_vector, {tot_neighbours}));
+    }
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "mu_j" + ":0",
                         cppflow::tensor(mu_j_vector, {tot_neighbours}));
 
 
     // num_struc: 1
-//    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "n_struct_total" + ":0",
-//                        cppflow::tensor(std::vector<int32_t>{1}, {}));
+    if (has_nstruct_total_op) {
+        inputs.emplace_back(DEFAULT_INPUT_PREFIX + "n_struct_total" + ":0",
+                            cppflow::tensor(std::vector<int32_t>{1}, {}));
+    }
 
     // vector_offsets: 1
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "bond_vector" + ":0",

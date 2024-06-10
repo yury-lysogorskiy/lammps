@@ -55,6 +55,9 @@ class PairGRACE : public Pair {
 
  protected:
   struct ACETPImpl *aceimpl;
+  bool has_map_atoms_to_structure_op = false;
+  bool has_nstruct_total_op = false;
+  bool has_mu_i_op = false;
   virtual void allocate();
 
   double **scale;
