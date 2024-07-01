@@ -8,7 +8,8 @@ GetFallbackURL(PACELIB_URL PACELIB_FALLBACK)
 # LOCAL_ML-PACE points to top-level dir with local lammps-user-pace repo,
 # to make it easier to check local build without going through the public github releases
 if(LOCAL_ML-PACE)
- set(lib-pace "${LOCAL_ML-PACE}")
+  message(STATUS "Using LOCAL ML-PACE ${LOCAL_ML-PACE}")
+  set(lib-pace "${LOCAL_ML-PACE}")
 else()
   # download library sources to build folder
   if(EXISTS ${CMAKE_BINARY_DIR}/libpace.tar.gz)
