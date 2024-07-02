@@ -139,6 +139,7 @@ void PairGRACEFS::compute(int eflag, int vflag)
   }
 
   aceimpl->ace->resize_neighbours_cache(max_jnum);
+  int* my_neigh_jlist = new int [max_jnum];
 
   //loop over atoms
   for (ii = 0; ii < inum; ii++) {
@@ -160,15 +161,18 @@ void PairGRACEFS::compute(int eflag, int vflag)
     // jnum(0) = 50
     // jlist(neigh ind of 0-atom) = [1,2,10,7,99,25, .. 50 element in total]
 
+    // apply NEIGHMASK
+    for (jj = 0; jj < jnum; ++jj) {
+        my_neigh_jlist[jj]= jlist[jj] & NEIGHMASK;
+    }
     try {
-      aceimpl->ace->compute_atom(i, x, type, jnum, jlist);
+        aceimpl->ace->compute_atom(i, x, type, jnum, my_neigh_jlist);
     } catch (std::exception &e) {
       error->one(FLERR, e.what());
     }
 
 
     // 'compute_atom' will update the `aceimpl->ace->e_atom` and `aceimpl->ace->neighbours_forces(jj, alpha)` arrays
-
     for (jj = 0; jj < jnum; jj++) {
       j = jlist[jj];
       j &= NEIGHMASK;
@@ -202,6 +206,7 @@ void PairGRACEFS::compute(int eflag, int vflag)
   }
 
   if (vflag_fdotr) virial_fdotr_compute();
+  delete[] my_neigh_jlist;
 
   // end modifications YL
 }
@@ -242,11 +247,11 @@ void PairGRACEFS::settings(int narg, char **arg)
   }
 
   if (comm->me == 0) {
-    utils::logmesg(lmp, "ACE version: {}.{}.{}\n", VERSION_YEAR, VERSION_MONTH, VERSION_DAY);
+    utils::logmesg(lmp, "[ML-PACE] ACE version: {}.{}.{}\n", VERSION_YEAR, VERSION_MONTH, VERSION_DAY);
 //    if (recursive)
 //      utils::logmesg(lmp, "Recursive evaluator is used\n");
 //    else
-    utils::logmesg(lmp, "Product evaluator is used\n");
+    utils::logmesg(lmp, "[ML-PACE] Product evaluator is used\n");
   }
 }
 
@@ -265,17 +270,17 @@ void PairGRACEFS::coeff(int narg, char **arg)
 
   //load potential file
   delete aceimpl->basis_set;
-  if (comm->me == 0) utils::logmesg(lmp, "Loading {}\n", potential_file_name);
+  if (comm->me == 0) utils::logmesg(lmp, "[ML-PACE] Loading {}\n", potential_file_name);
   aceimpl->basis_set = new TDACEBasisSet(potential_file_name);
 
 
   if (comm->me == 0) {
-    utils::logmesg(lmp, "Total number of basis functions\n");
-
+    utils::logmesg(lmp, "[ML-PACE] Supportting {} elements: ", aceimpl->basis_set->nelements);
     for (SPECIES_TYPE mu = 0; mu < aceimpl->basis_set->nelements; mu++) {
-      int n = aceimpl->basis_set->basis[mu].size();
-      utils::logmesg(lmp, "\t{}: {} \n", aceimpl->basis_set->elements_name[mu], n);
+      utils::logmesg(lmp, "{} ", aceimpl->basis_set->elements_name[mu]);
     }
+    utils::logmesg(lmp, "\n");
+    utils::logmesg(lmp, "[ML-PACE] Number of functions per element: {} ", aceimpl->basis_set->elements_name[0]);
   }
 
   // read args that map atom types to PACE elements
@@ -294,20 +299,20 @@ void PairGRACEFS::coeff(int narg, char **arg)
       // but if it will ,then error will be thrown there
       aceimpl->ace->element_type_mapping(i) = -1;
       map[i] = -1;
-      if (comm->me == 0) utils::logmesg(lmp, "Skipping LAMMPS atom type #{}(NULL)\n", i);
+      if (comm->me == 0) utils::logmesg(lmp, "[ML-PACE] Skipping LAMMPS atom type #{}(NULL)\n", i);
     } else {
       int atomic_number = PACE::AtomicNumberByName(elemname);
       if (atomic_number == -1) error->all(FLERR, "'{}' is not a valid element\n", elemname);
       SPECIES_TYPE mu = aceimpl->basis_set->get_species_index_by_name(elemname);
       if (mu != -1) {
         if (comm->me == 0)
-          utils::logmesg(lmp, "Mapping LAMMPS atom type #{}({}) -> ACE species type #{}\n", i,
+          utils::logmesg(lmp, "[ML-PACE] Mapping LAMMPS atom type #{}({}) -> ACE species type #{}\n", i,
                          elemname, mu);
         map[i] = mu;
         // set up LAMMPS atom type to ACE species  mapping for ace evaluator
         aceimpl->ace->element_type_mapping(i) = mu;
       } else {
-        error->all(FLERR, "Element {} is not supported by ACE-potential from file {}", elemname,
+        error->all(FLERR, "[ML-PACE] Element {} is not supported by ACE-potential from file {}", elemname,
                    potential_file_name);
       }
     }
