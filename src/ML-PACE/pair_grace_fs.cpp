@@ -280,7 +280,7 @@ void PairGRACEFS::coeff(int narg, char **arg)
       utils::logmesg(lmp, "{} ", aceimpl->basis_set->elements_name[mu]);
     }
     utils::logmesg(lmp, "\n");
-    utils::logmesg(lmp, "[ML-PACE] Number of functions per element: {} ", aceimpl->basis_set->elements_name[0]);
+    utils::logmesg(lmp, "[ML-PACE] Number of functions per element: {} ", aceimpl->basis_set->basis[0].size());
   }
 
   // read args that map atom types to PACE elements
