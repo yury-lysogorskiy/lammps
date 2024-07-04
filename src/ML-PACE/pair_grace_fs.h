@@ -36,29 +36,41 @@ PairStyle(grace/fs,PairGRACEFS);
 
 namespace LAMMPS_NS {
 
-class PairGRACEFS : public Pair {
- public:
-    PairGRACEFS(class LAMMPS *);
-  ~PairGRACEFS() override;
+    class PairGRACEFS : public Pair {
+    public:
+        PairGRACEFS(class LAMMPS *);
 
-  void compute(int, int) override;
-  void settings(int, char **) override;
-  void coeff(int, char **) override;
-  void init_style() override;
-  double init_one(int, int) override;
+        ~PairGRACEFS() override;
 
-  void *extract(const char *, int &) override;
-  void *extract_peratom(const char *, int &) override;
+        void compute(int, int) override;
 
- protected:
-  struct ACEImpl *aceimpl;
+        void settings(int, char **) override;
 
-  virtual void allocate();
+        void coeff(int, char **) override;
 
-  double **scale;
+        void init_style() override;
 
-  int chunksize;
-};
+        double init_one(int, int) override;
+
+        void *extract(const char *, int &) override;
+
+        void *extract_peratom(const char *, int &) override;
+
+    protected:
+        struct ACEImpl *aceimpl;
+        int nmax = 0;
+
+        virtual void allocate();
+
+        bool request_extrapolation = false;
+
+        double *extrapolation_grade_gamma = nullptr;         //per-atom gamma value
+        int flag_compute_extrapolation_grade = 0;
+
+        double **scale;
+
+        int chunksize;
+    };
 }    // namespace LAMMPS_NS
 
 #endif
