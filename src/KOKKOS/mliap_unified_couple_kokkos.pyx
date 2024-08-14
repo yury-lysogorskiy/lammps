@@ -1,6 +1,7 @@
 # cython: language_level=3
 # distutils: language = c++
 
+import torch
 import pickle
 import numpy as np
 import lammps.mliap
@@ -79,6 +80,9 @@ cdef extern from "mliap_data_kokkos.h" namespace "LAMMPS_NS":
         int vflag               # indicates if virial is needed
         void * pairmliap        # pointer to base class
         int dev
+
+        void forward_exchange[CommType]  (CommType * copy_from, CommType * copy_to, int vec_len) except +
+        void reverse_exchange[CommType] (CommType * copy_from, CommType * copy_to, int vec_len) except +
 
 cdef extern from "mliap_unified_kokkos.h" namespace "LAMMPS_NS":
     cdef cppclass MLIAPDummyDescriptor:
@@ -185,6 +189,67 @@ cdef class MLIAPDataPy:
             self.update_pair_forces_cpu(fij)
         else:
             self.update_pair_forces_gpu(fij)
+
+    def forward_exchange(self, copy_from, copy_to, vec_len):
+        #(fglines): I copied this pattern from above -- why this duck typing?
+        #The except clause is for Pytorch tensors, what is the try clause for?
+
+        cdef uintptr_t copy_from_ptr;
+        try:
+            copy_from_ptr = copy_from.data.ptr
+            copy_from_dtype = copy_from.data.dtype
+        except:
+            copy_from_ptr = copy_from.data_ptr()
+            copy_from_dtype = copy_from.dtype
+
+        cdef uintptr_t copy_to_ptr;
+        try:
+            copy_to_ptr = copy_to.data.ptr
+            copy_to_dtype = copy_to.data.dtype
+        except:
+            copy_to_ptr = copy_to.data_ptr()
+            copy_to_dtype = copy_to.dtype
+
+        if copy_from_dtype != copy_to_dtype:
+            raise TypeError(f"Types of ({copy_from_dtype})copy_from and ({copy_to_dtype})copy_to mismatch")
+
+        if copy_from_dtype == torch.float32:
+            self.data.forward_exchange( <float*>copy_from_ptr, <float*>copy_to_ptr, vec_len)
+        elif copy_from_dtype == torch.float64:
+            self.data.forward_exchange( <double*>copy_from_ptr, <double*>copy_to_ptr, vec_len)
+        else:
+            raise TypeError(f"Unsupported comms type: ({copy_from_dtype})")
+
+    def reverse_exchange(self, copy_from, copy_to, vec_len):
+        #(fglines): I copied this pattern from above -- why this duck typing?
+        #The except clause is for Pytorch tensors, what is the try clause for?
+        
+        cdef uintptr_t copy_from_ptr;
+        try:
+            copy_from_ptr = copy_from.data.ptr
+            copy_from_dtype = copy_from.data.dtype
+        except:
+            copy_from_ptr = copy_from.data_ptr()
+            copy_from_dtype = copy_from.dtype
+
+        cdef uintptr_t copy_to_ptr;
+        try:
+            copy_to_ptr = copy_to.data.ptr
+            copy_to_dtype = copy_to.data.dtype
+        except:
+            copy_to_ptr = copy_to.data_ptr()
+            copy_to_dtype = copy_to.dtype
+
+        if copy_from_dtype != copy_to_dtype:
+            raise TypeError(f"Types of ({copy_from_dtype})copy_from and ({copy_to_dtype})copy_to mismatch")
+
+        if copy_from_dtype == torch.float32:
+            self.data.reverse_exchange( <float*>copy_from_ptr, <float*>copy_to_ptr, vec_len)
+        elif copy_from_dtype == torch.float64:
+            self.data.reverse_exchange( <double*>copy_from_ptr, <double*>copy_to_ptr, vec_len)
+        else:
+            raise TypeError(f"Unsupported comms type: ({copy_from_dtype})")
+        
     @property
     def f(self):
         if self.data.f is NULL:

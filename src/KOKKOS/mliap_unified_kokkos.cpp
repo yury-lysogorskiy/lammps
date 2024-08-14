@@ -294,7 +294,6 @@ void LAMMPS_NS::update_pair_energy(MLIAPDataKokkosDevice *data, double *eij)
 
 void LAMMPS_NS::update_pair_forces(MLIAPDataKokkosDevice *data, double *fij)
 {
-  const auto nlocal = data->nlocal;
   auto *f = data->f;
   auto pair_i = data->pair_i;
   auto j_atoms = data->jatoms;
