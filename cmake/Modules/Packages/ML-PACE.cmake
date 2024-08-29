@@ -66,51 +66,57 @@ if(NOT TF_LIB_FILE)
     set(TF_LIB_FILE "${TF_PATH}/libtensorflow_cc.so.2")
   endif()
 endif()
-if(EXISTS ${TF_LIB_FILE})
-  message("-- TensorFlow library is FOUND at ${TF_LIB_FILE}")
-  add_library(tensorflow SHARED IMPORTED)
-  set_target_properties(tensorflow PROPERTIES
-          IMPORTED_LOCATION ${TF_LIB_FILE}
-          INTERFACE_INCLUDE_DIRECTORIES "${TF_PATH}/include"
-  )
-  ###############################
-  # download cppflow
-  if(NOT EXISTS ${CMAKE_BINARY_DIR}/cppflow-2.0.0)
-      if(NOT EXISTS ${CMAKE_BINARY_DIR}/libcppflow.tar.gz)
-          set(CPPFLOW_URL "https://github.com/serizba/cppflow/archive/refs/tags/v2.0.0.tar.gz" CACHE STRING "URL for cppflow")
-          message(STATUS "Downloading ${CPPFLOW_URL}")
-          file(DOWNLOAD ${CPPFLOW_URL} ${CMAKE_BINARY_DIR}/libcppflow.tar.gz STATUS DL_CPPFLOW_STATUS)
-          # uncompress downloaded sources
-          execute_process(
-                  COMMAND ${CMAKE_COMMAND} -E remove_directory cppflow-*
-                  COMMAND ${CMAKE_COMMAND} -E tar xzf libcppflow.tar.gz
-                  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-          )
-      else()
-        message(STATUS "Using already downloaded archive  ${CMAKE_BINARY_DIR}/libcppflow.tar.gz")
-      endif()
+
+if(NOT DEFINED NO_GRACE_TF)
+  if(EXISTS ${TF_LIB_FILE})
+    message("-- TensorFlow library is FOUND at ${TF_LIB_FILE}")
+    add_library(tensorflow SHARED IMPORTED)
+    set_target_properties(tensorflow PROPERTIES
+            IMPORTED_LOCATION ${TF_LIB_FILE}
+            INTERFACE_INCLUDE_DIRECTORIES "${TF_PATH}/include"
+    )
+    ###############################
+    # download cppflow
+    if(NOT EXISTS ${CMAKE_BINARY_DIR}/cppflow-2.0.0)
+        if(NOT EXISTS ${CMAKE_BINARY_DIR}/libcppflow.tar.gz)
+            set(CPPFLOW_URL "https://github.com/serizba/cppflow/archive/refs/tags/v2.0.0.tar.gz" CACHE STRING "URL for cppflow")
+            message(STATUS "Downloading ${CPPFLOW_URL}")
+            file(DOWNLOAD ${CPPFLOW_URL} ${CMAKE_BINARY_DIR}/libcppflow.tar.gz STATUS DL_CPPFLOW_STATUS)
+            # uncompress downloaded sources
+            execute_process(
+                    COMMAND ${CMAKE_COMMAND} -E remove_directory cppflow-*
+                    COMMAND ${CMAKE_COMMAND} -E tar xzf libcppflow.tar.gz
+                    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+            )
+        else()
+          message(STATUS "Using already downloaded archive  ${CMAKE_BINARY_DIR}/libcppflow.tar.gz")
+        endif()
+    else()
+      message(STATUS "Using already existing CPPFLOW ${CMAKE_BINARY_DIR}/cppflow-2.0.0")
+    endif()
+
+    set(cppflow_path "${CMAKE_BINARY_DIR}/cppflow-2.0.0")
+    add_library(cppflow INTERFACE)
+    target_include_directories(cppflow
+            INTERFACE
+            ${tensorflow_INCLUDE_DIRS}
+            $<BUILD_INTERFACE:${cppflow_path}/include>
+    )
+
+    target_compile_features(cppflow INTERFACE cxx_std_17)
+    target_link_libraries(cppflow INTERFACE
+            ${tensorflow_LIBRARIES}
+    )
+
+    set(PACE_TP ON)
+    find_package(OpenMP)
   else()
-    message(STATUS "Using already existing CPPFLOW ${CMAKE_BINARY_DIR}/cppflow-2.0.0")
+    message("-- TensorFlow library is NOT found at ${TF_LIB_FILE}")
   endif()
-
-  set(cppflow_path "${CMAKE_BINARY_DIR}/cppflow-2.0.0")
-  add_library(cppflow INTERFACE)
-  target_include_directories(cppflow
-          INTERFACE
-          ${tensorflow_INCLUDE_DIRS}
-          $<BUILD_INTERFACE:${cppflow_path}/include>
-  )
-
-  target_compile_features(cppflow INTERFACE cxx_std_17)
-  target_link_libraries(cppflow INTERFACE
-          ${tensorflow_LIBRARIES}
-  )
-
-  set(PACE_TP ON)
-  find_package(OpenMP)
 else()
-  message("-- TensorFlow library is NOT found at ${TF_LIB_FILE}")
-endif()
+  message("-- NO GRACE/TensorFlow will be compiled (because flag NO_GRACE_TF is set)")
+  add_definitions(-DNO_GRACE_TF=1)
+endif() # if(NOT DEFINED NO_GRACE_TF)
 
 if(CMAKE_PROJECT_NAME STREQUAL "lammps")
   target_link_libraries(lammps PRIVATE pace)

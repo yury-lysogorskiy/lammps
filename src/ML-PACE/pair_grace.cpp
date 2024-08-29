@@ -1,7 +1,7 @@
 //
 // Created by Yury Lysogorskiy on 01.12.23.
 //
-//#ifdef GRACE
+#ifndef NO_GRACE_TF
 
 #include "pair_grace.h"
 
@@ -598,4 +598,4 @@ void PairGRACE::compute(int eflag, int vflag) {
     // end modifications YL
 }
 
-//#endif // #ifdef GRACE
+#endif //#ifndef NO_GRACE_TF

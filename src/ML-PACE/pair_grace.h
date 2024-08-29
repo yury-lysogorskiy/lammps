@@ -18,7 +18,7 @@ Copyright 2024 Yury Lysogorskiy^1,  Anton Bochkarev^1, Ralf Drautz^1
 // Created by Lysogorskiy Yury on 27.03.24
 //
 
-//#ifdef GRACE
+#ifndef NO_GRACE_TF
 #ifdef PAIR_CLASS
 // clang-format off
 PairStyle(grace,PairGRACE);
@@ -82,4 +82,4 @@ class PairGRACE : public Pair {
 
 #endif
 #endif
-//#endif //#ifdef GRACE
+#endif //#ifndef NO_GRACE_TF

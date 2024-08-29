@@ -260,7 +260,7 @@ void PairGRACEFS::settings(int narg, char **arg) {
     }
 
     if (comm->me == 0) {
-        utils::logmesg(lmp, "[GRACE-FS] GRACE version: {}.{}.{}\n", VERSION_YEAR, VERSION_MONTH, VERSION_DAY);
+        utils::logmesg(lmp, "[GRACE-FS] Version: {}.{}.{}\n", VERSION_YEAR, VERSION_MONTH, VERSION_DAY);
 //    if (recursive)
 //      utils::logmesg(lmp, "Recursive evaluator is used\n");
 //    else
