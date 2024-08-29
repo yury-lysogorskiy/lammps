@@ -236,12 +236,16 @@ void PairGRACEFS::allocate() {
 ------------------------------------------------------------------------- */
 
 void PairGRACEFS::settings(int narg, char **arg) {
-    if (narg > 3) utils::missing_cmd_args(FLERR, "pair_style pace", error);
+    if (narg > 3) utils::missing_cmd_args(FLERR, "pair_style grace/fs", error);
 
     // ACE potentials are parameterized in metal units
     if (strcmp("metal", update->unit_style) != 0)
-        error->all(FLERR, "ACE potentials require 'metal' units");
+        error->all(FLERR, "GRACE/FS potentials require 'metal' units");
 
+
+    if (comm->me == 0) {
+        utils::logmesg(lmp, "[GRACE/FS]\n");
+    }
 
     int iarg = 0;
     while (iarg < narg) {
@@ -256,11 +260,11 @@ void PairGRACEFS::settings(int narg, char **arg) {
     }
 
     if (comm->me == 0) {
-        utils::logmesg(lmp, "[ML-PACE] ACE version: {}.{}.{}\n", VERSION_YEAR, VERSION_MONTH, VERSION_DAY);
+        utils::logmesg(lmp, "[GRACE-FS] GRACE version: {}.{}.{}\n", VERSION_YEAR, VERSION_MONTH, VERSION_DAY);
 //    if (recursive)
 //      utils::logmesg(lmp, "Recursive evaluator is used\n");
 //    else
-        utils::logmesg(lmp, "[ML-PACE] Product evaluator is used\n");
+        utils::logmesg(lmp, "[GRACE-FS] Product evaluator is used\n");
     }
 }
 
@@ -277,7 +281,7 @@ void PairGRACEFS::coeff(int narg, char **arg) {
 
     //load potential file
     delete aceimpl->basis_set;
-    if (comm->me == 0) utils::logmesg(lmp, "[ML-PACE] Loading {}\n", potential_file_name);
+    if (comm->me == 0) utils::logmesg(lmp, "[GRACE-FS] Loading {}\n", potential_file_name);
     aceimpl->basis_set = new TDACEBasisSet(potential_file_name);
 
     std::string asi_file_name;
@@ -289,12 +293,12 @@ void PairGRACEFS::coeff(int narg, char **arg) {
     map_element2type(narg - (arg_shift + 1), arg + (arg_shift + 1));
 
     if (comm->me == 0) {
-        utils::logmesg(lmp, "[ML-PACE] Supporting {} elements: ", aceimpl->basis_set->nelements);
+        utils::logmesg(lmp, "[GRACE-FS] Supporting {} elements: ", aceimpl->basis_set->nelements);
         for (SPECIES_TYPE mu = 0; mu < aceimpl->basis_set->nelements; mu++) {
             utils::logmesg(lmp, "{} ", aceimpl->basis_set->elements_name[mu]);
         }
         utils::logmesg(lmp, "\n");
-        utils::logmesg(lmp, "[ML-PACE] Number of functions per element: {} \n", aceimpl->basis_set->basis[0].size());
+        utils::logmesg(lmp, "[GRACE-FS] Number of functions per element: {} \n", aceimpl->basis_set->basis[0].size());
     }
 
     // read args that map atom types to PACE elements
@@ -313,20 +317,20 @@ void PairGRACEFS::coeff(int narg, char **arg) {
             // but if it will ,then error will be thrown there
             aceimpl->ace->element_type_mapping(i) = -1;
             map[i] = -1;
-            if (comm->me == 0) utils::logmesg(lmp, "[ML-PACE] Skipping LAMMPS atom type #{}(NULL)\n", i);
+            if (comm->me == 0) utils::logmesg(lmp, "[GRACE-FS] Skipping LAMMPS atom type #{}(NULL)\n", i);
         } else {
             int atomic_number = PACE::AtomicNumberByName(elemname);
             if (atomic_number == -1) error->all(FLERR, "'{}' is not a valid element\n", elemname);
             SPECIES_TYPE mu = aceimpl->basis_set->get_species_index_by_name(elemname);
             if (mu != -1) {
                 if (comm->me == 0)
-                    utils::logmesg(lmp, "[ML-PACE] Mapping LAMMPS atom type #{}({}) -> ACE species type #{}\n", i,
+                    utils::logmesg(lmp, "[GRACE-FS] Mapping LAMMPS atom type #{}({}) -> ACE species type #{}\n", i,
                                    elemname, mu);
                 map[i] = mu;
                 // set up LAMMPS atom type to ACE species  mapping for ace evaluator
                 aceimpl->ace->element_type_mapping(i) = mu;
             } else {
-                error->all(FLERR, "[ML-PACE] Element {} is not supported by ACE-potential from file {}", elemname,
+                error->all(FLERR, "[GRACE-FS] Element {} is not supported by ACE-potential from file {}", elemname,
                            potential_file_name);
             }
         }
@@ -340,7 +344,7 @@ void PairGRACEFS::coeff(int narg, char **arg) {
     aceimpl->ace->set_basis(*aceimpl->basis_set);
 
     if (request_extrapolation) {
-        if (comm->me == 0) utils::logmesg(lmp, "[ML-PACE] Loading ASI {}\n", asi_file_name);
+        if (comm->me == 0) utils::logmesg(lmp, "[GRACE-FS] Loading ASI {}\n", asi_file_name);
         aceimpl->ace->load_active_set(asi_file_name);
     }
 }
@@ -350,8 +354,8 @@ void PairGRACEFS::coeff(int narg, char **arg) {
 ------------------------------------------------------------------------- */
 
 void PairGRACEFS::init_style() {
-    if (atom->tag_enable == 0) error->all(FLERR, "Pair style pace requires atom IDs");
-    if (force->newton_pair == 0) error->all(FLERR, "Pair style pace requires newton pair on");
+    if (atom->tag_enable == 0) error->all(FLERR, "Pair style grace/fs requires atom IDs");
+    if (force->newton_pair == 0) error->all(FLERR, "Pair style grace/fs requires newton pair on");
 
     // request a full neighbor list
     neighbor->add_request(this, NeighConst::REQ_FULL);

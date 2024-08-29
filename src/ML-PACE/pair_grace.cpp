@@ -112,14 +112,14 @@ void PairGRACE::allocate() {
    global settings
 ------------------------------------------------------------------------- */
 void PairGRACE::settings(int narg, char **arg) {
-    if (narg > 3) utils::missing_cmd_args(FLERR, "pair_style pace/tp", error);
+    if (narg > 3) utils::missing_cmd_args(FLERR, "pair_style grace", error);
 
     // ACE potentials are parameterized in metal units
     if (strcmp("metal", update->unit_style) != 0)
-        error->all(FLERR, "ACE potentials require 'metal' units");
+        error->all(FLERR, "GRACE potentials require 'metal' units");
 
     if (comm->me == 0) {
-        utils::logmesg(lmp, "ACE/TensorPotential\n");
+        utils::logmesg(lmp, "[GRACE]\n");
     }
 
     int iarg = 0;
@@ -135,12 +135,12 @@ void PairGRACE::settings(int narg, char **arg) {
             pad_verbose = true;
             iarg += 1;
         } else
-            error->all(FLERR, "Unknown pair_style pace keyword: {}", arg[iarg]);
+            error->all(FLERR, "[GRACE] Unknown pair_style grace keyword: {}", arg[iarg]);
     }
 
     do_padding = (neigh_padding_fraction > 0);
     if (do_padding && comm->me == 0)
-        utils::logmesg(lmp, "Neighbour padding is ON, padding fraction: {}\n", neigh_padding_fraction);
+        utils::logmesg(lmp, "[GRACE] Neighbour padding is ON, padding fraction: {}\n", neigh_padding_fraction);
 }
 
 /* ----------------------------------------------------------------------
@@ -158,7 +158,7 @@ void PairGRACE::coeff(int narg, char **arg) {
     //load potential file
     delete aceimpl->model;
     //load potential file
-    if (comm->me == 0) utils::logmesg(lmp, "Loading {}\n", potential_path);
+    if (comm->me == 0) utils::logmesg(lmp, "[GRACE] Loading {}\n", potential_path);
     // load cppflow model
     aceimpl->model = new cppflow::model(potential_path);
 
@@ -172,7 +172,7 @@ void PairGRACE::coeff(int narg, char **arg) {
     }
     cutoff = metadata_yaml["cutoff"].as<double>();
     if (comm->me == 0) {
-        utils::logmesg(lmp, "Model loaded\n");
+        utils::logmesg(lmp, "[GRACE] Model loaded\n");
     }
 
 
@@ -190,20 +190,20 @@ void PairGRACE::coeff(int narg, char **arg) {
             // but if it will ,then error will be thrown there
             element_type_mapping[i] = -1;
             map[i] = -1;
-            if (comm->me == 0) utils::logmesg(lmp, "Skipping LAMMPS atom type #{}(NULL)\n", i);
+            if (comm->me == 0) utils::logmesg(lmp, "[GRACE] Skipping LAMMPS atom type #{}(NULL)\n", i);
         } else {
             int atomic_number = PACE::AtomicNumberByName(elemname);
-            if (atomic_number == -1) error->all(FLERR, "'{}' is not a valid element\n", elemname);
+            if (atomic_number == -1) error->all(FLERR, "[GRACE] '{}' is not a valid element\n", elemname);
             int mu = elements_to_index_map.at(elemname);
             if (mu != -1) {
                 if (comm->me == 0)
-                    utils::logmesg(lmp, "Mapping LAMMPS atom type #{}({}) -> ACE species type #{}\n", i,
+                    utils::logmesg(lmp, "[GRACE] Mapping LAMMPS atom type #{}({}) -> ACE species type #{}\n", i,
                                    elemname, mu);
                 map[i] = mu;
                 // set up LAMMPS atom type to ACE species  mapping for ace evaluator
                 element_type_mapping[i] = mu;
             } else {
-                error->all(FLERR, "Element {} is not supported by ACE-potential from file {}", elemname,
+                error->all(FLERR, "[GRACE] Element {} is not supported by ACE-potential from file {}", elemname,
                            potential_path);
             }
         }
@@ -223,16 +223,16 @@ void PairGRACE::coeff(int narg, char **arg) {
     //
     has_map_atoms_to_structure_op = check_tf_graph_input_presented(aceimpl->model,
                                                                    "serving_default_map_atoms_to_structure");
-    std::cout<<"[DEBUG] has_map_atoms_to_structure_op="<<has_map_atoms_to_structure_op<<endl;
+//    std::cout<<"[DEBUG] has_map_atoms_to_structure_op="<<has_map_atoms_to_structure_op<<endl;
 
     has_nstruct_total_op = check_tf_graph_input_presented(aceimpl->model,
                                                                    "serving_default_n_struct_total");
-    std::cout<<"[DEBUG] has_nstruct_total_op="<<has_nstruct_total_op<<endl;
+//    std::cout<<"[DEBUG] has_nstruct_total_op="<<has_nstruct_total_op<<endl;
 
 
     has_mu_i_op = check_tf_graph_input_presented(aceimpl->model,
                                                           "serving_default_mu_i");
-    std::cout<<"[DEBUG] has_mu_i_op="<<has_mu_i_op<<endl;
+//    std::cout<<"[DEBUG] has_mu_i_op="<<has_mu_i_op<<endl;
 }
 
 
@@ -241,8 +241,8 @@ void PairGRACE::coeff(int narg, char **arg) {
 ------------------------------------------------------------------------- */
 
 void PairGRACE::init_style() {
-    if (atom->tag_enable == 0) error->all(FLERR, "Pair style pace/tp requires atom IDs");
-    if (force->newton_pair == 0) error->all(FLERR, "Pair style pace/tp requires newton pair on");
+    if (atom->tag_enable == 0) error->all(FLERR, "Pair style grace requires atom IDs");
+    if (force->newton_pair == 0) error->all(FLERR, "Pair style grace requires newton pair on");
 
     // request a full neighbor list
     neighbor->add_request(this, NeighConst::REQ_FULL);
@@ -436,7 +436,7 @@ void PairGRACE::compute(int eflag, int vflag) {
             tot_neighbours = n_real_neighbours + n_fake_neighbours; // add fake neighbours
             if (pad_verbose)
                 utils::logmesg(lmp,
-                               "Neighbours padding: new num. of neighbours = {} (+{:.3f}% fake neighbours)\n",
+                               "[GRACE] Neighbours padding: new num. of neighbours = {} (+{:.3f}% fake neighbours)\n",
                                tot_neighbours, 100. * (double) n_fake_neighbours / n_real_neighbours);
         }
     } else {
