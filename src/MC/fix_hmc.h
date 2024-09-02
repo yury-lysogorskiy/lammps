@@ -53,10 +53,12 @@ class FixHMC : public Fix {
   void restore_saved_state();
   void random_velocities();
   void rigid_body_random_velocities();
+  void grow_store(int, int);
 
   template <typename T> void store_peratom_member(Atom::PerAtom &, Atom::PerAtom, int, int, int);
   template <typename T> void restore_peratom_member(Atom::PerAtom, Atom::PerAtom &, int);
   template <typename T> double memory_usage_peratom_member(Atom::PerAtom &);
+
   std::vector<Atom::PerAtom> stored_peratom;
   std::vector<Atom::PerAtom> current_peratom;
   tagint *stored_tag;
@@ -73,7 +75,7 @@ class FixHMC : public Fix {
   double **stored_orient;
   double **stored_dorient;
 
-  int nstore, maxstore;
+  int nstore, maxstore, bufextra;
   double *buf_store;
 
   int resample_on_accept_flag, mom_flag;
