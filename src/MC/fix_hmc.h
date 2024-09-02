@@ -73,6 +73,9 @@ class FixHMC : public Fix {
   double **stored_orient;
   double **stored_dorient;
 
+  int nstore, maxstore;
+  double *buf_store;
+
   int resample_on_accept_flag, mom_flag;
   int first_init_complete, first_setup_complete;
 

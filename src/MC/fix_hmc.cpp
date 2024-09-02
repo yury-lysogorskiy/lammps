@@ -51,6 +51,9 @@
 using namespace LAMMPS_NS;
 using namespace FixConst;
 
+#define BUFFACTOR 1.5
+#define BUFEXTRA 1024
+
 static constexpr double EPSILON = 1.0e-7;
 
 enum { ATOMS, VCM_OMEGA, XCM, ITENSOR, ROTATION, FORCE_TORQUE };
@@ -523,6 +526,18 @@ void FixHMC::setup(int vflag)
     if (peatom_flag) peatom->addstep(nextstep);
     if (press_flag) press->addstep(nextstep);
     if (pressatom_flag) pressatom->addstep(nextstep);
+
+    // create buffer, store fixes for warnings
+    int maxexchange_fix = 0;
+    int maxexchange_atom = atom->avec->maxexchange;
+
+    for (const auto &fix : modify->get_fix_list()) maxexchange_fix += fix->maxexchange;
+    maxexchange = maxexchange_atom + maxexchange_fix;
+    bufextra = maxexchange + BUFEXTRA;
+
+    maxstore = 1024;
+    memory->destroy(buf_store);
+    memory->grow(buf_store, maxstore, "fix_hmc:store_buf");
   }
 }
 
@@ -615,6 +630,28 @@ double FixHMC::compute_vector(int item)
 }
 
 /* ----------------------------------------------------------------------
+   realloc the size of the send buffer as needed with BUFFACTOR and bufextra
+   flag = 0, don't need to realloc with copy, just free/malloc w/ BUFFACTOR
+   flag = 1, realloc with BUFFACTOR
+   flag = 2, free/malloc w/out BUFFACTOR
+------------------------------------------------------------------------- */
+
+void FixHMC::grow_store(int n, int flag)
+{
+  if (flag == 0) {
+    maxstore = static_cast<int>(BUFFACTOR * n);
+    memory->destroy(buf_store);
+    memory->create(buf_store, maxstore + bufextra, "comm:buf_store");
+  } else if (flag == 1) {
+    maxstore = static_cast<int>(BUFFACTOR * n);
+    memory->grow(buf_store, maxstore + bufextra, "comm:buf_store");
+  } else {
+    memory->destroy(buf_store);
+    memory->grow(buf_store, maxstore + bufextra, "comm:buf_store");
+  }
+}
+
+/* ----------------------------------------------------------------------
    Save the system state for eventual restoration if move is rejected
 ------------------------------------------------------------------------- */
 void FixHMC::save_current_state()
@@ -625,148 +662,156 @@ void FixHMC::save_current_state()
   int ntotal = nlocal + atom->nghost;
   int nmax = atom->nmax;
   int reallocate_peratoms = false;
+  AtomVec *avec = atom->avec;
   current_peratom = atom->peratom;
+  int nsend = 0;
 
-  if (nmax > stored_nmax) {
-    // reallocate tag array
-    stored_nmax = nmax;
-    memory->destroy(stored_tag);
-    stored_tag = memory->create(stored_tag, stored_nmax, "hmc:stored_tag");
-    reallocate_peratoms = true;
-    // reallocate body peratom data
-    if (rigid_flag) {
-      memory->destroy(stored_bodyown);
-      memory->destroy(stored_bodytag);
-      memory->destroy(stored_atom2body);
-      memory->destroy(stored_xcmimage);
-      memory->destroy(stored_displace);
-      memory->destroy(stored_eflags);
-      memory->destroy(stored_orient);
-      memory->destroy(stored_dorient);
-      stored_bodyown = memory->create(stored_bodyown, stored_nmax, "hmc:stored_bodyown");
-      stored_bodytag = memory->create(stored_bodytag, stored_nmax, "hmc:stored_bodytag");
-      stored_atom2body = memory->create(stored_atom2body, stored_nmax, "hmc:stored_atom2body");
-      stored_xcmimage = memory->create(stored_xcmimage, stored_nmax, "hmc:stored_xcmimage");
-      stored_displace = memory->create(stored_displace, stored_nmax, 3, "hmc:stored_displace");
-      if (fix_rigid->extended) {
-        stored_eflags = memory->create(stored_eflags, nmax, "hmc:stored_eflags");
-        if (fix_rigid->orientflag)
-          stored_orient =
-              memory->create(stored_orient, nmax, fix_rigid->orientflag, "hmc:stored_orient");
-        if (fix_rigid->dorientflag)
-          stored_dorient = memory->create(stored_dorient, nmax, 3, "hmc:stored_dorient");
-      }
-    }
+  for (int i = 0; i < nlocal; i++) {
+      if (nsend > maxstore) grow_store(nsend, 1);
+      nsend += avec->pack_exchange(i, &buf_store[nsend]);
   }
 
-  // store tag array
-  memcpy(stored_tag, atom->tag, ntotal * sizeof(tagint));
 
-  // store body peratom data
-  if (rigid_flag) {
-    memcpy(stored_bodyown, fix_rigid->bodyown, ntotal * sizeof(int));
-    memcpy(stored_bodytag, fix_rigid->bodytag, ntotal * sizeof(tagint));
-    memcpy(stored_atom2body, fix_rigid->atom2body, ntotal * sizeof(int));
-    memcpy(stored_xcmimage, fix_rigid->xcmimage, ntotal * sizeof(imageint));
-    for (int i = 0; i < ntotal; i++)
-      memcpy(stored_displace[i], fix_rigid->displace[i], 3 * sizeof(double));
-    if (fix_rigid->extended) {
-      memcpy(stored_eflags, fix_rigid->eflags, ntotal * sizeof(int));
-      if (fix_rigid->orientflag)
-        for (int i = 0; i < ntotal; i++)
-          memcpy(stored_orient[i], fix_rigid->orient[i], fix_rigid->orientflag * sizeof(double));
-      if (fix_rigid->dorientflag)
-        for (int i = 0; i < ntotal; i++)
-          memcpy(stored_dorient[i], fix_rigid->dorient[i], 3 * sizeof(double));
-    }
-  }
+  //if (nmax > stored_nmax) {
+  //  // reallocate tag array
+  //  stored_nmax = nmax;
+  //  memory->destroy(stored_tag);
+  //  stored_tag = memory->create(stored_tag, stored_nmax, "hmc:stored_tag");
+  //  reallocate_peratoms = true;
+  //  // reallocate body peratom data
+  //  if (rigid_flag) {
+  //    memory->destroy(stored_bodyown);
+  //    memory->destroy(stored_bodytag);
+  //    memory->destroy(stored_atom2body);
+  //    memory->destroy(stored_xcmimage);
+  //    memory->destroy(stored_displace);
+  //    memory->destroy(stored_eflags);
+  //    memory->destroy(stored_orient);
+  //    memory->destroy(stored_dorient);
+  //    stored_bodyown = memory->create(stored_bodyown, stored_nmax, "hmc:stored_bodyown");
+  //    stored_bodytag = memory->create(stored_bodytag, stored_nmax, "hmc:stored_bodytag");
+  //    stored_atom2body = memory->create(stored_atom2body, stored_nmax, "hmc:stored_atom2body");
+  //    stored_xcmimage = memory->create(stored_xcmimage, stored_nmax, "hmc:stored_xcmimage");
+  //    stored_displace = memory->create(stored_displace, stored_nmax, 3, "hmc:stored_displace");
+  //    if (fix_rigid->extended) {
+  //      stored_eflags = memory->create(stored_eflags, nmax, "hmc:stored_eflags");
+  //      if (fix_rigid->orientflag)
+  //        stored_orient =
+  //            memory->create(stored_orient, nmax, fix_rigid->orientflag, "hmc:stored_orient");
+  //      if (fix_rigid->dorientflag)
+  //        stored_dorient = memory->create(stored_dorient, nmax, 3, "hmc:stored_dorient");
+  //    }
+  //  }
+  //}
 
-  // also reallocate if the number of peratoms has changed
-  if (current_peratom.size() != stored_peratom.size()) reallocate_peratoms = true;
+  //// store tag array
+  //memcpy(stored_tag, atom->tag, ntotal * sizeof(tagint));
 
-  // clear peratom data and store a new struct if reallocation, else just re-store
-  if (reallocate_peratoms) {
-    for (Atom::PerAtom &stored_peratom_member : stored_peratom) {
-      free(stored_peratom_member.address);
-      free(stored_peratom_member.address_maxcols);
-    }
-    stored_peratom.clear();
-    Atom::PerAtom stored_peratom_member;
-    for (Atom::PerAtom &current_peratom_member : current_peratom) {
-      stored_peratom_member = current_peratom_member;
-      switch (current_peratom_member.datatype) {
-        case (Atom::INT):
-          store_peratom_member<int>(stored_peratom_member, current_peratom_member, ntotal, nmax,
-                                    reallocate_peratoms);
-          break;
-        case (Atom::DOUBLE):
-          store_peratom_member<double>(stored_peratom_member, current_peratom_member, ntotal, nmax,
-                                       reallocate_peratoms);
-          break;
-        case (Atom::BIGINT):
-          store_peratom_member<bigint>(stored_peratom_member, current_peratom_member, ntotal, nmax,
-                                       reallocate_peratoms);
-          break;
-      }
-      stored_peratom.push_back(stored_peratom_member);
-    }
-  } else {
-    for (Atom::PerAtom &stored_peratom_member : stored_peratom) {
-      for (Atom::PerAtom &current_peratom_member : current_peratom) {
-        if (stored_peratom_member.name.compare(current_peratom_member.name)) {
-          continue;
-        } else {
-          switch (current_peratom_member.datatype) {
-            case (Atom::INT):
-              store_peratom_member<int>(stored_peratom_member, current_peratom_member, ntotal, nmax,
-                                        reallocate_peratoms);
-              break;
-            case (Atom::DOUBLE):
-              store_peratom_member<double>(stored_peratom_member, current_peratom_member, ntotal,
-                                           nmax, reallocate_peratoms);
-              break;
-            case (Atom::BIGINT):
-              store_peratom_member<bigint>(stored_peratom_member, current_peratom_member, ntotal,
-                                           nmax, reallocate_peratoms);
-              break;
-          }
-        }
-      }
-    }
-  }
+  //// store body peratom data
+  //if (rigid_flag) {
+  //  memcpy(stored_bodyown, fix_rigid->bodyown, ntotal * sizeof(int));
+  //  memcpy(stored_bodytag, fix_rigid->bodytag, ntotal * sizeof(tagint));
+  //  memcpy(stored_atom2body, fix_rigid->atom2body, ntotal * sizeof(int));
+  //  memcpy(stored_xcmimage, fix_rigid->xcmimage, ntotal * sizeof(imageint));
+  //  for (int i = 0; i < ntotal; i++)
+  //    memcpy(stored_displace[i], fix_rigid->displace[i], 3 * sizeof(double));
+  //  if (fix_rigid->extended) {
+  //    memcpy(stored_eflags, fix_rigid->eflags, ntotal * sizeof(int));
+  //    if (fix_rigid->orientflag)
+  //      for (int i = 0; i < ntotal; i++)
+  //        memcpy(stored_orient[i], fix_rigid->orient[i], fix_rigid->orientflag * sizeof(double));
+  //    if (fix_rigid->dorientflag)
+  //      for (int i = 0; i < ntotal; i++)
+  //        memcpy(stored_dorient[i], fix_rigid->dorient[i], 3 * sizeof(double));
+  //  }
+  //}
 
-  // store totals
-  stored_ntotal = ntotal;
-  stored_nlocal = nlocal;
-  stored_nmax = nmax;
-  stored_nghost = atom->nghost;
-  stored_nbonds = atom->nbonds;
-  stored_nangles = atom->nangles;
-  stored_ndihedrals = atom->ndihedrals;
-  stored_nimpropers = atom->nimpropers;
+  //// also reallocate if the number of peratoms has changed
+  //if (current_peratom.size() != stored_peratom.size()) reallocate_peratoms = true;
 
-  // store bodies
-  if (rigid_flag) {
-    stored_nlocal_body = fix_rigid->nlocal_body;
-    stored_nghost_body = fix_rigid->nghost_body;
-    stored_ntotal_body = stored_nlocal_body + stored_nghost_body;
-    delete stored_body;
-    stored_body = new RigidSmallBody[stored_ntotal_body];
-    for (int i = 0; i < stored_ntotal_body; i++) stored_body[i] = fix_rigid->body[i];
-  }
+  //// clear peratom data and store a new struct if reallocation, else just re-store
+  //if (reallocate_peratoms) {
+  //  for (Atom::PerAtom &stored_peratom_member : stored_peratom) {
+  //    free(stored_peratom_member.address);
+  //    free(stored_peratom_member.address_maxcols);
+  //  }
+  //  stored_peratom.clear();
+  //  Atom::PerAtom stored_peratom_member;
+  //  for (Atom::PerAtom &current_peratom_member : current_peratom) {
+  //    stored_peratom_member = current_peratom_member;
+  //    switch (current_peratom_member.datatype) {
+  //      case (Atom::INT):
+  //        store_peratom_member<int>(stored_peratom_member, current_peratom_member, ntotal, nmax,
+  //                                  reallocate_peratoms);
+  //        break;
+  //      case (Atom::DOUBLE):
+  //        store_peratom_member<double>(stored_peratom_member, current_peratom_member, ntotal, nmax,
+  //                                     reallocate_peratoms);
+  //        break;
+  //      case (Atom::BIGINT):
+  //        store_peratom_member<bigint>(stored_peratom_member, current_peratom_member, ntotal, nmax,
+  //                                     reallocate_peratoms);
+  //        break;
+  //    }
+  //    stored_peratom.push_back(stored_peratom_member);
+  //  }
+  //} else {
+  //  for (Atom::PerAtom &stored_peratom_member : stored_peratom) {
+  //    for (Atom::PerAtom &current_peratom_member : current_peratom) {
+  //      if (stored_peratom_member.name.compare(current_peratom_member.name)) {
+  //        continue;
+  //      } else {
+  //        switch (current_peratom_member.datatype) {
+  //          case (Atom::INT):
+  //            store_peratom_member<int>(stored_peratom_member, current_peratom_member, ntotal, nmax,
+  //                                      reallocate_peratoms);
+  //            break;
+  //          case (Atom::DOUBLE):
+  //            store_peratom_member<double>(stored_peratom_member, current_peratom_member, ntotal,
+  //                                         nmax, reallocate_peratoms);
+  //            break;
+  //          case (Atom::BIGINT):
+  //            store_peratom_member<bigint>(stored_peratom_member, current_peratom_member, ntotal,
+  //                                         nmax, reallocate_peratoms);
+  //            break;
+  //        }
+  //      }
+  //    }
+  //  }
+  //}
 
-  // Save global energy terms:
-  for (m = 0; m < neg; m++) eglobal[m] = *eglobalptr[m];
+  //// store totals
+  //stored_ntotal = ntotal;
+  //stored_nlocal = nlocal;
+  //stored_nmax = nmax;
+  //stored_nghost = atom->nghost;
+  //stored_nbonds = atom->nbonds;
+  //stored_nangles = atom->nangles;
+  //stored_ndihedrals = atom->ndihedrals;
+  //stored_nimpropers = atom->nimpropers;
 
-  // Save global virial terms:
-  if (press_flag)
-    for (m = 0; m < nv; m++) memcpy(vglobal[m], *vglobalptr[m], six);
+  //// store bodies
+  //if (rigid_flag) {
+  //  stored_nlocal_body = fix_rigid->nlocal_body;
+  //  stored_nghost_body = fix_rigid->nghost_body;
+  //  stored_ntotal_body = stored_nlocal_body + stored_nghost_body;
+  //  delete stored_body;
+  //  stored_body = new RigidSmallBody[stored_ntotal_body];
+  //  for (int i = 0; i < stored_ntotal_body; i++) stored_body[i] = fix_rigid->body[i];
+  //}
 
-  // Perform reverse communication to incorporate ghost atoms info:
-  if (comm_reverse && (peatom_flag || pressatom_flag)) {
-    comm_flag = ATOMS;
-    comm->reverse_comm(this, ncommrev);
-  }
+  //// Save global energy terms:
+  //for (m = 0; m < neg; m++) eglobal[m] = *eglobalptr[m];
+
+  //// Save global virial terms:
+  //if (press_flag)
+  //  for (m = 0; m < nv; m++) memcpy(vglobal[m], *vglobalptr[m], six);
+
+  //// Perform reverse communication to incorporate ghost atoms info:
+  //if (comm_reverse && (peatom_flag || pressatom_flag)) {
+  //  comm_flag = ATOMS;
+  //  comm->reverse_comm(this, ncommrev);
+  //}
 }
 
 /* ----------------------------------------------------------------------
@@ -778,67 +823,19 @@ void FixHMC::restore_saved_state()
   int i;
   int nlocal = atom->nlocal;
   int ntotal = nlocal + atom->nghost;
+  AtomVec *avec = atom->avec;
 
   current_peratom = atom->peratom;
 
-  // restore tag and peratom body data
-  memcpy(atom->tag, stored_tag, stored_ntotal * sizeof(tagint));
-
-  if (rigid_flag) {
-    memcpy(fix_rigid->bodyown, stored_bodyown, ntotal * sizeof(int));
-    memcpy(fix_rigid->bodytag, stored_bodytag, ntotal * sizeof(tagint));
-    memcpy(fix_rigid->atom2body, stored_atom2body, ntotal * sizeof(int));
-    memcpy(fix_rigid->xcmimage, stored_xcmimage, ntotal * sizeof(imageint));
-    for (int i = 0; i < ntotal; i++)
-      memcpy(fix_rigid->displace[i], stored_displace[i], 3 * sizeof(double));
-    if (fix_rigid->extended) {
-      memcpy(fix_rigid->eflags, stored_eflags, ntotal * sizeof(int));
-      if (fix_rigid->orientflag)
-        for (int i = 0; i < ntotal; i++)
-          memcpy(fix_rigid->orient[i], stored_orient[i], fix_rigid->orientflag * sizeof(double));
-      if (fix_rigid->dorientflag)
-        for (int i = 0; i < ntotal; i++)
-          memcpy(fix_rigid->dorient[i], stored_dorient[i], 3 * sizeof(double));
-    }
-  }
-
-  if (stored_ntotal > atom->nlocal + atom->nghost) { atom->avec->grow(stored_ntotal); }
-
-  // restore counts
-  atom->nlocal = stored_nlocal;
-  atom->nghost = stored_nghost;
-  atom->nbonds = stored_nbonds;
-  atom->nangles = stored_nangles;
-  atom->ndihedrals = stored_ndihedrals;
-  atom->nimpropers = stored_nimpropers;
-
-  // restore peratom data
-  for (Atom::PerAtom &stored_peratom_member : stored_peratom) {
-    for (Atom::PerAtom &current_peratom_member : current_peratom) {
-      if (stored_peratom_member.name.compare(current_peratom_member.name)) {
-        continue;
-      } else {
-        switch (current_peratom_member.datatype) {
-          case (Atom::INT):
-            restore_peratom_member<int>(stored_peratom_member, current_peratom_member, ntotal);
-            break;
-          case (Atom::DOUBLE):
-            restore_peratom_member<double>(stored_peratom_member, current_peratom_member, ntotal);
-            break;
-          case (Atom::BIGINT):
-            restore_peratom_member<bigint>(stored_peratom_member, current_peratom_member, ntotal);
-            break;
-        }
-        break;
-      }
-    }
-  }
-
-  // restore bodies
-  if (rigid_flag) {
-    fix_rigid->nlocal_body = stored_nlocal_body;
-    fix_rigid->nghost_body = stored_nghost_body;
-    for (int i = 0; i < stored_ntotal_body; i++) fix_rigid->body[i] = stored_body[i];
+  if (atom->map_style != Atom::MAP_NONE) atom->map_clear();
+  atom->nghost = 0;
+  atom->avec->clear_bonus();
+  // delete all atoms
+  atom->nlocal = 0;
+  // unpack exchange
+  int m = 0;
+  while (m < nstore) {
+      m += avec->unpack_exchange(&buf_store[m]);
   }
 
   // reinit atom_map
@@ -854,7 +851,7 @@ void FixHMC::restore_saved_state()
   // Restore global virial terms:
   if (press_flag)
     for (i = 0; i < nv; i++) memcpy(*vglobalptr[i], vglobal[i], six);
-}
+ }
 
 /* ----------------------------------------------------------------------
    Randomly choose velocities from a Maxwell-Boltzmann distribution
@@ -868,7 +865,7 @@ void FixHMC::random_velocities()
 
   double stdev;
   int nlocal, dimension;
-
+//
   double *rmass = atom->rmass;
   double *mass = atom->mass;
   nlocal = atom->nlocal;
