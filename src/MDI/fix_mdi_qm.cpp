@@ -22,12 +22,14 @@
 #include "modify.h"
 #include "update.h"
 
+#include <cstring>
+
 using namespace LAMMPS_NS;
 using namespace FixConst;
 
 enum { NATIVE, REAL, METAL };    // LAMMPS units which MDI supports
 
-#define MAXELEMENT 118
+static constexpr int MAXELEMENT = 118;
 
 // prototype for non-class compare function for sorting QM IDs
 
@@ -47,6 +49,17 @@ FixMDIQM::FixMDIQM(LAMMPS *lmp, int narg, char **arg) :
 
   if (atom->map_style == Atom::MAP_NONE)
     error->all(FLERR, "Fix mdi/qm requires an atom map be defined");
+
+  // initialize class members
+
+  plugin = 0;
+  natoms_exists = 0;
+  celldispl_exists = 0;
+  elements_exists = 0;
+  types_exists = 0;
+  stress_exists = 0;
+  pe_exists = 0;
+  keelec_exists = 0;
 
   // confirm LAMMPS is being run as a driver
 
@@ -1101,7 +1114,7 @@ void FixMDIQM::unit_conversions()
 
 int compare_IDs(const int i, const int j, void *ptr)
 {
-  tagint *ids = (int *) ptr;
+  tagint *ids = (tagint *) ptr;
   if (ids[i] < ids[j]) return -1;
   if (ids[i] > ids[j]) return 1;
   return 0;

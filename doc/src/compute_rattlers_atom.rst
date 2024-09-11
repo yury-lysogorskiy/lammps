@@ -1,7 +1,7 @@
 .. index:: compute rattlers/atom
 
 compute rattlers/atom command
-========================
+=============================
 
 Syntax
 """"""
@@ -32,10 +32,10 @@ Examples
 Description
 """""""""""
 
-.. versionadded:: TBD
+.. versionadded:: 7Feb2024
 
 Define a compute that identifies rattlers in a system. Rattlers are often
-identified in granular or glassy packings as undercoordinated atoms that
+identified in granular or glassy packings as under-coordinated atoms that
 do not have the required number of contacts to constrain their translational
 degrees of freedom. Such atoms are not considered rigid and can often freely
 rattle around in the system. This compute identifies rattlers which can be

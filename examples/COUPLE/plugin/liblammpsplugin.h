@@ -144,17 +144,23 @@ struct _liblammpsplugin {
   int (*get_mpi_comm)(void *);
 
   int (*extract_setting)(void *, const char *);
-  int *(*extract_global_datatype)(void *, const char *);
+  int (*extract_global_datatype)(void *, const char *);
   void *(*extract_global)(void *, const char *);
+  int (*extract_pair_dimension)(void *, const char *);
+  void *(*extract_pair)(void *, const char *);
+  int (*map_atom)(void *, const void *);
 
-  int *(*extract_atom_datatype)(void *, const char *);
+  int (*extract_atom_datatype)(void *, const char *);
+  int (*extract_atom_size)(void *, const char *, int);
   void *(*extract_atom)(void *, const char *);
 
   void *(*extract_compute)(void *, const char *, int, int);
   void *(*extract_fix)(void *, const char *, int, int, int, int);
-  void *(*extract_variable)(void *, const char *, char *);
+  void *(*extract_variable)(void *, const char *, const char *);
   int (*extract_variable_datatype)(void *, const char *);
-  int (*set_variable)(void *, char *, char *);
+  int (*set_variable)(void *, const char *, const char *);
+  int (*set_string_variable)(void *, const char *, const char *);
+  int (*set_internal_variable)(void *, const char *, double);
   int (*variable_info)(void *, int, char *, int);
 
   void (*gather_atoms)(void *, const char *, int, int, void *);
@@ -198,6 +204,7 @@ struct _liblammpsplugin {
   int (*config_has_png_support)();
   int (*config_has_jpeg_support)();
   int (*config_has_ffmpeg_support)();
+  int (*config_has_curl_support)();
   int (*config_has_exceptions)();
 
   int (*config_has_package)(const char *);
