@@ -25,6 +25,9 @@
 
 #include "utils_pace.h"
 
+#include <cppflow/tensor.h>
+
+#include <tensorflow/c/c_api.h>
 //#define PACE_TP_OMP 1
 
 const std::string DEFAULT_INPUT_PREFIX = "serving_default_";
@@ -118,9 +121,8 @@ void PairGRACE::settings(int narg, char **arg) {
     if (strcmp("metal", update->unit_style) != 0)
         error->all(FLERR, "GRACE potentials require 'metal' units");
 
-    if (comm->me == 0) {
-        utils::logmesg(lmp, "[GRACE]\n");
-    }
+    auto tf_version = TF_Version();
+    if (comm->me == 0) utils::logmesg(lmp, "[GRACE] TF version: {}\n", tf_version);
 
     int iarg = 0;
     while (iarg < narg) {
@@ -233,6 +235,7 @@ void PairGRACE::coeff(int narg, char **arg) {
     has_mu_i_op = check_tf_graph_input_presented(aceimpl->model,
                                                           "serving_default_mu_i");
 //    std::cout<<"[DEBUG] has_mu_i_op="<<has_mu_i_op<<endl;
+
 }
 
 
