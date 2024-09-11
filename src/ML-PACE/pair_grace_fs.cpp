@@ -42,7 +42,7 @@ Copyright 2021 Yury Lysogorskiy^1, Cas van der Oord^2, Anton Bochkarev^1,
 #include <exception>
 
 #include "ace-evaluator/ace_version.h"
-#include "ace/tdace_evaluator.h"
+#include "ace/grace_fs_evaluator.h"
 
 #include "utils_pace.h"
 
@@ -55,8 +55,8 @@ namespace LAMMPS_NS {
             delete ace;
         }
 
-        TDACEBasisSet *basis_set;
-        TDACEBEvaluator *ace;
+        GRACEFSBasisSet *basis_set;
+        GRACEFSBEvaluator *ace;
     };
 }    // namespace LAMMPS_NS
 
@@ -282,7 +282,7 @@ void PairGRACEFS::coeff(int narg, char **arg) {
     //load potential file
     delete aceimpl->basis_set;
     if (comm->me == 0) utils::logmesg(lmp, "[GRACE-FS] Loading {}\n", potential_file_name);
-    aceimpl->basis_set = new TDACEBasisSet(potential_file_name);
+    aceimpl->basis_set = new GRACEFSBasisSet(potential_file_name);
 
     std::string asi_file_name;
     if (request_extrapolation) {
@@ -306,7 +306,7 @@ void PairGRACEFS::coeff(int narg, char **arg) {
     // map[0] is not used
 
     delete aceimpl->ace;
-    aceimpl->ace = new TDACEBEvaluator();
+    aceimpl->ace = new GRACEFSBEvaluator();
     aceimpl->ace->element_type_mapping.init(atom->ntypes + 1);
 
     const int n = atom->ntypes;
