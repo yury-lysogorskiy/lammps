@@ -67,7 +67,7 @@ FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
     stored_dorient(nullptr), fix_rigid(nullptr), random(nullptr), random_equal(nullptr),
     rev_comm(nullptr), eatom(nullptr), eatomptr(nullptr), eglobal(nullptr), eglobalptr(nullptr),
     vglobal(nullptr), vglobalptr(nullptr), vatom(nullptr), vatomptr(nullptr), pe(nullptr),
-    ke(nullptr), peatom(nullptr), press(nullptr), pressatom(nullptr)
+    ke(nullptr), peatom(nullptr), press(nullptr), pressatom(nullptr), buf_store(nullptr)
 {
   // set some defaults
 
@@ -518,6 +518,11 @@ void FixHMC::setup(int vflag)
     update->eflag_global = update->ntimestep;
     PE = pe->compute_scalar();
     KE = ke->compute_scalar();
+
+    maxstore = BUFEXTRA;
+    bufextra = BUFEXTRA;
+    memory->destroy(buf_store);
+    memory->create(buf_store, maxstore + bufextra, "fix_hmc:buf_store");
     save_current_state();
 
     // Activate potential energy and other necessary calculations:
@@ -535,9 +540,6 @@ void FixHMC::setup(int vflag)
     maxexchange = maxexchange_atom + maxexchange_fix;
     bufextra = maxexchange + BUFEXTRA;
 
-    maxstore = 1024;
-    memory->destroy(buf_store);
-    memory->grow(buf_store, maxstore, "fix_hmc:store_buf");
   }
 }
 
@@ -641,13 +643,13 @@ void FixHMC::grow_store(int n, int flag)
   if (flag == 0) {
     maxstore = static_cast<int>(BUFFACTOR * n);
     memory->destroy(buf_store);
-    memory->create(buf_store, maxstore + bufextra, "comm:buf_store");
+    memory->create(buf_store, maxstore + bufextra, "fix_hmc:buf_store");
   } else if (flag == 1) {
     maxstore = static_cast<int>(BUFFACTOR * n);
-    memory->grow(buf_store, maxstore + bufextra, "comm:buf_store");
+    memory->grow(buf_store, maxstore + bufextra, "fix_hmc:buf_store");
   } else {
     memory->destroy(buf_store);
-    memory->grow(buf_store, maxstore + bufextra, "comm:buf_store");
+    memory->grow(buf_store, maxstore + bufextra, "fix_hmc:buf_store");
   }
 }
 
@@ -664,11 +666,11 @@ void FixHMC::save_current_state()
   int reallocate_peratoms = false;
   AtomVec *avec = atom->avec;
   current_peratom = atom->peratom;
-  int nsend = 0;
+  nstore = 0;
 
   for (int i = 0; i < nlocal; i++) {
-      if (nsend > maxstore) grow_store(nsend, 1);
-      nsend += avec->pack_exchange(i, &buf_store[nsend]);
+      if (nstore > maxstore) grow_store(nstore, 1);
+      nstore += avec->pack_exchange(i, &buf_store[nstore]);
   }
 
   // Save global energy terms:
