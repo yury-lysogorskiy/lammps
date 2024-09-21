@@ -61,12 +61,8 @@ enum { ATOMS, VCM_OMEGA, XCM, ITENSOR, ROTATION, FORCE_TORQUE };
 /* ---------------------------------------------------------------------- */
 
 FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
-    Fix(lmp, narg, arg), stored_tag(nullptr), stored_body(nullptr), stored_bodyown(nullptr),
-    stored_bodytag(nullptr), stored_atom2body(nullptr), stored_xcmimage(nullptr),
-    stored_displace(nullptr), stored_eflags(nullptr), stored_orient(nullptr),
-    stored_dorient(nullptr), fix_rigid(nullptr), random(nullptr), random_equal(nullptr),
-    rev_comm(nullptr), eatom(nullptr), eatomptr(nullptr), eglobal(nullptr), eglobalptr(nullptr),
-    vglobal(nullptr), vglobalptr(nullptr), vatom(nullptr), vatomptr(nullptr), pe(nullptr),
+    Fix(lmp, narg, arg), fix_rigid(nullptr), random(nullptr), random_equal(nullptr),
+    eglobal(nullptr), eglobalptr(nullptr), vglobal(nullptr), vglobalptr(nullptr), pe(nullptr),
     ke(nullptr), peatom(nullptr), press(nullptr), pressatom(nullptr), buf_store(nullptr)
 {
   // set some defaults
@@ -156,15 +152,10 @@ FixHMC::~FixHMC()
 
   memory->destroy(eglobal);
   memory->destroy(vglobal);
-  memory->destroy(eatom);
-  memory->destroy(vatom);
   delete[] eglobalptr;
   if (vglobalptr)
     for (int m = 0; m < nv; m++) delete[] vglobalptr[m];
   delete[] vglobalptr;
-  delete[] eatomptr;
-  delete[] vatomptr;
-  delete[] rev_comm;
   delete random;
   delete random_equal;
   modify->delete_compute(std::string("hmc_ke_") + id);
@@ -172,117 +163,6 @@ FixHMC::~FixHMC()
   modify->delete_compute(std::string("hmc_peatom_") + id);
   modify->delete_compute(std::string("hmc_press_") + id);
   modify->delete_compute(std::string("hmc_pressatom_") + id);
-
-  memory->destroy(stored_tag);
-  memory->destroy(stored_bodyown);
-  memory->destroy(stored_bodytag);
-  memory->destroy(stored_atom2body);
-  memory->destroy(stored_xcmimage);
-  memory->destroy(stored_displace);
-  memory->destroy(stored_eflags);
-  memory->destroy(stored_orient);
-  memory->destroy(stored_dorient);
-
-  for (Atom::PerAtom &stored_peratom_member : stored_peratom) {
-    free(stored_peratom_member.address);
-    free(stored_peratom_member.address_maxcols);
-    free(stored_peratom_member.address_length);
-  }
-}
-
-/* ---------------------------------------------------------------------- */
-
-template <typename T>
-void FixHMC::store_peratom_member(Atom::PerAtom &stored_peratom_member,
-                                  Atom::PerAtom current_peratom_member, int ntotal, int nmax,
-                                  int realloc)
-{
-  if (stored_peratom_member.name.compare(current_peratom_member.name)) {
-    error->all(FLERR, "fix hmc tried to store incorrect peratom data");
-  }
-
-  // free old memory if reallocating and stored_peratom_member isn't a copy of current_peratom_member
-
-  if (realloc && stored_peratom_member.address != current_peratom_member.address) {
-    free(stored_peratom_member.address);
-    stored_peratom_member.address = nullptr;
-  }
-  if (realloc && stored_peratom_member.address != current_peratom_member.address) {
-    free(stored_peratom_member.address_maxcols);
-    stored_peratom_member.address_maxcols = nullptr;
-  }
-  // peratom scalers
-  if (current_peratom_member.cols == 0) {
-    if (*(T **) current_peratom_member.address != nullptr) {
-      if (realloc) stored_peratom_member.address = malloc(sizeof(T) * nmax);
-      memcpy(stored_peratom_member.address, *(T **) current_peratom_member.address,
-             ntotal * sizeof(T));
-    } else {
-      stored_peratom_member.address = nullptr;
-    }
-  } else {
-    // peratom vectors
-    int cols;
-    if (current_peratom_member.cols < 0) {
-      // variable column case
-      cols = *(current_peratom_member.address_maxcols);
-      if (realloc) stored_peratom_member.address_maxcols = (int *) malloc(sizeof(int));
-      *(stored_peratom_member.address_maxcols) = *(current_peratom_member.address_maxcols);
-    } else {
-      // non-variable column case
-      cols = current_peratom_member.cols;
-    }
-    if (*(T ***) current_peratom_member.address != nullptr) {
-      if (realloc) stored_peratom_member.address = malloc(sizeof(T) * nmax * cols);
-      for (int i = 0; i < ntotal; i++) {
-        memcpy((T *) stored_peratom_member.address + i * cols,
-               (**(T ***) current_peratom_member.address) + i * cols, sizeof(T) * cols);
-      }
-    } else {
-      stored_peratom_member.address = nullptr;
-    }
-  }
-  stored_peratom_member.cols = current_peratom_member.cols;
-  stored_peratom_member.collength = current_peratom_member.collength;
-  stored_peratom_member.address_length = nullptr;
-}
-
-/* ---------------------------------------------------------------------- */
-
-template <typename T>
-void FixHMC::restore_peratom_member(Atom::PerAtom stored_peratom_member,
-                                    Atom::PerAtom &current_peratom_member, int nlocal)
-{
-  if (stored_peratom_member.name.compare(current_peratom_member.name)) {
-    error->all(FLERR, "fix hmc tried to store incorrect peratom data");
-  }
-  if (stored_peratom_member.address == nullptr) return;
-  int cols;
-  // peratom scalers
-  if (stored_peratom_member.cols == 0) {
-    if (*(T **) current_peratom_member.address != nullptr) {
-      memcpy(*(T **) current_peratom_member.address, stored_peratom_member.address,
-             nlocal * sizeof(T));
-    }
-  } else {
-    // peratom vectors
-    if (stored_peratom_member.cols < 0) {
-      // variable column case
-      cols = *(stored_peratom_member.address_maxcols);
-      *(current_peratom_member.address_maxcols) = *(stored_peratom_member.address_maxcols);
-    } else {
-      // non-variable column case
-      cols = stored_peratom_member.cols;
-    }
-    if (*(T ***) current_peratom_member.address != nullptr) {
-      for (int i = 0; i < nlocal; i++) {
-        memcpy((**(T ***) current_peratom_member.address) + i * cols,
-               (T *) stored_peratom_member.address + i * cols, sizeof(T) * cols);
-      }
-    }
-  }
-  current_peratom_member.cols = stored_peratom_member.cols;
-  current_peratom_member.collength = stored_peratom_member.collength;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -296,11 +176,6 @@ void FixHMC::setup_arrays_and_pointers()
   int dihedral_flag;
   int improper_flag;
   int kspace_flag;
-
-  // Per-atom scalar properties to be saved and restored:
-
-  stored_nmax = 0;    // initialize so the memory gets allocated on first save
-  stored_ntotal_body = 0;
 
   // Determine which energy contributions must be computed:
   ne = 0;
@@ -373,57 +248,9 @@ void FixHMC::setup_arrays_and_pointers()
       if (ifix->virial_global_flag) vglobalptr[m++][i] = &ifix->virial[i];
   }
 
-  // Determine which per-atom energy terms require reverse communication:
-  rev_comm = new int[nv];
-  m = 0;
-  if (pair_flag) rev_comm[m++] = force->newton;
-  if (bond_flag) rev_comm[m++] = force->newton_bond;
-  if (angle_flag) rev_comm[m++] = force->newton_bond;
-  if (dihedral_flag) rev_comm[m++] = force->newton_bond;
-  if (improper_flag) rev_comm[m++] = force->newton_bond;
-  if (kspace_flag) rev_comm[m++] = force->kspace->tip4pflag;
-  for (i = ne; i < nv; i++) rev_comm[m++] = 0;
-
-  // Initialize array of pointers to manage per-atom energies:
-  delete[] eatomptr;
-  eatomptr = new double **[ne];
-  m = 0;
-  if (pair_flag) eatomptr[m++] = &force->pair->eatom;
-  if (bond_flag) eatomptr[m++] = &force->bond->eatom;
-  if (angle_flag) eatomptr[m++] = &force->angle->eatom;
-  if (dihedral_flag) eatomptr[m++] = &force->dihedral->eatom;
-  if (improper_flag) eatomptr[m++] = &force->improper->eatom;
-  if (kspace_flag) eatomptr[m++] = &force->kspace->eatom;
-
-  // Initialize array of pointers to manage per-atom virials:
-  delete[] vatomptr;
-  vatomptr = new double ***[nv];
-  m = 0;
-  if (pair_flag) vatomptr[m++] = &force->pair->vatom;
-  if (bond_flag) vatomptr[m++] = &force->bond->vatom;
-  if (angle_flag) vatomptr[m++] = &force->angle->vatom;
-  if (dihedral_flag) vatomptr[m++] = &force->dihedral->vatom;
-  if (improper_flag) vatomptr[m++] = &force->improper->vatom;
-  if (kspace_flag) vatomptr[m++] = &force->kspace->vatom;
-  for (const auto &ifix : modify->get_fix_list())
-    if (ifix->virial_peratom_flag) vatomptr[m++] = &ifix->vatom;
-
-  // Determine the maximum and the actual numbers of per-atom variables in reverse
-  // communications:
-  // Note: fix-related virials do not communicate (thus 'ne' used instead of 'nv')
-  comm_reverse = 0;
-  ncommrev = 0;
-  for (m = 0; m < ne; m++)
-    if (rev_comm[m]) {
-      comm_reverse += 7;    // 1 energy + 6 virials
-      if (peatom_flag) ncommrev++;
-      if (pressatom_flag) ncommrev += 6;
-    }
-
-  // Determine maximum number of per-atom variables in forward and reverse
+  // Determine maximum number of per-atom variables in forward
   // communications when dealing with rigid bodies:
   if (rigid_flag) {
-    comm_reverse = MAX(comm_reverse, 6);
     comm_forward = 12;
   }
 }
@@ -464,15 +291,11 @@ void FixHMC::init()
 
   if (!first_init_complete)
   {
-    // Look for computes with active peatomflag, press_flag, or pressatomflag:
-    peatom_flag = 0;
+    // Look for computes with active press_flag:
     press_flag = 0;
-    pressatom_flag = 0;
     for (const auto &icompute : modify->get_compute_list())
       if (strncmp(icompute->id, "hmc_", 4)) {
-        peatom_flag = peatom_flag | icompute->peatomflag;
         press_flag = press_flag | icompute->pressflag;
-        pressatom_flag = pressatom_flag | icompute->pressatomflag;
       }
 
     // Initialize arrays and pointers for saving/restoration of states:
@@ -491,10 +314,6 @@ void FixHMC::init()
 
     first_init_complete = true;
   }
-
-
-  // (Re)allocate array of per-atom properties:
-  grow_arrays(atom->nmax);
 }
 
 /* ----------------------------------------------------------------------
@@ -539,7 +358,6 @@ void FixHMC::setup(int vflag)
     for (const auto &fix : modify->get_fix_list()) maxexchange_fix += fix->maxexchange;
     maxexchange = maxexchange_atom + maxexchange_fix;
     bufextra = maxexchange + BUFEXTRA;
-
   }
 }
 
@@ -663,9 +481,7 @@ void FixHMC::save_current_state()
   int nlocal = atom->nlocal;
   int ntotal = nlocal + atom->nghost;
   int nmax = atom->nmax;
-  int reallocate_peratoms = false;
   AtomVec *avec = atom->avec;
-  current_peratom = atom->peratom;
   nstore = 0;
 
   for (int i = 0; i < nlocal; i++) {
@@ -688,11 +504,7 @@ void FixHMC::save_current_state()
 void FixHMC::restore_saved_state()
 {
   int i;
-  int nlocal = atom->nlocal;
-  int ntotal = nlocal + atom->nghost;
   AtomVec *avec = atom->avec;
-
-  current_peratom = atom->peratom;
 
   if (atom->map_style != Atom::MAP_NONE) atom->map_clear();
   atom->nghost = 0;
@@ -883,178 +695,12 @@ void FixHMC::unpack_forward_comm(int n, int first, double *buf)
 }
 
 /* ----------------------------------------------------------------------
-   Pack per-atom energies and/or virials or
-   rigid body info for reverse communication
-------------------------------------------------------------------------- */
-
-int FixHMC::pack_reverse_comm(int n, int first, double *buf)
-{
-  int last = first + n;
-
-  int i, k, m;
-
-  m = 0;
-  if (comm_flag == ATOMS) {
-    for (i = first; i < last; i++)
-      for (k = 0; k < ne; k++)
-        if (rev_comm[k]) {
-          if (peatom_flag) buf[m++] = eatom[k][i];
-          if (pressatom_flag) {
-            memcpy(&buf[m], vatom[k][i], six);
-            m += 6;
-          }
-        }
-  }
-  return m;
-}
-
-/* ----------------------------------------------------------------------
-   Unpack per-atom energies and/or virials or
-   rigid body info for reverse communication
-------------------------------------------------------------------------- */
-
-void FixHMC::unpack_reverse_comm(int n, int *list, double *buf)
-{
-  int i, j, k, m;
-
-  m = 0;
-  if (comm_flag == ATOMS) {
-    for (j = 0; j < n; j++) {
-      i = list[j];
-      for (k = 0; k < ne; k++)
-        if (rev_comm[k]) {
-          if (peatom_flag) eatom[k][i] += buf[m++];
-          if (pressatom_flag) vatom[k][i][0] += buf[m++];
-          vatom[k][i][1] += buf[m++];
-          vatom[k][i][2] += buf[m++];
-          vatom[k][i][3] += buf[m++];
-          vatom[k][i][4] += buf[m++];
-          vatom[k][i][5] += buf[m++];
-        }
-    }
-  }
-}
-
-/* ----------------------------------------------------------------------
-   allocate atom-based arrays
-------------------------------------------------------------------------- */
-
-void FixHMC::grow_arrays(int nmax)
-{
-  memory->grow(eatom, ne, nmax, "fix_hmc:eatom");
-  memory->grow(vatom, nv, nmax, 6, "fix_hmc:vatom");
-}
-
-/* ----------------------------------------------------------------------
-   copy values within local atom-based arrays
-------------------------------------------------------------------------- */
-
-void FixHMC::copy_arrays(int i, int j, int delflag)
-{
-  int m;
-
-  if (peatom_flag)
-    for (m = 0; m < ne; m++) eatom[m][j] = eatom[m][i];
-
-  if (pressatom_flag)
-    for (m = 0; m < nv; m++) memcpy(vatom[m][j], vatom[m][i], six);
-}
-
-/* ----------------------------------------------------------------------
-   pack values in local atom-based array for exchange with another proc
-------------------------------------------------------------------------- */
-
-int FixHMC::pack_exchange(int i, double *buf)
-{
-  int k, m = 0;
-
-  if (peatom_flag)
-    for (k = 0; k < ne; k++) buf[m++] = eatom[k][i];
-
-  if (pressatom_flag)
-    for (k = 0; k < nv; k++) {
-      memcpy(&buf[m], vatom[k][i], six);
-      m += 6;
-    }
-
-  return m;
-}
-
-/* ----------------------------------------------------------------------
-   unpack values in local atom-based array from exchange with another proc
-------------------------------------------------------------------------- */
-
-int FixHMC::unpack_exchange(int i, double *buf)
-{
-  int k, m = 0;
-
-  if (peatom_flag)
-    for (k = 0; k < ne; k++) eatom[k][i] = buf[m++];
-
-  if (pressatom_flag)
-    for (k = 0; k < nv; k++) {
-      memcpy(vatom[k][i], &buf[m], six);
-      m += 6;
-    }
-
-  return m;
-}
-
-/* ----------------------------------------------------------------------
-   memory usage of stored_peratom_member
-------------------------------------------------------------------------- */
-
-template <typename T>
-double FixHMC::memory_usage_peratom_member(Atom::PerAtom &stored_peratom_member)
-{
-  int cols;
-  if (stored_peratom_member.address == nullptr) return 0;
-  if (stored_peratom_member.cols == 0) { return stored_ntotal * sizeof(T); };
-  if (stored_peratom_member.cols < 0)
-    cols = *(stored_peratom_member.address_maxcols);
-  else
-    cols = stored_peratom_member.cols;
-  return sizeof(T) * stored_ntotal * cols;
-}
-
-/* ----------------------------------------------------------------------
    memory usage of local atom-based array
 ------------------------------------------------------------------------- */
 
 double FixHMC::memory_usage()
 {
   double bytes = 0;
-  bytes += stored_nmax * sizeof(int);    // tag
-  if (rigid_flag) {
-    bytes += stored_nmax * sizeof(int);           // stored_bodyown
-    bytes += stored_nmax * sizeof(tagint);        // stored_bodytag
-    bytes += stored_nmax * sizeof(int);           // stored_atom2body
-    bytes += stored_nmax * sizeof(imageint);      // stored_xcmimage
-    bytes += stored_nmax * 3 * sizeof(double);    // stored_displace
-    if (fix_rigid->extended) {
-      bytes += stored_nmax * sizeof(int);    // stored_eflags
-      if (fix_rigid->orientflag)
-        bytes += stored_nmax * fix_rigid->orientflag * sizeof(double);          // stored_orient
-      if (fix_rigid->dorientflag) bytes += stored_nmax * 3 * sizeof(double);    // stored_dorient
-    }
-  }
-
-  for (Atom::PerAtom &stored_peratom_member : stored_peratom) {
-    switch (stored_peratom_member.datatype) {
-      case (Atom::INT):
-        bytes += memory_usage_peratom_member<int>(stored_peratom_member);
-        break;
-      case (Atom::DOUBLE):
-        bytes += memory_usage_peratom_member<double>(stored_peratom_member);
-        break;
-      case (Atom::BIGINT):
-        bytes += memory_usage_peratom_member<bigint>(stored_peratom_member);
-        break;
-    }
-  }
-
-  bytes += stored_ntotal_body * sizeof(RigidSmallBody);
-
-  bytes += nvalues * atom->nmax * sizeof(double);
+  bytes += (maxstore + bufextra) * sizeof(double);    // exchange
   return bytes;
 }

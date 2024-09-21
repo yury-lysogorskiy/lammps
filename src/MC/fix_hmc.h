@@ -38,42 +38,15 @@ class FixHMC : public Fix {
 
   int pack_forward_comm(int, int *, double *, int, int *) override;
   void unpack_forward_comm(int, int, double *) override;
-  int pack_reverse_comm(int, int, double *) override;
-  void unpack_reverse_comm(int, int *, double *) override;
-  void grow_arrays(int) override;
-  void copy_arrays(int, int, int) override;
-  int pack_exchange(int, double *) override;
-  int unpack_exchange(int, double *) override;
   double memory_usage() override;
 
  private:
   void setup_arrays_and_pointers();
-  void tune_parameter(int *, const char *);
   void save_current_state();
   void restore_saved_state();
   void random_velocities();
   void rigid_body_random_velocities();
   void grow_store(int, int);
-
-  template <typename T> void store_peratom_member(Atom::PerAtom &, Atom::PerAtom, int, int, int);
-  template <typename T> void restore_peratom_member(Atom::PerAtom, Atom::PerAtom &, int);
-  template <typename T> double memory_usage_peratom_member(Atom::PerAtom &);
-
-  std::vector<Atom::PerAtom> stored_peratom;
-  std::vector<Atom::PerAtom> current_peratom;
-  tagint *stored_tag;
-  int stored_nlocal, stored_nghost, stored_ntotal, stored_nmax;
-  int stored_nbonds, stored_nangles, stored_ndihedrals, stored_nimpropers;
-  class RigidSmallBody *stored_body;
-  int stored_nlocal_body, stored_nghost_body, stored_ntotal_body;
-  int *stored_bodyown;
-  tagint *stored_bodytag;
-  int *stored_atom2body;
-  imageint *stored_xcmimage;
-  double **stored_displace;
-  int *stored_eflags;
-  double **stored_orient;
-  double **stored_dorient;
 
   int nstore, maxstore, bufextra;
   double *buf_store;
@@ -81,7 +54,6 @@ class FixHMC : public Fix {
   int resample_on_accept_flag, mom_flag;
   int first_init_complete, first_setup_complete;
 
-  std::string mdi;
   class FixRigidSmall *fix_rigid;
 
   int nattempts, naccepts;
@@ -93,10 +65,6 @@ class FixHMC : public Fix {
   class RanPark *random_equal;
 
   int ne;
-  int *rev_comm;
-  double **eatom;
-  double ***eatomptr;
-
   int neg;
   double *eglobal;
   double **eglobalptr;
@@ -104,8 +72,6 @@ class FixHMC : public Fix {
   int nv;
   double **vglobal;
   double ***vglobalptr;
-  double ***vatom;
-  double ****vatomptr;
 
   class Compute *pe;
   class Compute *ke;
