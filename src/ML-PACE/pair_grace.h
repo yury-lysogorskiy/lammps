@@ -64,6 +64,7 @@ class PairGRACE : public Pair {
   double cutoff = 6;
 
   int tot_neighbours = 0;
+  int tot_atoms = 0;
 
   int chunksize;
   double neigh_padding_fraction = 0.01;

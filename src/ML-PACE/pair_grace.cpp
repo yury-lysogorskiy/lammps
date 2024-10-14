@@ -376,23 +376,37 @@ void PairGRACE::compute(int eflag, int vflag) {
     data_timer.start();
     std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
 
+    if (do_padding) {
+        if (nlocal > tot_atoms) {
+            n_fake_atoms = static_cast<int>(std::round(nlocal * neigh_padding_fraction));
+            n_fake_atoms = std::max(n_fake_atoms, 1);
+            tot_atoms = nlocal + n_fake_atoms; // add fake neighbours
+            if (pad_verbose)
+                utils::logmesg(lmp,
+                               "[GRACE] Atoms padding: new num. of atoms = {} (incl. {:.3f}% fake atoms)\n",
+                               tot_atoms, 100. * (double) n_fake_atoms / tot_atoms);
+        }
+    } else {
+        tot_atoms = nlocal;
+    }
+
     // atomic_mu_i: per-atom species type + padding with type[0]
-    std::vector<int32_t> atomic_mu_i_vector(nlocal + n_fake_atoms, element_type_mapping[type[0]]);
+    std::vector<int32_t> atomic_mu_i_vector(tot_atoms, element_type_mapping[type[0]]);
     for (i = 0; i < nlocal; ++i)
         atomic_mu_i_vector[i] = element_type_mapping[type[i]];
 
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "atomic_mu_i" + ":0",
-                        cppflow::tensor(atomic_mu_i_vector, {nlocal + n_fake_atoms}));
+                        cppflow::tensor(atomic_mu_i_vector, {tot_atoms}));
 
     //    map_atoms_to_structure
     if(has_map_atoms_to_structure_op) {
         inputs.emplace_back(DEFAULT_INPUT_PREFIX + "map_atoms_to_structure" + ":0",
-                            cppflow::tensor(std::vector<int32_t>(nlocal + n_fake_atoms, 0), {nlocal + n_fake_atoms}));
+                            cppflow::tensor(std::vector<int32_t>(tot_atoms, 0), {tot_atoms}));
     }
 
     // batch_nat = number of extened atoms + padding
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "batch_tot_nat" + ":0",
-                        cppflow::tensor(std::vector<int32_t>{nlocal + n_fake_atoms}, {}));
+                        cppflow::tensor(std::vector<int32_t>{tot_atoms}, {}));
 
     // batch_nreal_atoms_per_structure: number of extened atoms (w/o padding)
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "batch_tot_nat_real" + ":0",
@@ -439,8 +453,8 @@ void PairGRACE::compute(int eflag, int vflag) {
             tot_neighbours = n_real_neighbours + n_fake_neighbours; // add fake neighbours
             if (pad_verbose)
                 utils::logmesg(lmp,
-                               "[GRACE] Neighbours padding: new num. of neighbours = {} (+{:.3f}% fake neighbours)\n",
-                               tot_neighbours, 100. * (double) n_fake_neighbours / n_real_neighbours);
+                               "[GRACE] Neighbours padding: new num. of neighbours = {} (incl. {:.3f}% fake neighbours)\n",
+                               tot_neighbours, 100. * (double) n_fake_neighbours / tot_neighbours);
         }
     } else {
         tot_neighbours = n_real_neighbours;
@@ -494,7 +508,7 @@ void PairGRACE::compute(int eflag, int vflag) {
     }
 
     // add fake bonds
-    int fake_atom_ind = nlocal + n_fake_atoms - 1;
+    int fake_atom_ind = tot_atoms - 1;
 #ifdef PACE_TP_OMP
 #pragma omp parallel for default(none) shared(n_real_neighbours, tot_neighbours, fake_atom_ind, \
         ind_i_vector, ind_j_vector, mu_i_vector, mu_j_vector)
