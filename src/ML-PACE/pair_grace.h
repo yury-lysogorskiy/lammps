@@ -62,6 +62,8 @@ class PairGRACE : public Pair {
 
   double **scale;
   double cutoff = 6;
+  bool is_custom_cutoffs = false;
+  vector<vector<double>> cutoff_matrix, cutoff_matrix_per_lammps_type;
 
   int tot_neighbours = 0;
   int tot_atoms = 0;
@@ -74,7 +76,7 @@ class PairGRACE : public Pair {
   int nelements;
   std::vector<std::string> elements_name;
   std::map<std::string, int> elements_to_index_map;
-  std::vector<int> element_type_mapping; // LAMMPS's type to ACE's mu
+  std::vector<int> element_type_mapping; // LAMMPS's type(1,2,3...) to ACE's mu(0,1,2...,89)
 
   PACE::ACETimer data_timer;
   PACE::ACETimer tp_timer;

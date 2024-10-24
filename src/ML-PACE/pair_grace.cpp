@@ -45,11 +45,11 @@ namespace LAMMPS_NS {
         cppflow::model *model;
     };
 
-    bool check_tf_graph_input_presented(cppflow::model* model, const std::string& op_name) {
+    bool check_tf_graph_input_presented(cppflow::model *model, const std::string &op_name) {
         try {
             auto op_shape = model->get_operation_shape(op_name);
             return true;
-        } catch (std::runtime_error& exc) {
+        } catch (std::runtime_error &exc) {
             return false;
         }
     }
@@ -173,6 +173,25 @@ void PairGRACE::coeff(int narg, char **arg) {
         elements_to_index_map[elements_name.at(mu)] = mu;
     }
     cutoff = metadata_yaml["cutoff"].as<double>();
+
+    if (metadata_yaml["cutoff_matrix"]) {
+        cutoff_matrix = metadata_yaml["cutoff_matrix"].as<vector<vector<double>>>();
+        // assert square size of matrix
+        if (cutoff_matrix.size() != nelements)
+            error->all(FLERR,
+                       "[GRACE] cutoff_matrix is provided, but it's size ({}) is not equal to number of elements ({})\n",
+                       cutoff_matrix.size(), nelements);
+
+        for (const auto &v: cutoff_matrix)
+            if (v.size() != nelements)
+                error->all(FLERR,
+                           "[GRACE] cutoff_matrix is provided, but it's row size ({}) is not equal to number of elements ({})\n",
+                           v.size(), nelements);
+
+        if (comm->me == 0)
+            utils::logmesg(lmp, "[GRACE] Custom cutoff matrix is loaded\n");
+        is_custom_cutoffs = true;
+    }
     if (comm->me == 0) {
         utils::logmesg(lmp, "[GRACE] Model loaded\n");
     }
@@ -182,10 +201,10 @@ void PairGRACE::coeff(int narg, char **arg) {
     // map[i] = which element the Ith atom type is, -1 if not mapped
     // map[0] is not used
 
-    const int n = atom->ntypes;
-    element_type_mapping.resize(n + 1);
+    const int ntypes = atom->ntypes;
+    element_type_mapping.resize(ntypes + 1);
     // elements to species-type map
-    for (int i = 1; i <= n; i++) {
+    for (int i = 1; i <= ntypes; i++) {
         char *elemname = arg[2 + i];
         if (strcmp(elemname, "NULL") == 0) {
             // species_type=-1 value will not reach ACE Evaluator::compute_atom,
@@ -212,8 +231,26 @@ void PairGRACE::coeff(int narg, char **arg) {
     }
 
     // initialize scale factor
-    for (int i = 1; i <= n; i++) {
-        for (int j = i; j <= n; j++) scale[i][j] = 1.0;
+    for (int i = 1; i <= ntypes; i++) {
+        for (int j = i; j <= ntypes; j++) scale[i][j] = 1.0;
+    }
+
+    if (is_custom_cutoffs) {
+        // matrix of size [ntypes+1][ntypes+1]
+        cutoff_matrix_per_lammps_type.resize(ntypes + 1, vector<double>(ntypes + 1));
+        double min_cutoff=1e99, max_cutoff=0;
+        for (int i = 1; i <= ntypes; i++) {
+            for (int j = 1; j <= ntypes; j++) {
+                auto val=cutoff_matrix[element_type_mapping[i]][element_type_mapping[j]];
+                cutoff_matrix_per_lammps_type[i][j] = val;
+                if (val<min_cutoff) min_cutoff = val;
+                if (val>max_cutoff) max_cutoff = val;
+            }
+        }
+
+        if (comm->me == 0)
+            utils::logmesg(lmp, "[GRACE] Custom cutoffs: min={}, max={}\n", min_cutoff, max_cutoff);
+
     }
 
 //    auto operations_vec = aceimpl->model->get_operations();
@@ -225,16 +262,11 @@ void PairGRACE::coeff(int narg, char **arg) {
     //
     has_map_atoms_to_structure_op = check_tf_graph_input_presented(aceimpl->model,
                                                                    "serving_default_map_atoms_to_structure");
-//    std::cout<<"[DEBUG] has_map_atoms_to_structure_op="<<has_map_atoms_to_structure_op<<endl;
 
     has_nstruct_total_op = check_tf_graph_input_presented(aceimpl->model,
-                                                                   "serving_default_n_struct_total");
-//    std::cout<<"[DEBUG] has_nstruct_total_op="<<has_nstruct_total_op<<endl;
-
-
+                                                          "serving_default_n_struct_total");
     has_mu_i_op = check_tf_graph_input_presented(aceimpl->model,
-                                                          "serving_default_mu_i");
-//    std::cout<<"[DEBUG] has_mu_i_op="<<has_mu_i_op<<endl;
+                                                 "serving_default_mu_i");
 
 }
 
@@ -265,7 +297,10 @@ double PairGRACE::init_one(int i, int j) {
     if (setflag[i][j] == 0) error->all(FLERR, "All pair coeffs are not set");
     //cutoff from the basis set's radial functions settings
     scale[j][i] = scale[i][j];
-    return cutoff;
+    if (is_custom_cutoffs) {
+        return cutoff_matrix_per_lammps_type[i][j];
+    } else
+        return cutoff;
 }
 
 /* ----------------------------------------------------------------------
@@ -399,7 +434,7 @@ void PairGRACE::compute(int eflag, int vflag) {
                         cppflow::tensor(atomic_mu_i_vector, {tot_atoms}));
 
     //    map_atoms_to_structure
-    if(has_map_atoms_to_structure_op) {
+    if (has_map_atoms_to_structure_op) {
         inputs.emplace_back(DEFAULT_INPUT_PREFIX + "map_atoms_to_structure" + ":0",
                             cppflow::tensor(std::vector<int32_t>(tot_atoms, 0), {tot_atoms}));
     }
@@ -416,12 +451,14 @@ void PairGRACE::compute(int eflag, int vflag) {
     //determine the maximum number of neighbours (within cutoff)
     std::vector<int> actual_jnum(inum, 0);
     double cutoff_sq = cutoff * cutoff;
+    int type_i, type_j;
 #ifdef PACE_TP_OMP
 #pragma omp parallel for default(none) shared(inum, ilist, jlist, cutoff_sq, numneigh, firstneigh, actual_jnum, x) \
                          private(i, jnum, jj, j, delx, dely, delz)
 #endif
     for (ii = 0; ii < inum; ii++) {
         i = ilist[ii];
+        type_i = type[i];
         double xtmp = x[i][0];
         double ytmp = x[i][1];
         double ztmp = x[i][2];
@@ -434,7 +471,12 @@ void PairGRACE::compute(int eflag, int vflag) {
             delx = xtmp - x[j][0];
             dely = ytmp - x[j][1];
             delz = ztmp - x[j][2];
-            double rsq = delx * delx + dely * dely + delz * delz;
+            if (is_custom_cutoffs) {
+                type_j = type[j];
+                double cur_cutoff = cutoff_matrix_per_lammps_type[type_i][type_j];
+                cutoff_sq = cur_cutoff * cur_cutoff;
+            }
+            const double rsq = delx * delx + dely * dely + delz * delz;
             if (rsq < cutoff_sq) {
                 cur_actual_jnum += 1;
             }
@@ -464,7 +506,7 @@ void PairGRACE::compute(int eflag, int vflag) {
     std::vector<int32_t> ind_j_vector(tot_neighbours);
     std::vector<int32_t> mu_i_vector(tot_neighbours);
     std::vector<int32_t> mu_j_vector(tot_neighbours);
-    std::vector<double> bond_vector(tot_neighbours *3, 1e6);
+    std::vector<double> bond_vector(tot_neighbours * 3, 1e6);
 
 #ifdef PACE_TP_OMP
 #pragma omp parallel for default(none)  \
@@ -474,6 +516,7 @@ void PairGRACE::compute(int eflag, int vflag) {
 #endif
     for (ii = 0; ii < inum; ++ii) {
         i = ilist[ii];
+        type_i = type[i];
         const double xtmp = x[i][0];
         const double ytmp = x[i][1];
         const double ztmp = x[i][2];
@@ -486,6 +529,11 @@ void PairGRACE::compute(int eflag, int vflag) {
             delx = xtmp - x[j][0];
             dely = ytmp - x[j][1];
             delz = ztmp - x[j][2];
+            if (is_custom_cutoffs) {
+                type_j = type[j];
+                double cur_cutoff = cutoff_matrix_per_lammps_type[type_i][type_j];
+                cutoff_sq = cur_cutoff * cur_cutoff;
+            }
             const double rsq = delx * delx + dely * dely + delz * delz;
             if (rsq < cutoff_sq) {
                 ind_i_vector[tot_ind] = i;
