@@ -28,7 +28,6 @@
 #include <cppflow/tensor.h>
 
 #include <tensorflow/c/c_api.h>
-//#define PACE_TP_OMP 1
 
 const std::string DEFAULT_INPUT_PREFIX = "serving_default_";
 
@@ -93,11 +92,12 @@ PairGRACE::~PairGRACE() {
         memory->destroy(cutsq);
         memory->destroy(scale);
     }
-    auto data_t = data_timer.as_microseconds();
-    auto tp_t = tp_timer.as_microseconds();
-    std::cout << "Data prep. timer: " << data_t << " mcs" << std::endl;
-    std::cout << "TP call timer: " << tp_t << " mcs" << std::endl;
-    std::cout << "Data prep time fraction: " << ((double) data_t / (data_t + tp_t) * 1e2) << " %" << std::endl;
+    auto data_t = (double) data_timer.as_microseconds();
+    auto tp_t = (double) tp_timer.as_microseconds();
+
+    utils::logmesg(lmp,
+                   "[GRACE:debug, proc #{:d}]: Data preparation timer: {:g} mcs, graph execution time: {:g} mcs, data preparation time fraction: {:.2f} %\n",
+                   comm->me, data_t, tp_t, (data_t / (data_t + tp_t) * 1e2));
 }
 
 /* ---------------------------------------------------------------------- */
@@ -131,18 +131,29 @@ void PairGRACE::settings(int narg, char **arg) {
             iarg += 2;
         } else if (strcmp(arg[iarg], "padding") == 0) {
             neigh_padding_fraction = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
-
             iarg += 2;
+            do_padding = (neigh_padding_fraction > 0);
+            if (comm->me == 0)
+                utils::logmesg(lmp, "[GRACE] Neighbour padding is ON, padding fraction: {}\n", neigh_padding_fraction);
         } else if (strcmp(arg[iarg], "pad_verbose") == 0) {
             pad_verbose = true;
             iarg += 1;
+        } else if (strcmp(arg[iarg], "pair_forces") == 0) {
+            pair_forces = true;
+            iarg += 1;
+            if (comm->me == 0)
+                utils::logmesg(lmp, "[GRACE] Pair forces are ON \n");
         } else
             error->all(FLERR, "[GRACE] Unknown pair_style grace keyword: {}", arg[iarg]);
     }
 
-    do_padding = (neigh_padding_fraction > 0);
-    if (do_padding && comm->me == 0)
-        utils::logmesg(lmp, "[GRACE] Neighbour padding is ON, padding fraction: {}\n", neigh_padding_fraction);
+    if (!pair_forces && comm->nprocs > 1) {
+        pair_forces = true;
+        if (comm->me == 0)
+            utils::logmesg(lmp,
+                           "[GRACE] ENFORCE pair-force mode to ON, because number of processes {} is more than one.\n",
+                           comm->nprocs);
+    }
 }
 
 /* ----------------------------------------------------------------------
@@ -238,13 +249,13 @@ void PairGRACE::coeff(int narg, char **arg) {
     if (is_custom_cutoffs) {
         // matrix of size [ntypes+1][ntypes+1]
         cutoff_matrix_per_lammps_type.resize(ntypes + 1, vector<double>(ntypes + 1));
-        double min_cutoff=1e99, max_cutoff=0;
+        double min_cutoff = 1e99, max_cutoff = 0;
         for (int i = 1; i <= ntypes; i++) {
             for (int j = 1; j <= ntypes; j++) {
-                auto val=cutoff_matrix[element_type_mapping[i]][element_type_mapping[j]];
+                auto val = cutoff_matrix[element_type_mapping[i]][element_type_mapping[j]];
                 cutoff_matrix_per_lammps_type[i][j] = val;
-                if (val<min_cutoff) min_cutoff = val;
-                if (val>max_cutoff) max_cutoff = val;
+                if (val < min_cutoff) min_cutoff = val;
+                if (val > max_cutoff) max_cutoff = val;
             }
         }
 
@@ -362,7 +373,7 @@ void *PairGRACE::extract(const char *str, int &dim) {
         name: StatefulPartitionedCall:0
     outputs['total_energy'] tensor_info:
         dtype: DT_DOUBLE
-        shape: (-1, 1)
+        shape: (1, 1)
         name: StatefulPartitionedCall:1
     outputs['total_f'] tensor_info:
         dtype: DT_DOUBLE
@@ -372,6 +383,11 @@ void *PairGRACE::extract(const char *str, int &dim) {
         dtype: DT_DOUBLE
         shape: (6)
         name: StatefulPartitionedCall:3
+    outputs['z_pair_f'] tensor_info:
+        dtype: DT_DOUBLE
+        shape: (-1, 3)
+        name: StatefulPartitionedCall:4
+
   Method name is: tensorflow/serving/predict
  */
 void PairGRACE::compute(int eflag, int vflag) {
@@ -389,8 +405,7 @@ void PairGRACE::compute(int eflag, int vflag) {
 
     // number of atoms in cell
     int nlocal = atom->nlocal;
-//    int n_atoms_extended = atom->nlocal + atom->nghost;
-    int n_fake_atoms = 0; // no fake atoms needed. fake bonds will be 1e6
+    int n_fake_atoms; // no fake atoms needed. fake bonds will be 1e6
     int n_real_neighbours;
     int n_fake_neighbours;
 
@@ -420,11 +435,12 @@ void PairGRACE::compute(int eflag, int vflag) {
                 utils::logmesg(lmp,
                                "[GRACE] Atoms padding: new num. of atoms = {} (incl. {:.3f}% fake atoms)\n",
                                tot_atoms, 100. * (double) n_fake_atoms / tot_atoms);
+        } else {
+            // TODO: select tot_atoms based on previous padding history
         }
     } else {
         tot_atoms = nlocal;
     }
-
     // atomic_mu_i: per-atom species type + padding with type[0]
     std::vector<int32_t> atomic_mu_i_vector(tot_atoms, element_type_mapping[type[0]]);
     for (i = 0; i < nlocal; ++i)
@@ -452,10 +468,6 @@ void PairGRACE::compute(int eflag, int vflag) {
     std::vector<int> actual_jnum(inum, 0);
     double cutoff_sq = cutoff * cutoff;
     int type_i, type_j;
-#ifdef PACE_TP_OMP
-#pragma omp parallel for default(none) shared(inum, ilist, jlist, cutoff_sq, numneigh, firstneigh, actual_jnum, x) \
-                         private(i, jnum, jj, j, delx, dely, delz)
-#endif
     for (ii = 0; ii < inum; ii++) {
         i = ilist[ii];
         type_i = type[i];
@@ -497,23 +509,21 @@ void PairGRACE::compute(int eflag, int vflag) {
                 utils::logmesg(lmp,
                                "[GRACE] Neighbours padding: new num. of neighbours = {} (incl. {:.3f}% fake neighbours)\n",
                                tot_neighbours, 100. * (double) n_fake_neighbours / tot_neighbours);
+        } else {
+            // TODO: select tot_neighbours based on previous padding history
         }
     } else {
         tot_neighbours = n_real_neighbours;
     }
 
+//    utils::logmesg(lmp,"[GRACE-DEBUG, #{}] tot_atoms={}, tot_neighbours={} \n", comm->me, tot_atoms,  tot_neighbours);
+
     std::vector<int32_t> ind_i_vector(tot_neighbours);
     std::vector<int32_t> ind_j_vector(tot_neighbours);
     std::vector<int32_t> mu_i_vector(tot_neighbours);
     std::vector<int32_t> mu_j_vector(tot_neighbours);
-    std::vector<double> bond_vector(tot_neighbours * 3, 1e6);
+    std::vector<double> bond_vector(3 * tot_neighbours, 1e6);
 
-#ifdef PACE_TP_OMP
-#pragma omp parallel for default(none)  \
-    shared(inum, ilist, firstneigh, numneigh, actual_jnum_shift, cutoff_sq, type, x, \
-    ind_i_vector, ind_j_vector, mu_i_vector, mu_j_vector, bond_vector) \
-    private(i, jlist, jnum, jj, j, delx, dely, delz)
-#endif
     for (ii = 0; ii < inum; ++ii) {
         i = ilist[ii];
         type_i = type[i];
@@ -557,10 +567,6 @@ void PairGRACE::compute(int eflag, int vflag) {
 
     // add fake bonds
     int fake_atom_ind = tot_atoms - 1;
-#ifdef PACE_TP_OMP
-#pragma omp parallel for default(none) shared(n_real_neighbours, tot_neighbours, fake_atom_ind, \
-        ind_i_vector, ind_j_vector, mu_i_vector, mu_j_vector)
-#endif
     for (int tot_ind = n_real_neighbours; tot_ind < tot_neighbours; tot_ind++) {
         ind_i_vector[tot_ind] = fake_atom_ind; // fake atom ind
         ind_j_vector[tot_ind] = fake_atom_ind; // fake atom ind
@@ -596,15 +602,20 @@ void PairGRACE::compute(int eflag, int vflag) {
 
     data_timer.stop();
     tp_timer.start();
+    vector<string> output_names = {
+            "StatefulPartitionedCall:0", // atomic_energy [nat,1]
+            "StatefulPartitionedCall:1", // total_energy [-1, 1]
+            "StatefulPartitionedCall:2", // total_f [n_at, 3]
+            "StatefulPartitionedCall:3", // virial [6]
+    };
+    // add it optionally
+    if (pair_forces)
+        output_names.emplace_back("StatefulPartitionedCall:4");// pair_f [n_bonds, 3]
+
     //CALL MODEL
     std::vector<cppflow::tensor> output = aceimpl->model->operator()(
             inputs,
-            {
-                    "StatefulPartitionedCall:0", // atomic_energy [nat,1]
-                    "StatefulPartitionedCall:1", // total_energy [-1, 1]
-                    "StatefulPartitionedCall:2", // total_f [n_at, 3]
-                    "StatefulPartitionedCall:3", // virial [6]
-            }
+            output_names
     );
     tp_timer.stop();
 //    std::cout << "Ave.timing: " << (double) tp_timer.as_microseconds() / nlocal << " mcs/at" << std::endl;
@@ -614,50 +625,111 @@ void PairGRACE::compute(int eflag, int vflag) {
     auto e_tens = e_out.get_tensor();
     const double *e_data = static_cast<double *>(TF_TensorData(e_tens.get()));
 
-
 //    auto &te_out = output[1]; // total_energy
-
 
     auto &total_f_out = output[2]; // total_f
     auto total_f_tens = total_f_out.get_tensor();
     const double *total_f_data = static_cast<double *>(TF_TensorData(total_f_tens.get()));
 
 
-    for (ii = 0; ii < inum; ii++) {
-        i = ilist[ii];
+    if (!pair_forces) {
+        for (ii = 0; ii < inum; ii++) {
+            i = ilist[ii];
 
-        const int itype = type[i];
-        double fx = total_f_data[ii * 3 + 0];
-        double fy = total_f_data[ii * 3 + 1];
-        double fz = total_f_data[ii * 3 + 2];
-
-        f[i][0] += scale[itype][itype] * fx;
-        f[i][1] += scale[itype][itype] * fy;
-        f[i][2] += scale[itype][itype] * fz;
-
-        // tally energy contribution
-        if (eflag_either) {
-            // evdwl = energy of atom I
-            evdwl = scale[itype][itype] * e_data[i];
-            ev_tally_full(i, 2.0 * evdwl, 0.0, 0.0, 0.0, 0.0, 0.0);
-        }
-    } // end for(ii)
+            const int itype = type[i];
+            double fx = total_f_data[ii * 3 + 0];
+            double fy = total_f_data[ii * 3 + 1];
+            double fz = total_f_data[ii * 3 + 2];
 
 
-    // virial order, seems to be OK
-    if (vflag_global) {
-        auto &v_out = output[3]; // virial
-        auto v_tens = v_out.get_tensor();
-        const double *v_data = static_cast<double *>(TF_TensorData(v_tens.get()));
+            f[i][0] += scale[itype][itype] * fx;
+            f[i][1] += scale[itype][itype] * fy;
+            f[i][2] += scale[itype][itype] * fz;
+
+
+            // tally energy contribution
+            if (eflag_either) {
+                // evdwl = energy of atom I
+                evdwl = scale[itype][itype] * e_data[i];
+                ev_tally_full(i, 2.0 * evdwl, 0.0, 0.0, 0.0, 0.0, 0.0);
+            }
+        } // end for(ii)
+
+        // virial order, seems to be OK
+        if (vflag_global) {
+            auto &v_out = output[3]; // virial
+            auto v_tens = v_out.get_tensor();
+            const double *v_data = static_cast<double *>(TF_TensorData(v_tens.get()));
 
 //            ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fij[0], fij[1], fij[2], -delx, -dely, -delz);
-        virial[0] += v_data[0];
-        virial[1] += v_data[1];
-        virial[2] += v_data[2];
-        virial[3] += v_data[3];
-        virial[4] += v_data[4];
-        virial[5] += v_data[5];
+            virial[0] += v_data[0];
+            virial[1] += v_data[1];
+            virial[2] += v_data[2];
+            virial[3] += v_data[3];
+            virial[4] += v_data[4];
+            virial[5] += v_data[5];
+        }
+    } else {
+        // pair forces
+        auto &f_out = output[4];
+
+        auto f_tens = f_out.get_tensor();
+        const double *f_data = static_cast<double *>(TF_TensorData(f_tens.get()));
+        int tot_ind = 0;
+        for (ii = 0; ii < inum; ++ii) {
+            i = ilist[ii];
+            type_i = type[i];
+            const double xtmp = x[i][0];
+            const double ytmp = x[i][1];
+            const double ztmp = x[i][2];
+            jlist = firstneigh[i];
+            jnum = numneigh[i];
+
+            for (jj = 0; jj < jnum; ++jj) {
+                j = jlist[jj];
+                j &= NEIGHMASK;
+                delx = xtmp - x[j][0];
+                dely = ytmp - x[j][1];
+                delz = ztmp - x[j][2];
+                if (is_custom_cutoffs) {
+                    type_j = type[j];
+                    double cur_cutoff = cutoff_matrix_per_lammps_type[type_i][type_j];
+                    cutoff_sq = cur_cutoff * cur_cutoff;
+                }
+                const double rsq = delx * delx + dely * dely + delz * delz;
+                if (rsq < cutoff_sq) {
+                    // why "-" ?
+                    fij[0] = -scale[type_i][type_i] * f_data[tot_ind];
+                    fij[1] = -scale[type_i][type_i] * f_data[tot_ind + 1];
+                    fij[2] = -scale[type_i][type_i] * f_data[tot_ind + 2];
+                    tot_ind += 3;
+
+                    f[i][0] += fij[0];
+                    f[i][1] += fij[1];
+                    f[i][2] += fij[2];
+                    f[j][0] -= fij[0];
+                    f[j][1] -= fij[1];
+                    f[j][2] -= fij[2];
+
+                    // tally per-atom virial contribution, OpenMP critical !
+                    if (vflag_either) {
+                        ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fij[0], fij[1], fij[2], delx, dely, delz);
+                    }
+                }
+            } // loop over neighbours
+
+            // tally energy contribution
+            if (eflag_either) {
+                // evdwl = energy of atom I
+                evdwl = scale[type_i][type_i] * e_data[i];
+                ev_tally_full(i, 2.0 * evdwl, 0.0, 0.0, 0.0, 0.0, 0.0);
+            }
+
+        } // loop over atoms -i
+
+        if (vflag_fdotr) virial_fdotr_compute();
     }
+
 
     data_timer.stop();
     // end modifications YL

@@ -64,6 +64,7 @@ class PairGRACE : public Pair {
   double cutoff = 6;
   bool is_custom_cutoffs = false;
   vector<vector<double>> cutoff_matrix, cutoff_matrix_per_lammps_type;
+  bool pair_forces = false;
 
   int tot_neighbours = 0;
   int tot_atoms = 0;
