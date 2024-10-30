@@ -132,9 +132,7 @@ void PairGRACE::settings(int narg, char **arg) {
         } else if (strcmp(arg[iarg], "padding") == 0) {
             neigh_padding_fraction = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
             iarg += 2;
-            do_padding = (neigh_padding_fraction > 0);
-            if (comm->me == 0)
-                utils::logmesg(lmp, "[GRACE] Neighbour padding is ON, padding fraction: {}\n", neigh_padding_fraction);
+
         } else if (strcmp(arg[iarg], "pad_verbose") == 0) {
             pad_verbose = true;
             iarg += 1;
@@ -143,9 +141,26 @@ void PairGRACE::settings(int narg, char **arg) {
             iarg += 1;
             if (comm->me == 0)
                 utils::logmesg(lmp, "[GRACE] Pair forces are ON \n");
+        } else if (strcmp(arg[iarg], "max_number_of_reduction") == 0) {
+            max_number_of_reduction = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
+            iarg += 2;
+            if (comm->me == 0)
+                utils::logmesg(lmp, "[GRACE] Maximum number of recompilation during padding reduction: {}\n",
+                               max_number_of_reduction);
+        } else if (strcmp(arg[iarg], "reduce_padding") == 0) {
+            reducing_neigh_padding_fraction = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
+            iarg += 2;
+            if (comm->me == 0)
+                utils::logmesg(lmp, "[GRACE] Reducing padding fraction: {}\n", reducing_neigh_padding_fraction);
         } else
             error->all(FLERR, "[GRACE] Unknown pair_style grace keyword: {}", arg[iarg]);
     }
+
+    do_padding = (neigh_padding_fraction > 0);
+    if(do_padding)
+        if (comm->me == 0)
+        utils::logmesg(lmp, "[GRACE] Neighbour padding is ON, padding fraction: {}, max padding fraction before reduction: {}, max number of reduction(s): {}\n",
+                       neigh_padding_fraction, reducing_neigh_padding_fraction, max_number_of_reduction);
 
     if (!pair_forces && comm->nprocs > 1) {
         pair_forces = true;
@@ -501,18 +516,43 @@ void PairGRACE::compute(int eflag, int vflag) {
     std::partial_sum(actual_jnum.begin(), actual_jnum.end() - 1, actual_jnum_shift.begin() + 1);
 
     if (do_padding) {
-        if (n_real_neighbours > tot_neighbours) {
+        // try to find value that strictly greater than n_real_neigh
+        auto upper_bound_tot_neighbours = tot_neighbours_set.upper_bound(n_real_neighbours);
+        if (upper_bound_tot_neighbours == tot_neighbours_set.end()) { // not found
+            // if no previous larger element - create new
             n_fake_neighbours = static_cast<int>(std::round(n_real_neighbours * neigh_padding_fraction));
             n_fake_neighbours = std::max(n_fake_neighbours, 1);
             tot_neighbours = n_real_neighbours + n_fake_neighbours; // add fake neighbours
+            tot_neighbours_set.insert(tot_neighbours);
             if (pad_verbose)
                 utils::logmesg(lmp,
-                               "[GRACE] Neighbours padding: new num. of neighbours = {} (incl. {:.3f}% fake neighbours)\n",
+                               "[GRACE] Neighbours padding: extending new num. of neighbours = {} (incl. {:.3f}% fake neighbours)\n",
                                tot_neighbours, 100. * (double) n_fake_neighbours / tot_neighbours);
         } else {
-            // TODO: select tot_neighbours based on previous padding history
+            // upper bound found
+            tot_neighbours = *upper_bound_tot_neighbours;
+            n_fake_neighbours = tot_neighbours - n_real_neighbours;
+
+            // if upper bound found is FIRST bound then check for too much fake neighbours
+            if (upper_bound_tot_neighbours == tot_neighbours_set.begin()) {
+                // no smaller tot_neighbours, check if too many n_fake neighbours
+                // and limit of recompilation is not reached
+                if (n_fake_neighbours > std::round(n_real_neighbours * reducing_neigh_padding_fraction) &&
+                    (num_of_reductions < max_number_of_reduction || max_number_of_reduction == -1)) {
+                    // if too many fake neighbours  - reduce
+                    tot_neighbours = n_real_neighbours;
+                    tot_neighbours_set.insert(tot_neighbours);
+                    num_of_reductions++;
+                    if (pad_verbose)
+                        utils::logmesg(lmp,
+                                       "[GRACE] Neighbours padding: reducing new num. of neighbours = {}\n",
+                                       tot_neighbours);
+                }
+            }
         }
+
     } else {
+        // no padding
         tot_neighbours = n_real_neighbours;
     }
 

@@ -34,7 +34,7 @@ PairStyle(grace,PairGRACE);
 #include <cppflow/model.h>
 #include <cppflow/tensor.h>
 #include <map>
-
+#include <set>
 #include "utils_pace.h"
 
 namespace LAMMPS_NS {
@@ -69,8 +69,12 @@ class PairGRACE : public Pair {
   int tot_neighbours = 0;
   int tot_atoms = 0;
 
+  std::set<int> tot_neighbours_set;
+  int max_number_of_reduction = 10, num_of_reductions = 0;
+
   int chunksize;
   double neigh_padding_fraction = 0.01;
+  double reducing_neigh_padding_fraction = 0.2;
   bool do_padding = true;
   bool pad_verbose = false;
 
