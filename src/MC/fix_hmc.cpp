@@ -393,8 +393,6 @@ void FixHMC::end_of_step()
   } else {
     // Restore saved state, exchange, and enforce check_distance/reneighboring in the next step:
     restore_saved_state();
-    comm->exchange();
-    comm->borders();
     next_reneighbor = update->ntimestep + 1;
   }
 
