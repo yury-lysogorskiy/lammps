@@ -67,6 +67,16 @@ resampled from a normal distribution:
 The algorithm then continues, proposing a new configuration of particles
 and velocities N integration steps later.
 
+Typically, HMC is run with a larger timestep than molecular dynamics.
+The timestep provides control over the acceptance ratio. A larger
+timestep will lead to larger and more extreme MC moves which are
+less likely to be accepted.
+
+This fix is not designed to be used with anything but an NVE simulation.
+Only atom-specific data are restored on MC move rejection, so anything which
+adds or remove atoms, changes the box size, or has some external state not
+dependent on atomic data will have undefined behavior.
+
 ----------
 
 The keyword/value options are used in the following ways.
