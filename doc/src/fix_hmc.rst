@@ -28,7 +28,7 @@ Examples
 .. code-block:: LAMMPS
 
    fix 1 all hmc 10 123 500 flexible
-   fix hmc_water water hmc 100 123 298.15 rigid
+   fix hmc_water all hmc 100 123 298.15 rigid
    fix 2 all hmc 10 12345 300 flexible mom no resample yes
 
 Description
@@ -76,6 +76,8 @@ This fix is not designed to be used with anything but an NVE simulation.
 Only atom-specific data are restored on MC move rejection, so anything which
 adds or remove atoms, changes the box size, or has some external state not
 dependent on atomic data will have undefined behavior.
+
+The group assigned to this fix has no meaning. All
 
 ----------
 
