@@ -26,7 +26,7 @@ bond_coeff      1 554.1349 1.000
 angle_style     harmonic
 angle_coeff     1 45.7696 109.47
 
-timestep        0.25
+timestep        1
 
 #reset_timestep 0 time 0
 
