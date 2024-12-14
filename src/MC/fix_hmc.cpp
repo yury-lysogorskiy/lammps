@@ -93,8 +93,8 @@ FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
       if (iarg + 2 > narg) utils::missing_cmd_args(FLERR, "hmc mom", error);
       mom_flag = utils::logical(FLERR, arg[iarg + 1], false, lmp);
       iarg += 2;
-    } else if (strcmp(arg[iarg], "ra") == 0) {
-      if (iarg + 2 > narg) utils::missing_cmd_args(FLERR, "hmc ra", error);
+    } else if (strcmp(arg[iarg], "resample") == 0) {
+      if (iarg + 2 > narg) utils::missing_cmd_args(FLERR, "hmc resample", error);
       resample_on_accept_flag = utils::logical(FLERR, arg[iarg + 1], false, lmp);
       iarg += 2;
     } else if (strcmp(arg[iarg], "rigid") == 0) {
