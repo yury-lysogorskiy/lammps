@@ -103,7 +103,7 @@ FixNeighborSwap::FixNeighborSwap(LAMMPS *lmp, int narg, char **arg) :
 
   options(narg-7,&arg[7]);
 
-  if (voro_flag != 1) error->all(FLERR,"Voro Compute Required for fix neighbor/swap command");
+  if (voro_flag != 1) error->all(FLERR,"Voronoi compute required for fix neighbor/swap command");
 
   // random number generator, same for all procs
 
@@ -194,7 +194,7 @@ void FixNeighborSwap::options(int narg, char **arg)
         iarg++;
       }
     } else if (strcmp(arg[iarg],"voro") == 0) {
-      if (iarg+2 > narg) error->all(FLERR,"Illegal fix neighbor/swap command");
+      if (iarg + 2 > narg) error->all(FLERR,"Illegal fix neighbor/swap command");
       
       int icompute = modify->find_compute(utils::strdup(arg[iarg+1]));
 
@@ -208,7 +208,7 @@ void FixNeighborSwap::options(int narg, char **arg)
       voro_flag = 1;
       iarg += 2;
     } else if (strcmp(arg[iarg],"diff") == 0) {
-      if (iarg+2 > narg) error->all(FLERR,"Illegal fix neighbor/swap command");
+      if (iarg + 2 > narg) error->all(FLERR,"Illegal fix neighbor/swap command");
       if (nswaptypes != 0) error->all(FLERR,"Illegal fix neighbor/swap command");
       type_list[nswaptypes] = utils::numeric(FLERR,arg[iarg+1],false,lmp);
       diff_flag = 1;
