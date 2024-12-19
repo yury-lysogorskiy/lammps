@@ -519,7 +519,7 @@ must be freed with :cpp:func:`lammps_free` after use to avoid a memory leak.
 \endverbatim
  *
  * \param  handle  pointer to a previously created LAMMPS instance
- * \param  cmd     string with a single LAMMPS input line
+ * \param  line    string with a single LAMMPS input line
  * \return         string with expanded line */
 
 char *lammps_expand(void *handle, const char *line)
@@ -2159,7 +2159,7 @@ int lammps_extract_atom_datatype(void *handle, const char *name)
  *
 \verbatim embed:rst
 
-.. versionadded:: TBD
+.. versionadded:: 19Nov2024
 
 This function returns an integer with the size of the per-atom
 property with the specified name.  This allows to accurately determine

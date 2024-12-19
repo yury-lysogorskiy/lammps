@@ -407,6 +407,16 @@ void FixDeformPressure::init()
 
   set_box.vol_start = domain->xprd * domain->yprd * domain->zprd;
 
+  // reset cumulative counters to match resetting "start" variables in parent
+
+  for (int i = 0; i < 7; i++) {
+    set_extra[i].cumulative_remap = 0.0;
+    set_extra[i].cumulative_shift = 0.0;
+    set_extra[i].cumulative_vshift[0] = 0.0;
+    set_extra[i].cumulative_vshift[1] = 0.0;
+    set_extra[i].cumulative_vshift[2] = 0.0;
+  }
+
   // check optional variables for PRESSURE or PMEAN style
 
   for (int i = 0; i < 7; i++) {
