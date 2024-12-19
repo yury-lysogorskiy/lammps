@@ -63,7 +63,7 @@ class FixNeighborSwap : public Fix {
 
   double nswap_attempts;
   double nswap_successes;
-  
+
   bool unequal_cutoffs;
 
   int atom_swap_nmax;
@@ -79,7 +79,7 @@ class FixNeighborSwap : public Fix {
   int *local_swap_neighbor_list;
   int *local_swap_type_list;        // Type list index of atoms stored on this proc
   double *local_swap_probability;
-  
+
 
   class RanPark *random_equal;
   class RanPark *random_unequal;

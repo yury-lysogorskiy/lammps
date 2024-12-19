@@ -70,11 +70,11 @@ as given by *diff type*. This command selects all atom types as acceptable swap 
 centrally selected atom of type *type*. This includes the atom type specified by the diff
 keyword to account for self-diffusion hops of an atom type with itself.
 
-Keyword *voro* is currently required, and is implemented as 
+Keyword *voro* is currently required, and is implemented as
 
 .. code-block:: LAMMPS
     voro compute-ID
-    
+
 where *compute-ID* is the ID of a corresponding Voronoi computation with neighbor list, i.e.
 
 .. code-block:: LAMMPS
@@ -89,17 +89,17 @@ be swapped at the initial step, i.e.
 
 for using *fix neighbor/swap* with *diff 2*.
 
-The keyword *rates* can modify the swap rate for each swapped type by values 
-where the adjusted rates values are given in order of increasing atom type. 
+The keyword *rates* can modify the swap rate for each swapped type by values
+where the adjusted rates values are given in order of increasing atom type.
 The number of rates provided must equal the number of atom types in the simulaton.
 In the third provided example above, a simulation is conducted with three atom types
 where the third atom type is the one sampled for attempted swaps. All three atom
 types are considered valid swaps, but atoms of type 1 will be selected three times
 as often as atoms of type 2. Conversely, atoms of type 3 are six times more likely to
-be selected than atoms of type two and twice as likely as atoms of type 1. 
+be selected than atoms of type two and twice as likely as atoms of type 1.
 
 Finally, the *region* keyword is implemented as in other atomic fixes, where
-the *region region-ID* command indicates that atom swaps only be considered in the area 
+the *region region-ID* command indicates that atom swaps only be considered in the area
 given by *region-ID*. If only atoms of certain groups are expected to be in this region,
 the corresponding compute voronoi command can be adjusted accordingly.
 

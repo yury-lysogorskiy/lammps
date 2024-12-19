@@ -195,7 +195,7 @@ void FixNeighborSwap::options(int narg, char **arg)
       }
     } else if (strcmp(arg[iarg],"voro") == 0) {
       if (iarg + 2 > narg) error->all(FLERR,"Illegal fix neighbor/swap command");
-      
+
       int icompute = modify->find_compute(utils::strdup(arg[iarg+1]));
 
       if (icompute < 0) error->all(FLERR,"Could not find neighbor compute ID");
@@ -481,7 +481,7 @@ int FixNeighborSwap::attempt_swap()
     }
     energy_stored = energy_after;
 
-    // utils::logmesg(lmp,"Swap accepted\n"); 
+    // utils::logmesg(lmp,"Swap accepted\n");
     // Swap atom groups if successful swap
 
     // int groupi = atom->mask[i];
@@ -498,7 +498,7 @@ int FixNeighborSwap::attempt_swap()
   // do not need to re-call comm->borders() and rebuild neighbor list
   //   since will be done on next cycle or in Verlet when this fix finishes
 
-  // utils::logmesg(lmp,"Swap not accepted\n"); 
+  // utils::logmesg(lmp,"Swap not accepted\n");
 
   if ( i >= 0 ) {
     atom->type[i] = itype;
@@ -613,7 +613,7 @@ double FixNeighborSwap::get_distance(double* i, double* j)
   // r_x = i[0] - j[0];
   // r_y = i[1] - j[1];
   // r_z = i[2] - j[2];
-  
+
   // // Domain::minimum_image(r_x, r_y, r_z);
   // double r = sqrt(pow(r_x, 2.) +
   //                 pow(r_y, 2.) +
@@ -648,7 +648,7 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
   memory->sfree(local_swap_probability);
   local_swap_probability = (double *) memory->smalloc(atom_swap_nmax*sizeof(double),
     "MCSWAP:local_swap_probability_list");
-  
+
   memory->sfree(local_swap_type_list);
   local_swap_type_list = (int *) memory->smalloc(atom_swap_nmax*sizeof(int),
     "MCSWAP:local_swap_type_list");
@@ -656,7 +656,7 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
   // Compute voronoi and access neighbor list
 
   c_voro->compute_local();
-  
+
   voro_neighbor_list = c_voro->array_local;
   njswap_local = 0;
   local_probability = 0.0;
@@ -664,7 +664,7 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
   // utils::logmesg(lmp,"Searching for atom {}\n",id_center);
 
   for (int n = 0; n < c_voro->size_local_rows; n++){
-    
+
     int temp_j_id = -1;
     int temp_j = -1;
 
@@ -708,13 +708,13 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
         if (atom->mask[temp_j] & groupbit) {
           if (diff_flag) {
             // Calculate distance from i to each j, adjust probability of selection
-            
+
             // Get distance if own centr atom
             double r = INFINITY;
             if ( i_center >= 0  ){
               double r = get_distance(x[temp_j], x[i_center]);
             }
-            
+
             // Get local id of ghost center atom when ghost
             for (int i=nlocal; i < nlocal+nghost; i++){
               if ( (id[i] == id_center) &&
@@ -743,7 +743,7 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
                 if ( i_center >= 0  ){
                   double r = get_distance(x[temp_j], x[i_center]);
                 }
-                
+
                 // Get local id of ghost center atom when ghost
                 for (int i=nlocal; i < nlocal+nghost; i++){
                   if ( (id[i] == id_center) &&
@@ -776,7 +776,7 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
           if ( i_center >= 0  ){
             r = get_distance(x[temp_j], x[i_center]);
           }
-          
+
           // Get local id of ghost center atoms
           // if ( i_center < 0 ){
           // utils::logmesg(lmp,"Initial distance {}\n", r);
@@ -788,7 +788,7 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
             }
           }
           // }
-          
+
           // utils::logmesg(lmp,"Final distance {}\n", r);
 
           if (rates_flag) {
@@ -797,7 +797,7 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
             local_swap_probability[njswap_local] = exp(-pow((r/3.), 2.));
           }
           local_probability += local_swap_probability[njswap_local];
-         
+
           local_swap_type_list[njswap_local] = type[temp_j];
           local_swap_neighbor_list[njswap_local] = temp_j;
           njswap_local++;
@@ -810,7 +810,7 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
               if ( i_center >= 0  ){
                 double r = get_distance(x[temp_j], x[i_center]);
               }
-              
+
               // Get local id of ghost center atom when ghost
               for (int i=nlocal; i < nlocal+nghost; i++){
                 if ( (id[i] == id_center) &&
@@ -823,7 +823,7 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
                 local_swap_probability[njswap_local] = rate_list[type[temp_j] - 1]*exp(-pow((r/3.), 2.));
               } else {
                 local_swap_probability[njswap_local] = exp(-pow((r/3.), 2.));
-              } 
+              }
               local_probability += local_swap_probability[njswap_local];
 
               local_swap_type_list[njswap_local] = jswaptype;
