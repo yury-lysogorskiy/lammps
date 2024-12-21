@@ -1812,6 +1812,7 @@ Kloss
 Kloza
 kmax
 Kmax
+kMC
 KMP
 kmu
 Knizhnik
