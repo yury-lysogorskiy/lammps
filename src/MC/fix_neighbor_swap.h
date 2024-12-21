@@ -40,17 +40,17 @@ class FixNeighborSwap : public Fix {
 
  private:
   int nevery, seed;
-  int ke_flag;                // yes = conserve ke, no = do not conserve ke
-  int diff_flag;              // yes = simulate diffusion of central atom, no = swap only to certain types
-  int rates_flag;             // yes = use modified type rates, no = swap rates are equivilent across types
-  int voro_flag;              // yes = use given voronoi calculation, no = use internal voronoi calculation
+  int ke_flag;       // yes = conserve ke, no = do not conserve ke
+  int diff_flag;     // yes = simulate diffusion of central atom, no = swap only to certain types
+  int rates_flag;    // yes = use modified type rates, no = swap rates are equivilent across types
+  int voro_flag;     // yes = use given voronoi calculation, no = use internal voronoi calculation
   int ncycles;
   int niswap, njswap;                  // # of i,j swap atoms on all procs
   int niswap_local, njswap_local;      // # of swap atoms on this proc
   int niswap_before, njswap_before;    // # of swap atoms on procs < this proc
   // int global_i_ID;                     // global id of selected i atom
-  class Region *region;                // swap region
-  char *idregion;                      // swap region id
+  class Region *region;    // swap region
+  char *idregion;          // swap region id
 
   int nswaptypes;
   int jtype_selected;
@@ -68,18 +68,17 @@ class FixNeighborSwap : public Fix {
 
   int atom_swap_nmax;
   double beta;
-  double local_probability;         // Total swap probability stored on this proc
-  double global_probability;        // Total swap probability across all proc
-  double prev_probability;          // Swap probability on proc < this proc
+  double local_probability;     // Total swap probability stored on this proc
+  double global_probability;    // Total swap probability across all proc
+  double prev_probability;      // Swap probability on proc < this proc
   double *qtype;
   double energy_stored;
   double **sqrt_mass_ratio;
   double **voro_neighbor_list;
   int *local_swap_iatom_list;
   int *local_swap_neighbor_list;
-  int *local_swap_type_list;        // Type list index of atoms stored on this proc
+  int *local_swap_type_list;    // Type list index of atoms stored on this proc
   double *local_swap_probability;
-
 
   class RanPark *random_equal;
   class RanPark *random_unequal;
