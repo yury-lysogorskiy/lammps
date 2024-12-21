@@ -44,6 +44,8 @@ Examples
 Description
 """""""""""
 
+.. versionadded:: TBD
+
 Computes MC evaluations to enable kinetic Monte Carlo (kMC) behavior
 during MD simulation through only allowing neighboring atom swaps.
 Neighboring atoms are selected using a Voronoi tesselation approach. This
