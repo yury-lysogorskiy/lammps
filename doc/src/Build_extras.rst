@@ -209,7 +209,7 @@ necessary for ``hipcc`` and the linker to work correctly.
 Using the CHIP-SPV implementation of HIP is supported. It allows one to
 run HIP code on Intel GPUs via the OpenCL or Level Zero back ends. To use
 CHIP-SPV, you must set ``-DHIP_USE_DEVICE_SORT=OFF`` in your CMake
-command line as CHIP-SPV does not yet support hipCUB. As of Summer 2022,
+command-line as CHIP-SPV does not yet support hipCUB. As of Summer 2022,
 the use of HIP for Intel GPUs is experimental. You should only use this
 option in preparations to run on Aurora system at Argonne.
 
@@ -232,7 +232,7 @@ option in preparations to run on Aurora system at Argonne.
 
 .. code:: bash
 
-   # CUDA target (not recommended, use GPU_ARCH=cuda)
+   # CUDA target (not recommended, use GPU_API=cuda)
    # !!! DO NOT set CMAKE_CXX_COMPILER !!!
    export HIP_PLATFORM=nvcc
    export HIP_PATH=/path/to/HIP/install
@@ -421,9 +421,10 @@ minutes to hours) to build.  Of course you only need to do that once.)
       cmake build system.  The ``lib/kim/Install.py`` script supports a
       ``CMAKE`` environment variable if the cmake executable is named other
       than ``cmake`` on your system.  Additional environment variables may be
-      provided on the command line for use by cmake.  For example, to use the
-      ``cmake3`` executable and tell it to use the gnu version 11 compilers
-      to build KIM, one could use the following command line.
+      set with the ``make`` command for use by cmake.  For example, to use the
+      ``cmake3`` executable and tell it to use the GNU version 11 compilers
+      called ``g++-11``, ``gcc-11`` and ``gfortran-11`` to build KIM, one
+      could use the following command.
 
       .. code-block:: bash
 
@@ -2191,7 +2192,7 @@ verified to work in February 2020 with Quantum Espresso versions 6.3 to
       from the sources in the *lib* folder (including the essential
       libqmmm.a) are not included in the static LAMMPS library and
       (currently) not installed, while their code is included in the
-      shared LAMMPS library.  Thus a typical command line to configure
+      shared LAMMPS library.  Thus a typical command to configure
       building LAMMPS for QMMM would be:
 
       .. code-block:: bash
@@ -2251,28 +2252,38 @@ verified to work in February 2020 with Quantum Espresso versions 6.3 to
 RHEO package
 ------------
 
-To build with this package you must have the `GNU Scientific Library
-(GSL) <https://www.gnu.org/software/gsl/>` installed in locations that
-are accessible in your environment.  The GSL library should be at least
-version 2.7.
+This package depends on the BPM package.
 
 .. tabs::
 
    .. tab:: CMake build
 
-      If CMake cannot find the GSL library or include files, you can set:
-
       .. code-block:: bash
 
-         -D GSL_ROOT_DIR=path    # path to root of GSL installation
+         -D PKG_RHEO=yes               # enable the package itself
+         -D PKG_BPM=yes                # the RHEO package requires BPM
+         -D USE_INTERNAL_LINALG=value  # prefer internal LAPACK if true
+
+      Some features in the RHEO package are dependent on code in the BPM
+      package so the latter one *must* be enabled as well.
+
+      The RHEO package also requires LAPACK (and BLAS) and CMake
+      can identify their locations and pass that info to the RHEO
+      build script.  But on some systems this may cause problems when
+      linking or the dependency is not desired.  By using the setting
+      ``-D USE_INTERNAL_LINALG=yes`` when running the CMake
+      configuration, you will select compiling and linking the bundled
+      linear algebra library and work around the limitations.
 
    .. tab:: Traditional make
 
-      LAMMPS will try to auto-detect the GSL compiler and linker flags
-      from the corresponding ``pkg-config`` file (``gsl.pc``), otherwise
-      you can edit the file ``lib/rheo/Makefile.lammps``
-      to specify the paths and library names where indicated by comments.
-      This must be done **before** the package is installed.
+      The RHEO package requires LAPACK (and BLAS) which can be either
+      a system provided library or the bundled "linalg" library. This
+      is a subset of LAPACK translated to C++.  For that, one of the
+      provided ``Makefile.lammps.<config>`` files needs to be copied
+      to ``Makefile.lammps`` and edited as needed.  The default file
+      uses the bundled "linalg" library, which can be built by
+      ``make lib-linalg args='-m serial'`` in the ``src`` folder.
 
 ----------
 
