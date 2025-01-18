@@ -35,9 +35,6 @@ class FixHMC : public Fix {
   void end_of_step() override;
   double compute_scalar() override;
   double compute_vector(int) override;
-
-  int pack_forward_comm(int, int *, double *, int, int *) override;
-  void unpack_forward_comm(int, int, double *) override;
   double memory_usage() override;
 
  private:

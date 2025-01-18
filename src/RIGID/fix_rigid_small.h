@@ -63,6 +63,7 @@ class FixRigidSmall : public Fix {
   void initial_integrate_respa(int, int, int) override;
   void final_integrate_respa(int, int) override;
   void write_restart_file(const char *) override;
+  void resample_momenta(int, int, class RanPark *, double);
 
   void grow_arrays(int) override;
   void copy_arrays(int, int, int) override;
