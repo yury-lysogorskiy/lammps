@@ -39,7 +39,6 @@ using namespace LAMMPS_NS;
 using namespace FixConst;
 using namespace MathConst;
 using namespace RigidConst;
-typedef RigidSmallBody Body;
 
 typedef struct {
   double x, y, z;

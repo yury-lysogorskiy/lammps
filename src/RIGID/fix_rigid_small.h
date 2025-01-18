@@ -24,29 +24,6 @@ FixStyle(rigid/small,FixRigidSmall);
 
 namespace LAMMPS_NS {
 
-struct RigidSmallBody {
-  int natoms;            // total number of atoms in body
-  int ilocal;            // index of owning atom
-  double mass;           // total mass of body
-  double xcm[3];         // COM position
-  double xgc[3];         // geometric center position
-  double vcm[3];         // COM velocity
-  double fcm[3];         // force on COM
-  double torque[3];      // torque around COM
-  double quat[4];        // quaternion for orientation of body
-  double inertia[3];     // 3 principal components of inertia
-  double ex_space[3];    // principal axes in space coords
-  double ey_space[3];
-  double ez_space[3];
-  double xgc_body[3];    // geometric center relative to xcm in body coords
-  double angmom[3];      // space-frame angular momentum of body
-  double omega[3];       // space-frame omega of body
-  double conjqm[4];      // conjugate quaternion momentum
-  int remapflag[4];      // PBC remap flags
-  imageint image;        // image flags of xcm
-  imageint dummy;        // dummy entry for better alignment
-};
-
 class FixRigidSmall : public Fix {
   friend class ComputeRigidLocal;
 
@@ -62,12 +39,13 @@ class FixRigidSmall : public Fix {
   void initial_integrate_respa(int, int, int) override;
   void final_integrate_respa(int, int) override;
   void write_restart_file(const char *) override;
-  void resample_momenta(int, int, class RanPark *, double);
+
 
   void grow_arrays(int) override;
   void copy_arrays(int, int, int) override;
   void set_arrays(int) override;
   void set_molecule(int, tagint, int, double *, double *, double *) override;
+  void resample_momenta(int, int, class RanPark *, double);
 
   int pack_exchange(int, double *) override;
   int unpack_exchange(int, double *) override;
@@ -105,11 +83,34 @@ class FixRigidSmall : public Fix {
   tagint maxmol;       // max mol-ID
   double maxextent;    // furthest distance from body owner to body atom
 
-  RigidSmallBody *body;    // list of rigid bodies, owned and ghost
-  int nlocal_body;         // # of owned rigid bodies
-  int nghost_body;         // # of ghost rigid bodies
-  int nmax_body;           // max # of bodies that body can hold
-  int bodysize;            // sizeof(Body) in doubles
+  struct Body {
+    int natoms;            // total number of atoms in body
+    int ilocal;            // index of owning atom
+    double mass;           // total mass of body
+    double xcm[3];         // COM position
+    double xgc[3];         // geometric center position
+    double vcm[3];         // COM velocity
+    double fcm[3];         // force on COM
+    double torque[3];      // torque around COM
+    double quat[4];        // quaternion for orientation of body
+    double inertia[3];     // 3 principal components of inertia
+    double ex_space[3];    // principal axes in space coords
+    double ey_space[3];
+    double ez_space[3];
+    double xgc_body[3];    // geometric center relative to xcm in body coords
+    double angmom[3];      // space-frame angular momentum of body
+    double omega[3];       // space-frame omega of body
+    double conjqm[4];      // conjugate quaternion momentum
+    int remapflag[4];      // PBC remap flags
+    imageint image;        // image flags of xcm
+    imageint dummy;        // dummy entry for better alignment
+  };
+
+  Body *body;         // list of rigid bodies, owned and ghost
+  int nlocal_body;    // # of owned rigid bodies
+  int nghost_body;    // # of ghost rigid bodies
+  int nmax_body;      // max # of bodies that body can hold
+  int bodysize;       // sizeof(Body) in doubles
 
   // per-atom quantities
   // only defined for owned atoms, except bodyown for own+ghost

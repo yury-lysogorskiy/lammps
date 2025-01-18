@@ -49,7 +49,6 @@ using namespace LAMMPS_NS;
 using namespace FixConst;
 using namespace MathConst;
 using namespace RigidConst;
-typedef RigidSmallBody Body;
 
 static constexpr int RVOUS = 1;   // 0 for irregular, 1 for all2all
 
@@ -2723,6 +2722,7 @@ void FixRigidSmall::write_restart_file(const char *file)
   if (comm->me == 0) fclose(fp);
 }
 
+
 /* ----------------------------------------------------------------------
    randomize velocities with respect to a given temperature
 ------------------------------------------------------------------------- */
@@ -2734,7 +2734,7 @@ void FixRigidSmall::resample_momenta(int groupbit, int mom_flag, class RanPark *
 
   double stdev, bmass, wbody[3], mbody[3];
   double total_mass = 0;
-  RigidSmallBody *b;
+  Body *b;
   double vcm[] = {0.0, 0.0, 0.0};
 
   for (int ibody = 0; ibody < nlocal; ibody++) {

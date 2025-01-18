@@ -42,7 +42,6 @@ using namespace LAMMPS_NS;
 using namespace FixConst;
 using namespace MathExtra;
 using namespace RigidConst;
-typedef RigidSmallBody Body;
 
 /* ---------------------------------------------------------------------- */
 
