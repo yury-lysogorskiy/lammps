@@ -99,8 +99,12 @@ FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
       iarg += 2;
     } else if (strcmp(arg[iarg], "rigid") == 0) {
       if (iarg + 2 > narg) utils::missing_cmd_args(FLERR, "hmc rigid", error);
-      fix_rigid = (FixRigidSmall*) modify->get_fix_by_id(arg[iarg + 1]);
-      if (fix_rigid == nullptr) error->all(FLERR, "Unknown rigid fix id {}", arg[iarg + 1]);
+      auto ifix = modify->get_fix_by_id(arg[iarg + 1]);
+      if (ifix == nullptr) error->all(FLERR, "Unknown rigid fix id {}", arg[iarg + 1]);
+      fix_rigid = dynamic_cast<FixRigidSmall *>(ifix);
+      if (!fix_rigid)
+        error->all(FLERR, "Fix ID {} for compute rigid/local does not point to fix rigid/small",
+            arg[iarg + 1]);
       rigid_flag = true;
       iarg += 2;
     } else {
