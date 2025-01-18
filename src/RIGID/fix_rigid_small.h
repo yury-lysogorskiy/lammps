@@ -49,7 +49,6 @@ struct RigidSmallBody {
 
 class FixRigidSmall : public Fix {
   friend class ComputeRigidLocal;
-  friend class FixHMC;
 
  public:
   FixRigidSmall(class LAMMPS *, int, char **);
