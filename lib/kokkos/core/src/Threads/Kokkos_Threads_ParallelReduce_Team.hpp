@@ -42,7 +42,7 @@ class ParallelReduce<CombinedFunctorReducerType,
   const size_t m_shared;
 
   template <class TagType>
-  inline static std::enable_if_t<std::is_void<TagType>::value> exec_team(
+  inline static std::enable_if_t<std::is_void_v<TagType>> exec_team(
       const FunctorType &functor, Member member, reference_type update) {
     for (; member.valid_static(); member.next_static()) {
       functor(member, update);
@@ -50,7 +50,7 @@ class ParallelReduce<CombinedFunctorReducerType,
   }
 
   template <class TagType>
-  inline static std::enable_if_t<!std::is_void<TagType>::value> exec_team(
+  inline static std::enable_if_t<!std::is_void_v<TagType>> exec_team(
       const FunctorType &functor, Member member, reference_type update) {
     const TagType t{};
     for (; member.valid_static(); member.next_static()) {
@@ -58,16 +58,16 @@ class ParallelReduce<CombinedFunctorReducerType,
     }
   }
 
-  static void exec(ThreadsExec &exec, const void *arg) {
+  static void exec(ThreadsInternal &instance, const void *arg) {
     const ParallelReduce &self = *((const ParallelReduce *)arg);
 
     ParallelReduce::template exec_team<WorkTag>(
         self.m_functor_reducer.get_functor(),
-        Member(&exec, self.m_policy, self.m_shared),
+        Member(&instance, self.m_policy, self.m_shared),
         self.m_functor_reducer.get_reducer().init(
-            static_cast<pointer_type>(exec.reduce_memory())));
+            static_cast<pointer_type>(instance.reduce_memory())));
 
-    exec.fan_in_reduce(self.m_functor_reducer.get_reducer());
+    instance.fan_in_reduce(self.m_functor_reducer.get_reducer());
   }
 
  public:
@@ -80,17 +80,17 @@ class ParallelReduce<CombinedFunctorReducerType,
         reducer.final(m_result_ptr);
       }
     } else {
-      ThreadsExec::resize_scratch(
+      ThreadsInternal::resize_scratch(
           reducer.value_size(),
           Policy::member_type::team_reduce_size() + m_shared);
 
-      ThreadsExec::start(&ParallelReduce::exec, this);
+      ThreadsInternal::start(&ParallelReduce::exec, this);
 
-      ThreadsExec::fence();
+      ThreadsInternal::fence();
 
       if (m_result_ptr) {
         const pointer_type data =
-            (pointer_type)ThreadsExec::root_reduce_scratch();
+            (pointer_type)ThreadsInternal::root_reduce_scratch();
 
         const unsigned n = reducer.value_count();
         for (unsigned i = 0; i < n; ++i) {
@@ -106,9 +106,14 @@ class ParallelReduce<CombinedFunctorReducerType,
       policy.impl_set_vector_length(1);
     }
     if (policy.team_size() < 0) {
-      policy.impl_set_team_size(policy.team_size_recommended(
+      int team_size = policy.team_size_recommended(
           m_functor_reducer.get_functor(), m_functor_reducer.get_reducer(),
-          ParallelReduceTag{}));
+          ParallelReduceTag{});
+      if (team_size <= 0)
+        Kokkos::Impl::throw_runtime_exception(
+            "Kokkos::Impl::ParallelReduce<Threads, TeamPolicy> could not find "
+            "a valid execution configuration.");
+      policy.impl_set_team_size(team_size);
     }
     return policy;
   }

@@ -40,13 +40,13 @@ class GraphImpl<Kokkos::HIP> {
       GraphNodeImpl<Kokkos::HIP, aggregate_kernel_impl_t,
                     Kokkos::Experimental::TypeErasedTag>;
 
-  // Not moveable or copyable; it spends its whole life as a shared_ptr in the
+  // Not movable or copyable; it spends its whole life as a shared_ptr in the
   // Graph object.
-  GraphImpl()                 = delete;
-  GraphImpl(GraphImpl const&) = delete;
-  GraphImpl(GraphImpl&&)      = delete;
+  GraphImpl()                            = delete;
+  GraphImpl(GraphImpl const&)            = delete;
+  GraphImpl(GraphImpl&&)                 = delete;
   GraphImpl& operator=(GraphImpl const&) = delete;
-  GraphImpl& operator=(GraphImpl&&) = delete;
+  GraphImpl& operator=(GraphImpl&&)      = delete;
 
   ~GraphImpl();
 
@@ -60,7 +60,7 @@ class GraphImpl<Kokkos::HIP> {
   template <class NodeImplPtr, class PredecessorRef>
   void add_predecessor(NodeImplPtr arg_node_ptr, PredecessorRef arg_pred_ref);
 
-  void submit();
+  void submit(const Kokkos::HIP& exec);
 
   Kokkos::HIP const& get_execution_space() const noexcept;
 
@@ -69,21 +69,31 @@ class GraphImpl<Kokkos::HIP> {
   template <class... PredecessorRefs>
   auto create_aggregate_ptr(PredecessorRefs&&...);
 
- private:
-  void instantiate_graph() {
+  void instantiate() {
+    KOKKOS_EXPECTS(!m_graph_exec);
     constexpr size_t error_log_size = 256;
     hipGraphNode_t error_node       = nullptr;
     char error_log[error_log_size];
     KOKKOS_IMPL_HIP_SAFE_CALL(hipGraphInstantiate(
         &m_graph_exec, m_graph, &error_node, error_log, error_log_size));
+    KOKKOS_ENSURES(m_graph_exec);
   }
 
+  hipGraph_t hip_graph() { return m_graph; }
+  hipGraphExec_t hip_graph_exec() { return m_graph_exec; }
+
+ private:
   Kokkos::HIP m_execution_space;
   hipGraph_t m_graph          = nullptr;
   hipGraphExec_t m_graph_exec = nullptr;
+
+  // Store drivers for the kernel nodes that launch in global memory.
+  // This is required as lifetime of drivers must be bounded to this instance's
+  // lifetime.
+  std::vector<std::shared_ptr<void>> m_driver_storage;
 };
 
-GraphImpl<Kokkos::HIP>::~GraphImpl() {
+inline GraphImpl<Kokkos::HIP>::~GraphImpl() {
   m_execution_space.fence("Kokkos::GraphImpl::~GraphImpl: Graph Destruction");
   KOKKOS_EXPECTS(m_graph);
   if (m_graph_exec) {
@@ -92,12 +102,12 @@ GraphImpl<Kokkos::HIP>::~GraphImpl() {
   KOKKOS_IMPL_HIP_SAFE_CALL(hipGraphDestroy(m_graph));
 }
 
-GraphImpl<Kokkos::HIP>::GraphImpl(Kokkos::HIP instance)
+inline GraphImpl<Kokkos::HIP>::GraphImpl(Kokkos::HIP instance)
     : m_execution_space(std::move(instance)) {
   KOKKOS_IMPL_HIP_SAFE_CALL(hipGraphCreate(&m_graph, 0));
 }
 
-void GraphImpl<Kokkos::HIP>::add_node(
+inline void GraphImpl<Kokkos::HIP>::add_node(
     std::shared_ptr<aggregate_node_impl_t> const& arg_node_ptr) {
   // All of the predecessors are just added as normal, so all we need to
   // do here is add an empty node
@@ -108,9 +118,9 @@ void GraphImpl<Kokkos::HIP>::add_node(
 }
 
 // Requires NodeImplPtr is a shared_ptr to specialization of GraphNodeImpl
-// Also requires that the kernel has the graph node tag in it's policy
+// Also requires that the kernel has the graph node tag in its policy
 template <class NodeImpl>
-void GraphImpl<Kokkos::HIP>::add_node(
+inline void GraphImpl<Kokkos::HIP>::add_node(
     std::shared_ptr<NodeImpl> const& arg_node_ptr) {
   static_assert(NodeImpl::kernel_type::Policy::is_graph_kernel::value);
   KOKKOS_EXPECTS(arg_node_ptr);
@@ -123,14 +133,16 @@ void GraphImpl<Kokkos::HIP>::add_node(
   kernel.set_hip_graph_node_ptr(&node);
   kernel.execute();
   KOKKOS_ENSURES(node);
+  if (std::shared_ptr<void> tmp = kernel.get_driver_storage())
+    m_driver_storage.push_back(std::move(tmp));
 }
 
 // Requires PredecessorRef is a specialization of GraphNodeRef that has
 // already been added to this graph and NodeImpl is a specialization of
 // GraphNodeImpl that has already been added to this graph.
 template <class NodeImplPtr, class PredecessorRef>
-void GraphImpl<Kokkos::HIP>::add_predecessor(NodeImplPtr arg_node_ptr,
-                                             PredecessorRef arg_pred_ref) {
+inline void GraphImpl<Kokkos::HIP>::add_predecessor(
+    NodeImplPtr arg_node_ptr, PredecessorRef arg_pred_ref) {
   KOKKOS_EXPECTS(arg_node_ptr);
   auto pred_ptr = GraphAccess::get_node_ptr(arg_pred_ref);
   KOKKOS_EXPECTS(pred_ptr);
@@ -145,20 +157,19 @@ void GraphImpl<Kokkos::HIP>::add_predecessor(NodeImplPtr arg_node_ptr,
       hipGraphAddDependencies(m_graph, &pred_node, &node, 1));
 }
 
-void GraphImpl<Kokkos::HIP>::submit() {
+inline void GraphImpl<Kokkos::HIP>::submit(const Kokkos::HIP& exec) {
   if (!m_graph_exec) {
-    instantiate_graph();
+    instantiate();
   }
-  KOKKOS_IMPL_HIP_SAFE_CALL(
-      hipGraphLaunch(m_graph_exec, m_execution_space.hip_stream()));
+  KOKKOS_IMPL_HIP_SAFE_CALL(hipGraphLaunch(m_graph_exec, exec.hip_stream()));
 }
 
-Kokkos::HIP const& GraphImpl<Kokkos::HIP>::get_execution_space() const
-    noexcept {
+inline Kokkos::HIP const& GraphImpl<Kokkos::HIP>::get_execution_space()
+    const noexcept {
   return m_execution_space;
 }
 
-auto GraphImpl<Kokkos::HIP>::create_root_node_ptr() {
+inline auto GraphImpl<Kokkos::HIP>::create_root_node_ptr() {
   KOKKOS_EXPECTS(m_graph);
   KOKKOS_EXPECTS(!m_graph_exec);
   auto rv = std::make_shared<root_node_impl_t>(get_execution_space(),
@@ -172,7 +183,7 @@ auto GraphImpl<Kokkos::HIP>::create_root_node_ptr() {
 }
 
 template <class... PredecessorRefs>
-auto GraphImpl<Kokkos::HIP>::create_aggregate_ptr(PredecessorRefs&&...) {
+inline auto GraphImpl<Kokkos::HIP>::create_aggregate_ptr(PredecessorRefs&&...) {
   // The attachment to predecessors, which is all we really need, happens
   // in the generic layer, which calls through to add_predecessor for
   // each predecessor ref, so all we need to do here is create the (trivial)

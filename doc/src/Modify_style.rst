@@ -46,7 +46,7 @@ Include files (varied)
   but instead should be initialized either in the initializer list of
   the constructor or explicitly assigned in the body of the constructor.
   If the member variable is relevant to the functionality of a class
-  (for example when it stores a value from a command line argument), the
+  (for example when it stores a value from a command-line argument), the
   member variable declaration is followed by a brief comment explaining
   its purpose and what its values can be.  Class members that are
   pointers should always be initialized to ``nullptr`` in the
@@ -95,6 +95,39 @@ normally with a source file or a source folder as argument, they will
 list all non-conforming lines.  By adding the `-f` flag to the command
 line, they will modify the flagged files to try to remove the detected
 issues.
+
+Constants (strongly preferred)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Global or per-file constants should be declared as `static constexpr`
+variables rather than via the pre-processor with `#define`.  The name of
+constants should be all uppercase.  This has multiple advantages:
+
+- constants are easily identified as such by their all upper case name
+- rather than a pure text substitution during pre-processing, `constexpr
+  variables` have a type associated with them and are processed later in
+  the parsing process where the syntax checks and type specific
+  processing (e.g. via overloads) can be applied to them.
+- compilers can emit a warning if the constant is not used and thus can
+  be removed (we regularly check for and remove dead code like this)
+- there are no unexpected substitutions and thus confusing syntax errors
+  when compiling leading to, for instance, conflicts so that LAMMPS
+  cannot be compiled with certain combinations of packages (this *has*
+  happened multiple times in the past).
+
+Pre-processor defines should be limited to macros (but consider C++
+templates) and conditional compilation.  If a per-processor define must
+be used, it should be defined at the top of the .cpp file after the
+include statements and at all cost it should be avoided to put them into
+header files.
+
+Some sets of commonly used constants are provided in the ``MathConst``
+and ``EwaldConst`` namespaces and implemented in the files
+``math_const.h`` and ``ewald_const.h``, respectively.
+
+There are always exceptions, special cases, and legacy code in LAMMPS,
+so please contact the LAMMPS developers if you are not sure.
+
 
 Placement of braces (strongly preferred)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
