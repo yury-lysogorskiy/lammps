@@ -448,19 +448,6 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
     }
   }
 
-  if (molid_mode == Reset_mol_ids::Molmap) {
-    for (int myrxn = 0; myrxn < nreacts; myrxn++) {
-      onemol = atom->molecules[unreacted_mol[myrxn]];
-      twomol = atom->molecules[reacted_mol[myrxn]];
-      if (!onemol->moleculeflag || !twomol->moleculeflag) {
-        if (comm->me == 0)
-          error->warning(FLERR,"Fix bond/react ('reset_mol_ids molmap' option): The pre- and post-reaction "
-                               "templates must both contain a 'Molecules' section for molecule IDs to be updated");
-        break;
-      }
-    }
-  }
-
   max_natoms = 0; // the number of atoms in largest molecule template
   max_rate_limit_steps = 0;
   for (int myrxn = 0; myrxn < nreacts; myrxn++) {
@@ -478,6 +465,8 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
   memory->create(delete_atoms,max_natoms,nreacts,"bond/react:delete_atoms");
   memory->create(create_atoms,max_natoms,nreacts,"bond/react:create_atoms");
   memory->create(chiral_atoms,max_natoms,6,nreacts,"bond/react:chiral_atoms");
+  memory->create(newmolids,max_natoms,nreacts,"bond/react:newmolids");
+  memory->create(nnewmolids,nreacts,"bond/react:nnewmolids");
   memory->create(mol_total_charge,nreacts,"bond/react:mol_total_charge");
 
   for (int j = 0; j < nreacts; j++) {
@@ -487,6 +476,8 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
       custom_charges[i][j] = 1; // update all partial charges by default
       delete_atoms[i][j] = 0;
       create_atoms[i][j] = 0;
+      newmolids[i][j] = 0;
+      nnewmolids[j] = 0;
       for (int k = 0; k < 6; k++) {
         chiral_atoms[i][k][j] = 0;
       }
@@ -498,6 +489,44 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
     }
     for (int i = 0; i < max_rate_limit_steps; i++) {
       store_rxn_count[i][j] = -1;
+    }
+  }
+
+  if (molid_mode == Reset_mol_ids::Molmap) {
+    for (int myrxn = 0; myrxn < nreacts; myrxn++) {
+      onemol = atom->molecules[unreacted_mol[myrxn]];
+      twomol = atom->molecules[reacted_mol[myrxn]];
+      if (!onemol->moleculeflag || !twomol->moleculeflag) {
+        if (comm->me == 0)
+          error->warning(FLERR,"Fix bond/react ('reset_mol_ids molmap' option): Pre- and post-reaction templates must "
+                               "both contain a 'Molecules' section for molecule IDs to be updated for a given reaction");
+        break;
+      }
+    }
+    // 'new' mol IDs are ones that exist in post-reaction but not in pre-reaction
+    // let's condense these and shift to be indexed from 1
+    for (int myrxn = 0; myrxn < nreacts; myrxn++) {
+      onemol = atom->molecules[unreacted_mol[myrxn]];
+      twomol = atom->molecules[reacted_mol[myrxn]];
+      if (onemol->moleculeflag && twomol->moleculeflag) {
+        for (int j = 0; j < twomol->natoms; j++) {
+          if (newmolids[j][myrxn] != 0) continue;
+          int molid_isnew = 1;
+          for (int k = 0; k < onemol->natoms; k++) {
+            if (twomol->molecule[j] == onemol->molecule[k]) {
+              molid_isnew = 0;
+              break;
+            }
+          }
+          if (molid_isnew == 1) {
+            nnewmolids[myrxn]++;
+            for (int k = j; k < twomol->natoms; k++) {
+              if (twomol->molecule[k] == twomol->molecule[j])
+                newmolids[k][myrxn] = nnewmolids[myrxn];
+            }
+          }
+        }
+      }
     }
   }
 
@@ -654,6 +683,8 @@ FixBondReact::~FixBondReact()
   memory->destroy(delete_atoms);
   memory->destroy(create_atoms);
   memory->destroy(chiral_atoms);
+  memory->destroy(newmolids);
+  memory->destroy(nnewmolids);
   memory->destroy(mol_total_charge);
   if (vvec != nullptr) memory->destroy(vvec);
 
@@ -3119,7 +3150,83 @@ void FixBondReact::update_everything()
     }
     delete [] noccur;
 
+    // find current max molecule ID and shift for each proc
+    tagint moloffset = 0;
+    if (molid_mode == Reset_mol_ids::Molmap) {
+      tagint maxmol_all;
+      for (int i = 0; i < atom->nlocal; i++) maxmol_all = MAX(maxmol_all, atom->molecule[i]);
+      MPI_Allreduce(MPI_IN_PLACE, &maxmol_all, 1, MPI_LMP_TAGINT, MPI_MAX, world);
+      // find number of new molids needed for each proc
+      if (pass == 0) {
+        tagint molcreate = 0;
+        for (int i = 0; i < update_num_mega; i++) {
+          rxnID = update_mega_glove[0][i];
+          molcreate += nnewmolids[rxnID];
+        }
+        MPI_Scan(&molcreate, &moloffset, 1, MPI_LMP_TAGINT, MPI_SUM, world);
+        moloffset = moloffset - molcreate + maxmol_all;
+      }
+      if (pass == 1) moloffset = maxmol_all;
+    }
+
     if (update_num_mega == 0) continue;
+
+    // for 'reset_mol_ids molmap', update molecule IDs
+    // assumes consistent molecule IDs in pre- and post-reaction template
+    // NOTE: all procs assumed to have same update_mega_glove for second pass
+    // NOTE: must be done before add atoms, because add_atoms deletes ghost info
+    if (molid_mode == Reset_mol_ids::Molmap) {
+      for (int i = 0; i < update_num_mega; i++) {
+        rxnID = update_mega_glove[0][i];
+        onemol = atom->molecules[unreacted_mol[rxnID]];
+        twomol = atom->molecules[reacted_mol[rxnID]];
+        if (!onemol->moleculeflag || !twomol->moleculeflag) continue;
+        tagint molmapid = -1;
+        for (int j = 0; j < twomol->natoms; j++) {
+          int neednewid = 0;
+          tagint *thismolid;
+          if (create_atoms[j][rxnID] == 1) {
+            for (auto & myaddatom : addatoms) {
+              if (myaddatom.tag == update_mega_glove[j+1][i]) {
+                thismolid = &(myaddatom.molecule);
+                neednewid = 1;
+                break;
+              }
+            }
+          } else {
+            int jj = equivalences[j][1][rxnID]-1;
+            int jlocal = atom->map(update_mega_glove[jj+1][i]);
+            if (jlocal < nlocal && jlocal >= 0) {
+              thismolid = &(atom->molecule[jlocal]);
+              neednewid = 1;
+            }
+          }
+          if (neednewid == 1) {
+            if (newmolids[j][rxnID] != 0) {
+              molmapid = moloffset + newmolids[j][rxnID];
+            } else {
+              for (int k = 0; k < onemol->natoms; k++) {
+                if (twomol->molecule[j] == onemol->molecule[k]) {
+                  int klocal = atom->map(update_mega_glove[k+1][i]);
+                  if (klocal >= 0) {
+                    molmapid = atom->molecule[klocal];
+                    break;
+                  }
+                }
+              }
+            }
+            if (molmapid != -1) {
+              *thismolid = molmapid;
+            } else {
+              error->one(FLERR,"Fix bond/react: unable to assign molecule ID using 'molmap' option. "
+                                  "Need ghost atoms from further away");
+            }
+            thismolid = nullptr;
+          }
+        }
+        moloffset += nnewmolids[rxnID];
+      }
+    }
 
     // insert all atoms for all rxns here
     if (inserted_atoms_flag == 1) {
@@ -3196,36 +3303,6 @@ void FixBondReact::update_everything()
           }
         }
       }
-    }
-
-    // for 'reset_mol_ids molmap', update molecule IDs
-    // assumes consistent molecule IDs in pre- and post-reaction template
-    if (molid_mode == Reset_mol_ids::Molmap) {
-      tagint *newmolids;
-      memory->create(newmolids,max_natoms,"bond/react:newmolids");
-      for (int i = 0; i < max_natoms; i++) newmolids[i] = -1;
-
-      for (int i = 0; i < update_num_mega; i++) {
-        rxnID = update_mega_glove[0][i];
-        onemol = atom->molecules[unreacted_mol[rxnID]];
-        twomol = atom->molecules[reacted_mol[rxnID]];
-        if (!onemol->moleculeflag || !twomol->moleculeflag) continue;
-        for (int j = 0; j < twomol->natoms; j++) {
-          for (int k = 0; k < onemol->natoms; k++) {
-            if (twomol->molecule[j] == onemol->molecule[k]) {
-              newmolids[j] = atom->molecule[atom->map(update_mega_glove[k+1][i])];
-              break;
-            }
-          }
-        }
-        for (int j = 0; j < twomol->natoms; j++) {
-          if (newmolids[j] == -1) continue; // !! does not update molids if no equivalent molid in pre-reaction template. would be better to add to max molid
-          int jj = equivalences[j][1][rxnID]-1;
-          int jlocal = atom->map(update_mega_glove[jj+1][i]);
-          atom->molecule[jlocal] = newmolids[j];
-        }
-      }
-      memory->destroy(newmolids);
     }
 
     int insert_num;
@@ -3759,7 +3836,7 @@ int FixBondReact::insert_atoms_setup(tagint **my_update_mega_glove, int iupdate)
   tagint *molecule = atom->molecule;
   int nlocal = atom->nlocal;
 
-  tagint maxmol_all = 0;;
+  tagint maxmol_all = 0;
   for (int i = 0; i < nlocal; i++) maxmol_all = MAX(maxmol_all,molecule[i]);
   MPI_Allreduce(MPI_IN_PLACE,&maxmol_all,1,MPI_LMP_TAGINT,MPI_MAX,world);
 
@@ -3943,6 +4020,7 @@ int FixBondReact::insert_atoms_setup(tagint **my_update_mega_glove, int iupdate)
         my_update_mega_glove[preID][iupdate] = myaddatom.tag;
 
         // !! could do better job choosing mol ID for added atoms
+        // skip if using molmap option? actually, need to never add to maxmol_all here... cause messes up maxmol calculation for molmap later
         if (atom->molecule_flag) {
           if (twomol->moleculeflag) {
             myaddatom.molecule = maxmol_all + twomol->molecule[m];

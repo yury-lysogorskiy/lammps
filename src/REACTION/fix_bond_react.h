@@ -151,7 +151,9 @@ class FixBondReact : public Fix {
   int **custom_charges;      // atoms whose charge should be updated
   int **delete_atoms;        // atoms in pre-reacted templates to delete
   int **create_atoms;        // atoms in post-reacted templates to create
-  int ***chiral_atoms;    // pre-react chiral atoms. 1) flag 2) orientation 3-4) ordered atom types
+  int ***chiral_atoms;       // pre-react chiral atoms. 1) flag 2) orientation 3-4) ordered atom types
+  int **newmolids;           // for molmap option: mol IDs in post, but not in pre, re-indexed from 1
+  int *nnewmolids;           // number of unique new molids needed for each reaction
 
   int **nxspecial, **onemol_nxspecial, **twomol_nxspecial;    // full number of 1-4 neighbors
   tagint **xspecial, **onemol_xspecial, **twomol_xspecial;    // full 1-4 neighbor list
