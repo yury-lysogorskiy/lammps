@@ -3819,6 +3819,10 @@ int FixBondReact::insert_atoms_setup(tagint **my_update_mega_glove, int iupdate)
   double *newcoord;
   double t,delx,dely,delz,rsq;
 
+  double **x = atom->x;
+  int nlocal = atom->nlocal;
+  int dimension = domain->dimension;
+
   memory->create(coords,twomol->natoms,3,"bond/react:coords");
   memory->create(imageflags,twomol->natoms,"bond/react:imageflags");
 
@@ -3830,17 +3834,6 @@ int FixBondReact::insert_atoms_setup(tagint **my_update_mega_glove, int iupdate)
     sublo = domain->sublo_lamda;
     subhi = domain->subhi_lamda;
   }
-
-  // find current max atom and molecule IDs
-  double **x = atom->x;
-  tagint *molecule = atom->molecule;
-  int nlocal = atom->nlocal;
-
-  tagint maxmol_all = 0;
-  for (int i = 0; i < nlocal; i++) maxmol_all = MAX(maxmol_all,molecule[i]);
-  MPI_Allreduce(MPI_IN_PLACE,&maxmol_all,1,MPI_LMP_TAGINT,MPI_MAX,world);
-
-  int dimension = domain->dimension;
 
   // only proc that owns reacting atom (use ibonding),
   // fits post-reaction template to reaction site, for creating atoms
@@ -4019,18 +4012,9 @@ int FixBondReact::insert_atoms_setup(tagint **my_update_mega_glove, int iupdate)
         // locally update mega_glove
         my_update_mega_glove[preID][iupdate] = myaddatom.tag;
 
-        // !! could do better job choosing mol ID for added atoms
-        // skip if using molmap option? actually, need to never add to maxmol_all here... cause messes up maxmol calculation for molmap later
-        if (atom->molecule_flag) {
-          if (twomol->moleculeflag) {
-            myaddatom.molecule = maxmol_all + twomol->molecule[m];
-          } else {
-            myaddatom.molecule = maxmol_all + 1;
-          }
-        }
-
         myaddatom.mask = 1 | groupbit;
         myaddatom.image = imageflags[m];
+        if (atom->molecule_flag) myaddatom.molecule = 0;
 
         // guess a somewhat reasonable initial velocity based on reaction site
         // further control is possible using bond_react_MASTER_group
