@@ -420,9 +420,10 @@ within a distance :math:`R` of any created atom, including the effect of
 periodic boundary conditions if applicable. :math:`R` is defined by the
 *overlap* sub-keyword. Note that the default value for :math:`R` is 0.0, which
 will allow atoms to strongly overlap if you are inserting where other
-atoms are present. The velocity of each created atom is initialized in
-a random direction with a magnitude calculated from the instantaneous
-temperature of the reaction site.
+atoms are present. The molecule ID of a created atom is zero, unless the
+*reset_mol_ids molmap* option is used. The velocity of each created atom is
+initialized in a random direction with a magnitude calculated from the
+instantaneous temperature of the reaction site.
 
 .. note::
 
