@@ -7,6 +7,19 @@ mode=$1
 LC_ALL=C
 export LC_ALL
 
+cat <<EOF
+WARNING-WARNING-WARNING-WARNING-WARNING-WARNING-WARNING-WARNING-WARNING-WARNING
+WARNING-WARNING-WARNING-WARNING-WARNING-WARNING-WARNING-WARNING-WARNING-WARNING
+
+  Support for building the KOKKOS package with the legacy build system using GNU
+  make will be removed in Summer 2025.  Please switch to using CMake to build
+  LAMMPS as soon as possible and report any problems to developers@lammps.org
+  or post a bug report issue at https://github.com/lammps/lammps/issues
+
+WARNING-WARNING-WARNING-WARNING-WARNING-WARNING-WARNING-WARNING-WARNING-WARNING
+WARNING-WARNING-WARNING-WARNING-WARNING-WARNING-WARNING-WARNING-WARNING-WARNING
+EOF
+
 # arg1 = file, arg2 = file it depends on
 
 action () {
@@ -217,7 +230,6 @@ action fix_wall_region_kokkos.cpp
 action fix_wall_region_kokkos.h
 action grid3d_kokkos.cpp fft3d.h
 action grid3d_kokkos.h fft3d.h
-action group_kokkos.cpp
 action group_kokkos.h
 action improper_class2_kokkos.cpp improper_class2.cpp
 action improper_class2_kokkos.h improper_class2.h

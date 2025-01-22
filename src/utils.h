@@ -28,17 +28,33 @@ namespace LAMMPS_NS {
 
 // forward declarations
 class Error;
+class Input;
 class LAMMPS;
 
 namespace utils {
 
   /*! Match text against a simplified regex pattern
    *
-   *  \param text the text to be matched against the pattern
-   *  \param pattern the search pattern, which may contain regexp markers
+   *  \param  text     the text to be matched against the pattern
+   *  \param  pattern  the search pattern, which may contain regexp markers
    *  \return true if the pattern matches, false if not */
 
   bool strmatch(const std::string &text, const std::string &pattern);
+
+  /*! Compare two string while ignoring whitespace
+   *
+   *  \param  text1   the first text to be compared
+   *  \param  text2   the second text to be compared
+   *  \return true if the non-whitespace part of the two strings matches, false if not */
+
+  bool strsame(const std::string &text1, const std::string &text2);
+
+  /*! Compress whitespace in a string
+   *
+   *  \param  text  the text to be compressed
+   *  \return string with whitespace compressed to single blanks */
+
+  std::string strcompress(const std::string &text);
 
   /*! Find sub-string that matches a simplified regex pattern
    *
@@ -58,6 +74,15 @@ namespace utils {
    *  \param error    pointer to Error class instance (for abort) or nullptr */
 
   void missing_cmd_args(const std::string &file, int line, const std::string &cmd, Error *error);
+
+  /*! Create string with last command and optionally pointing to arg with error
+   *
+   * This function is a helper function for error messages.  It creates
+   *
+   *  \param input   pointer to the Input class instance (for access to last command args)
+   *  \param faile   index of the faulty argument (-1 to point to the command itself)
+   *  \return        string with two lines: the pre-processed command and a '^' pointing to the faulty argument */
+  std::string point_to_error(Input *input, int failed);
 
   /*! Internal function handling the argument list for logmesg(). */
 
@@ -326,11 +351,12 @@ namespace utils {
    * \param nmax     largest allowed upper bound
    * \param nlo      lower bound
    * \param nhi      upper bound
-   * \param error    pointer to Error class for out-of-bounds messages */
+   * \param error    pointer to Error class for out-of-bounds messages
+   * \param failed   argument index with failed expansion (optional) */
 
   template <typename TYPE>
   void bounds(const char *file, int line, const std::string &str, bigint nmin, bigint nmax,
-              TYPE &nlo, TYPE &nhi, Error *error);
+              TYPE &nlo, TYPE &nhi, Error *error, int failed = -2);    // -2 = Error::NOPOINTER
 
   /*! Same as utils::bounds(), but string may be a typelabel
    *
@@ -376,17 +402,23 @@ This functions adds the following case to :cpp:func:`utils::bounds() <LAMMPS_NS:
    *  caller. Otherwise arg and earg will point to the same address
    *  and no explicit de-allocation is needed by the caller.
    *
-   * \param file  name of source file for error message
-   * \param line  line number in source file for error message
-   * \param narg  number of arguments in current list
-   * \param arg   argument list, possibly containing wildcards
-   * \param mode  select between global vectors(=0) and arrays (=1)
-   * \param earg  new argument list with wildcards expanded
-   * \param lmp   pointer to top-level LAMMPS class instance
+   *  The *argmap* pointer to an int pointer may be used to accept an array
+   *  of integers mapping the arguments after the expansion to their original
+   *  index.  If this pointer is NULL (the default) than this map is not created.
+   *  Otherwise, it must be deallocated by the calling code.
+   *
+   * \param file    name of source file for error message
+   * \param line    line number in source file for error message
+   * \param narg    number of arguments in current list
+   * \param arg     argument list, possibly containing wildcards
+   * \param mode    select between global vectors(=0) and arrays (=1)
+   * \param earg    new argument list with wildcards expanded
+   * \param lmp     pointer to top-level LAMMPS class instance
+   * \param argmap  pointer to integer pointer for mapping expanded indices to input (optional)
    * \return      number of arguments in expanded list */
 
   int expand_args(const char *file, int line, int narg, char **arg, int mode, char **&earg,
-                  LAMMPS *lmp);
+                  LAMMPS *lmp, int **argmap = nullptr);
 
   /*! Expand type label string into its equivalent numeric type
    *
@@ -397,9 +429,9 @@ This functions adds the following case to :cpp:func:`utils::bounds() <LAMMPS_NS:
    *  pointer is returned.
    *  If a string is returned, the calling code must free it with delete[].
    *
-   * \param file  name of source file for error message
-   * \param line  line number in source file for error message
-   * \param str   type string to be expanded
+   * \param file   name of source file for error message
+   * \param line   line number in source file for error message
+   * \param str    type string to be expanded
    * \param mode  select labelmap using constants from Atom class
    * \param lmp   pointer to top-level LAMMPS class instance
    * \return      pointer to expanded string or null pointer */
@@ -509,7 +541,7 @@ This functions adds the following case to :cpp:func:`utils::bounds() <LAMMPS_NS:
 \verbatim embed:rst
 
 This will try to undo the effect from using the :doc:`suffix command <suffix>`
-or the *-suffix/-sf* command line flag and return correspondingly modified string.
+or the *-suffix/-sf* command-line flag and return correspondingly modified string.
 
 \endverbatim
    *
@@ -609,7 +641,7 @@ or the *-suffix/-sf* command line flag and return correspondingly modified strin
    * This can handle strings with single and double quotes, escaped quotes,
    * and escaped codes within quotes, but due to using an STL container and
    * STL strings is rather slow because of making copies. Designed for
-   * parsing command lines and similar text and not for time critical
+   * parsing command-lines and similar text and not for time critical
    * processing.  Use a tokenizer class if performance matters.
    *
 \verbatim embed:rst

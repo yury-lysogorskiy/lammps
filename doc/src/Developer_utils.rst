@@ -133,6 +133,9 @@ and parsing files or arguments.
 .. doxygenfunction:: trim_comment
    :project: progguide
 
+.. doxygenfunction:: strcompress
+   :project: progguide
+
 .. doxygenfunction:: strip_style_suffix
    :project: progguide
 
@@ -164,6 +167,9 @@ and parsing files or arguments.
    :project: progguide
 
 .. doxygenfunction:: split_lines
+   :project: progguide
+
+.. doxygenfunction:: strsame
    :project: progguide
 
 .. doxygenfunction:: strmatch
@@ -236,6 +242,9 @@ Convenience functions
    :project: progguide
 
 .. doxygenfunction:: missing_cmd_args
+   :project: progguide
+
+.. doxygenfunction:: point_to_error
    :project: progguide
 
 .. doxygenfunction:: flush_buffers(LAMMPS *lmp)

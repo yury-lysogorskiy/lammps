@@ -88,15 +88,15 @@ FixPhonon::FixPhonon(LAMMPS *lmp,  int narg, char **arg) : Fix(lmp, narg, arg)
   int iarg = 8;
   nasr = 20;
 
-  // other command line options
+  // other command-line options
   while (iarg < narg) {
     if (strcmp(arg[iarg],"sysdim") == 0) {
-      if (++iarg >= narg) error->all(FLERR,"Illegal fix phonon command: incomplete command line options.");
+      if (++iarg >= narg) error->all(FLERR,"Illegal fix phonon command: incomplete command-line options.");
       sdim = utils::inumeric(FLERR, arg[iarg],false,lmp);
       if (sdim < 1) error->all(FLERR,"Illegal fix phonon command: sysdim should not be less than 1.");
 
     } else if (strcmp(arg[iarg],"nasr") == 0) {
-      if (++iarg >= narg) error->all(FLERR,"Illegal fix phonon command: incomplete command line options.");
+      if (++iarg >= narg) error->all(FLERR,"Illegal fix phonon command: incomplete command-line options.");
       nasr = utils::inumeric(FLERR, arg[iarg],false,lmp);
 
     } else {

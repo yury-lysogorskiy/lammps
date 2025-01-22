@@ -107,6 +107,7 @@ modules:
       - -D CMAKE_BUILD_TYPE=Release
       - -D DOWNLOAD_POTENTIALS=no
       - -D BUILD_TOOLS=yes
+      - -D BUILD_WHAM=yes
     sources:
       - type: git
         url: https://github.com/lammps/lammps.git

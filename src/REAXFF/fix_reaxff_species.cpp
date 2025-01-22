@@ -204,6 +204,7 @@ FixReaxFFSpecies::FixReaxFFSpecies(LAMMPS *lmp, int narg, char **arg) :
       delete[] filedel;
       filedel = utils::strdup(arg[iarg + 1]);
       if (comm->me == 0) {
+        if (fdel) fclose(fdel);
         fdel = fopen(filedel, "w");
         if (!fdel)
           error->one(FLERR, "Cannot open fix reaxff/species delete file {}: {}", filedel,
@@ -261,7 +262,8 @@ FixReaxFFSpecies::FixReaxFFSpecies(LAMMPS *lmp, int narg, char **arg) :
       posflag = 1;
       posfreq = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
       if (posfreq < nfreq || (posfreq % nfreq != 0))
-        error->all(FLERR, "Incompatible fix reaxff/species postion frequency {}", posfreq);
+        error->all(FLERR, "Incompatible fix reaxff/species position frequency {}",
+                   posfreq);
 
       filepos = new char[255];
       strcpy(filepos, arg[iarg + 2]);
