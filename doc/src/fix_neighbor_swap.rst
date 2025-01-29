@@ -8,7 +8,7 @@ Syntax
 
 .. code-block:: LAMMPS
 
-   fix ID group-ID neighbor/swap N X seed T R keyword values ...
+   fix ID group-ID neighbor/swap N X seed T R0 voro keyword values ...
 
 * ID, group-ID are documented in :doc:`fix <fix>` command
 * neighbor/swap = style name of this fix command
@@ -16,9 +16,11 @@ Syntax
 * X = number of swaps to attempt every N steps
 * seed = random # seed (positive integer)
 * T = scaling temperature of the MC swaps (temperature units)
-* R = scaling swap probability of the MC swaps (distance units)
+* R0 = scaling swap probability of the MC swaps (distance units)
+* voro = valid voronoi compute id (compute voronoi/atom)
 * one or more keyword/value pairs may be appended to args
-* keyword = *types* or *mu* or *ke* or *semi-grand* or *region*
+* keywords *types* and *diff* are mutually exclusive, but one must be specified
+* keyword = *types* or *ke* or *region* or *diff* or *rates*
 
   .. parsed-literal::
 
@@ -29,32 +31,35 @@ Syntax
        *region* value = region-ID
          region-ID = ID of region to use as an exchange/move volume
        *diff* values = one atom type
-       *voro* values = valid voronoi compute id (compute voronoi/atom)
-       *rates* values = Ntype values to conduct variable diffusion for different atom types (unitless)
+       *rates* values = V1 V2 . . . Vntypes values to conduct variable diffusion for different atom types (unitless)
 
 Examples
 """"""""
 
 .. code-block:: LAMMPS
 
-   fix mc all neighbor/swap 10 160 15238 1000.0 diff 2 voro voroN
-   fix myFix all neighbor/swap 100 1 12345 298.0 region my_swap_region types 5 6 voro voroN
-   fix kmc all neighbor/swap 1 100 345 1.0 diff 3 rates 3 1 6 voro voroN
+   fix mc all neighbor/swap 10 160 15238 1000.0 3.0 diff 2 voro voroN
+   fix myFix all neighbor/swap 100 1 12345 298.0 3.0 region my_swap_region types 5 6 voro voroN
+   fix kmc all neighbor/swap 1 100 345 1.0 3.0 diff 3 rates 3 1 6 voro voroN
 
 Description
 """""""""""
 
 .. versionadded:: TBD
 
-Computes MC evaluations to enable kinetic Monte Carlo (kMC) behavior
-during MD simulation through only allowing neighboring atom swaps.
+Computes MC evaluations to enable kinetic Monte Carlo (kMC)-type behavior
+during MD simulation through only allowing neighboring atom swaps. This 
+creates a hybrid type simulation of MDkMC simulation where atoms are only
+swapped with their neighbors, but the swapping acceptance is perfomed by 
+evaluating the change in system energy using the Metropolis Criterion.
 Neighboring atoms are selected using a Voronoi tesselation approach. This
-implementation is as described in :ref:`(Tavenner) <Tavenner>`.
+implementation is as described in :ref:`(Tavenner 2023) <_TavennerMDkMC>`
+as originally intended for simulating accelerated diffusion in an MD context.
 
 The fix is called every *N* timesteps and attempts *X* swaps. The system
 is initialized with a random seed, using a temperature *T* for
 evaluating the MC energy swaps. The distance-based probability is
-weighted according to *R* which sets the radius :math:`r_0` for the
+weighted according to *R0* which sets the radius :math:`r_0` for the
 weighting
 
 .. math::
@@ -63,6 +68,10 @@ weighting
 
 where :math:`p_{ij}` is the probability of selecting atoms :math:`i` and
 :math:`j` for an evaluated swap.
+
+Typically, a value around the average nearest-neighbor spacing is appropriate
+for *R0*. Since this is simply a proability weighting, behavior is not
+particularly sensitive to the exact value of *R0*.
 
 The keyword *types* is submitted with two or more atom types as the
 value.  Atoms of the first atom type are swapped with valid neighbors of
@@ -96,6 +105,9 @@ potential atoms to be swapped at the initial step, i.e.
 
 for using *fix neighbor/swap* with *diff 2*.
 
+If atoms in the specified group are not in the voro calculated group
+they will not be considered for swapping.
+
 The keyword *rates* can modify the swap rate for each swapped type by
 values where the adjusted rates values are given in order of increasing
 atom type.  The number of rates provided must equal the number of atom
@@ -112,6 +124,24 @@ where the *region region-ID* command indicates that atom swaps only be
 considered in the area given by *region-ID*. If only atoms of certain
 groups are expected to be in this region, the corresponding compute
 voronoi command can be adjusted accordingly.
+
+Either the *types* or *diff* keyword must be specified to select atom
+types for swapping
+
+Keywords
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+----------------------------------------------------------
+
+types = Select random atom matching first type as type I, remaining
+atom types are valid for selecting atom J.
+diff = Select random atom of this type as atom I, all atoms are valid
+for type J.
+ke = re-scale velocities when atoms are swapped based on difference in
+mass
+region = select only atoms I and J from region
+rates = pre-factor modification to the J atom selection probability
+based on atom type.
+
 
 Restart, fix_modify, output, run start/stop, minimize info
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -149,8 +179,7 @@ doc page for more info.  Also this fix requires that the
 :ref:`VORONOI package <PKG-VORONOI>` is installed, otherwise the fix
 will not be compiled.
 
-A valid voronoi command which returns neighboring atoms must be used
-and referenced with the *voro* keyword.
+The voronoi command specified by *voro* must return neighboring atoms.
 
 When this fix is used with a :doc:`hybrid pair style <pair_hybrid>`
 system, only swaps between atom types of the same sub-style (or
@@ -171,11 +200,11 @@ Related commands
 Default
 """""""
 
-The option defaults are *ke* = yes, *diff* = no, *rates* = 1 for all
+The option defaults are *ke* = yes, *rates* = 1 for all
 atom types.
 
 ----------
 
-.. _Tavenner:
+.. _TavennerMDkMC:
 
-**(Tavenner)** J Tavenner, M Mendelev, J Lawson, Computational Materials Science, 218, 111929 (2023).
+**(Tavenner 2023)** J Tavenner, M Mendelev, J Lawson, Computational Materials Science, 218, 111929 (2023).
