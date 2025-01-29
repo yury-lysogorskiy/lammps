@@ -66,7 +66,7 @@ static const char cite_fix_neighbor_swap_c[] =
 FixNeighborSwap::FixNeighborSwap(LAMMPS *lmp, int narg, char **arg) :
     Fix(lmp, narg, arg), region(nullptr), idregion(nullptr), type_list(nullptr), qtype(nullptr),
     c_voro(nullptr), voro_neighbor_list(nullptr), sqrt_mass_ratio(nullptr),
-    local_swap_iatom_list(nullptr), random_equal(nullptr), random_unequal(nullptr), c_pe(nullptr)
+    local_swap_iatom_list(nullptr), random_equal(nullptr), c_pe(nullptr)
 {
   if (narg < 10) utils::missing_cmd_args(FLERR, "fix neighbor/swap", error);
 
@@ -85,6 +85,17 @@ FixNeighborSwap::FixNeighborSwap(LAMMPS *lmp, int narg, char **arg) :
   ncycles = utils::inumeric(FLERR, arg[4], false, lmp);
   seed = utils::inumeric(FLERR, arg[5], false, lmp);
   double temperature = utils::numeric(FLERR, arg[6], false, lmp);
+  r_0 = utils::inumeric(FLERR, arg[7], false, lmp);
+
+  // Voro compute check
+
+  int icompute = modify->find_compute(utils::strdup(arg[8]));
+  if (icompute < 0) error->all(FLERR, "Could not find neighbor compute ID");
+  c_voro = modify->compute[icompute];
+  if (c_voro->local_flag == 0)
+    error->all(FLERR, "Neighbor compute does not compute local info");
+  if (c_voro->size_local_cols != 3)
+    error->all(FLERR, "Neighbor compute does not give i, j, size as expected");
 
   if (nevery <= 0) error->all(FLERR, "Illegal fix neighbor/swap command nevery value");
   if (ncycles < 0) error->all(FLERR, "Illegal fix neighbor/swap command ncycles value");
@@ -98,17 +109,11 @@ FixNeighborSwap::FixNeighborSwap(LAMMPS *lmp, int narg, char **arg) :
 
   // read options from end of input line
 
-  options(narg - 7, &arg[7]);
-
-  if (voro_flag != 1) error->all(FLERR, "Voronoi compute required for fix neighbor/swap command");
+  options(narg - 8, &arg[8]);
 
   // random number generator, same for all procs
 
   random_equal = new RanPark(lmp, seed);
-
-  // random number generator, not the same for all procs
-
-  random_unequal = new RanPark(lmp, seed);
 
   // set up reneighboring
 
@@ -149,7 +154,6 @@ FixNeighborSwap::~FixNeighborSwap()
   memory->destroy(local_swap_type_list);
   delete[] idregion;
   delete random_equal;
-  delete random_unequal;
 }
 
 /* ----------------------------------------------------------------------
@@ -163,7 +167,6 @@ void FixNeighborSwap::options(int narg, char **arg)
   ke_flag = 1;
   diff_flag = 0;
   rates_flag = 0;
-  voro_flag = 0;
   nswaptypes = 0;
 
   int iarg = 0;
@@ -190,20 +193,6 @@ void FixNeighborSwap::options(int narg, char **arg)
         nswaptypes++;
         iarg++;
       }
-    } else if (strcmp(arg[iarg], "voro") == 0) {
-      if (iarg + 2 > narg) error->all(FLERR, "Illegal fix neighbor/swap command");
-
-      int icompute = modify->find_compute(utils::strdup(arg[iarg + 1]));
-
-      if (icompute < 0) error->all(FLERR, "Could not find neighbor compute ID");
-      c_voro = modify->compute[icompute];
-      if (c_voro->local_flag == 0)
-        error->all(FLERR, "Neighbor compute does not compute local info");
-      if (c_voro->size_local_cols != 3)
-        error->all(FLERR, "Neighbor compute does not give i, j, size as expected");
-
-      voro_flag = 1;
-      iarg += 2;
     } else if (strcmp(arg[iarg], "diff") == 0) {
       if (iarg + 2 > narg) error->all(FLERR, "Illegal fix neighbor/swap command");
       if (nswaptypes != 0) error->all(FLERR, "Illegal fix neighbor/swap command");
@@ -630,7 +619,7 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
           if (diff_flag) {
             // Calculate distance from i to each j, adjust probability of selection
 
-            // Get distance if own centr atom
+            // Get distance if own center atom
             double r = INFINITY;
             if (i_center >= 0) { double r = get_distance(x[temp_j], x[i_center]); }
 
@@ -643,9 +632,9 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
             if (rates_flag) {
               local_swap_probability[njswap_local] =
-                  rate_list[type[temp_j] - 1] * exp(-MathSpecial::square(r / 3.0));
+                  rate_list[type[temp_j] - 1] * exp(-MathSpecial::square(r / r_0));
             } else {
-              local_swap_probability[njswap_local] = exp(-MathSpecial::square(r / 3.0));
+              local_swap_probability[njswap_local] = exp(-MathSpecial::square(r / r_0));
             }
             local_probability += local_swap_probability[njswap_local];
             local_swap_type_list[njswap_local] = type[temp_j];
@@ -668,9 +657,9 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
                 if (rates_flag) {
                   local_swap_probability[njswap_local] =
-                      rate_list[type[temp_j] - 1] * exp(-MathSpecial::square(r / 3.0));
+                      rate_list[type[temp_j] - 1] * exp(-MathSpecial::square(r / r_0));
                 } else {
-                  local_swap_probability[njswap_local] = exp(-MathSpecial::square(r / 3.0));
+                  local_swap_probability[njswap_local] = exp(-MathSpecial::square(r / r_0));
                 }
                 local_probability += local_swap_probability[njswap_local];
 
@@ -698,9 +687,9 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
           if (rates_flag) {
             local_swap_probability[njswap_local] =
-                rate_list[type[temp_j] - 1] * exp(-MathSpecial::square(r / 3.0));
+                rate_list[type[temp_j] - 1] * exp(-MathSpecial::square(r / r_0));
           } else {
-            local_swap_probability[njswap_local] = exp(-MathSpecial::square(r / 3.0));
+            local_swap_probability[njswap_local] = exp(-MathSpecial::square(r / r_0));
           }
           local_probability += local_swap_probability[njswap_local];
 
@@ -724,9 +713,9 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
               if (rates_flag) {
                 local_swap_probability[njswap_local] =
-                    rate_list[type[temp_j] - 1] * exp(-MathSpecial::square(r / 3.0));
+                    rate_list[type[temp_j] - 1] * exp(-MathSpecial::square(r / r_0));
               } else {
-                local_swap_probability[njswap_local] = exp(-MathSpecial::square(r / 3.0));
+                local_swap_probability[njswap_local] = exp(-MathSpecial::square(r / r_0));
               }
               local_probability += local_swap_probability[njswap_local];
 
@@ -877,7 +866,6 @@ void FixNeighborSwap::write_restart(FILE *fp)
   int n = 0;
   double list[6];
   list[n++] = random_equal->state();
-  list[n++] = random_unequal->state();
   list[n++] = ubuf(next_reneighbor).d;
   list[n++] = nswap_attempts;
   list[n++] = nswap_successes;
@@ -901,9 +889,6 @@ void FixNeighborSwap::restart(char *buf)
 
   seed = static_cast<int>(list[n++]);
   random_equal->reset(seed);
-
-  seed = static_cast<int>(list[n++]);
-  random_unequal->reset(seed);
 
   next_reneighbor = (bigint) ubuf(list[n++]).i;
 

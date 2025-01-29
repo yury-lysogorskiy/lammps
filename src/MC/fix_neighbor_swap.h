@@ -43,7 +43,6 @@ class FixNeighborSwap : public Fix {
   int ke_flag;       // yes = conserve ke, no = do not conserve ke
   int diff_flag;     // yes = simulate diffusion of central atom, no = swap only to certain types
   int rates_flag;    // yes = use modified type rates, no = swap rates are equivilent across types
-  int voro_flag;     // yes = use given voronoi calculation, no = use internal voronoi calculation
   int ncycles;
   int niswap, njswap;                  // # of i,j swap atoms on all procs
   int niswap_local, njswap_local;      // # of swap atoms on this proc
@@ -67,7 +66,7 @@ class FixNeighborSwap : public Fix {
   bool unequal_cutoffs;
 
   int atom_swap_nmax;
-  double beta;
+  double beta, r_0;
   double local_probability;     // Total swap probability stored on this proc
   double global_probability;    // Total swap probability across all proc
   double prev_probability;      // Swap probability on proc < this proc
@@ -81,7 +80,6 @@ class FixNeighborSwap : public Fix {
   double *local_swap_probability;
 
   class RanPark *random_equal;
-  class RanPark *random_unequal;
 
   class Compute *c_voro;
   class Compute *c_pe;
