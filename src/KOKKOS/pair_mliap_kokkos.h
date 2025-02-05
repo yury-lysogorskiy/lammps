@@ -55,9 +55,9 @@ public:
 
   //Outward facing functions to be invoked by the ML layer via MLIAPDataKokkosDevice
   template <typename CommType>
-  int forward_comm(CommType* copy_from, CommType* copy_to, const int vec_len); 
+  int forward_comm(CommType* copy_from, CommType* copy_to, const int vec_len);
   template <typename CommType>
-  int reverse_comm(CommType* copy_from, CommType* copy_to, const int vec_len); 
+  int reverse_comm(CommType* copy_from, CommType* copy_to, const int vec_len);
 
 
   //Virtual functions overwriting the kokkos virtual functions in Pair. The
@@ -75,7 +75,7 @@ public:
   void unpack_forward_comm_kokkos(int nv, int first_up, DAT::tdual_xfloat_1d& fill) override;
   template <typename CommType>
   void unpack_forward_comm_kokkos(int nv, int first_up, DAT::tdual_xfloat_1d& fill, CommType *copy_to);
-  
+
   void unpack_forward_comm(int, int, double *) override;
   template <typename CommType>
   void unpack_forward_comm(int, int, double *, CommType *copy_to);
