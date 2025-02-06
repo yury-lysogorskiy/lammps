@@ -342,7 +342,7 @@ void ImproperCvff::write_data(FILE *fp)
    return ptr to internal members upon request
 ------------------------------------------------------------------------ */
 
-void *ImproperHarmonic::extract(const char *str, int &dim)
+void *ImproperCvff::extract(const char *str, int &dim)
 {
   dim = 1;
   if (strcmp(str, "k") == 0) return (void *) k;
