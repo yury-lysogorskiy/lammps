@@ -24,6 +24,8 @@
 #include "fix_store_atom.h"
 #include "force.h"
 #include "group.h"
+#include "improper.h"
+#include "improper_hybrid.h"
 #include "input.h"
 #include "kspace.h"
 #include "math_const.h"
@@ -41,7 +43,7 @@ using namespace LAMMPS_NS;
 using namespace FixConst;
 using namespace MathConst;
 
-enum{PAIR, KSPACE, ATOM, BOND, ANGLE};
+enum{PAIR, KSPACE, ATOM, BOND, ANGLE, IMPROPER};
 enum{DIAMETER, CHARGE};
 
 /* ---------------------------------------------------------------------- */
