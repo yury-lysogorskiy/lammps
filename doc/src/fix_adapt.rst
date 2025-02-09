@@ -442,6 +442,32 @@ all types from 1 to :math:`N`.  A leading asterisk means all types from
 If :doc:`improper_style hybrid <improper_hybrid>` is used, *istyle* should be a
 sub-style name. The improper styles that currently work with fix adapt are:
 
++---------------------------------------------------------+----------------------+----------------+
+| :doc:`amoeba <improper_amoeba>`                         | k                    | type impropers |
++---------------------------------------------------------+----------------------+----------------+
+| :doc:`class2 <improper_class2>`                         | k0,chi0              | type impropers |
++---------------------------------------------------------+----------------------+----------------+
+| :doc:`cossq <improper_cossq>`                           | k,chi                | type impropers |
++---------------------------------------------------------+----------------------+----------------+
+| :doc:`cvff <improper_cvff>`                             | k,sign,multiplicity  | type impropers |
++---------------------------------------------------------+----------------------+----------------+
+| :doc:`distance <improper_distance>`                     | k,chi                | type impropers |
++---------------------------------------------------------+----------------------+----------------+
+| :doc:`distharm <improper_distharm>`                     | k,chi                | type impropers |
++---------------------------------------------------------+----------------------+----------------+
+| :doc:`fourier <improper_fourier>`                       | k,C0,C1,C2           | type impropers |
++---------------------------------------------------------+----------------------+----------------+
+| :doc:`harmonic <improper_harmonic>`                     | k,chi                | type impropers |
++---------------------------------------------------------+----------------------+----------------+
+| :doc:`inversion/harmonic <improper_inversion_harmonic>` | kw,w0                | type impropers |
++---------------------------------------------------------+----------------------+----------------+
+| :doc:`ring <improper_ring>`                             | k,chi                | type impropers |
++---------------------------------------------------------+----------------------+----------------+
+| :doc:`umbrella <improper_umbrella>`                     | kw,w0                | type impropers |
++---------------------------------------------------------+----------------------+----------------+
+| :doc:`sqdistharm <improper_sqdistharm>`                 | k,chi                | type impropers |
++---------------------------------------------------------+----------------------+----------------+
+
 Note that internally, chi0 is stored in radians, so the variable
 this fix uses to reset chi0 needs to generate values in radians.
 
