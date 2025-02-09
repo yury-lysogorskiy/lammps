@@ -577,7 +577,6 @@ void FixAdapt::init()
     } else if (ad->which == ANGLE && ad->adim == 1) {
       for (i = ad->ilo; i <= ad->ihi; ++i )
         ad->vector_orig[i] = ad->vector[i];
-    }
 
     } else if (ad->which == IMPROPER && ad->idim == 1) {
       for (i = ad->ilo; i <= ad->ihi; ++i )
