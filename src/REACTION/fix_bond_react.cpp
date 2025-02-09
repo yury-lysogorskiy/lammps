@@ -3153,7 +3153,7 @@ void FixBondReact::update_everything()
     // find current max molecule ID and shift for each proc
     tagint moloffset = 0;
     if (molid_mode == Reset_mol_ids::Molmap) {
-      tagint maxmol_all;
+      tagint maxmol_all = 0;
       for (int i = 0; i < atom->nlocal; i++) maxmol_all = MAX(maxmol_all, atom->molecule[i]);
       MPI_Allreduce(MPI_IN_PLACE, &maxmol_all, 1, MPI_LMP_TAGINT, MPI_MAX, world);
       // find number of new molids needed for each proc
