@@ -359,6 +359,6 @@ void *ImproperRing::extract(const char *str, int &dim)
 {
   dim = 1;
   if (strcmp(str, "k") == 0) return (void *) k;
-  if (strcmp(str, "chi") == 0) return (void *) chi;
+  if (strcmp(str, "theta0") == 0) return (void *) chi;
   return nullptr;
 }
