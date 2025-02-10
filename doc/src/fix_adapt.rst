@@ -461,15 +461,15 @@ sub-style name. The improper styles that currently work with fix adapt are:
 +---------------------------------------------------------+----------------------+----------------+
 | :doc:`inversion/harmonic <improper_inversion_harmonic>` | kw,w0                | type impropers |
 +---------------------------------------------------------+----------------------+----------------+
-| :doc:`ring <improper_ring>`                             | k,chi                | type impropers |
+| :doc:`ring <improper_ring>`                             | k,theta0             | type impropers |
 +---------------------------------------------------------+----------------------+----------------+
 | :doc:`umbrella <improper_umbrella>`                     | kw,w0                | type impropers |
 +---------------------------------------------------------+----------------------+----------------+
 | :doc:`sqdistharm <improper_sqdistharm>`                 | k,chi                | type impropers |
 +---------------------------------------------------------+----------------------+----------------+
 
-Note that internally, chi0 is stored in radians, so the variable
-this fix uses to reset chi0 needs to generate values in radians.
+Note that internally, chi0 and theta0 are stored in radians, so the variable
+this fix use to reset chi0 or theta0 needs to generate values in radians.
 
 ----------
 
