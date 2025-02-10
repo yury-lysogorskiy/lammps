@@ -156,7 +156,7 @@ void ImproperHarmonicOMP::eval(int nfrom, int nto, ThrData * const thr)
 
     // force & energy
 
-    domega = acos(c) - chi[type];
+    domega = acos(c) - chi0[type];
     a = k[type] * domega;
 
     if (EFLAG) eimproper = a*domega;
