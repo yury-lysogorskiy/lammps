@@ -48,7 +48,7 @@ ImproperHarmonic::~ImproperHarmonic()
   if (allocated && !copymode) {
     memory->destroy(setflag);
     memory->destroy(k);
-    memory->destroy(chi);
+    memory->destroy(chi0);
   }
 }
 
@@ -131,7 +131,7 @@ void ImproperHarmonic::compute(int eflag, int vflag)
 
     // force & energy
 
-    domega = acos(c) - chi[type];
+    domega = acos(c) - chi0[type];
     a = k[type] * domega;
 
     if (eflag) eimproper = a * domega;
@@ -206,7 +206,7 @@ void ImproperHarmonic::allocate()
   const int np1 = atom->nimpropertypes + 1;
 
   memory->create(k, np1, "improper:k");
-  memory->create(chi, np1, "improper:chi");
+  memory->create(chi0, np1, "improper:chi0");
   memory->create(setflag, np1, "improper:setflag");
   for (int i = 1; i < np1; i++) setflag[i] = 0;
 }
@@ -226,12 +226,12 @@ void ImproperHarmonic::coeff(int narg, char **arg)
   double k_one = utils::numeric(FLERR, arg[1], false, lmp);
   double chi_one = utils::numeric(FLERR, arg[2], false, lmp);
 
-  // convert chi from degrees to radians
+  // convert chi0 from degrees to radians
 
   int count = 0;
   for (int i = ilo; i <= ihi; i++) {
     k[i] = k_one;
-    chi[i] = DEG2RAD * chi_one;
+    chi0[i] = DEG2RAD * chi_one;
     setflag[i] = 1;
     count++;
   }
@@ -246,7 +246,7 @@ void ImproperHarmonic::coeff(int narg, char **arg)
 void ImproperHarmonic::write_restart(FILE *fp)
 {
   fwrite(&k[1], sizeof(double), atom->nimpropertypes, fp);
-  fwrite(&chi[1], sizeof(double), atom->nimpropertypes, fp);
+  fwrite(&chi0[1], sizeof(double), atom->nimpropertypes, fp);
 }
 
 /* ----------------------------------------------------------------------
@@ -259,10 +259,10 @@ void ImproperHarmonic::read_restart(FILE *fp)
 
   if (comm->me == 0) {
     utils::sfread(FLERR, &k[1], sizeof(double), atom->nimpropertypes, fp, nullptr, error);
-    utils::sfread(FLERR, &chi[1], sizeof(double), atom->nimpropertypes, fp, nullptr, error);
+    utils::sfread(FLERR, &chi0[1], sizeof(double), atom->nimpropertypes, fp, nullptr, error);
   }
   MPI_Bcast(&k[1], atom->nimpropertypes, MPI_DOUBLE, 0, world);
-  MPI_Bcast(&chi[1], atom->nimpropertypes, MPI_DOUBLE, 0, world);
+  MPI_Bcast(&chi0[1], atom->nimpropertypes, MPI_DOUBLE, 0, world);
 
   for (int i = 1; i <= atom->nimpropertypes; i++) setflag[i] = 1;
 }
@@ -274,7 +274,7 @@ void ImproperHarmonic::read_restart(FILE *fp)
 void ImproperHarmonic::write_data(FILE *fp)
 {
   for (int i = 1; i <= atom->nimpropertypes; i++)
-    fprintf(fp, "%d %g %g\n", i, k[i], RAD2DEG * chi[i]);
+    fprintf(fp, "%d %g %g\n", i, k[i], RAD2DEG * chi0[i]);
 }
 
 /* ----------------------------------------------------------------------
@@ -285,6 +285,6 @@ void *ImproperHarmonic::extract(const char *str, int &dim)
 {
   dim = 1;
   if (strcmp(str, "k") == 0) return (void *) k;
-  if (strcmp(str, "chi") == 0) return (void *) chi;
+  if (strcmp(str, "chi0") == 0) return (void *) chi0;
   return nullptr;
 }
