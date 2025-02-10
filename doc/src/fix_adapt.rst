@@ -453,7 +453,7 @@ sub-style name. The improper styles that currently work with fix adapt are:
 +---------------------------------------------------------+----------------------+----------------+
 | :doc:`distance <improper_distance>`                     | k,chi                | type impropers |
 +---------------------------------------------------------+----------------------+----------------+
-| :doc:`distharm <improper_distharm>`                     | k,chi                | type impropers |
+| :doc:`distharm <improper_distharm>`                     | k,d0                 | type impropers |
 +---------------------------------------------------------+----------------------+----------------+
 | :doc:`fourier <improper_fourier>`                       | k,C0,C1,C2           | type impropers |
 +---------------------------------------------------------+----------------------+----------------+
