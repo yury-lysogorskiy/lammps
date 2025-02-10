@@ -457,7 +457,7 @@ sub-style name. The improper styles that currently work with fix adapt are:
 +---------------------------------------------------------+----------------------+----------------+
 | :doc:`fourier <improper_fourier>`                       | k,C0,C1,C2           | type impropers |
 +---------------------------------------------------------+----------------------+----------------+
-| :doc:`harmonic <improper_harmonic>`                     | k,chi                | type impropers |
+| :doc:`harmonic <improper_harmonic>`                     | k,chi0               | type impropers |
 +---------------------------------------------------------+----------------------+----------------+
 | :doc:`inversion/harmonic <improper_inversion_harmonic>` | kw,w0                | type impropers |
 +---------------------------------------------------------+----------------------+----------------+
