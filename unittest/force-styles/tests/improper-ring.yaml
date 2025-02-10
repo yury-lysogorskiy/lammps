@@ -15,7 +15,7 @@ improper_coeff: ! |
   2  45.0  59.5
 extract: ! |
   k 1
-  chi 1
+  theta0 1
 natoms: 29
 init_energy: 31535.23771704055
 init_stress: ! |-
