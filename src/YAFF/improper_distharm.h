@@ -35,7 +35,7 @@ class ImproperDistHarm : public Improper {
   void *extract(const char *, int &) override;
 
  private:
-  double *k, *chi;
+  double *k, *d0;
 
   void allocate();
 };
