@@ -134,7 +134,7 @@ void ImproperCossqOMP::eval(int nfrom, int nto, ThrData * const thr)
 
     /* Calculate the angle: */
     double torangle = acos(cosphi);
-    cosphi = cos(torangle - chi[type]);
+    cosphi = cos(torangle - chi0[type]);
 
     if (EFLAG) eimproper = 0.5 * k[type] * cosphi * cosphi;
 
