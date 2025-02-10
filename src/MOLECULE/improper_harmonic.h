@@ -36,7 +36,7 @@ class ImproperHarmonic : public Improper {
   void *extract(const char *, int &) override;
 
  protected:
-  double *k, *chi;
+  double *k, *chi0;
 
   virtual void allocate();
 };
