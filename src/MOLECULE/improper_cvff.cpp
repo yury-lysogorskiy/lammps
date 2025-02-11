@@ -346,7 +346,7 @@ void *ImproperCvff::extract(const char *str, int &dim)
 {
   dim = 1;
   if (strcmp(str, "k") == 0) return (void *) k;
-  if (strcmp(str, "sign") == 0) return (void *) sign;
-  if (strcmp(str, "multiplicity") == 0) return (void *) multiplicity;
+  if (strcmp(str, "d") == 0) return (void *) sign;
+  if (strcmp(str, "n") == 0) return (void *) multiplicity;
   return nullptr;
 }
