@@ -465,7 +465,7 @@ sub-style name. The improper styles that currently work with fix adapt are:
 +---------------------------------------------------------+----------------+----------------+
 | :doc:`umbrella <improper_umbrella>`                     | k,w0           | type impropers |
 +---------------------------------------------------------+----------------+----------------+
-| :doc:`sqdistharm <improper_sqdistharm>`                 | k,chi          | type impropers |
+| :doc:`sqdistharm <improper_sqdistharm>`                 | k              | type impropers |
 +---------------------------------------------------------+----------------+----------------+
 
 Note that internally, chi0 and theta0 are stored in radians, so the variable

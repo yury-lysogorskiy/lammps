@@ -276,6 +276,5 @@ void *ImproperSQDistHarm::extract(const char *str, int &dim)
 {
   dim = 1;
   if (strcmp(str, "k") == 0) return (void *) k;
-  if (strcmp(str, "chi") == 0) return (void *) chi;
   return nullptr;
 }

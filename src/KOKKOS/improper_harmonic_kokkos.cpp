@@ -304,7 +304,7 @@ void ImproperHarmonicKokkos<DeviceType>::allocate()
 
   int n = atom->nimpropertypes;
   k_k = Kokkos::DualView<F_FLOAT*,DeviceType>("ImproperHarmonic::k",n+1);
-  k_chi = Kokkos::DualView<F_FLOAT*,DeviceType>("ImproperHarmonic::chi0",n+1);
+  k_chi = Kokkos::DualView<F_FLOAT*,DeviceType>("ImproperHarmonic::chi",n+1);
 
   d_k = k_k.template view<DeviceType>();
   d_chi = k_chi.template view<DeviceType>();
@@ -322,7 +322,7 @@ void ImproperHarmonicKokkos<DeviceType>::coeff(int narg, char **arg)
   int n = atom->nimpropertypes;
   for (int i = 1; i <= n; i++) {
     k_k.h_view[i] = k[i];
-    k_chi.h_view[i] = chi0[i];
+    k_chi.h_view[i] = chi[i];
   }
 
   k_k.modify_host();
@@ -341,7 +341,7 @@ void ImproperHarmonicKokkos<DeviceType>::read_restart(FILE *fp)
   int n = atom->nimpropertypes;
   for (int i = 1; i <= n; i++) {
     k_k.h_view[i] = k[i];
-    k_chi.h_view[i] = chi0[i];
+    k_chi.h_view[i] = chi[i];
   }
 
   k_k.modify_host();
