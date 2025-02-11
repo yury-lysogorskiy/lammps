@@ -51,7 +51,7 @@ ImproperCossq::~ImproperCossq()
   if (allocated) {
     memory->destroy(setflag);
     memory->destroy(k);
-    memory->destroy(chi0);
+    memory->destroy(chi);
   }
 }
 
@@ -114,7 +114,7 @@ void ImproperCossq::compute(int eflag, int vflag)
 
     /* Calculate the angle: */
     double torangle = acos(cosphi);
-    cosphi = cos(torangle - chi0[type]);
+    cosphi = cos(torangle - chi[type]);
 
     if (eflag) eimproper = 0.5 * k[type] * cosphi * cosphi;
 
@@ -237,7 +237,7 @@ void ImproperCossq::allocate()
   int n = atom->nimpropertypes;
 
   memory->create(k,n+1,"improper:k");
-  memory->create(chi0,n+1,"improper:chi0");
+  memory->create(chi,n+1,"improper:chi");
 
   memory->create(setflag,n+1,"improper:setflag");
   for (int i = 1; i <= n; i++) setflag[i] = 0;
@@ -265,7 +265,7 @@ void ImproperCossq::coeff(int narg, char **arg)
    int count = 0;
    for (int i = ilo; i <= ihi; i++) {
       k[i] = k_one;
-      chi0[i] = ((chi_one * MY_PI)/180.0);
+      chi[i] = ((chi_one * MY_PI)/180.0);
       setflag[i] = 1;
       count++;
    }
@@ -279,7 +279,7 @@ void ImproperCossq::coeff(int narg, char **arg)
 void ImproperCossq::write_restart(FILE *fp)
 {
    fwrite(&k[1],sizeof(double),atom->nimpropertypes,fp);
-   fwrite(&chi0[1],sizeof(double),atom->nimpropertypes,fp);
+   fwrite(&chi[1],sizeof(double),atom->nimpropertypes,fp);
 }
 
 /* ----------------------------------------------------------------------
@@ -291,10 +291,10 @@ void ImproperCossq::read_restart(FILE *fp)
 
   if (comm->me == 0) {
     utils::sfread(FLERR,&k[1],sizeof(double),atom->nimpropertypes,fp,nullptr,error);
-    utils::sfread(FLERR,&chi0[1],sizeof(double),atom->nimpropertypes,fp,nullptr,error);
+    utils::sfread(FLERR,&chi[1],sizeof(double),atom->nimpropertypes,fp,nullptr,error);
   }
   MPI_Bcast(&k[1],atom->nimpropertypes,MPI_DOUBLE,0,world);
-  MPI_Bcast(&chi0[1],atom->nimpropertypes,MPI_DOUBLE,0,world);
+  MPI_Bcast(&chi[1],atom->nimpropertypes,MPI_DOUBLE,0,world);
 
   for (int i = 1; i <= atom->nimpropertypes; i++) setflag[i] = 1;
 }
@@ -306,7 +306,7 @@ void ImproperCossq::read_restart(FILE *fp)
 void ImproperCossq::write_data(FILE *fp)
 {
   for (int i = 1; i <= atom->nimpropertypes; i++)
-    fprintf(fp,"%d %g %g\n",i,k[i],chi0[i]/MY_PI*180.0);
+    fprintf(fp,"%d %g %g\n",i,k[i],chi[i]/MY_PI*180.0);
 }
 
 /* ----------------------------------------------------------------------
@@ -317,6 +317,6 @@ void *ImproperCossq::extract(const char *str, int &dim)
 {
   dim = 1;
   if (strcmp(str, "k") == 0) return (void *) k;
-  if (strcmp(str, "chi0") == 0) return (void *) chi0;
+  if (strcmp(str, "chi0") == 0) return (void *) chi;
   return nullptr;
 }
