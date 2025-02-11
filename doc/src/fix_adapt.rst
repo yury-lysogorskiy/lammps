@@ -463,7 +463,7 @@ sub-style name. The improper styles that currently work with fix adapt are:
 +---------------------------------------------------------+----------------------+----------------+
 | :doc:`ring <improper_ring>`                             | k,theta0             | type impropers |
 +---------------------------------------------------------+----------------------+----------------+
-| :doc:`umbrella <improper_umbrella>`                     | kw,w0                | type impropers |
+| :doc:`umbrella <improper_umbrella>`                     | k,w0                 | type impropers |
 +---------------------------------------------------------+----------------------+----------------+
 | :doc:`sqdistharm <improper_sqdistharm>`                 | k,chi                | type impropers |
 +---------------------------------------------------------+----------------------+----------------+
