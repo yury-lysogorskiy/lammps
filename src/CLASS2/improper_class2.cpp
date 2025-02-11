@@ -851,7 +851,7 @@ void ImproperClass2::write_data(FILE *fp)
 void *ImproperClass2::extract(const char *str, int &dim)
 {
   dim = 1;
-  if (strcmp(str, "k0") == 0) return (void *) k0;
+  if (strcmp(str, "k") == 0) return (void *) k0;
   if (strcmp(str, "chi0") == 0) return (void *) chi0;
   return nullptr;
 }
