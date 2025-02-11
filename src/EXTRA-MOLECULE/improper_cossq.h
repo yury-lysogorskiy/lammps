@@ -36,7 +36,7 @@ class ImproperCossq : public Improper {
   void *extract(const char *, int &) override;
 
  protected:
-  double *k, *chi0;
+  double *k, *chi;
   void allocate();
 };
 
