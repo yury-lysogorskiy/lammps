@@ -14,7 +14,7 @@ improper_coeff: ! |
   1  75.0 0.1
   2  45.0 1.0
 extract: ! |
-  kw 1
+  k 1
   w0 1
 natoms: 29
 init_energy: 0.35230115027159387
