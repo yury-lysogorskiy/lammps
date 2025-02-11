@@ -331,7 +331,7 @@ void ImproperUmbrella::write_data(FILE *fp)
 void *ImproperUmbrella::extract(const char *str, int &dim)
 {
   dim = 1;
-  if (strcmp(str, "kw") == 0) return (void *) kw;
+  if (strcmp(str, "k") == 0) return (void *) kw;
   if (strcmp(str, "w0") == 0) return (void *) w0;
   return nullptr;
 }
