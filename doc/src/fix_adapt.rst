@@ -449,7 +449,7 @@ sub-style name. The improper styles that currently work with fix adapt are:
 +---------------------------------------------------------+----------------------+----------------+
 | :doc:`cossq <improper_cossq>`                           | k,chi0               | type impropers |
 +---------------------------------------------------------+----------------------+----------------+
-| :doc:`cvff <improper_cvff>`                             | k,sign,multiplicity  | type impropers |
+| :doc:`cvff <improper_cvff>`                             | k,d,n                | type impropers |
 +---------------------------------------------------------+----------------------+----------------+
 | :doc:`distance <improper_distance>`                     | k,chi                | type impropers |
 +---------------------------------------------------------+----------------------+----------------+
