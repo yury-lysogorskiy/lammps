@@ -277,7 +277,7 @@ void ImproperDistance::write_data(FILE *fp)
 void *ImproperDistance::extract(const char *str, int &dim)
 {
   dim = 1;
-  if (strcmp(str, "k") == 0) return (void *) k;
-  if (strcmp(str, "chi") == 0) return (void *) chi;
+  if (strcmp(str, "k2") == 0) return (void *) k;
+  if (strcmp(str, "k4") == 0) return (void *) chi;
   return nullptr;
 }
