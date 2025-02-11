@@ -445,7 +445,7 @@ sub-style name. The improper styles that currently work with fix adapt are:
 +---------------------------------------------------------+----------------------+----------------+
 | :doc:`amoeba <improper_amoeba>`                         | k                    | type impropers |
 +---------------------------------------------------------+----------------------+----------------+
-| :doc:`class2 <improper_class2>`                         | k0,chi0              | type impropers |
+| :doc:`class2 <improper_class2>`                         | k,chi0               | type impropers |
 +---------------------------------------------------------+----------------------+----------------+
 | :doc:`cossq <improper_cossq>`                           | k,chi0               | type impropers |
 +---------------------------------------------------------+----------------------+----------------+
