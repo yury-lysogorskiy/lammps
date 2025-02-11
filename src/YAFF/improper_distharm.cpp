@@ -260,7 +260,7 @@ void ImproperDistHarm::read_restart(FILE *fp)
     utils::sfread(FLERR,&chi[1],sizeof(double),atom->nimpropertypes,fp,nullptr,error);
   }
   MPI_Bcast(&k[1],atom->nimpropertypes,MPI_DOUBLE,0,world);
-  MPI_Bcast(&d0[1],atom->nimpropertypes,MPI_DOUBLE,0,world);
+  MPI_Bcast(&chi[1],atom->nimpropertypes,MPI_DOUBLE,0,world);
 
   for (int i = 1; i <= atom->nimpropertypes; i++) setflag[i] = 1;
 }
