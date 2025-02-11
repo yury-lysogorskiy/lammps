@@ -46,7 +46,7 @@ ImproperDistHarm::~ImproperDistHarm()
   if (allocated) {
     memory->destroy(setflag);
     memory->destroy(k);
-    memory->destroy(d0);
+    memory->destroy(chi);
   }
 }
 
@@ -137,8 +137,8 @@ void ImproperDistHarm::compute(int eflag, int vflag)
     da = -(xna*xad + yna*yad + zna*zad);
 
 
-    domega = k[type]*(da - d0[type])*(da - d0[type]);
-    a =  2.0* k[type]*(da - d0[type]);
+    domega = k[type]*(da - chi[type])*(da - chi[type]);
+    a =  2.0* k[type]*(da - chi[type]);
 
     if (eflag) eimproper = domega;
 
@@ -204,7 +204,7 @@ void ImproperDistHarm::allocate()
   int n = atom->nimpropertypes;
 
   memory->create(k,n+1,"improper:k");
-  memory->create(d0,n+1,"improper:d0");
+  memory->create(chi,n+1,"improper:chi");
 
   memory->create(setflag,n+1,"improper:setflag");
   for (int i = 1; i <= n; i++) setflag[i] = 0;
@@ -224,12 +224,12 @@ void ImproperDistHarm::coeff(int narg, char **arg)
   utils::bounds(FLERR,arg[0],1,atom->nimpropertypes,ilo,ihi,error);
 
   double k_one = utils::numeric(FLERR,arg[1],false,lmp);
-  double d0_one = utils::numeric(FLERR,arg[2],false,lmp);
+  double chi_one = utils::numeric(FLERR,arg[2],false,lmp);
 
   int count = 0;
   for (int i = ilo; i <= ihi; i++) {
     k[i] = k_one;
-    d0[i] = d0_one;
+    chi[i] = chi_one;
     setflag[i] = 1;
     count++;
   }
@@ -244,7 +244,7 @@ void ImproperDistHarm::coeff(int narg, char **arg)
 void ImproperDistHarm::write_restart(FILE *fp)
 {
   fwrite(&k[1],sizeof(double),atom->nimpropertypes,fp);
-  fwrite(&d0[1],sizeof(double),atom->nimpropertypes,fp);
+  fwrite(&chi[1],sizeof(double),atom->nimpropertypes,fp);
 }
 
 /* ----------------------------------------------------------------------
@@ -257,7 +257,7 @@ void ImproperDistHarm::read_restart(FILE *fp)
 
   if (comm->me == 0) {
     utils::sfread(FLERR,&k[1],sizeof(double),atom->nimpropertypes,fp,nullptr,error);
-    utils::sfread(FLERR,&d0[1],sizeof(double),atom->nimpropertypes,fp,nullptr,error);
+    utils::sfread(FLERR,&chi[1],sizeof(double),atom->nimpropertypes,fp,nullptr,error);
   }
   MPI_Bcast(&k[1],atom->nimpropertypes,MPI_DOUBLE,0,world);
   MPI_Bcast(&d0[1],atom->nimpropertypes,MPI_DOUBLE,0,world);
@@ -273,6 +273,6 @@ void *ImproperDistHarm::extract(const char *str, int &dim)
 {
   dim = 1;
   if (strcmp(str, "k") == 0) return (void *) k;
-  if (strcmp(str, "d0") == 0) return (void *) d0;
+  if (strcmp(str, "d0") == 0) return (void *) chi;
   return nullptr;
 }
