@@ -725,7 +725,7 @@ TEST(ImproperStyle, extract)
 {
     if (test_config.skip_tests.count(test_info_->name())) GTEST_SKIP();
 
-    LAMMPS::argv args = {"ImproperStyle", "-log", "none", "-ecoho", "screen", "-ncite"};
+    LAMMPS::argv args = {"ImproperStyle", "-log", "none", "-echo", "screen", "-ncite"};
 
     if (!verbose) ::testing::internal::CaptureStdout();
     LAMMPS *lmp = nullptr;
