@@ -83,8 +83,6 @@ class command_wrapper(object):
 
   def _wrap_args(self, x):
       if callable(x):
-          if sys.version_info <  (3,):
-            raise Exception("Passing functions or lambdas directly as arguments is only supported in Python 3 or newer")
           import hashlib
           import __main__
           sha = hashlib.sha256()
@@ -105,11 +103,6 @@ class command_wrapper(object):
     all the arguments, concatinates them to a single string, and executes it using
     :py:meth:`lammps.command`.
 
-    Starting with Python 3.6 it also supports keyword arguments. key=value is
-    transformed into 'key value'. Note, since these have come last in the
-    parameter list, only a subset of LAMMPS commands can be used with this
-    syntax.
-
     LAMMPS commands that accept callback functions (such as fix python/invoke)
     can be passed functions and lambdas directly. The first argument of such
     callbacks will be an lammps object constructed from the passed LAMMPS
@@ -120,9 +113,6 @@ class command_wrapper(object):
     """
     def handler(*args, **kwargs):
       cmd_args = [name] + [str(self._wrap_args(x)) for x in args]
-
-      if len(kwargs) > 0 and sys.version_info < (3,6):
-         raise Exception("Keyword arguments are only supported in Python 3.6 or newer")
 
       # Python 3.6+ maintains ordering of kwarg keys
       for k in kwargs.keys():
@@ -530,16 +520,10 @@ class lammps(object):
 
     else:
       # magic to convert ptr to ctypes ptr
-      if sys.version_info >= (3, 0):
-        # Python 3 (uses PyCapsule API)
-        pythonapi.PyCapsule_GetPointer.restype = c_void_p
-        pythonapi.PyCapsule_GetPointer.argtypes = [py_object, c_char_p]
-        self.lmp = c_void_p(pythonapi.PyCapsule_GetPointer(ptr, None))
-      else:
-        # Python 2 (uses PyCObject API)
-        pythonapi.PyCObject_AsVoidPtr.restype = c_void_p
-        pythonapi.PyCObject_AsVoidPtr.argtypes = [py_object]
-        self.lmp = c_void_p(pythonapi.PyCObject_AsVoidPtr(ptr))
+      # Python 3 (uses PyCapsule API)
+      pythonapi.PyCapsule_GetPointer.restype = c_void_p
+      pythonapi.PyCapsule_GetPointer.argtypes = [py_object, c_char_p]
+      self.lmp = c_void_p(pythonapi.PyCapsule_GetPointer(ptr, None))
 
     # check if library initilialization failed
     if not self.lmp:
