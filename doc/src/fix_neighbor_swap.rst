@@ -20,7 +20,7 @@ Syntax
 * voro = valid voronoi compute id (compute voronoi/atom)
 * one or more keyword/value pairs may be appended to args
 * keywords *types* and *diff* are mutually exclusive, but one must be specified
-* keyword = *types* or *ke* or *region* or *diff* or *rates*
+* keyword = *types* or *diff* or *rates* or *ke* or *region*
 
   .. parsed-literal::
 
@@ -47,14 +47,55 @@ Description
 
 .. versionadded:: TBD
 
-Computes MC evaluations to enable kinetic Monte Carlo (kMC)-type behavior
-during MD simulation through only allowing neighboring atom swaps. This 
-creates a hybrid type simulation of MDkMC simulation where atoms are only
-swapped with their neighbors, but the swapping acceptance is perfomed by 
-evaluating the change in system energy using the Metropolis Criterion.
-Neighboring atoms are selected using a Voronoi tesselation approach. This
-implementation is as described in :ref:`(Tavenner 2023) <_TavennerMDkMC>`
-as originally intended for simulating accelerated diffusion in an MD context.
+This fix computes Monte-Carlo (MC) evaluations to enable kinetic 
+Monte Carlo (kMC)-type behavior during MD simulation through only allowing 
+neighboring atom swaps. This creates a hybrid type simulation of MDkMC simulation
+where atoms are only swapped with their neighbors, but the swapping acceptance is
+perfomed by evaluating the change in system energy using the Metropolis Criterion.
+Neighboring atoms are selected using a Voronoi tesselation approach. A detailed
+explination of the original implementation of this procedure can be found in
+:ref:`(Tavenner 2023) <_TavennerMDkMC>` as originally intended for simulating
+accelerated diffusion in an MD context.
+
+Simulating inherently kineticly driven behaviors which rely on rare events
+(such as atomic diffusion) is challenging for traditional Molecular Dynamics
+approaches since simulations are restricted in their time-scale of events.
+Since thermal vibration motion occurs on a timescale much shorter than the movement
+of vacancies, such behaviors are challenging to model simultaneously. To address
+this challenge, an approach from kMC simulations is adpoted where rare events can
+be sampled at selected rates. By selecting such swap behaviors, the process
+of atomic diffusion can be approximated during an MD simulation, effectively
+decoupling the MD atomic vibrational time and the timescale of atomic hopping.
+
+To achieve such simulations, this algorithm takes the following approach. First,
+the MD simulation is stopped after a given number of steps to perform atom swaps.
+Given this instantaneous configuration from the MD simulation, Voronoi neighbors
+are computed for all valid swap atoms. From the list of valid swap atoms, one atom
+I is selected at random across the entire simulation. One if its Voronoi neighbors
+that is a valid atom to swap is then selected. The atom ID is communicated to all 
+processors, such that if the neighbors are on different processors the swap still 
+occurs. The two atom types are swapped, and the change in system energy from before 
+the swap is compared using the Metropolis Criterion. This evaluation of the energy 
+change is a global calculation, such that it has a computational cost similar to
+that of an MD timestep. If the swap is accepted from the Metropolis Criterion, the
+atoms remain swapped. Else, the atoms are returned to their original types. This
+process of MC evaluation is repeated for a given number of iterations until the
+original MD simulation is resumed from the new state, where any successfully
+swapped atoms have changed type, though the global system balance is preserved.
+
+A few key notes regarding this implementation are as follows. The parallel
+efficiency of this algorithm is similar to that of other MC approaches. I.e,
+due to the additional energy calculations for the MC steps, efficiency is
+improved with a smaller number of atoms per processor than standalone MD simulation
+since there is more weighting on the calculation of a given atomic domain and
+minor additonal communication load. Communication of the atom ids to be swapped
+between processors is negligible. Efficiency will additionally be much worse for
+pair styles with different per-atom cutoffs, since the neighbor list will need to
+be rebuilt between swap events. Limitations are imposed on the Voronoi neighbors
+to restrict swapping of atoms which are outside of a reasonable cutoff.
+
+Input Parameters Usage
+"""""""""""
 
 The fix is called every *N* timesteps and attempts *X* swaps. The system
 is initialized with a random seed, using a temperature *T* for
@@ -128,9 +169,8 @@ voronoi command can be adjusted accordingly.
 Either the *types* or *diff* keyword must be specified to select atom
 types for swapping
 
-Keywords
+Keyword Summary
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""
-----------------------------------------------------------
 
 types = Select random atom matching first type as type I, remaining
 atom types are valid for selecting atom J.
