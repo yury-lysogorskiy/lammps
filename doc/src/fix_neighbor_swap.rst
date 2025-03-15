@@ -24,7 +24,7 @@ Syntax
 
   .. parsed-literal::
 
-       *types* values = two or more atom types (1-Ntypes or type label)
+       *types* values = two or more atom types (Integers in range [1,Ntypes] or type labels)
        *ke* value = *no* or *yes*
          *no* = no conservation of kinetic energy after atom swaps
          *yes* = kinetic energy is conserved after atom swaps
@@ -47,52 +47,50 @@ Description
 
 .. versionadded:: TBD
 
-This fix computes Monte-Carlo (MC) evaluations to enable kinetic 
-Monte Carlo (kMC)-type behavior during MD simulation through only allowing 
-neighboring atom swaps. This creates a hybrid type simulation of MDkMC simulation
-where atoms are only swapped with their neighbors, but the swapping acceptance is
-perfomed by evaluating the change in system energy using the Metropolis Criterion.
+This fix computes Monte Carlo (MC) evaluations to enable kinetic 
+Monte Carlo (kMC) behavior during an MD simulation by allowing 
+neighboring atoms to swap their positions. This creates a hybrid MD/kMC 
+simulation
+where atoms are swapped only with their neighbors, and the swapping acceptance is
+perfomed by evaluating the change in system energy using the Metropolis criterion.
 Neighboring atoms are selected using a Voronoi tesselation approach. A detailed
 explination of the original implementation of this procedure can be found in
 :ref:`(Tavenner 2023) <_TavennerMDkMC>` as originally intended for simulating
 accelerated diffusion in an MD context.
 
-Simulating inherently kineticly driven behaviors which rely on rare events
+Simulating inherently kinetically-limited behaviors which rely on rare events
 (such as atomic diffusion) is challenging for traditional Molecular Dynamics
-approaches since simulations are restricted in their time-scale of events.
-Since thermal vibration motion occurs on a timescale much shorter than the movement
-of vacancies, such behaviors are challenging to model simultaneously. To address
-this challenge, an approach from kMC simulations is adpoted where rare events can
+approaches, since thermal vibration motion occurs on a timescale much 
+shorter than local structural changes such as vacancy hopping.
+To address
+this challenge, an approach from kMC simulations is adopted where rare events can
 be sampled at selected rates. By selecting such swap behaviors, the process
 of atomic diffusion can be approximated during an MD simulation, effectively
 decoupling the MD atomic vibrational time and the timescale of atomic hopping.
 
 To achieve such simulations, this algorithm takes the following approach. First,
-the MD simulation is stopped after a given number of steps to perform atom swaps.
-Given this instantaneous configuration from the MD simulation, Voronoi neighbors
-are computed for all valid swap atoms. From the list of valid swap atoms, one atom
-I is selected at random across the entire simulation. One if its Voronoi neighbors
-that is a valid atom to swap is then selected. The atom ID is communicated to all 
-processors, such that if the neighbors are on different processors the swap still 
-occurs. The two atom types are swapped, and the change in system energy from before 
-the swap is compared using the Metropolis Criterion. This evaluation of the energy 
+the MD simulation is stopped *N* steps to attempt *X* atom swaps.
+Voronoi neighbors are computed for all valid swap atoms. 
+For each swap attempt, one atom
+I is selected at random from the global list of valid atoms. One if its Voronoi neighbors
+that is a valid atom to swap is then selected. The neighbor atom ID is communicated to all 
+processors, as it may be owned by a different processor. 
+The two atom types are then swapped, and the change in system energy from before 
+the swap is used to evaluate the Metropolis acceptance criterion. This evaluation of the energy 
 change is a global calculation, such that it has a computational cost similar to
-that of an MD timestep. If the swap is accepted from the Metropolis Criterion, the
-atoms remain swapped. Else, the atoms are returned to their original types. This
+that of an MD timestep. If the swap is accepted from the Metropolis criterion, the
+atoms remain swapped. If the swap is rejected, the atoms are reverted to their original types. This
 process of MC evaluation is repeated for a given number of iterations until the
 original MD simulation is resumed from the new state, where any successfully
 swapped atoms have changed type, though the global system balance is preserved.
 
 A few key notes regarding this implementation are as follows. The parallel
-efficiency of this algorithm is similar to that of other MC approaches. I.e,
-due to the additional energy calculations for the MC steps, efficiency is
-improved with a smaller number of atoms per processor than standalone MD simulation
-since there is more weighting on the calculation of a given atomic domain and
-minor additonal communication load. Communication of the atom ids to be swapped
-between processors is negligible. Efficiency will additionally be much worse for
-pair styles with different per-atom cutoffs, since the neighbor list will need to
-be rebuilt between swap events. Limitations are imposed on the Voronoi neighbors
-to restrict swapping of atoms which are outside of a reasonable cutoff.
+efficiency of this algorithm is similar to that of other MC approaches, i.e,
+the global potential energy must be calculated after each attempted swap.
+Efficiency is sensitive to the maximum cutoff distance for the pair style, 
+since the neighbor list will need to be rebuilt between swap events. 
+Limitations are imposed on the Voronoi neighbors
+to restrict swapping of atoms that are outside of a reasonable cutoff.
 
 Input Parameters Usage
 """""""""""
@@ -111,7 +109,7 @@ where :math:`p_{ij}` is the probability of selecting atoms :math:`i` and
 :math:`j` for an evaluated swap.
 
 Typically, a value around the average nearest-neighbor spacing is appropriate
-for *R0*. Since this is simply a proability weighting, behavior is not
+for *R0*. Since this is simply a probability weighting, behavior is not
 particularly sensitive to the exact value of *R0*.
 
 The keyword *types* is submitted with two or more atom types as the
@@ -121,7 +119,7 @@ all the remaining atom types.
 The keyword *diff* is used for implementation of simulated diffusion of
 a given atom type as given by *diff type*. This command selects all atom
 types as acceptable swap types to a centrally selected atom of type
-*type*. This includes the atom type specified by the diff keyword to
+*type*. This includes the atom type specified by the *diff* keyword to
 account for self-diffusion hops of an atom type with itself.
 
 Keyword *voro* is currently required, and is implemented as
@@ -168,19 +166,6 @@ voronoi command can be adjusted accordingly.
 
 Either the *types* or *diff* keyword must be specified to select atom
 types for swapping
-
-Keyword Summary
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-types = Select random atom matching first type as type I, remaining
-atom types are valid for selecting atom J.
-diff = Select random atom of this type as atom I, all atoms are valid
-for type J.
-ke = re-scale velocities when atoms are swapped based on difference in
-mass
-region = select only atoms I and J from region
-rates = pre-factor modification to the J atom selection probability
-based on atom type.
 
 
 Restart, fix_modify, output, run start/stop, minimize info
