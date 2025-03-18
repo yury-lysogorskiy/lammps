@@ -81,8 +81,9 @@ FixQtpieReaxFF::FixQtpieReaxFF(LAMMPS *lmp, int narg, char **arg) :
 
   imax = 200;
   maxwarn = 1;
+  scale = 1.0;
 
-  if ((narg < 9) || (narg > 12)) error->all(FLERR,"Illegal fix {} command", style);
+  if ((narg < 9) || (narg > 14)) error->all(FLERR,"Illegal fix {} command", style);
 
   nevery = utils::inumeric(FLERR,arg[3],false,lmp);
   if (nevery <= 0) error->all(FLERR,"Illegal fix {} command", style);
@@ -100,6 +101,11 @@ FixQtpieReaxFF::FixQtpieReaxFF(LAMMPS *lmp, int narg, char **arg) :
       if (iarg+1 > narg-1)
         error->all(FLERR,"Illegal fix {} command", style);
       imax = utils::numeric(FLERR,arg[iarg+1],false,lmp);
+      iarg++;
+    } else if (strcmp(arg[iarg],"scale") == 0) {
+      if (iarg+1 > narg-1)
+        error->all(FLERR,"Illegal fix {} command", style);
+      scale = utils::numeric(FLERR,arg[iarg+1],false,lmp);
       iarg++;
     } else error->all(FLERR,"Illegal fix {} command", style);
     iarg++;
@@ -1172,7 +1178,7 @@ void FixQtpieReaxFF::calc_chi_eff()
           } else { // atom-style potential from FixEfield
             phib = efield->efield[j][3];
           }
-          sum_n += (chia - chib + phia - phib) * overlap;
+          sum_n += (chia - chib + scale * (phia - phib)) * overlap;
         } else {
           sum_n += (chia - chib) * overlap;
         }

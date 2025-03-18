@@ -26,6 +26,7 @@ namespace LAMMPS_NS {
 
 class FixEfield : public Fix {
   friend class FixQEqReaxFF;
+  friend class FixQEqrReaxFF;
   friend class FixQtpieReaxFF;
 
  public:

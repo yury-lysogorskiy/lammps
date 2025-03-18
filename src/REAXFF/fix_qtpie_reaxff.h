@@ -91,6 +91,7 @@ class FixQtpieReaxFF : public Fix {
   char *gauss_file;        // input file for gaussian orbital exponents
   double *gauss_exp;       // array of gaussian orbital exponents for each atom type
   double dist_cutoff;      // separation distance beyond which to neglect overlap integrals
+  double scale;            // scaling factor for electric polarization effects
 
   void pertype_parameters(char *);
   void init_shielding();
@@ -128,7 +129,7 @@ class FixQtpieReaxFF : public Fix {
   void vector_sum(double *, double, double *, double, double *, int);
   void vector_add(double *, double, double *, int);
 
-  void calc_chi_eff();
+  virtual void calc_chi_eff();
   double find_min_exp(const double*, const int);
   double distance(const double*, const double*);
 

@@ -106,6 +106,7 @@ void PairReaxFFOMP::init_style()
 
   auto acks2_fixes = modify->get_fix_by_style("^acks2/reax");
   int have_qeq = modify->get_fix_by_style("^qeq/reax").size()
+    + modify->get_fix_by_style("^qeqr/reax").size()
     + modify->get_fix_by_style("^qeq/shielded").size() + acks2_fixes.size()
     + modify->get_fix_by_style("^qtpie/reax").size();
 
