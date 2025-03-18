@@ -45,6 +45,8 @@
 using namespace LAMMPS_NS;
 using namespace FixConst;
 
+static constexpr double CONV_TO_EV = 14.4;
+static constexpr double QSUMSMALL = 0.00001;
 static constexpr double ANGSTROM_TO_BOHRRADIUS = 1.8897261259;
 
 /* ---------------------------------------------------------------------- */
@@ -52,6 +54,66 @@ static constexpr double ANGSTROM_TO_BOHRRADIUS = 1.8897261259;
 FixQEqrReaxFF::FixQEqrReaxFF(LAMMPS *lmp, int narg, char **arg) :
   FixQtpieReaxFF(lmp, narg, arg)
 {
+}
+
+void FixQEqrReaxFF::init()
+{
+  if (!atom->q_flag)
+    error->all(FLERR,"Fix {} requires atom attribute q", style);
+
+  if (group->count(igroup) == 0)
+    error->all(FLERR,"Fix {} group has no atoms", style);
+
+  // compute net charge and print warning if too large
+  double qsum_local = 0.0, qsum = 0.0;
+  for (int i = 0; i < atom->nlocal; i++) {
+    if (atom->mask[i] & groupbit)
+      qsum_local += atom->q[i];
+  }
+  MPI_Allreduce(&qsum_local,&qsum,1,MPI_DOUBLE,MPI_SUM,world);
+
+  if ((comm->me == 0) && (fabs(qsum) > QSUMSMALL))
+    error->warning(FLERR,"Fix {} group is not charge neutral, net charge = {:.8}" + utils::errorurl(29), style, qsum);
+
+  // get pointer to fix efield if present. there may be at most one instance of fix efield in use.
+  efield = nullptr;
+  auto fixes = modify->get_fix_by_style("^efield");
+  if (fixes.size() == 1) efield = dynamic_cast<FixEfield *>(fixes.front());
+  else if (fixes.size() > 1)
+    error->all(FLERR, "There may be only one fix efield instance used with fix {}", style);
+
+  // ensure that fix efield is properly initialized before accessing its data and check some settings
+  if (efield) {
+    efield->init();
+    if (strcmp(update->unit_style,"real") != 0)
+      error->all(FLERR,"Must use unit_style real with fix {} and external fields", style);
+
+    if (efield->groupbit != 1){ // if efield is not applied to all atoms
+      error->all(FLERR,"Must use group id all for fix efield when using fix {}", style);
+    }
+
+    if (efield->region){ // if efield is not applied to all atoms
+      error->all(FLERR,"Keyword region not supported for fix efield when using fix {}", style);
+    }
+
+    if (efield->varflag == FixEfield::ATOM && efield->pstyle != FixEfield::ATOM)
+      error->all(FLERR,"Atom-style external electric field requires atom-style "
+                       "potential variable when used with fix {}", style);
+  } else
+    if (comm->me == 0)
+      error->warning(FLERR, "Use fix qeq/reaxff instead of fix {} when not using fix efield",
+		     style);
+
+  // we need a half neighbor list w/ Newton off
+  // built whenever re-neighboring occurs
+
+  neighbor->add_request(this, NeighConst::REQ_NEWTON_OFF);
+
+  init_shielding();
+  init_taper();
+
+  if (utils::strmatch(update->integrate_style,"^respa"))
+    nlevels_respa = (dynamic_cast<Respa *>(update->integrate))->nlevels;
 }
 
 /* ---------------------------------------------------------------------- */
