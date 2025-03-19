@@ -22,19 +22,10 @@
 
 #include "atom.h"
 #include "comm.h"
-#include "domain.h"
 #include "error.h"
 #include "fix_efield.h"
 #include "force.h"
-#include "group.h"
-#include "modify.h"
-#include "neigh_list.h"
 #include "neighbor.h"
-#include "pair.h"
-#include "region.h"
-#include "respa.h"
-#include "text_file_reader.h"
-#include "update.h"
 
 #include "pair_reaxff.h"
 #include "reaxff_api.h"
@@ -45,8 +36,6 @@
 using namespace LAMMPS_NS;
 using namespace FixConst;
 
-static constexpr double CONV_TO_EV = 14.4;
-static constexpr double QSUMSMALL = 0.00001;
 static constexpr double ANGSTROM_TO_BOHRRADIUS = 1.8897261259;
 
 /* ---------------------------------------------------------------------- */
