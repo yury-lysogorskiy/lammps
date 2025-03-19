@@ -27,7 +27,6 @@ namespace LAMMPS_NS {
 class FixQEqrReaxFF : public FixQtpieReaxFF {
  public:
   FixQEqrReaxFF(class LAMMPS *, int, char **);
-  void init() override;
 
  protected:
   void calc_chi_eff() override;

@@ -487,7 +487,12 @@ void FixQtpieReaxFF::init()
     if (efield->varflag == FixEfield::ATOM && efield->pstyle != FixEfield::ATOM)
       error->all(FLERR,"Atom-style external electric field requires atom-style "
                        "potential variable when used with fix {}", style);
+  } else {
+    if (utils::strmatch(style,"^qeqr/reax") && comm->me == 0)
+      error->warning(FLERR, "Use fix qeq/reaxff instead of fix {} when not using fix efield\n",
+                     style);
   }
+
 
   // we need a half neighbor list w/ Newton off
   // built whenever re-neighboring occurs
