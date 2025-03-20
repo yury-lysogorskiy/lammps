@@ -725,6 +725,7 @@ dashpot
 dat
 datafile
 datatype
+dataset
 datums
 Davidchack
 Daw
@@ -856,6 +857,7 @@ DNi
 Dobnikar
 Dobson
 docenv
+docstring
 Dodds
 dodgerblue
 dof
@@ -3116,9 +3118,11 @@ qE
 qeff
 qelectron
 qeq
+qeqr
 Qamar
 QeQ
 QEq
+QEqR
 qfactor
 qfile
 qi
@@ -3261,6 +3265,7 @@ resquared
 REsquared
 restartfile
 restartinfo
+reStructuredText
 Restrepo
 rethrowing
 Revenga

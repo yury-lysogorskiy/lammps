@@ -124,7 +124,7 @@ Related commands
 """"""""""""""""
 
 :doc:`pair_style reaxff <pair_reaxff>`, :doc:`fix qeq/reaxff <fix_qeq_reaxff>`,
-:doc:`fix qtpi/reaxff <fix_qtpie_reaxff>`
+:doc:`fix qtpie/reaxff <fix_qtpie_reaxff>`, :doc:`fix qeqr/reaxff <fix_qeqr_reaxff>`
 
 Default
 """""""

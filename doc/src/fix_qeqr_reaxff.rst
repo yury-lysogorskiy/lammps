@@ -1,6 +1,6 @@
-.. index:: fix qtpie/reaxff
+.. index:: fix qeqr/reaxff
 
-fix qtpie/reaxff command
+fix qeqr/reaxff command
 ========================
 
 Syntax
@@ -8,11 +8,11 @@ Syntax
 
 .. code-block:: LAMMPS
 
-   fix ID group-ID qtpie/reaxff Nevery cutlo cuthi tolerance params gfile args
+   fix ID group-ID qeqr/reaxff Nevery cutlo cuthi tolerance params gfile args
 
 * ID, group-ID are documented in :doc:`fix <fix>` command
-* qtpie/reaxff = style name of this fix command
-* Nevery = perform QTPIE every this many steps
+* qeqr/reaxff = style name of this fix command
+* Nevery = perform QEqR every this many steps
 * cutlo,cuthi = lo and hi cutoff for Taper radius
 * tolerance = precision to which charges will be equilibrated
 * params = reaxff or a filename
@@ -31,56 +31,49 @@ Examples
 
 .. code-block:: LAMMPS
 
-   fix 1 all qtpie/reaxff 1 0.0 10.0 1.0e-6 reaxff exp.qtpie
-   fix 1 all qtpie/reaxff 1 0.0 10.0 1.0e-6 params.qtpie exp.qtpie scale 1.5 maxiter 500 nowarn
+   fix 1 all qeqr/reaxff 1 0.0 10.0 1.0e-6 reaxff exp.qeqr
+   fix 1 all qeqr/reaxff 1 0.0 10.0 1.0e-6 params.qeqr exp.qeqr scale 1.5 maxiter 500 nowarn
 
 Description
 """""""""""
 
 .. versionadded:: 19Nov2024
 
-The QTPIE charge equilibration method is an extension of the QEq charge
-equilibration method. With QTPIE, the partial charges on individual atoms
-are computed by minimizing the electrostatic energy of the system in the
+This fix implements QEqR, which only differs from the QEq charge equilibration
+method :ref:`(Rappe and Goddard) <Rappe4>` in how external electric fields
+are accounted for. This fix therefore raises a warning when used without
+:doc:`fix efield <fix_efield>` informing the user to use
+:doc:`fix qeq/reaxff <fix_qeq_reaxff>` instead since
+:doc:`fix qeq/reaxff <fix_qeq_reaxff>`
+leads to the same charges at slightly reduced computational cost. Charges are
+computed with QEqR by minimizing the electrostatic energy of the system in the
 same way as the QEq method but where the absolute electronegativity,
-:math:`\chi_i`, of each atom in the QEq charge equilibration scheme
-:ref:`(Rappe and Goddard) <Rappe3>` is replaced with an effective
-electronegativity given by :ref:`(Chen) <qtpie-Chen>`
+:math:`\chi_i`, of each atom in the QEq method is replaced with an effective
+electronegativity given by
 
 .. math::
-   \tilde{\chi}_{i} = \frac{\sum_{j=1}^{N} (\chi_i - \chi_j) S_{ij}}
-                                {\sum_{m=1}^{N}S_{im}},
+   \chi_{\mathrm{r}i} = \chi_i + \frac{\sum_{j=1}^{N} \beta(\phi_i - \phi_j) S_{ij}}
+                                      {\sum_{m=1}^{N}S_{im}},
 
-which acts to penalize long-range charge transfer seen with the QEq charge
-equilibration scheme. In this equation, :math:`N` is the number of atoms in
-the system and :math:`S_{ij}` is the overlap integral between atom :math:`i`
-and atom :math:`j`.
-
-The effect of an external electric field can be incorporated into the QTPIE
-method by modifying the absolute or effective electronegativities of each
-atom :ref:`(Chen) <qtpie-Chen>`. This fix models the effect of an external
-electric field by using the effective electronegativity given in
-:ref:`(Gergs) <Gergs>`:
-
-.. math::
-   \tilde{\chi}_{\mathrm{r}i} = \frac{\sum_{j=1}^{N} (\chi_i - \chi_j + \beta(\phi_i - \phi_j)) S_{ij}}
-                                {\sum_{m=1}^{N}S_{im}},
-
-where :math:`\beta` is a scaling factor and :math:`\phi_i` and :math:`\phi_j`
-are the electric potentials at the positions of atoms :math:`i` and :math:`j`
-due to the external electric field.
+where :math:`N` is the number of atoms in the system, :math:`\beta` is a scaling
+factor, :math:`\phi_i` and :math:`\phi_j` are the electric potentials at the
+positions of atoms :math:`i` and :math:`j` due to the external electric field
+and :math:`S_{ij}` is the overlap integral between atoms :math:`i` and :math:`j`.
+This formulation is advantageous over the method used by
+:doc:`fix qeq/reaxff <fix_qeq_reaxff>` to account for an external electric
+field in that it permits periodic boundaries in the direction of an external
+electric field and in that it does not worsen long-range charge transfer seen
+with QEq.
 
 This fix is typically used in conjunction with the ReaxFF force
 field model as implemented in the :doc:`pair_style reaxff <pair_reaxff>`
 command, but it can be used with any potential in LAMMPS, so long as it
 defines and uses charges on each atom. For more technical details about the
-charge equilibration performed by `fix qtpie/reaxff`, which is the same as in
+charge equilibration performed by `fix qeqr/reaxff`, which is the same as in
 :doc:`fix qeq/reaxff <fix_qeq_reaxff>` except for the use of
-:math:`\tilde{\chi}_{i}` or :math:`\tilde{\chi}_{\mathrm{r}i}`,
-please refer to :ref:`(Aktulga) <qeq-Aktulga2>`.
-To be explicit, this fix replaces :math:`\chi_k` of eq. 3 in
-:ref:`(Aktulga) <qeq-Aktulga2>` with :math:`\tilde{\chi}_{k}` when no external
-electric field is applied and with :math:`\tilde{\chi}_{\mathrm{r}k}` when an
+:math:`\chi_{\mathrm{r}i}`, please refer to :ref:`(Aktulga) <qeq-Aktulga3>`.
+To be explicit, `fix qeqr/reaxff` replaces :math:`\chi_k` of eq. 3 in
+:ref:`(Aktulga) <qeq-Aktulga3>` with :math:`\chi_{\mathrm{r}k}` when an
 external electric field is applied.
 
 This fix requires the absolute electronegativity, :math:`\chi`, in eV, the
@@ -90,8 +83,8 @@ is the word "reaxff", then these are extracted from the
 :doc:`pair_style reaxff <pair_reaxff>` command and the ReaxFF force field
 file it reads in.  If a file name is specified for *params*, then the
 parameters are taken from the specified file and the file must contain
-one line for each atom type.  The latter form must be used when performing
-QTPIE with a non-ReaxFF potential. Each line should be formatted as follows,
+one line for each atom type.  The latter form must be used when using this
+fix with a non-ReaxFF potential. Each line should be formatted as follows,
 ensuring that the parameters are given in units of eV, eV, and :math:`\AA^{-1}`,
 respectively:
 
@@ -126,8 +119,7 @@ Empty lines or any text following the pound sign (#) are ignored. An example
     2  0.5434  # H
 
 The optional *scale* keyword sets the value of :math:`\beta` in the equation for
-:math:`\tilde{\chi}_{\mathrm{r}i}`. This keyword only affects the computed charges
-when :doc:`fix efield <fix_efield>` is used. The default value is 1.0.
+:math:`\chi_{\mathrm{r}i}`. The default value is 1.0.
 
 The optional *maxiter* keyword allows changing the max number
 of iterations in the linear solver. The default value is 200.
@@ -186,7 +178,7 @@ Related commands
 """"""""""""""""
 
 :doc:`pair_style reaxff <pair_reaxff>`, :doc:`fix qeq/reaxff <fix_qeq_reaxff>`,
-:doc:`fix acks2/reaxff <fix_acks2_reaxff>`, :doc:`fix qeqr/reaxff <fix_qeqr_reaxff>`
+:doc:`fix acks2/reaxff <fix_acks2_reaxff>`, :doc:`fix qtpie/reaxff <fix_qtpie_reaxff>`
 
 Default
 """""""
@@ -195,22 +187,12 @@ scale = 1.0 and maxiter = 200
 
 ----------
 
-.. _Rappe3:
+.. _Rappe4:
 
 **(Rappe)** Rappe and Goddard III, Journal of Physical Chemistry, 95,
 3358-3363 (1991).
 
-.. _qtpie-Chen:
-
-**(Chen)** Chen, Jiahao. Theory and applications of fluctuating-charge models.
-University of Illinois at Urbana-Champaign, 2009.
-
-.. _Gergs:
-
-**(Gergs)** Gergs, Dirkmann and Mussenbrock.
-Journal of Applied Physics 123.24 (2018).
-
-.. _qeq-Aktulga2:
+.. _qeq-Aktulga3:
 
 **(Aktulga)** Aktulga, Fogarty, Pandit, Grama, Parallel Computing, 38,
 245-259 (2012).
