@@ -116,9 +116,6 @@ void PairMLIAPKokkos<DeviceType>::compute(int eflag, int vflag)
   // calculate force contributions beta_i*dB_i/dR_j
   atomKK->sync(descriptor_space,F_MASK);
   k_data->sync(descriptor_space, NUMNEIGHS_MASK | IATOMS_MASK | IELEMS_MASK | ELEMS_MASK | BETAS_MASK | JATOMS_MASK | PAIR_I_MASK | JELEMS_MASK | RIJ_MASK );
-  int nrank,size;
-  MPI_Comm_rank(MPI_COMM_WORLD,&nrank);
-  MPI_Comm_size(MPI_COMM_WORLD,&size);
   descriptor->compute_forces(data);
 
   e_tally(data);
