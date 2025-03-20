@@ -185,7 +185,8 @@ FixQtpieReaxFF::~FixQtpieReaxFF()
 
 void FixQtpieReaxFF::post_constructor()
 {
-  if (lmp->citeme) lmp->citeme->add(cite_fix_qtpie_reax);
+  if (utils::strmatch(style,"^qtpie/reax"))
+    if (lmp->citeme) lmp->citeme->add(cite_fix_qtpie_reax);
 
   grow_arrays(atom->nmax);
   for (int i = 0; i < atom->nmax; i++)
