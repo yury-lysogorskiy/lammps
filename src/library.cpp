@@ -7132,7 +7132,7 @@ has thrown a :ref:`C++ exception <exceptions>`.
 
 .. note::
 
-   .. versionchanged: 2Aug2023
+   .. versionchanged:: 2Aug2023
 
    The *handle* pointer may be ``NULL`` for this function, as would be
    the case when a call to create a LAMMPS instance has failed.  Then
@@ -7175,7 +7175,7 @@ the failing MPI ranks to send messages.
 
 .. note::
 
-   .. versionchanged: 2Aug2023
+   .. versionchanged:: 2Aug2023
 
    The *handle* pointer may be ``NULL`` for this function, as would be
    the case when a call to create a LAMMPS instance has failed.  Then
@@ -7183,7 +7183,7 @@ the failing MPI ranks to send messages.
    instance, but instead would check the global error buffer of the
    library interface.
 
-   .. versionchanged: 21Nov2023
+   .. versionchanged:: 21Nov2023
 
    The *buffer* pointer may be ``NULL``.  This will clear any error
    status without copying the error message.
