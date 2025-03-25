@@ -856,6 +856,7 @@ DNi
 Dobnikar
 Dobson
 docenv
+docstrings
 Dodds
 dodgerblue
 dof
@@ -1336,6 +1337,7 @@ Gflop
 gfortran
 ghostneigh
 ghostwhite
+Ghahremanpour
 Giacomo
 GiB
 gif
@@ -3261,6 +3263,7 @@ resquared
 REsquared
 restartfile
 restartinfo
+reStructuredText
 Restrepo
 rethrowing
 Revenga

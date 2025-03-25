@@ -13,7 +13,8 @@ explains how to do this for building both with CMake and make.
 * `Size of LAMMPS integer types and size limits`_
 * `Read or write compressed files`_
 * `Output of JPEG, PNG, and movie files`_ via the :doc:`dump image <dump_image>` or :doc:`dump movie <dump_image>` commands
-* `Support for downloading files`_
+* `Support for downloading files from the input`_
+* `Prevent download of large potential files`_
 * `Memory allocation alignment`_
 * `Workaround for long long integers`_
 * `Exception handling when using LAMMPS as a library`_ to capture errors
@@ -509,8 +510,8 @@ during a run.
 
 .. _libcurl:
 
-Support for downloading files
------------------------------
+Support for downloading files from the input
+--------------------------------------------
 
 .. versionadded:: 29Aug2024
 
@@ -550,6 +551,25 @@ LAMMPS is compiled accordingly which needs the following settings:
       if make can find the libcurl header and library files in their
       default system locations.  You must specify ``CURL_LIB`` with a
       paths or linker flags to link to libcurl.
+
+----------
+
+.. _download_pot:
+
+Prevent download of large potential files
+-----------------------------------------
+
+.. versionadded:: 8Feb2023
+
+LAMMPS bundles a selection of potential files in the ``potentials``
+folder as examples of how those kinds of potential files look like and
+for use with the provided input examples in the ``examples`` tree.  To
+keep the size of the distributed LAMMPS source package small, very large
+potential files (> 5 MBytes) are not bundled, but only downloaded on
+demand when the :doc:`corresponding package <Packages_list>` is
+installed.  This automatic download can be prevented when :doc:`building
+LAMMPS with CMake <Build_cmake>` by adding the setting `-D
+DOWNLOAD_POTENTIALS=off` when configuring.
 
 ----------
 

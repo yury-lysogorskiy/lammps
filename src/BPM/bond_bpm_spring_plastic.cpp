@@ -440,7 +440,7 @@ double BondBPMSpringPlastic::single(int type, double rsq, int i, int j, double &
 
   double r = sqrt(rsq);
   double rinv = 1.0 / r;
-  double e = (r - r0) / r0;
+  double e = (r0 != 0.0) ? (r - r0) / r0 : 0.0;
 
   if (normalize_flag)
     fforce = -k[type] * (e - ep);
@@ -460,7 +460,7 @@ double BondBPMSpringPlastic::single(int type, double rsq, int i, int j, double &
   fforce *= rinv;
 
   if (smooth_flag) {
-    double smooth = (r - r0) / (r0 * ecrit[type]);
+    double smooth = (r0 != 0.0) ? (r - r0) / (r0 * ecrit[type]) : 0.0;
     smooth *= smooth;
     smooth *= smooth;
     smooth *= smooth;

@@ -221,9 +221,10 @@ HTML as a quick-n-dirty way of checking your manual page.
 
 This translation uses `Pandoc <https://pandoc.org>`_ instead of Sphinx
 and thus all special Sphinx features (cross-references, advanced tables,
-embedding of Python docstring and doxygen documentation, and so on) will
-not render correctly.  But this is a **very fast** way to check the content
-as HTML while writing the documentation.
+embedding of Python docstrings or doxygen documentation, and so on) will
+not render correctly.  Most embedded math should render correctly.  This
+is a **very fast** way to check the syntax and layout of a documentation
+file translated to HTML while writing it.
 
 To translate **all** manual pages, you can type ``make fasthtml`` at the
 command line.  The translated HTML files are then in the ``fasthtml``
