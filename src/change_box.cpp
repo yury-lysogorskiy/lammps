@@ -52,9 +52,7 @@ void ChangeBox::command(int narg, char **arg)
 
   // group
 
-  int igroup = group->find(arg[0]);
-  if (igroup == -1) error->all(FLERR,"Could not find change_box group ID {}", arg[0]);
-  int groupbit = group->bitmask[igroup];
+  int groupbit = group->get_bitmask_by_id(FLERR, arg[0], "change_box");
 
   // parse operation arguments
   // allocate ops to max possible length
@@ -381,7 +379,7 @@ void ChangeBox::command(int narg, char **arg)
   MPI_Allreduce(&nblocal,&natoms,1,MPI_LMP_BIGINT,MPI_SUM,world);
   if (natoms != atom->natoms && comm->me == 0)
     error->warning(FLERR,"Lost atoms via change_box: original {} "
-                   "current {}", atom->natoms,natoms);
+                   "current {}"+utils::errorurl(8),atom->natoms,natoms);
 }
 
 /* ----------------------------------------------------------------------

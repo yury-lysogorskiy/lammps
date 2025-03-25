@@ -224,7 +224,7 @@ void PairSPHLJ::coeff(int narg, char **arg)
 {
   if (narg != 4)
     error->all(FLERR,
-        "Incorrect args for pair_style sph/lj coefficients");
+        "Incorrect args for pair_style sph/lj coefficients" + utils::errorurl(21));
   if (!allocated)
     allocate();
 
@@ -246,7 +246,7 @@ void PairSPHLJ::coeff(int narg, char **arg)
   }
 
   if (count == 0)
-    error->all(FLERR,"Incorrect args for pair coefficients");
+    error->all(FLERR,"Incorrect args for pair coefficients" + utils::errorurl(21));
 }
 
 /* ----------------------------------------------------------------------
@@ -292,7 +292,7 @@ double PairSPHLJ::init_one(int i, int j)
 /* --------------------------------------------------------------------------------------------- */
 /* Lennard-Jones EOS,
    Francis H. Ree
-   "Analytic representation of thermodynamic data for the Lennard‐Jones fluid",
+   Analytic representation of thermodynamic data for the Lennard-Jones fluid,
    Journal of Chemical Physics 73 pp. 5401-5403 (1980)
 */
 
@@ -331,7 +331,7 @@ void PairSPHLJ::LJEOS2(double rho, double e, double cv, double *p, double *c)
 
 /* ------------------------------------------------------------------------------ */
 
-/* Jirí Kolafa, Ivo Nezbeda
+/* Jiri Kolafa, Ivo Nezbeda
  * "The Lennard-Jones fluid: an accurate analytic and theoretically-based equation of state",
  *  Fluid Phase Equilibria 100 pp. 1-34 (1994) */
 /*double PairSPHLJ::LJEOS2(double rho, double e, double cv) {

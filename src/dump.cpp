@@ -58,7 +58,7 @@ Dump::Dump(LAMMPS *lmp, int /*narg*/, char **arg) :
   id = utils::strdup(arg[0]);
 
   igroup = group->find(arg[1]);
-  groupbit = group->bitmask[igroup];
+  groupbit = group->get_bitmask_by_id(FLERR, arg[1], fmt::format("dump {}", arg[2]));
 
   style = utils::strdup(arg[2]);
 
@@ -73,6 +73,7 @@ Dump::Dump(LAMMPS *lmp, int /*narg*/, char **arg) :
 
   clearstep = 0;
   sort_flag = 0;
+  sortcol = 0;
   balance_flag = 0;
   append_flag = 0;
   buffer_allow = 0;
@@ -310,6 +311,7 @@ void Dump::init()
 
 int Dump::count()
 {
+  // group all
   if (igroup == 0) return atom->nlocal;
 
   int *mask = atom->mask;
@@ -325,8 +327,9 @@ int Dump::count()
 
 void Dump::write()
 {
-  imageint *imagehold;
-  double **xhold,**vhold;
+  imageint *imagehold = nullptr;
+  double **xhold = nullptr;
+  double **vhold = nullptr;
 
   // simulation box bounds
 
@@ -407,9 +410,9 @@ void Dump::write()
     int nlocal = atom->nlocal;
     if (nlocal > maxpbc) pbc_allocate();
     if (nlocal) {
-      memcpy(&xpbc[0][0],&atom->x[0][0],3*nlocal*sizeof(double));
-      memcpy(&vpbc[0][0],&atom->v[0][0],3*nlocal*sizeof(double));
-      memcpy(imagepbc,atom->image,nlocal*sizeof(imageint));
+      memcpy(&xpbc[0][0],&atom->x[0][0],(sizeof(double)*3*nlocal)&MEMCPYMASK);
+      memcpy(&vpbc[0][0],&atom->v[0][0],(sizeof(double)*3*nlocal)&MEMCPYMASK);
+      memcpy(imagepbc,atom->image,(nlocal*sizeof(imageint))&MEMCPYMASK);
     }
     xhold = atom->x;
     vhold = atom->v;

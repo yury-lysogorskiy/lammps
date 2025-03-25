@@ -41,18 +41,18 @@ Compute::Compute(LAMMPS *lmp, int narg, char **arg) :
 {
   instance_me = instance_total++;
 
-  if (narg < 3) error->all(FLERR,"Illegal compute command");
+  if (narg < 3) utils::missing_cmd_args(FLERR,"compute", error);
 
   // compute ID, group, and style
   // ID must be all alphanumeric chars or underscores
 
   id = utils::strdup(arg[0]);
   if (!utils::is_id(id))
-    error->all(FLERR,"Compute ID must be alphanumeric or underscore characters");
+    error->all(FLERR,"Compute ID {} must only have alphanumeric or underscore characters", id);
 
+  groupbit = group->get_bitmask_by_id(FLERR, arg[1], fmt::format("compute {}", arg[2]));
   igroup = group->find(arg[1]);
-  if (igroup == -1) error->all(FLERR,"Could not find compute group ID");
-  groupbit = group->bitmask[igroup];
+  if (igroup == -1) error->all(FLERR,"Could not find compute group ID {}", arg[1]);
 
   style = utils::strdup(arg[2]);
 
@@ -137,19 +137,20 @@ void Compute::modify_params(int narg, char **arg)
 
   int iarg = 0;
   while (iarg < narg) {
-    // added more specific keywords in Mar17
-    // at some point, remove generic extra and dynamic
-    if (strcmp(arg[iarg],"extra") == 0 ||
-        strcmp(arg[iarg],"extra/dof") == 0) {
-      if (iarg+2 > narg) error->all(FLERR,"Illegal compute_modify command");
+    if (strcmp(arg[iarg],"extra/dof") == 0) {
+      if (iarg+2 > narg) utils::missing_cmd_args(FLERR,"compute_modify extra/dof", error);
       extra_dof = utils::numeric(FLERR,arg[iarg+1],false,lmp);
       iarg += 2;
-    } else if (strcmp(arg[iarg],"dynamic") == 0 ||
-               strcmp(arg[iarg],"dynamic/dof") == 0) {
-      if (iarg+2 > narg) error->all(FLERR,"Illegal compute_modify command");
+    } else if (strcmp(arg[iarg],"dynamic/dof") == 0) {
+      if (iarg+2 > narg) utils::missing_cmd_args(FLERR,"compute_modify dynamic/dof", error);
       dynamic_user = utils::logical(FLERR,arg[iarg+1],false,lmp);
       iarg += 2;
-    } else error->all(FLERR,"Illegal compute_modify command");
+    } else {
+      int n = modify_param(narg-iarg, &arg[iarg]);
+        if (n== 0)
+          error->all(FLERR, iarg + 1, "Compute {} {} does not support compute_modify {} command",
+                     id, style, arg[iarg]);
+    }
   }
 }
 

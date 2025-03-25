@@ -13,7 +13,7 @@ if(BUILD_DOC)
   endif()
   find_package(Python3 REQUIRED COMPONENTS Interpreter)
   if(Python3_VERSION VERSION_LESS 3.8)
-    message(FATAL_ERROR "Python 3.8 and up is required to build the HTML documentation")
+    message(FATAL_ERROR "Python 3.8 and up is required to build the LAMMPS HTML documentation")
   endif()
   set(VIRTUALENV ${Python3_EXECUTABLE} -m venv)
 
@@ -65,8 +65,8 @@ if(BUILD_DOC)
     find_package(Sphinx)
   endif()
 
-  set(MATHJAX_URL "https://github.com/mathjax/MathJax/archive/3.1.3.tar.gz" CACHE STRING "URL for MathJax tarball")
-  set(MATHJAX_MD5 "b81661c6e6ba06278e6ae37b30b0c492" CACHE STRING "MD5 checksum of MathJax tarball")
+  set(MATHJAX_URL "https://github.com/mathjax/MathJax/archive/3.2.2.tar.gz" CACHE STRING "URL for MathJax tarball")
+  set(MATHJAX_MD5 "08dd6ef33ca08870220d9aade2a62845" CACHE STRING "MD5 checksum of MathJax tarball")
   mark_as_advanced(MATHJAX_URL)
   GetFallbackURL(MATHJAX_URL MATHJAX_FALLBACK)
 
@@ -110,6 +110,7 @@ if(BUILD_DOC)
   add_custom_command(
     OUTPUT html
     DEPENDS ${DOC_SOURCES} ${DOCENV_DEPS} ${DOXYGEN_XML_DIR}/index.xml ${BUILD_DOC_CONFIG_FILE}
+    COMMAND ${Python3_EXECUTABLE} ${LAMMPS_DOC_DIR}/utils/make-globbed-tocs.py -d ${LAMMPS_DOC_DIR}/src
     COMMAND Sphinx::sphinx-build ${SPHINX_EXTRA_OPTS} -b html -c ${DOC_BUILD_DIR} -d ${DOC_BUILD_DIR}/doctrees ${LAMMPS_DOC_DIR}/src ${DOC_BUILD_DIR}/html
     COMMAND ${CMAKE_COMMAND} -E create_symlink Manual.html ${DOC_BUILD_DIR}/html/index.html
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${LAMMPS_DOC_DIR}/src/PDF ${DOC_BUILD_DIR}/html/PDF
