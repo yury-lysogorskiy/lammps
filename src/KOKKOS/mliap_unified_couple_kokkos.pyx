@@ -206,10 +206,10 @@ cdef class MLIAPDataPy:
             copy_from_ptr = copy_from.data_ptr()
             copy_to_ptr = copy_to.data_ptr()
 
-			if copy_from_dtype == torch.float32:
-				self.data.forward_exchange( <float*>copy_from_ptr, <float*>copy_to_ptr, vec_len)
-			elif copy_from_dtype == torch.float64:
-				self.data.forward_exchange( <double*>copy_from_ptr, <double*>copy_to_ptr, vec_len)
+            if copy_from_dtype == torch.float32:
+                self.data.forward_exchange( <float*>copy_from_ptr, <float*>copy_to_ptr, vec_len)
+            elif copy_from_dtype == torch.float64:
+                self.data.forward_exchange( <double*>copy_from_ptr, <double*>copy_to_ptr, vec_len)
             else:
                 raise TypeError(f"Unsupported comms type: ({copy_from_dtype})")
         except:
@@ -237,10 +237,10 @@ cdef class MLIAPDataPy:
             copy_from_ptr = copy_from.data_ptr()
             copy_to_ptr = copy_to.data_ptr()
 
-			if copy_from_dtype == torch.float32:
-				self.data.reverse_exchange( <float*>copy_from_ptr, <float*>copy_to_ptr, vec_len)
-			elif copy_from_dtype == torch.float64:
-				self.data.reverse_exchange( <double*>copy_from_ptr, <double*>copy_to_ptr, vec_len)
+            if copy_from_dtype == torch.float32:
+                self.data.reverse_exchange( <float*>copy_from_ptr, <float*>copy_to_ptr, vec_len)
+            elif copy_from_dtype == torch.float64:
+                self.data.reverse_exchange( <double*>copy_from_ptr, <double*>copy_to_ptr, vec_len)
             else:
                 raise TypeError(f"Unsupported comms type: ({copy_from_dtype})")
         except:
