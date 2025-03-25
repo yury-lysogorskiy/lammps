@@ -341,8 +341,8 @@ int PairMLIAPKokkos<DeviceType>::forward_comm(CommType* copy_from_, CommType* co
   } else if constexpr ( std::is_same_v<CommType,double> ){
     comm_type = COMM_TYPE::DOUBLE;
   }
-  std::get<CommType*>(copy_to) = copy_to_;
-  std::get<CommType*>(copy_from) = copy_from_;
+  copy_to = copy_to_;
+  copy_from = copy_from_;
   comm_forward = vec_len=vl;
 
   Kokkos::parallel_for((atom->nlocal+atom->nghost)*vl, KOKKOS_LAMBDA (int i) {
@@ -367,8 +367,8 @@ int PairMLIAPKokkos<DeviceType>::reverse_comm(CommType* copy_from_, CommType* co
   } else if constexpr ( std::is_same_v<CommType,double> ){
     comm_type = COMM_TYPE::DOUBLE;
   }
-  std::get<CommType*>(copy_to) = copy_to_;
-  std::get<CommType*>(copy_from) = copy_from_;
+  copy_to = copy_to_;
+  copy_from = copy_from_;
   comm_reverse = vec_len = vl;
 
   Kokkos::parallel_for((atom->nlocal+atom->nghost)*vl, KOKKOS_LAMBDA (int i) {
