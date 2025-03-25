@@ -52,7 +52,7 @@ DeleteAtoms::DeleteAtoms(LAMMPS *lmp) : Command(lmp) {}
 void DeleteAtoms::command(int narg, char **arg)
 {
   if (domain->box_exist == 0)
-    error->all(FLERR, "Delete_atoms command before simulation box is defined");
+    error->all(FLERR, "Delete_atoms command before simulation box is defined" + utils::errorurl(33));
   if (narg < 1) utils::missing_cmd_args(FLERR, "delete_atoms", error);
   if (atom->tag_enable == 0) error->all(FLERR, "Cannot use delete_atoms unless atoms have IDs");
 

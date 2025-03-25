@@ -4401,7 +4401,8 @@ void lammps_gather(void *handle, const char *name, int type, int count, void *da
       }
 
       if (lmp->update->ntimestep % fix->peratom_freq) {
-        lmp->error->all(FLERR,"lammps_gather: fix {} not computed at compatible time", fixid);
+        lmp->error->all(FLERR,"lammps_gather: fix {} not computed at compatible time{}",
+                        fixid, utils::errorurl(7));
         return;
       }
 
@@ -4670,8 +4671,8 @@ void lammps_gather_concat(void *handle, const char *name, int type, int count,
         return;
       }
       if (lmp->update->ntimestep % fix->peratom_freq) {
-        lmp->error->all(FLERR,"lammps_gather_concat(): fix {} not computed at compatible time",
-                        fixid);
+        lmp->error->all(FLERR,"lammps_gather_concat(): fix {} not computed at compatible time{}",
+                        fixid, utils::errorurl(7));
         return;
       }
 
@@ -4957,7 +4958,8 @@ void lammps_gather_subset(void *handle, const char *name, int type, int count,
         return;
       }
       if (lmp->update->ntimestep % fix->peratom_freq) {
-        lmp->error->all(FLERR,"lammps_gather_subset(): fix {} not computed at compatible time", fixid);
+        lmp->error->all(FLERR,"lammps_gather_subset(): fix {} not computed at compatible time{}",
+                        fixid, utils::errorurl(7));
         return;
       }
 

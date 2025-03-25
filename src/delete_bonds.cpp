@@ -40,7 +40,7 @@ DeleteBonds::DeleteBonds(LAMMPS *lmp) : Command(lmp) {}
 void DeleteBonds::command(int narg, char **arg)
 {
   if (domain->box_exist == 0)
-    error->all(FLERR,"Delete_bonds command before simulation box is defined");
+    error->all(FLERR,"Delete_bonds command before simulation box is defined" + utils::errorurl(33));
   if (atom->natoms == 0)
     error->all(FLERR,"Delete_bonds command with no atoms existing");
   if (atom->molecular != Atom::MOLECULAR)

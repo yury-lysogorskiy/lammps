@@ -92,7 +92,7 @@ void Group::assign(int narg, char **arg)
 {
   int i;
 
-  if (domain->box_exist == 0) error->all(FLERR, "Group command before simulation box is defined");
+  if (domain->box_exist == 0) error->all(FLERR, "Group command before simulation box is defined" + utils::errorurl(33));
   if (narg < 2) utils::missing_cmd_args(FLERR, "group", error);
 
   // delete the group if not being used elsewhere
