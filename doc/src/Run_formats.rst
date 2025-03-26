@@ -7,32 +7,33 @@ formats that LAMMPS is reading and writing.
 Character Encoding
 ^^^^^^^^^^^^^^^^^^
 
-For text files, LAMMPS uses `ASCII character encoding
-<https://en.wikipedia.org/wiki/ASCII>`_ which represents the digits 0 to
-9, the lower and upper case letters a to z, some common punctuation and
-other symbols and a few whitespace characters including a regular "space
-character", "line feed", "carriage return", "tabulator". These are all
-represented by bytes with a value smaller than 128 and only 95 of those
-128 values represent printable characters.  This is sufficient to represent
-most English text, but misses accented characters or umlauts or Greek
-symbols and more.
+For processing text files, the LAMMPS source code assumes `ASCII
+character encoding <https://en.wikipedia.org/wiki/ASCII>`_ which
+represents the digits 0 to 9, the lower and upper case letters a to z,
+some common punctuation and other symbols and a few whitespace
+characters including a regular "space character", "line feed", "carriage
+return", "tabulator". These are all represented by single bytes with a
+value smaller than 128 and only 95 of those 128 values represent
+printable characters.  This is sufficient to represent most English
+text, but misses accented characters or umlauts or Greek symbols and
+more.
 
 Modern text often uses `UTF-8 character encoding
-<https://en.wikipedia.org/wiki/UTF-8>`_ instead. This is a way to
+<https://en.wikipedia.org/wiki/UTF-8>`_ instead.  This is a way to
 represent many more different characters as defined by the Unicode
 standard.  This is compatible with ASCII, since the first 128 values are
-identical with the ASCIII encoding.  It is important to note, however,
-that there are Unicode characters that look similar or even identical to
-ASCII characters, but have a different representation.  As a general
-rule, these characters are not correctly recognized by LAMMPS.  For some
-parts of LAMMPS' text processing, translation tables with known
-"lookalike" characters are used that transparently substitute non-ASCII
-characters with their ASCII equivalents.  Non-ASCII lookalike characters
-are often used by web browsers or PDF viewers to improve the readability
-of text. Thus, when using copy-n-paste to transfer text from such an
-application to your input file, you may unintentionally create text that
-is not exclusively using ASCII encoding and may cause errors when LAMMPS
-is trying to read it.
+identical with the ASCII encoding.  It is important to note, however,
+that there are Unicode characters that *look* similar to ASCII
+characters, but have a different binary representation.  As a general
+rule, these characters may not be correctly recognized by LAMMPS.  For
+some parts of LAMMPS' text processing, translation tables with known
+"lookalike" characters are used.  Those transparently substitute
+non-ASCII characters with their ASCII equivalents.  Non-ASCII lookalike
+characters are often used by web browsers or PDF viewers to improve the
+readability of text.  Thus, when using copy-n-paste to transfer text
+from such an application to your input file, you may unintentionally
+create text that is not exclusively using ASCII encoding and may cause
+errors when LAMMPS is trying to read it.
 
 Lines with non-printable and non-ASCII characters in text files can be
 detected for example with a (Linux) command like the following:
@@ -48,22 +49,27 @@ Different countries and languages have different conventions to format
 numbers.  While in some regions commas are used for fractions and points
 to indicate thousand, million and so on, this is reversed in other
 regions.  Modern operating systems have facilities to adjust input and
-output accordingly.  The exact rules are often applied according to the
-value of the ``$LANG`` environment variable (e.g. "en_US.utf8").
+output accordingly that are collectively referred to as "native language
+support" (NLS).  The exact rules are often applied according to the
+value of the ``$LANG`` environment variable (e.g. "en_US.utf8" for
+English text in UTF-8 encoding).
 
 For the sake of simplicity of the implementation and transferability of
 results, LAMMPS does not support this and instead expects numbers being
 formatted in the generic or "C" locale.  The "C" locale has no
 punctuation for thousand, million and so on and uses a decimal point for
 fractions.  One thousand would be represented as "1000.0" and not as
-"1,000.0" nor as "1.000,0".
+"1,000.0" nor as "1.000,0".  Having native language support enabled for
+a locale other than "C" will result in different behavior when converting
+or formatting numbers that can trigger unexpected errors.
 
-LAMMPS also only accepts integer numbers when an integer is required,
-so using "1.0" is not accepted; you have to use "1" instead.
+LAMMPS also only accepts integer numbers when an integer is required, so
+using floating point equivalents like "1.0" are not accepted; you *must*
+use "1" instead.
 
 For floating point numbers in scientific notation, the Fortran double
-precision notation "1.1d3" is not accepted either; you have to use
-"1100", "1100.0" or "1.1e3".
+precision notation "1.1d3" is not accepted; you have to use "1100",
+"1100.0" or "1.1e3".
 
 Input file
 ^^^^^^^^^^
@@ -71,12 +77,13 @@ Input file
 A LAMMPS input file is a text file with commands. It is read
 line-by-line and each line is processed *immediately*.  Before looking
 for commands and executing them, there is a pre-processing step where
-comments (text starting with a pound sign '#') are removed,
+comments (non-quoted text starting with a pound sign '#') are removed,
 `${variable}` and `$(expression)` constructs are expanded or evaluated,
 and lines that end in the ampersand character '&' are combined with the
 next line (similar to Fortran 90 free format source code).  After the
 pre-processing, lines are split into "words" and the first word must be a
-:doc:`command <Commands_all>` and everything .  Below are some example lines:
+:doc:`command <Commands_all>` and everything else is considered argument.
+Below are some example lines:
 
 .. code-block:: LAMMPS
 
@@ -92,11 +99,11 @@ pre-processing, lines are split into "words" and the first word must be a
 
    lattice         fcc 0.8442
 
-   # multi-line command, uses spacing from "lattice" command
+   # multi-line command, uses spacing from "lattice" command, else add "units box" to command
    region          box block 0.0 ${xx} &
                              0.0 40.0  &
                              0.0 30.0
-   # create simulation box and fillwith atoms according to lattice setting
+   # create simulation box and fill with atoms according to lattice setting
    create_box      1 box
    create_atoms    1 box
 
@@ -228,4 +235,3 @@ Restart file
 
 Dump file
 ^^^^^^^^^
-
