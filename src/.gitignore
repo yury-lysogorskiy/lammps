@@ -419,6 +419,8 @@
 /compute_hexorder_atom.h
 /dump_dcd.cpp
 /dump_dcd.h
+/dump_extxyz.cpp
+/dump_extxyz.h
 /fix_controller.cpp
 /fix_controller.h
 /fix_drag.cpp

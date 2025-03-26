@@ -490,6 +490,10 @@ information will be dumped:
 * simulation box lattice and pbc conditions
 * atomic velocities and forces
 
+Dump style *extxyz* requires either that a :doc:`type label map for atoms types
+<labelmap>` is defined or :doc:`dump_modify element <dump_modify>` is used to
+set up an atom type number to atom name mapping.
+
 .. versionadded:: 22Dec2022
 
 The *grid/vtk* style writes VTK files for grid data on a regular
