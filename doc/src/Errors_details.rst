@@ -471,7 +471,7 @@ pair-wise additive pair styles like :doc:`Lennard-Jones <pair_lj>`,
 :doc:`Morse <pair_morse>`, :doc:`Born-Meyer-Huggins <pair_born>`, and
 similar.  Such required callbacks have not been implemented for
 many-body potentials so one would have to implement them to add
-compatiability with these computes (which may be difficult to do in a
+compatibility with these computes (which may be difficult to do in a
 generic fashion).  Whether this warning indicates that contributions to
 the computed properties are missing depends on the groups used.  At any
 rate, careful testing of the results is advised when this warning
@@ -931,7 +931,7 @@ the documentation carefully.
 XXX command before simulation box is defined
 --------------------------------------------
 
-This error occurs when trying to excute a LAMMPS command that requires
+This error occurs when trying to execute a LAMMPS command that requires
 information about the system dimensions, or the number atom, bond,
 angle, dihedral, or improper types, or the number of atoms or similar
 data that is only available *after* the simulation box has been created.
@@ -943,7 +943,7 @@ created <hint12>` for additional information.
 XXX command after simulation box is defined
 --------------------------------------------
 
-This error occurs when trying to excute a LAMMPS command that changes a
+This error occurs when trying to execute a LAMMPS command that changes a
 global setting *after* it is locked in when the simulation box is
 created (for instance defining the :doc:`atom style <atom_style>`,
 :doc:`dimension <dimension>`, :doc:`newton <newton>`, or :doc:`units
