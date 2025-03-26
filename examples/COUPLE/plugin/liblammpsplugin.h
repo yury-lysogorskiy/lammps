@@ -109,6 +109,7 @@ struct _liblammpsplugin {
   int abiversion;
   int has_exceptions;
   void *handle;
+
 #if defined(LAMMPS_LIB_MPI)
   void *(*open)(int, char **, MPI_Comm, void **);
 #else
@@ -187,7 +188,7 @@ struct _liblammpsplugin {
  * the ifdef ensures they are compatible with rest of LAMMPS
  * caller must match to how LAMMPS library is built */
 
-#ifndef LAMMPS_BIGBIG
+#if !defined(LAMMPS_BIGBIG)
  int (*create_atoms)(void *, int, int *, int *, double *, double *, int *, int);
 #else
   int (*create_atoms)(void *, int, int64_t *, int *, double *, double *, int64_t *, int);
@@ -255,6 +256,7 @@ struct _liblammpsplugin {
 
   int (*has_error)(void *);
   int (*get_last_error_message)(void *, char *, int);
+  int (*set_show_error)(void *, const int);
 
   int (*python_api_version)();
 };

@@ -248,6 +248,7 @@ MODULE LIBLAMMPS
     PROCEDURE :: force_timeout          => lmp_force_timeout
     PROCEDURE :: has_error              => lmp_has_error
     PROCEDURE :: get_last_error_message => lmp_get_last_error_message
+    PROCEDURE :: set_show_error         => lmp_set_show_error
   END TYPE lammps
 
   INTERFACE lammps
@@ -1040,6 +1041,13 @@ MODULE LIBLAMMPS
       TYPE(c_ptr), VALUE :: handle, buffer
       INTEGER(c_int), VALUE :: buf_size
     END FUNCTION lammps_get_last_error_message
+
+    INTEGER(c_int) FUNCTION lammps_set_show_error(handle,flag) BIND(C)
+      IMPORT :: c_ptr, c_int
+      IMPLICIT NONE
+      TYPE(c_ptr), VALUE :: handle
+      INTEGER(c_int), VALUE :: flag
+    END FUNCTION lammps_set_show_error
 
     !---------------------------------------------------------------------
     ! Utility functions imported for convenience (not in library.h)
@@ -3665,6 +3673,14 @@ CONTAINS
       END IF
     END IF
   END SUBROUTINE lmp_get_last_error_message
+
+  ! equivalent function to lammps_set_show_error
+  INTEGER FUNCTION lmp_set_show_error(self, flag)
+    CLASS(lammps), INTENT(IN) :: self
+    INTEGER, INTENT(IN) :: flag
+
+    lmp_set_show_error = lammps_set_show_error(self%handle, flag)
+  END FUNCTION lmp_set_show_error
 
   ! ----------------------------------------------------------------------
   ! functions to assign user-space pointers to LAMMPS data
