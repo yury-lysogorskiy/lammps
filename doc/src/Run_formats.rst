@@ -360,13 +360,13 @@ molecule is created.
    Angles
 
    1   1      2      1      3
-                
+
 
 There are also optional sections, e.g. about :doc:`SHAKE <fix_shake>` and
 :doc:`special bonds <special_bonds>`. Those are only needed if the molecule
 command is issues *before* the simulation box is defined.  Otherwise, the
 molecule command can derive the required settings internally.
-   
+
 Potential file
 ^^^^^^^^^^^^^^
 
