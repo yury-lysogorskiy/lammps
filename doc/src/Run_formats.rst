@@ -167,19 +167,38 @@ from the :doc:`command line <Run_options>`.
 
 The file is generally structured into a header section at the very
 beginning of the file and multiple titled sections like "Atoms",
-Masses", "Pair Coeffs", and so on.  The data file **always** starts
-with a "title" line, which will be **ignored** by LAMMPS.  Omitting
-the title line can lead to unexpected behavior as then a line of
-the header with an actual setting may be ignored.  This is often a
-line with the "atoms" keyword, which results in LAMMPS assuming that
-there are no atoms in the data file and thus throwing an error on the
-contents of the "Atoms" section.  The title line may contain some
-keywords that can be used by external programs to convey information
-about the system, that is not required and not read by LAMMPS.
+Masses", "Pair Coeffs", and so on.  Header keywords can only be used
+*before* the first title section.
+
+The data file **always** starts with a "title" line, which will be
+**ignored** by LAMMPS.  Omitting the title line can lead to unexpected
+behavior as then a line of the header with an actual setting may be
+ignored.  This is often a line with the "atoms" keyword, which results
+in LAMMPS assuming that there are no atoms in the data file and thus
+throwing an error on the contents of the "Atoms" section.  The title
+line may contain some keywords that can be used by external programs to
+convey information about the system (included as comments), that is not
+required and not read by LAMMPS.
+
+The line following a section title is also **ignored**.  Skipping it
+will lead to short reads and thus errors.  The number of lines in titled
+sections depends on header keywords, like the number of atom types, the
+number of atoms, the number of bond types, or the number of bonds and so
+on.  The data in those sections has to be complete.  A special case are
+the "Pair Coeffs" and "PairIJ Coeffs" sections; the former is for force
+fields and pair styles that use mixing of non-bonded potential
+parameters, the latter for pair styles and force fields requiring
+explicit coefficients.  Thus with *N* being the number of atom types,
+the "Pair Coeffs" section has *N* entries while "PairIJ Coeffs" has
+:math:`N \cdot (N-1)` entries.  Internally, these sections will be
+converted to :doc:`pair_coeff <pair_coeff>` commands.  Thus the
+corresponding :doc:`pair style <pair_style>` must have been set *before*
+the :doc:`read_data command <read_data>` reads the data file.
 
 Data files may contain comments, which start with the pound sign '#'.
 There must be at least one blank between a valid keyword and the pound
-sign.
+sign. Below is a simple example case of a data file for :doc:`atom style
+full <atom_style>`.
 
 .. code-block:: bash
 
@@ -200,7 +219,7 @@ sign.
      3 15.9990
      4  1.0080
 
-   Pair Coeffs
+   Pair Coeffs  # this section is optional
 
      1    0.110000    3.563595    0.110000    3.563595
      2    0.080000    3.670503    0.010000    3.385415
@@ -219,11 +238,69 @@ sign.
          8      1       4       0.070   42.07157  57.45486  37.62418   0   0   0
          9      1       1       0.510   42.19985  57.57789  39.12163   0   0   0
         10      1       1       0.510   41.88641  58.62251  39.70398   0   0   0
-   #  ^^atomID ^^molID ^^type  ^^charge ^^xcoord  ^^ycoord  ^^ycoord  ^^image^^flags
+   #  ^^atomID ^^molID ^^type  ^^charge ^^xcoord  ^^ycoord  ^^ycoord  ^^image^^flags (optional)
 
+   Velocities # this section is optional
+
+         1  0.0050731  -0.00398928  0.00391473
+         2 -0.0175184   0.0173484  -0.00489207
+         3  0.00597225 -0.00202006  0.00166454
+         4 -0.010395   -0.0082582   0.00316419
+         5 -0.00390877  0.00470331 -0.00226911
+         6 -0.00111157 -0.00374545 -0.0169374
+         7  0.00209054 -0.00594936 -0.000124563
+         8  0.00635002 -0.0120093  -0.0110999
+         9 -0.004955   -0.0123375   0.000403422
+        10  0.00265028 -0.00189329 -0.00293198
+
+The common problem is processing the "Atoms" section, since its format depends
+on the :doc:`atom style <atom_style>` used and that setting must be done in the
+input file *before* reading the data file.  To assist with detecting incompatible
+data files, a comment is appended to the "Atoms" title indicating the atom style
+used (or intended) when *writing* the data file.  For example below is the same
+section for :doc:`atom style charge <atom_style>`, which omits the molecule ID
+column.
+
+.. code-block:: bash
+
+   Atoms # charge
+
+         1      1       0.560   43.99993  58.52678  36.78550
+         2      2      -0.270   45.10395  58.23499  35.86693
+         3      3      -0.510   43.81519  59.54928  37.43995
+         4      4       0.090   45.71714  57.34797  36.13434
+         5      4       0.090   45.72261  59.13657  35.67007
+         6      4       0.090   44.66624  58.09539  34.85538
+         7      3      -0.470   43.28193  57.47427  36.91953
+         8      4       0.070   42.07157  57.45486  37.62418
+         9      1       0.510   42.19985  57.57789  39.12163
+        10      1       0.510   41.88641  58.62251  39.70398
+   #  ^^atomID ^^type  ^^charge ^^xcoord  ^^ycoord  ^^ycoord
+
+Another source of confusion about the "Atoms" section format is the
+ordering of columns.  The three atom style variants `atom_style full`,
+`atom_style hybrid charge molecular`, and `atom_style hybrid molecular
+charge` all carry the same per-atom information, but in the data file
+the Atoms section has the columns 'Atom-ID Molecule-ID Atom-type Charge
+X Y Z' for atom style full, but hybrid atom styles the first columns are
+always 'Atom-ID Atom-type X Y Z' and then followed by any *additional*
+data added by the hybrid styles, and thus 'Charge Molecule-ID' for the
+first hybrid style and 'Molecule-ID Charge' in the second hybrid style
+variant.  Finally, an alternative to a hybrid atom style is to use fix
+property/atom, e.g. to add molecule IDs to atom style charge.  In this
+case the "Atoms" section is formatted according to atom style charge and
+a new section, "Molecules" is added that contains lines with 'Atom-ID
+Molecule-ID', one for each atom in the system.  For adding charges
+to atom style molecular with fix property/atom, the "Atoms" section is
+now formatted according to the atom style and a "Charges" section is
+added.
+   
 Molecule file
 ^^^^^^^^^^^^^
 
+Molecule files look quite similar to data files but they do not have a
+compatible format, i.e. one cannot use a data file as molecule file and
+vice versa.
 
 Potential file
 ^^^^^^^^^^^^^^
