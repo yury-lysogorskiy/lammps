@@ -294,14 +294,79 @@ Molecule-ID', one for each atom in the system.  For adding charges
 to atom style molecular with fix property/atom, the "Atoms" section is
 now formatted according to the atom style and a "Charges" section is
 added.
-   
+
 Molecule file
 ^^^^^^^^^^^^^
 
-Molecule files look quite similar to data files but they do not have a
-compatible format, i.e. one cannot use a data file as molecule file and
-vice versa.
+Molecule files for use with the :doc:`molecule command <molecule>` look
+quite similar to data files but they do not have a compatible format,
+i.e. one cannot use a data file as molecule file and vice versa. Below
+is a simple example for a water molecule (SPC/E model).  Same as a data
+file, there is an ignored title line and you can use comments.  However,
+there is no information about the number of types or the box dimensions.
+These are set when the simulation box is created.  Thus the header only
+has the count of atoms, bonds, and so on.
 
+While there also is a header part and sections and the sections must
+come after the header, the (required) section names are may be
+different.  There is no "Atoms" section and the section format is
+independent of the atom style. Its information is split across multiple
+sections, like "Coords", "Types", and "Charges".  Note that no "Masses"
+section is needed here.  The atom masses are by default tied to the atom
+type and set with a data file or the :doc:`mass command <mass>`.  A
+"Masses" section would only be required for atom styles with per-atom
+masses, e.g. atom style sphere.
+
+Since the entire file is a 'molecule', LAMMPS will assign a new
+molecule-ID (if supported by the atom style) when atoms are instantiated
+from a molecule file, e.g. with the :doc:`create_atoms command
+<create_atoms>`.  It is possible to include a "Molecules" section, in
+case the atoms belong to multiple 'molecules'.  Atom-IDs and
+molecule-IDs in the molecule file are relative for the file (starting
+from 1) and will be translated into actual atom-IDs also when the
+molecule is created.
+
+.. code-block:: bash
+
+   # Water molecule. SPC/E model.
+
+   3 atoms
+   2 bonds
+   1 angles
+
+   Coords
+
+   1    1.12456   0.09298   1.27452
+   2    1.53683   0.75606   1.89928
+   3    0.49482   0.56390   0.65678
+
+   Types
+
+   1        1
+   2        2
+   3        2
+
+   Charges
+
+   1       -0.8472
+   2        0.4236
+   3        0.4236
+
+   Bonds
+
+   1   1      1      2
+   2   1      1      3
+
+   Angles
+
+   1   1      2      1      3
+                
+
+There are also optional sections, e.g. about :doc:`SHAKE <fix_shake>` and
+:doc:`special bonds <special_bonds>`. Those are only needed if the molecule
+command is issues *before* the simulation box is defined.  Otherwise, the
+molecule command can derive the required settings internally.
+   
 Potential file
 ^^^^^^^^^^^^^^
 
