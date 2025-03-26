@@ -79,13 +79,13 @@ void DisplaceAtoms::command(int narg, char **arg)
   groupbit = group->get_bitmask_by_id(FLERR, arg[0], "displace_atoms");
 
   if (modify->check_rigid_group_overlap(groupbit))
-    error->warning(FLERR,"Attempting to displace atoms in rigid bodies");
+    error->warning(FLERR, "Attempting to displace atoms in rigid bodies");
 
   int style = -1;
-  if (strcmp(arg[1],"move") == 0) style = MOVE;
-  else if (strcmp(arg[1],"ramp") == 0) style = RAMP;
-  else if (strcmp(arg[1],"random") == 0) style = RANDOM;
-  else if (strcmp(arg[1],"rotate") == 0) style = ROTATE;
+  if (strcmp(arg[1], "move") == 0) style = MOVE;
+  else if (strcmp(arg[1], "ramp") == 0) style = RAMP;
+  else if (strcmp(arg[1], "random") == 0) style = RANDOM;
+  else if (strcmp(arg[1], "rotate") == 0) style = ROTATE;
   else error->all(FLERR, 1, "Unknown displace_atoms keyword {}", arg[1]);
 
   // set option defaults
@@ -94,10 +94,10 @@ void DisplaceAtoms::command(int narg, char **arg)
 
   // read options from end of input line
 
-  if (style == MOVE) options(narg-5,&arg[5]);
-  else if (style == RAMP) options(narg-8,&arg[8]);
-  else if (style == RANDOM) options(narg-6,&arg[6]);
-  else if (style == ROTATE) options(narg-9,&arg[9]);
+  if (style == MOVE) options(narg-5, &arg[5]);
+  else if (style == RAMP) options(narg-8, &arg[8]);
+  else if (style == RANDOM) options(narg-6, &arg[6]);
+  else if (style == ROTATE) options(narg-9, &arg[9]);
 
   // setup scaling
 
@@ -106,15 +106,14 @@ void DisplaceAtoms::command(int narg, char **arg)
     xscale = domain->lattice->xlattice;
     yscale = domain->lattice->ylattice;
     zscale = domain->lattice->zlattice;
-  }
-  else xscale = yscale = zscale = 1.0;
+  } else xscale = yscale = zscale = 1.0;
 
   // move atoms by 3-vector or specified variable(s)
 
   if (style == MOVE) {
     move(0,arg[2],xscale);
     move(1,arg[3],yscale);
-    move(2,arg[4],zscale);
+    if (domain->dimension == 3) move(2,arg[4],zscale);
   }
 
   // move atoms in ramped fashion
@@ -125,7 +124,9 @@ void DisplaceAtoms::command(int narg, char **arg)
     if (strcmp(arg[2],"x") == 0) d_dim = 0;
     else if (strcmp(arg[2],"y") == 0) d_dim = 1;
     else if (strcmp(arg[2],"z") == 0) d_dim = 2;
-    else error->all(FLERR, 2, "Unknown displace_atoms ramp keyword {}", arg[2]);
+    else error->all(FLERR, 2, "Unknown displace_atoms ramp dimension {}", arg[2]);
+    if ((domain->dimension == 2) && (d_dim = 2))
+      error->all(FLERR, 2, "Must not displace atoms in z-direction with 2d system");
 
     double d_lo,d_hi;
     if (d_dim == 0) {
@@ -143,7 +144,7 @@ void DisplaceAtoms::command(int narg, char **arg)
     if (strcmp(arg[5],"x") == 0) coord_dim = 0;
     else if (strcmp(arg[5],"y") == 0) coord_dim = 1;
     else if (strcmp(arg[5],"z") == 0) coord_dim = 2;
-    else error->all(FLERR, 5, "Unknown displace_atoms ramp keyword {}", arg[5]);
+    else error->all(FLERR, 5, "Unknown displace_atoms ramp dimension {}", arg[5]);
 
     double coord_lo,coord_hi;
     if (coord_dim == 0) {
@@ -185,17 +186,20 @@ void DisplaceAtoms::command(int narg, char **arg)
     double dz = zscale*utils::numeric(FLERR,arg[4],false,lmp);
     int seed = utils::inumeric(FLERR,arg[5],false,lmp);
     if (seed <= 0) error->all(FLERR, 5, "Illegal displace_atoms random seed {}", arg[5]);
+    if ((domain->dimension == 2) && (dz != 0.0))
+      error->all(FLERR, 4, "Must not displace atoms in z-direction with 2d system");
 
     double **x = atom->x;
     int *mask = atom->mask;
     int nlocal = atom->nlocal;
+    int dim = domain->dimension;
 
     for (i = 0; i < nlocal; i++) {
       if (mask[i] & groupbit) {
         random->reset(seed,x[i]);
         x[i][0] += dx * 2.0*(random->uniform()-0.5);
         x[i][1] += dy * 2.0*(random->uniform()-0.5);
-        x[i][2] += dz * 2.0*(random->uniform()-0.5);
+        if (dim == 3) x[i][2] += dz * 2.0*(random->uniform()-0.5);
       }
     }
 
@@ -228,7 +232,7 @@ void DisplaceAtoms::command(int narg, char **arg)
     axis[2] = utils::numeric(FLERR,arg[7],false,lmp);
     double theta = utils::numeric(FLERR,arg[8],false,lmp);
     if (dim == 2 && (axis[0] != 0.0 || axis[1] != 0.0))
-      error->all(FLERR, Error::NOLASTLINE, "Invalid displace_atoms rotate axis for 2d");
+      error->all(FLERR, Error::NOLASTLINE, "Invalid displace_atoms rotate axis for 2d system");
 
     double len = sqrt(axis[0]*axis[0] + axis[1]*axis[1] + axis[2]*axis[2]);
     if (len == 0.0)
