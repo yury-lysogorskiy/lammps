@@ -311,8 +311,8 @@ void Thermo::init()
       error->all(FLERR, Error::NOLASTLINE, "Could not find thermo fix ID {}", id_fix[i]);
 
     if (output->thermo_every % fixes[i]->global_freq)
-      error->all(FLERR, Error::NOLASTLINE, "Thermo and fix {} not computed at compatible times",
-                 id_fix[i]);
+      error->all(FLERR, Error::NOLASTLINE, "Thermo and fix {} not computed at compatible times{}",
+                 id_fix[i], utils::errorurl(7));
   }
 
   // find current ptr for each Variable ID
