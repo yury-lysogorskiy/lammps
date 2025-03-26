@@ -1,8 +1,15 @@
+
 File formats used by LAMMPS
 ===========================
 
 This page provides a general overview of the kinds of files and file
 formats that LAMMPS is reading and writing.
+
+.. contents:: On this page
+   :depth: 2
+   :backlinks: top
+
+-------------------
 
 Character Encoding
 ^^^^^^^^^^^^^^^^^^
