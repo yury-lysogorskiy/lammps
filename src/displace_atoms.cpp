@@ -66,14 +66,16 @@ void DisplaceAtoms::command(int narg, char **arg)
     error->all(FLERR,"Displace_atoms command before simulation box is defined" + utils::errorurl(33));
   if (narg < 2) error->all(FLERR,"Illegal displace_atoms command");
   if (modify->nfix_restart_peratom)
-    error->all(FLERR,"Cannot displace_atoms after "
-               "reading restart file with per-atom info");
+    error->all(FLERR,"Cannot displace_atoms after reading restart file with per-atom info");
 
   if (comm->me == 0) utils::logmesg(lmp,"Displacing atoms ...\n");
 
   // group and style
 
   igroup = group->find(arg[0]);
+  if (igroup < 0)
+    error->all(FLERR, Error::ARGZERO, "Could not find display_atoms group {}", arg[0]);
+
   groupbit = group->get_bitmask_by_id(FLERR, arg[0], "displace_atoms");
 
   if (modify->check_rigid_group_overlap(groupbit))
@@ -84,7 +86,7 @@ void DisplaceAtoms::command(int narg, char **arg)
   else if (strcmp(arg[1],"ramp") == 0) style = RAMP;
   else if (strcmp(arg[1],"random") == 0) style = RANDOM;
   else if (strcmp(arg[1],"rotate") == 0) style = ROTATE;
-  else error->all(FLERR,"Illegal displace_atoms command");
+  else error->all(FLERR, 1, "Unknown displace_atoms keyword {}", arg[1]);
 
   // set option defaults
 
@@ -123,7 +125,7 @@ void DisplaceAtoms::command(int narg, char **arg)
     if (strcmp(arg[2],"x") == 0) d_dim = 0;
     else if (strcmp(arg[2],"y") == 0) d_dim = 1;
     else if (strcmp(arg[2],"z") == 0) d_dim = 2;
-    else error->all(FLERR,"Illegal displace_atoms ramp command");
+    else error->all(FLERR, 2, "Unknown displace_atoms ramp keyword {}", arg[2]);
 
     double d_lo,d_hi;
     if (d_dim == 0) {
@@ -141,7 +143,7 @@ void DisplaceAtoms::command(int narg, char **arg)
     if (strcmp(arg[5],"x") == 0) coord_dim = 0;
     else if (strcmp(arg[5],"y") == 0) coord_dim = 1;
     else if (strcmp(arg[5],"z") == 0) coord_dim = 2;
-    else error->all(FLERR,"Illegal displace_atoms ramp command");
+    else error->all(FLERR, 5, "Unknown displace_atoms ramp keyword {}", arg[5]);
 
     double coord_lo,coord_hi;
     if (coord_dim == 0) {
@@ -182,7 +184,7 @@ void DisplaceAtoms::command(int narg, char **arg)
     double dy = yscale*utils::numeric(FLERR,arg[3],false,lmp);
     double dz = zscale*utils::numeric(FLERR,arg[4],false,lmp);
     int seed = utils::inumeric(FLERR,arg[5],false,lmp);
-    if (seed <= 0) error->all(FLERR,"Illegal displace_atoms random command");
+    if (seed <= 0) error->all(FLERR, 5, "Illegal displace_atoms random seed {}", arg[5]);
 
     double **x = atom->x;
     int *mask = atom->mask;
@@ -226,11 +228,11 @@ void DisplaceAtoms::command(int narg, char **arg)
     axis[2] = utils::numeric(FLERR,arg[7],false,lmp);
     double theta = utils::numeric(FLERR,arg[8],false,lmp);
     if (dim == 2 && (axis[0] != 0.0 || axis[1] != 0.0))
-      error->all(FLERR,"Invalid displace_atoms rotate axis for 2d");
+      error->all(FLERR, Error::NOLASTLINE, "Invalid displace_atoms rotate axis for 2d");
 
     double len = sqrt(axis[0]*axis[0] + axis[1]*axis[1] + axis[2]*axis[2]);
     if (len == 0.0)
-      error->all(FLERR,"Zero length rotation vector with displace_atoms");
+      error->all(FLERR, Error::NOLASTLINE, "Zero length rotation vector with displace_atoms");
     runit[0] = axis[0]/len;
     runit[1] = axis[1]/len;
     runit[2] = axis[2]/len;
@@ -384,7 +386,8 @@ void DisplaceAtoms::move(int idim, char *arg, double scale)
   } else {
     int ivar = input->variable->find(arg+2);
     if (ivar < 0)
-      error->all(FLERR,"Variable name for displace_atoms does not exist");
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Variable {} for displace_atoms move does not exist", arg+2);
 
     if (input->variable->equalstyle(ivar)) {
       double delta = scale * input->variable->compute_equal(ivar);
@@ -395,7 +398,8 @@ void DisplaceAtoms::move(int idim, char *arg, double scale)
       input->variable->compute_atom(ivar,igroup,mvec,1,0);
       for (int i = 0; i < nlocal; i++)
         if (mask[i] & groupbit) x[i][idim] += scale*mvec[i];
-    } else error->all(FLERR,"Variable for displace_atoms is invalid style");
+    } else error->all(FLERR, Error::NOLASTLINE,
+                      "Variable {} for displace_atoms is invalid style", arg+2);
   }
 }
 
@@ -405,16 +409,23 @@ void DisplaceAtoms::move(int idim, char *arg, double scale)
 
 void DisplaceAtoms::options(int narg, char **arg)
 {
-  if (narg < 0) error->all(FLERR,"Illegal displace_atoms command");
+  if (narg < 0) utils::missing_cmd_args(FLERR, "displace_atoms", error);
+
+  // determine argument offset, if possible
+  int ioffset = 0;
+  if (lmp->input->arg) {
+    for (int i = 0; i < lmp->input->narg; ++i)
+      if (lmp->input->arg[i] == arg[0]) ioffset = i;
+  }
 
   int iarg = 0;
   while (iarg < narg) {
     if (strcmp(arg[iarg],"units") == 0) {
-      if (iarg+2 > narg) error->all(FLERR,"Illegal displace_atoms command");
+      if (iarg+2 > narg) utils::missing_cmd_args(FLERR, "displace_atoms units", error);
       if (strcmp(arg[iarg+1],"box") == 0) scaleflag = 0;
       else if (strcmp(arg[iarg+1],"lattice") == 0) scaleflag = 1;
-      else error->all(FLERR,"Illegal displace_atoms command");
+      else error->all(FLERR, ioffset + iarg + 1, "Unknown displace_atoms units argument {}", arg[iarg+1]);
       iarg += 2;
-    } else error->all(FLERR,"Illegal displace_atoms command");
+    } else error->all(FLERR, ioffset + iarg, "Unknown displace_atoms keyword {}", arg[iarg]);
   }
 }
