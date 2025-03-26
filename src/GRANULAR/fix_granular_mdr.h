@@ -97,8 +97,7 @@ class FixGranularMDR : public Fix {
   int index_sigmayy;            // yy-component of the stress tensor, not necessary forforce calculation
   int index_sigmazz;            // zz-component of the stress tensor, not necessary forforce calculation
   int index_history_setup_flag; // flag to check if history variables have beeninitialized
-  int index_contacts;           // total contacts on particle
-  int index_adhesive_length;    // total length of adhesive contact on a particle
+  int index_dRavg;           // total contacts on particle
 };
 
 }    // namespace LAMMPS_NS

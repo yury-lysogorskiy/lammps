@@ -38,6 +38,10 @@
 #include "update.h"
 #include "variable.h"
 
+// wzunker
+#include "csv_writer.h"
+#include <sstream>
+
 using namespace LAMMPS_NS;
 using namespace Granular_NS;
 using namespace Granular_MDR_NS;
@@ -45,7 +49,7 @@ using namespace FixConst;
 using MathConst::MY_PI;
 
 static constexpr double EPSILON = 1e-16;
-static constexpr double OVERLAP_LIMIT = 0.75;
+static constexpr double OVERLAP_LIMIT = 0.95;
 
 enum { COMM_1, COMM_2 };
 
@@ -85,7 +89,7 @@ void FixGranularMDR::post_constructor()
   modify->add_fix(
       fmt::format("{} all property/atom d_Ro d_Vcaps d_Vgeo d_Velas d_eps_bar d_dRnumerator "
                   "d_dRdenominator d_Acon0 d_Acon1 d_Atot d_Atot_sum d_ddelta_bar d_psi "
-                  "d_history_setup_flag d_sigmaxx d_sigmayy d_sigmazz ghost yes",
+                  "d_history_setup_flag d_sigmaxx d_sigmayy d_sigmazz d_dRavg ghost yes",
                   id_fix));
 
   index_Ro = atom->find_custom("Ro", tmp1, tmp2);
@@ -105,6 +109,7 @@ void FixGranularMDR::post_constructor()
   index_sigmaxx = atom->find_custom("sigmaxx", tmp1, tmp2);
   index_sigmayy = atom->find_custom("sigmayy", tmp1, tmp2);
   index_sigmazz = atom->find_custom("sigmazz", tmp1, tmp2);
+  index_dRavg = atom->find_custom("dRavg", tmp1, tmp2);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -208,6 +213,7 @@ void FixGranularMDR::pre_force(int)
   double *sigmayy = atom->dvector[index_sigmayy];
   double *sigmazz = atom->dvector[index_sigmazz];
   double *history_setup_flag = atom->dvector[index_history_setup_flag];
+  double *dRavg = atom->dvector[index_dRavg];
 
   int new_atom;
   int nlocal = atom->nlocal;
@@ -250,10 +256,35 @@ void FixGranularMDR::pre_force(int)
     psi[i] = (Atot[i] - Acon1[i]) / Atot[i];
 
     if (psi_b_coeff < psi[i]) {
-      const double dR = MAX(dRnumerator[i] / (dRdenominator[i] - 4.0 * MY_PI * pow(R, 2.0)), 0.0);
-      if ((radius[i] + dR) < (1.5 * Ro[i])) radius[i] += dR;
+      double w_confinement;
+      ( psi[i] > 0.1 ) ? w_confinement = 1.0/(1.0 + exp(-75.0*(psi[i]-0.2))) : w_confinement = 0.0;
+      const double dR = MAX(dRnumerator[i] / (dRdenominator[i] - 4.0 * MY_PI * pow(R, 2.0))*w_confinement, 0.0);
+
+      const double N_window = 10.0; 
+      if (dR > 0.0) dRavg[i] += (dR - dRavg[i]) / N_window;
+
+      if (((radius[i] + dR) < (1.5 * Ro[i])) && (dR > 0.0)) radius[i] += dRavg[i];
+      
+      //(dR + dRavg[i])/2.0;
+      //dRavg[i] = (dR + dRavg[i])/2.0;
+
+        //// wzunker
+        //const double dRdenominatorTrue = (dRdenominator[i] - 4.0 * MY_PI * pow(R, 2.0));
+        //if (i == 0) {
+        //  CSVWriter csvWriter("/Users/willzunker/simulations/lammps/bulk_response/compression_sleeve/dR_parameters.csv");
+        //  std::stringstream rowDataStream;
+        //  rowDataStream << std::scientific << std::setprecision(8); // Set the format and precision
+        //  rowDataStream << dRnumerator[i] << ", " << dRdenominator[i] << ", " << dRavg[i] << ", " << R << ", " << dRdenominatorTrue << ", " << lmp->update->ntimestep;
+        //  std::string rowData = rowDataStream.str();
+        //  csvWriter.writeRow(rowData);
+        //}
+
     }
     Acon0[i] = Acon1[i];
+
+    // wzunker
+    //const double dR_tmp = MAX(dRnumerator[i] / (dRdenominator[i] - 4.0 * MY_PI * pow(R, 2.0)), 0.0);
+    //printf("i = %d, psi_b = %f, psi = %f, Atot = %f, Acon = %f, dRnumerator = %f, dRdenominator = %f, R = %f, dR = %f  \n", i, psi_b_coeff, psi[i], Atot[i], Acon1[i], dRnumerator[i], dRdenominator[i],radius[i],dR_tmp);
   }
 
   comm_stage = COMM_1;
@@ -510,6 +541,9 @@ void FixGranularMDR::calculate_contact_penalty()
                          "(e.g. increase the skin distance).");
 
             pjk[0] += 1.0 / (1.0 + std::exp(-50.0 * (alpha / MY_PI - 0.5)));
+
+            // wzunker
+            //printf("i = %d, j = %d, k = %d, pij = %f, pik = %f, pjk = %f  \n", i, j, k, pij[0], pik[0], pjk[0]);
           }
         }
       }

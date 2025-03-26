@@ -251,8 +251,8 @@ void GranularModel::init()
   // Must have valid normal, damping, and tangential models
   if (normal_model->name == "none") error->all(FLERR, "Must specify normal granular model");
   if (normal_model->name == "mdr") {
-     if (damping_model->name != "none")
-       error->all(FLERR, "MDR require 'none' damping model. To damp, specify a coefficient of restitution < 1.");
+     //if (damping_model->name != "none")
+       //error->all(FLERR, "MDR require 'none' damping model. To damp, specify a coefficient of restitution < 1.");
   } else {
     if (damping_model->name == "none") error->all(FLERR, "Must specify damping granular model");
   }

@@ -18,6 +18,8 @@
 #include "math_special.h"
 #include "math_const.h"
 
+#include "style_gran_sub_mod.h"    // IWYU pragma: keep
+
 #include <cmath>
 
 using namespace LAMMPS_NS;
@@ -74,8 +76,12 @@ GranSubModDampingVelocity::GranSubModDampingVelocity(GranularModel *gm, LAMMPS *
 
 double GranSubModDampingVelocity::calculate_forces()
 {
-  damp_prefactor = damp;
-  return -damp_prefactor * gm->vnnr;
+  if (gm->normal_model->name == "mdr") {
+    return 0.0;
+  } else {
+    damp_prefactor = damp;
+    return -damp_prefactor * gm->vnnr;
+  }
 }
 
 /* ----------------------------------------------------------------------
