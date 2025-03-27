@@ -374,13 +374,46 @@ There are also optional sections, e.g. about :doc:`SHAKE <fix_shake>` and
 command is issues *before* the simulation box is defined.  Otherwise, the
 molecule command can derive the required settings internally.
 
-Potential file
-^^^^^^^^^^^^^^
-
+Native Dump file
+^^^^^^^^^^^^^^^^
 
 Restart file
 ^^^^^^^^^^^^
 
+LAMMPS restart files are binary files and not available in text format.
+They can be identified by the first few bytes that contain the (C-style)
+string "LammpS RestartT" as `magic string
+<https://en.wikipedia.org/wiki/Magic_string>`_.  This is followed by a
+16-bit integer of the number 1 used for detecting whether the computer
+writing the restart has the same `endianness
+<https://en.wikipedia.org/wiki/Endianness>`_ as the computer reading it.
+If not the file cannot be read correctly.  This is followed by a 32-bit
+integer indicating the file format revision (currently 3), which can be
+used to implement backward compatibility for reading older revisions.
+
+This information has been added to the `Unix "file" command's
+<https://www.darwinsys.com/file/>` "magic" file so that restart files
+can be identified without opening them.  If you have a fairly recent
+version, it should already be included. If you have an older version,
+the LAMMPS source package :ref:`contains a file with the necessary
+additions <magic>`.
+
+The rest of the file is organized in sections of a 32-bit signed integer
+constant indicating the kind of content and the corresponding value (or
+values).  If those values are arrays (including C-style strings), then
+the integer constant is followed by a 32-bit integer indicating the
+length of the array.  This mechanism will read the data regardless of
+the ordering of the sections.  Symbolic names of the section constants
+are in the ``lmprestart.h`` header file.
+
+LAMMPS restart files are not expected to be portable between platforms
+or LAMMPS versions, but changes to the file format are rare.
+
 
 Dump file
 ^^^^^^^^^
+
+
+Potential files
+^^^^^^^^^^^^^^^
+
