@@ -145,6 +145,7 @@ void DumpExtXYZ::pack(tagint *ids)
   double **v = atom->v;
   double **f = atom->f;
   double *mass = atom->mass;
+  double *rmass = atom->rmass;
   int nlocal = atom->nlocal;
 
   m = n = 0;
@@ -166,7 +167,11 @@ void DumpExtXYZ::pack(tagint *ids)
         buf[m++] = f[i][2];
       }
       if (with_mass) {
-        buf[m++] = mass[type[i]];
+        if (rmass) {
+          buf[m++] = rmass[i];
+        } else {
+          buf[m++] = mass[type[i]];
+        }
       }
 
       if (ids) ids[n++] = tag[i];
@@ -191,31 +196,31 @@ int DumpExtXYZ::convert_string(int n, double *mybuf)
 
     if (size_one == 5) {
       offset +=
-	  snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
-		  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4]);
+          snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
+                  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4]);
     } else if (size_one == 6) {
       offset +=
-	  snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
-		  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5]);
+          snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
+                  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5]);
     } else if (size_one == 8) {
       offset +=
-	  snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
-		  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7]);
+          snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
+                  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7]);
     } else if (size_one == 9) {
       offset +=
-	  snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
-		  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7],
-		  mybuf[m + 8]);
+          snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
+                  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7],
+                  mybuf[m + 8]);
     } else if (size_one == 11) {
       offset +=
-	  snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
-		  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7],
-		  mybuf[m + 8], mybuf[m + 9], mybuf[m + 10]);
+          snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
+                  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7],
+                  mybuf[m + 8], mybuf[m + 9], mybuf[m + 10]);
     } else if (size_one == 12) {
       offset +=
-	  snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
-		  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7],
-		  mybuf[m + 8], mybuf[m + 9], mybuf[m + 10], mybuf[m + 11]);
+          snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
+                  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7],
+                  mybuf[m + 8], mybuf[m + 9], mybuf[m + 10], mybuf[m + 11]);
     } else {
       error->all(FLERR,"Invalid value of size_one for dump extxyz format.");
     }
@@ -233,24 +238,24 @@ void DumpExtXYZ::write_lines(int n, double *mybuf)
   for (int i = 0; i < n; i++) {
     if (size_one == 5) {
       fprintf(fp, format, typenames[static_cast<int>(mybuf[m + 1])], mybuf[m + 2], mybuf[m + 3],
-	      mybuf[m + 4]);
+              mybuf[m + 4]);
     } else if (size_one == 6) {
       fprintf(fp, format, typenames[static_cast<int>(mybuf[m + 1])], mybuf[m + 2], mybuf[m + 3],
-	      mybuf[m + 4], mybuf[m + 5]);
+              mybuf[m + 4], mybuf[m + 5]);
     } else if (size_one == 8) {
       fprintf(fp, format, typenames[static_cast<int>(mybuf[m + 1])], mybuf[m + 2], mybuf[m + 3],
-	      mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7]);
+              mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7]);
     } else if (size_one == 9) {
       fprintf(fp, format, typenames[static_cast<int>(mybuf[m + 1])], mybuf[m + 2], mybuf[m + 3],
-	      mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7], mybuf[m + 8]);
+              mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7], mybuf[m + 8]);
     } else if (size_one == 11) {
       fprintf(fp, format, typenames[static_cast<int>(mybuf[m + 1])], mybuf[m + 2], mybuf[m + 3],
-	      mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7], mybuf[m + 8], mybuf[m + 9],
-	      mybuf[m + 10]);
+              mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7], mybuf[m + 8], mybuf[m + 9],
+              mybuf[m + 10]);
     } else if (size_one == 12) {
       fprintf(fp, format, typenames[static_cast<int>(mybuf[m + 1])], mybuf[m + 2], mybuf[m + 3],
-	      mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7], mybuf[m + 8], mybuf[m + 9],
-	      mybuf[m + 10], mybuf[m + 11]);
+              mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7], mybuf[m + 8], mybuf[m + 9],
+              mybuf[m + 10], mybuf[m + 11]);
     } else {
       error->all(FLERR,"Invalid value of size_one for dump extxyz format.");
     }
