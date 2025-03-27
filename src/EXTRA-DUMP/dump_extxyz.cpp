@@ -34,7 +34,7 @@ static constexpr int DELTA = 1048576;
 /* ---------------------------------------------------------------------- */
 
 DumpExtXYZ::DumpExtXYZ(LAMMPS *lmp, int narg, char **arg) :
-  DumpXYZ(lmp, narg, arg), properties_string(nullptr)
+    DumpXYZ(lmp, narg, arg), properties_string(nullptr)
 {
   // style specific customizable settings
   with_vel = 1;
@@ -70,17 +70,17 @@ void DumpExtXYZ::update_properties()
 
   // The properties string
   delete[] properties_string;
-  properties_string = utils::strdup(fmt::format("species:S:1:pos:R:3{}{}{}",
-        (with_vel ? ":vel:R:3" : ""), (with_forces ? ":forces:R:3" : ""), (with_mass ? ":mass:R:1" : "")));
-
+  properties_string = utils::strdup(
+      fmt::format("species:S:1:pos:R:3{}{}{}", (with_vel ? ":vel:R:3" : ""),
+                  (with_forces ? ":forces:R:3" : ""), (with_mass ? ":mass:R:1" : "")));
 
   // The output printf-style format
-  delete [] format;
+  delete[] format;
   if (format_line_user)
     format = utils::strdup(fmt::format("{}\n", format_line_user));
   else {
-    format = utils::strdup(fmt::format("%s %g %g %g{}{}{}\n",
-          (with_vel ? " %g %g %g" : ""), (with_forces ? " %g %g %g" : ""), (with_mass ? " %g" : "")));
+    format = utils::strdup(fmt::format("%s %g %g %g{}{}{}\n", (with_vel ? " %g %g %g" : ""),
+                                       (with_forces ? " %g %g %g" : ""), (with_mass ? " %g" : "")));
   }
 }
 
@@ -103,23 +103,23 @@ int DumpExtXYZ::modify_param(int narg, char **arg)
   int rv = DumpXYZ::modify_param(narg, arg);
   if (rv > 0) return rv;
 
-  if (strcmp(arg[0],"vel") == 0) {
-    if (narg < 2) error->all(FLERR,"Illegal dump_modify command");
-    with_vel = utils::logical(FLERR,arg[1],false,lmp);
+  if (strcmp(arg[0], "vel") == 0) {
+    if (narg < 2) error->all(FLERR, "Illegal dump_modify command");
+    with_vel = utils::logical(FLERR, arg[1], false, lmp);
     update_properties();
     return 2;
   }
 
-  if (strcmp(arg[0],"forces") == 0) {
-    if (narg < 2) error->all(FLERR,"Illegal dump_modify command");
-    with_forces = utils::logical(FLERR,arg[1],false,lmp);
+  if (strcmp(arg[0], "forces") == 0) {
+    if (narg < 2) error->all(FLERR, "Illegal dump_modify command");
+    with_forces = utils::logical(FLERR, arg[1], false, lmp);
     update_properties();
     return 2;
   }
 
-  if (strcmp(arg[0],"mass") == 0) {
-    if (narg < 2) error->all(FLERR,"Illegal dump_modify command");
-    with_mass = utils::logical(FLERR,arg[1],false,lmp);
+  if (strcmp(arg[0], "mass") == 0) {
+    if (narg < 2) error->all(FLERR, "Illegal dump_modify command");
+    with_mass = utils::logical(FLERR, arg[1], false, lmp);
     update_properties();
     return 2;
   }
@@ -143,7 +143,7 @@ void DumpExtXYZ::write_header(bigint n)
         fmt::format(" Lattice=\"{:g} {:g} {:g} {:g} {:g} {:g} {:g} {:g} {:g}\"", domain->xprd, 0.,
                     0., domain->xy, domain->yprd, 0., domain->xz, domain->yz, domain->zprd);
 
-    if (output && output->thermo) {  
+    if (output && output->thermo) {
       auto *pe = output->thermo->pe;
       if (pe) header += fmt::format(" Potential_energy={}", pe->compute_scalar());
 
@@ -153,13 +153,13 @@ void DumpExtXYZ::write_header(bigint n)
       auto *press = output->thermo->pressure;
       if (press) {
         press->compute_vector();
-        header += fmt::format(" Stress=\"{} {} {} {} {} {} {} {} {}\"",
-                              press->vector[0], press->vector[3], press->vector[4],
-                              press->vector[3], press->vector[1], press->vector[5],
-                              press->vector[4], press->vector[5], press->vector[2]);
+        header +=
+            fmt::format(" Stress=\"{} {} {} {} {} {} {} {} {}\"", press->vector[0],
+                        press->vector[3], press->vector[4], press->vector[3], press->vector[1],
+                        press->vector[5], press->vector[4], press->vector[5], press->vector[2]);
       }
     }
-    
+
     header += fmt::format(" Properties={}", properties_string);
     utils::print(fp, header + "\n");
   }
@@ -228,34 +228,33 @@ int DumpExtXYZ::convert_string(int n, double *mybuf)
     }
 
     if (size_one == 5) {
-      offset +=
-          snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
-                  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4]);
+      offset += snprintf(&sbuf[offset], maxsbuf - offset, format,
+                         typenames[static_cast<int>(mybuf[m + 1])], mybuf[m + 2], mybuf[m + 3],
+                         mybuf[m + 4]);
     } else if (size_one == 6) {
-      offset +=
-          snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
-                  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5]);
+      offset += snprintf(&sbuf[offset], maxsbuf - offset, format,
+                         typenames[static_cast<int>(mybuf[m + 1])], mybuf[m + 2], mybuf[m + 3],
+                         mybuf[m + 4], mybuf[m + 5]);
     } else if (size_one == 8) {
-      offset +=
-          snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
-                  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7]);
+      offset += snprintf(&sbuf[offset], maxsbuf - offset, format,
+                         typenames[static_cast<int>(mybuf[m + 1])], mybuf[m + 2], mybuf[m + 3],
+                         mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7]);
     } else if (size_one == 9) {
-      offset +=
-          snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
-                  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7],
-                  mybuf[m + 8]);
+      offset += snprintf(&sbuf[offset], maxsbuf - offset, format,
+                         typenames[static_cast<int>(mybuf[m + 1])], mybuf[m + 2], mybuf[m + 3],
+                         mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7], mybuf[m + 8]);
     } else if (size_one == 11) {
-      offset +=
-          snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
-                  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7],
-                  mybuf[m + 8], mybuf[m + 9], mybuf[m + 10]);
+      offset += snprintf(&sbuf[offset], maxsbuf - offset, format,
+                         typenames[static_cast<int>(mybuf[m + 1])], mybuf[m + 2], mybuf[m + 3],
+                         mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7], mybuf[m + 8],
+                         mybuf[m + 9], mybuf[m + 10]);
     } else if (size_one == 12) {
-      offset +=
-          snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
-                  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7],
-                  mybuf[m + 8], mybuf[m + 9], mybuf[m + 10], mybuf[m + 11]);
+      offset += snprintf(&sbuf[offset], maxsbuf - offset, format,
+                         typenames[static_cast<int>(mybuf[m + 1])], mybuf[m + 2], mybuf[m + 3],
+                         mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7], mybuf[m + 8],
+                         mybuf[m + 9], mybuf[m + 10], mybuf[m + 11]);
     } else {
-      error->all(FLERR,"Invalid value of size_one for dump extxyz format.");
+      error->all(FLERR, "Invalid value of size_one for dump extxyz format.");
     }
     m += size_one;
   }
@@ -290,7 +289,7 @@ void DumpExtXYZ::write_lines(int n, double *mybuf)
               mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7], mybuf[m + 8], mybuf[m + 9],
               mybuf[m + 10], mybuf[m + 11]);
     } else {
-      error->all(FLERR,"Invalid value of size_one for dump extxyz format.");
+      error->all(FLERR, "Invalid value of size_one for dump extxyz format.");
     }
     m += size_one;
   }
