@@ -122,15 +122,15 @@ void Compute::init_flags()
   if (scalar_flag && (extscalar < 0))
     error->all(FLERR, Error::NOLASTLINE,
                "Must set 'extscalar' when setting 'scalar_flag' for compute {}.  "
-               "Contact the developer.", style);
+               "Please contact the LAMMPS developers.{}", style, utils::errorurl(35));
   if (vector_flag && (extvector < 0) && !extlist)
     error->all(FLERR, Error::NOLASTLINE,
                "Must set 'extvector' or 'extlist' when setting 'vector_flag' for compute {}.  "
-               "Contact the developer.", style);
+               "Please contact the LAMMPS developers.{}", style, utils::errorurl(35));
   if (array_flag && (extarray < 0))
     error->all(FLERR, Error::NOLASTLINE,
                "Must set 'extarray' when setting 'array_flag' for compute {}.  "
-               "Contact the developer.", style);
+               "Please contact the LAMMPS developers.{}", style, utils::errorurl(35));
 }
 
 /* ---------------------------------------------------------------------- */
