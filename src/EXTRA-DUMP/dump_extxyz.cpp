@@ -14,10 +14,12 @@
 #include "dump_extxyz.h"
 
 #include "atom.h"
+#include "compute.h"
 #include "domain.h"
 #include "error.h"
 #include "label_map.h"
 #include "memory.h"
+#include "modify.h"
 #include "update.h"
 
 #include <cstring>
@@ -118,15 +120,36 @@ void DumpExtXYZ::write_header(bigint n)
   if (me == 0) {
     if (!fp) error->one(FLERR, Error::NOLASTLINE, "Must not use 'run pre no' after creating a new dump");
 
-    std::string header;
-
-    header = fmt::format("{}\nTimestep={}", n, update->ntimestep);
+    std::string header = fmt::format("{}\nTimestep={}", n, update->ntimestep);
     if (time_flag) header += fmt::format(" Time={:.6f}", compute_time());
     header += fmt::format(" pbc=\"{} {} {}\"", domain->xperiodic ? "T" : "F",
                           domain->yperiodic ? "T" : "F", domain->zperiodic ? "T" : "F");
     header +=
         fmt::format(" Lattice=\"{:g} {:g} {:g} {:g} {:g} {:g} {:g} {:g} {:g}\"", domain->xprd, 0.,
                     0., domain->xy, domain->yprd, 0., domain->xz, domain->yz, domain->zprd);
+
+    Compute *pe_compute = modify->get_compute_by_id("thermo_pe");
+    if (pe_compute->invoked_flag) {
+      double pe = pe_compute->compute_scalar();
+      header += fmt::format(" Potential_energy={}", pe);
+    }
+
+    Compute *temp_compute = modify->get_compute_by_id("thermo_temp");
+    if (temp_compute->invoked_flag) {
+      double temp = temp_compute->compute_scalar();
+      header += fmt::format(" Temperature={}", temp);
+    }
+
+    Compute *press_compute = modify->get_compute_by_id("thermo_press");
+    if (press_compute->invoked_flag) {
+      press_compute->compute_vector();
+      double *press = press_compute->vector;
+      header += fmt::format(" Stress=\"{} {} {} {} {} {} {} {} {}\"",
+			    press[0], press[3], press[4],
+			    press[3], press[1], press[5],
+			    press[4], press[5], press[2]);
+    }
+
     header += fmt::format(" Properties={}", properties_string);
     utils::print(fp, header + "\n");
   }
