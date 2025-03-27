@@ -10,7 +10,9 @@ then for specific errors.  In the latter cases, LAMMPS will output a
 short message and then provide a URL that links to a specific section on
 this page.
 
-.. contents::
+-------
+
+.. contents:: Individual paragraphs
 
 ------
 
