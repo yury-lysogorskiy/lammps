@@ -20,6 +20,8 @@
 #include "label_map.h"
 #include "memory.h"
 #include "modify.h"
+#include "output.h"
+#include "thermo.h"
 #include "update.h"
 
 #include <cstring>
@@ -28,6 +30,36 @@ using namespace LAMMPS_NS;
 
 static constexpr int ONELINE = 512;
 static constexpr int DELTA = 1048576;
+
+/* ---------------------------------------------------------------------- */
+
+DumpExtXYZ::DumpExtXYZ(LAMMPS *lmp, int narg, char **arg) :
+  DumpXYZ(lmp, narg, arg), properties_string(nullptr)
+{
+  // style specific customizable settings
+  with_vel = 1;
+  with_forces = 1;
+  with_mass = 0;
+  with_pe = 1;
+  with_temp = 1;
+  with_press = 0;
+
+  update_properties();
+
+  // We want simulation time by default
+  time_flag = 1;
+
+  // dump may invoke computes
+  clearstep = 1;
+
+  // use type labels by default if present
+  if (atom->labelmapflag) {
+    typenames = new char *[ntypes + 1];
+    for (int itype = 1; itype <= ntypes; itype++) {
+      typenames[itype] = utils::strdup(atom->lmap->typelabel[itype - 1]);
+    }
+  }
+}
 
 /* ---------------------------------------------------------------------- */
 
@@ -54,29 +86,11 @@ void DumpExtXYZ::update_properties()
 
 /* ---------------------------------------------------------------------- */
 
-DumpExtXYZ::DumpExtXYZ(LAMMPS *lmp, int narg, char **arg) : DumpXYZ(lmp, narg, arg)
-{
-  update_properties();
-
-  // We want time by default
-  time_flag = 1;
-
-  // use type labels by default if present
-  if (atom->labelmapflag) {
-    typenames = new char *[ntypes + 1];
-    for (int itype = 1; itype <= ntypes; itype++) {
-      typenames[itype] = utils::strdup(atom->lmap->typelabel[itype - 1]);
-    }
-  }
-}
-
-/* ---------------------------------------------------------------------- */
-
 void DumpExtXYZ::init_style()
 {
   if (!typenames)
     error->all(FLERR, Error::NOLASTLINE,
-               "Must use either typelables or dump_modify element with dump style extxyz");
+               "Must use either type lables or dump_modify element with dump style extxyz");
 
   DumpXYZ::init_style();
   update_properties();
@@ -118,7 +132,8 @@ int DumpExtXYZ::modify_param(int narg, char **arg)
 void DumpExtXYZ::write_header(bigint n)
 {
   if (me == 0) {
-    if (!fp) error->one(FLERR, Error::NOLASTLINE, "Must not use 'run pre no' after creating a new dump");
+    if (!fp)
+      error->one(FLERR, Error::NOLASTLINE, "Must not use 'run pre no' after creating a new dump");
 
     std::string header = fmt::format("{}\nTimestep={}", n, update->ntimestep);
     if (time_flag) header += fmt::format(" Time={:.6f}", compute_time());
@@ -128,28 +143,23 @@ void DumpExtXYZ::write_header(bigint n)
         fmt::format(" Lattice=\"{:g} {:g} {:g} {:g} {:g} {:g} {:g} {:g} {:g}\"", domain->xprd, 0.,
                     0., domain->xy, domain->yprd, 0., domain->xz, domain->yz, domain->zprd);
 
-    Compute *pe_compute = modify->get_compute_by_id("thermo_pe");
-    if (pe_compute->invoked_flag) {
-      double pe = pe_compute->compute_scalar();
-      header += fmt::format(" Potential_energy={}", pe);
-    }
+    if (output && output->thermo) {  
+      auto *pe = output->thermo->pe;
+      if (pe) header += fmt::format(" Potential_energy={}", pe->compute_scalar());
 
-    Compute *temp_compute = modify->get_compute_by_id("thermo_temp");
-    if (temp_compute->invoked_flag) {
-      double temp = temp_compute->compute_scalar();
-      header += fmt::format(" Temperature={}", temp);
-    }
+      auto *temp = output->thermo->temperature;
+      if (temp) header += fmt::format(" Temperature={}", temp->compute_scalar());
 
-    Compute *press_compute = modify->get_compute_by_id("thermo_press");
-    if (press_compute->invoked_flag) {
-      press_compute->compute_vector();
-      double *press = press_compute->vector;
-      header += fmt::format(" Stress=\"{} {} {} {} {} {} {} {} {}\"",
-			    press[0], press[3], press[4],
-			    press[3], press[1], press[5],
-			    press[4], press[5], press[2]);
+      auto *press = output->thermo->pressure;
+      if (press) {
+        press->compute_vector();
+        header += fmt::format(" Stress=\"{} {} {} {} {} {} {} {} {}\"",
+                              press->vector[0], press->vector[3], press->vector[4],
+                              press->vector[3], press->vector[1], press->vector[5],
+                              press->vector[4], press->vector[5], press->vector[2]);
+      }
     }
-
+    
     header += fmt::format(" Properties={}", properties_string);
     utils::print(fp, header + "\n");
   }

@@ -23,18 +23,17 @@ DumpStyle(extxyz,DumpExtXYZ);
 #include "dump_xyz.h"
 
 namespace LAMMPS_NS {
-
 class DumpExtXYZ : public DumpXYZ {
  public:
   DumpExtXYZ(class LAMMPS *, int, char **);
 
  protected:
-  int with_vel = 1;
-  int with_forces = 1;
-  int with_mass = 0;
-  int with_pe = 1;
-  int with_temp = 1;
-  int with_press = 0;
+  int with_vel;
+  int with_forces;
+  int with_mass;
+  int with_pe;
+  int with_temp;
+  int with_press;
   char *properties_string;
 
   void update_properties();
