@@ -29,6 +29,15 @@ class DumpExtXYZ : public DumpXYZ {
   DumpExtXYZ(class LAMMPS *, int, char **);
 
  protected:
+  int with_vel = 1;
+  int with_forces = 1;
+  int with_mass = 0;
+  int with_pe = 1;
+  int with_temp = 1;
+  int with_press = 0;
+  char *properties_string;
+
+  void update_properties();
   void init_style() override;
   void write_header(bigint) override;
   void pack(tagint *) override;

@@ -29,12 +29,35 @@ static constexpr int DELTA = 1048576;
 
 /* ---------------------------------------------------------------------- */
 
+void DumpExtXYZ::update_properties()
+{
+  // How many per-atom elements we buffer
+  size_one = 5 + (with_vel ? 3 : 0) + (with_forces ? 3 : 0) + (with_mass ? 1 : 0);
+
+  // The properties string
+  delete[] properties_string;
+  properties_string = utils::strdup(fmt::format("species:S:1:pos:R:3{}{}{}",
+        (with_vel ? ":vel:R:3" : ""), (with_forces ? ":forces:R:3" : ""), (with_mass ? ":mass:R:1" : "")));
+
+
+  // The output printf-style format
+  delete [] format;
+  if (format_line_user)
+    format = utils::strdup(fmt::format("{}\n", format_line_user));
+  else {
+    format = utils::strdup(fmt::format("%s %g %g %g{}{}{}\n",
+          (with_vel ? " %g %g %g" : ""), (with_forces ? " %g %g %g" : ""), (with_mass ? " %g" : "")));
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+
 DumpExtXYZ::DumpExtXYZ(LAMMPS *lmp, int narg, char **arg) : DumpXYZ(lmp, narg, arg)
 {
+  update_properties();
 
-  size_one = 11;
-  delete[] format_default;
-  format_default = utils::strdup("%s %g %g %g %g %g %g %g %g %g");
+  // We want time by default
+  time_flag = 1;
 
   // use type labels by default if present
   if (atom->labelmapflag) {
@@ -54,6 +77,7 @@ void DumpExtXYZ::init_style()
                "Must use either typelables or dump_modify element with dump style extxyz");
 
   DumpXYZ::init_style();
+  update_properties();
 }
 
 /* ---------------------------------------------------------------------- */
@@ -62,6 +86,28 @@ int DumpExtXYZ::modify_param(int narg, char **arg)
 {
   int rv = DumpXYZ::modify_param(narg, arg);
   if (rv > 0) return rv;
+
+  if (strcmp(arg[0],"vel") == 0) {
+    if (narg < 2) error->all(FLERR,"Illegal dump_modify command");
+    with_vel = utils::logical(FLERR,arg[1],false,lmp);
+    update_properties();
+    return 2;
+  }
+
+  if (strcmp(arg[0],"forces") == 0) {
+    if (narg < 2) error->all(FLERR,"Illegal dump_modify command");
+    with_forces = utils::logical(FLERR,arg[1],false,lmp);
+    update_properties();
+    return 2;
+  }
+
+  if (strcmp(arg[0],"mass") == 0) {
+    if (narg < 2) error->all(FLERR,"Illegal dump_modify command");
+    with_mass = utils::logical(FLERR,arg[1],false,lmp);
+    update_properties();
+    return 2;
+  }
+
   return 0;
 }
 
@@ -81,7 +127,7 @@ void DumpExtXYZ::write_header(bigint n)
     header +=
         fmt::format(" Lattice=\"{:g} {:g} {:g} {:g} {:g} {:g} {:g} {:g} {:g}\"", domain->xprd, 0.,
                     0., domain->xy, domain->yprd, 0., domain->xz, domain->yz, domain->zprd);
-    header += " Properties=species:S:1:pos:R:3:vel:R:3:forces:R:3";
+    header += fmt::format(" Properties={}", properties_string);
     utils::print(fp, header + "\n");
   }
 }
@@ -98,6 +144,7 @@ void DumpExtXYZ::pack(tagint *ids)
   double **x = atom->x;
   double **v = atom->v;
   double **f = atom->f;
+  double *mass = atom->mass;
   int nlocal = atom->nlocal;
 
   m = n = 0;
@@ -108,12 +155,19 @@ void DumpExtXYZ::pack(tagint *ids)
       buf[m++] = x[i][0];
       buf[m++] = x[i][1];
       buf[m++] = x[i][2];
-      buf[m++] = v[i][0];
-      buf[m++] = v[i][1];
-      buf[m++] = v[i][2];
-      buf[m++] = f[i][0];
-      buf[m++] = f[i][1];
-      buf[m++] = f[i][2];
+      if (with_vel) {
+        buf[m++] = v[i][0];
+        buf[m++] = v[i][1];
+        buf[m++] = v[i][2];
+      }
+      if (with_forces) {
+        buf[m++] = f[i][0];
+        buf[m++] = f[i][1];
+        buf[m++] = f[i][2];
+      }
+      if (with_mass) {
+        buf[m++] = mass[type[i]];
+      }
 
       if (ids) ids[n++] = tag[i];
     }
@@ -138,7 +192,7 @@ int DumpExtXYZ::convert_string(int n, double *mybuf)
     offset +=
         snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
                  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7],
-                 mybuf[m + 8], mybuf[m + 9], mybuf[m + 10]);
+                 mybuf[m + 8], mybuf[m + 9], mybuf[m + 10], mybuf[m + 11]);
     m += size_one;
   }
 
@@ -153,7 +207,7 @@ void DumpExtXYZ::write_lines(int n, double *mybuf)
   for (int i = 0; i < n; i++) {
     fprintf(fp, format, typenames[static_cast<int>(mybuf[m + 1])], mybuf[m + 2], mybuf[m + 3],
             mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7], mybuf[m + 8], mybuf[m + 9],
-            mybuf[m + 10]);
+            mybuf[m + 10], mybuf[m + 11]);
     m += size_one;
   }
 }
