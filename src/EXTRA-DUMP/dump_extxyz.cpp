@@ -24,7 +24,7 @@
 
 using namespace LAMMPS_NS;
 
-static constexpr int ONELINE = 128;
+static constexpr int ONELINE = 512;
 static constexpr int DELTA = 1048576;
 
 /* ---------------------------------------------------------------------- */
@@ -189,10 +189,36 @@ int DumpExtXYZ::convert_string(int n, double *mybuf)
       memory->grow(sbuf, maxsbuf, "dump:sbuf");
     }
 
-    offset +=
-        snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
-                 mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7],
-                 mybuf[m + 8], mybuf[m + 9], mybuf[m + 10], mybuf[m + 11]);
+    if (size_one == 5) {
+      offset +=
+	  snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
+		  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4]);
+    } else if (size_one == 6) {
+      offset +=
+	  snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
+		  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5]);
+    } else if (size_one == 8) {
+      offset +=
+	  snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
+		  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7]);
+    } else if (size_one == 9) {
+      offset +=
+	  snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
+		  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7],
+		  mybuf[m + 8]);
+    } else if (size_one == 11) {
+      offset +=
+	  snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
+		  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7],
+		  mybuf[m + 8], mybuf[m + 9], mybuf[m + 10]);
+    } else if (size_one == 12) {
+      offset +=
+	  snprintf(&sbuf[offset], maxsbuf - offset, format, typenames[static_cast<int>(mybuf[m + 1])],
+		  mybuf[m + 2], mybuf[m + 3], mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7],
+		  mybuf[m + 8], mybuf[m + 9], mybuf[m + 10], mybuf[m + 11]);
+    } else {
+      error->all(FLERR,"Invalid value of size_one for dump extxyz format.");
+    }
     m += size_one;
   }
 
@@ -205,9 +231,29 @@ void DumpExtXYZ::write_lines(int n, double *mybuf)
 {
   int m = 0;
   for (int i = 0; i < n; i++) {
-    fprintf(fp, format, typenames[static_cast<int>(mybuf[m + 1])], mybuf[m + 2], mybuf[m + 3],
-            mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7], mybuf[m + 8], mybuf[m + 9],
-            mybuf[m + 10], mybuf[m + 11]);
+    if (size_one == 5) {
+      fprintf(fp, format, typenames[static_cast<int>(mybuf[m + 1])], mybuf[m + 2], mybuf[m + 3],
+	      mybuf[m + 4]);
+    } else if (size_one == 6) {
+      fprintf(fp, format, typenames[static_cast<int>(mybuf[m + 1])], mybuf[m + 2], mybuf[m + 3],
+	      mybuf[m + 4], mybuf[m + 5]);
+    } else if (size_one == 8) {
+      fprintf(fp, format, typenames[static_cast<int>(mybuf[m + 1])], mybuf[m + 2], mybuf[m + 3],
+	      mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7]);
+    } else if (size_one == 9) {
+      fprintf(fp, format, typenames[static_cast<int>(mybuf[m + 1])], mybuf[m + 2], mybuf[m + 3],
+	      mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7], mybuf[m + 8]);
+    } else if (size_one == 11) {
+      fprintf(fp, format, typenames[static_cast<int>(mybuf[m + 1])], mybuf[m + 2], mybuf[m + 3],
+	      mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7], mybuf[m + 8], mybuf[m + 9],
+	      mybuf[m + 10]);
+    } else if (size_one == 12) {
+      fprintf(fp, format, typenames[static_cast<int>(mybuf[m + 1])], mybuf[m + 2], mybuf[m + 3],
+	      mybuf[m + 4], mybuf[m + 5], mybuf[m + 6], mybuf[m + 7], mybuf[m + 8], mybuf[m + 9],
+	      mybuf[m + 10], mybuf[m + 11]);
+    } else {
+      error->all(FLERR,"Invalid value of size_one for dump extxyz format.");
+    }
     m += size_one;
   }
 }
