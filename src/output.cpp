@@ -154,8 +154,8 @@ void Output::init()
   any_time_dumps = 0;
   for (int i = 0; i < ndump; i++) {
     if (mode_dump[i]) any_time_dumps = 1;
-    if ((mode_dump[i] == 0 && every_dump[i] == 0) ||
-        (mode_dump[i] == 1 && every_time_dump[i] == 0.0)) {
+    if (((mode_dump[i] == 0) && (every_dump[i] == 0)) ||
+        ((mode_dump[i] == 1) && (every_time_dump[i] == 0.0))) {
       ivar_dump[i] = input->variable->find(var_dump[i]);
       if (ivar_dump[i] < 0)
         error->all(FLERR,"Variable name for dump every or delta does not exist");
@@ -228,7 +228,7 @@ void Output::setup(int memflag)
       // wrap step dumps that invoke computes or do variable eval with clear/add
       // see NOTE in write() about also wrapping time dumps
 
-      if (mode_dump[idump] == 0 && (dump[idump]->clearstep || var_dump[idump]))
+      if ((mode_dump[idump] == 0) && (dump[idump]->clearstep || var_dump[idump]))
         modify->clearstep_compute();
 
       // write a snapshot at setup only if any of these 3 conditions hold
@@ -274,7 +274,7 @@ void Output::setup(int memflag)
       // if dump not written now, use addstep_compute_all()
       // since don't know what computes the dump will invoke
 
-      if (mode_dump[idump] == 0 && (dump[idump]->clearstep || var_dump[idump])) {
+      if ((mode_dump[idump] == 0) && (dump[idump]->clearstep || var_dump[idump])) {
         if (writeflag) modify->addstep_compute(next_dump[idump]);
         else modify->addstep_compute_all(next_dump[idump]);
       }
@@ -350,7 +350,8 @@ void Output::write(bigint ntimestep)
       next_thermo = static_cast<bigint>
         (input->variable->compute_equal(ivar_thermo));
       if (next_thermo <= ntimestep)
-        error->all(FLERR,"Thermo every variable returned a bad timestep");
+        error->all(FLERR, Error::NOLASTLINE, "Thermo every variable returned a bad timestep: {} "
+                   "vs {}", next_thermo, ntimestep);
     } else if (thermo_every) next_thermo += thermo_every;
     else next_thermo = update->laststep;
     next_thermo = MIN(next_thermo,update->laststep);
@@ -381,8 +382,7 @@ void Output::write(bigint ntimestep)
       if (next_dump[idump] == ntimestep) {
         if (last_dump[idump] == ntimestep) continue;
 
-        if (mode_dump[idump] == 0 &&
-            (dump[idump]->clearstep || var_dump[idump]))
+        if ((mode_dump[idump] == 0) && (dump[idump]->clearstep || var_dump[idump]))
           modify->clearstep_compute();
 
         // perform dump
@@ -392,8 +392,8 @@ void Output::write(bigint ntimestep)
         last_dump[idump] = ntimestep;
         calculate_next_dump(WRITE,idump,ntimestep);
 
-        if (mode_dump[idump] == 0 &&
-            (dump[idump]->clearstep || var_dump[idump]))
+
+        if ((mode_dump[idump] == 0) && (dump[idump]->clearstep || var_dump[idump]))
           modify->addstep_compute(next_dump[idump]);
       }
 
