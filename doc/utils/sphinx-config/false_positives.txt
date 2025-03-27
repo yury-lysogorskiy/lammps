@@ -736,6 +736,7 @@ dE
 De
 deallocate
 deallocated
+deallocation
 debye
 Debye
 Decius
