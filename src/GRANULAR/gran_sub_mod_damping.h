@@ -19,6 +19,7 @@ GranSubModStyle(mass_velocity,GranSubModDampingMassVelocity,DAMPING);
 GranSubModStyle(viscoelastic,GranSubModDampingViscoelastic,DAMPING);
 GranSubModStyle(tsuji,GranSubModDampingTsuji,DAMPING);
 GranSubModStyle(coeff_restitution,GranSubModDampingCoeffRestitution,DAMPING);
+GranSubModStyle(mdr,GranSubModDampingMDR,DAMPING);
 // clang-format on
 #else
 
@@ -91,6 +92,14 @@ namespace Granular_NS {
    public:
     GranSubModDampingCoeffRestitution(class GranularModel *, class LAMMPS *);
     void init() override;
+  };
+
+  /* ---------------------------------------------------------------------- */
+
+  class GranSubModDampingMDR : public GranSubModDamping {
+   public:
+    GranSubModDampingMDR(class GranularModel *, class LAMMPS *);
+    double calculate_forces() override;
   };
 
   /* ---------------------------------------------------------------------- */

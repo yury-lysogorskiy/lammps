@@ -14,6 +14,7 @@
 #include "gran_sub_mod_damping.h"
 
 #include "gran_sub_mod_normal.h"
+#include "fix_granular_mdr.h"
 #include "granular_model.h"
 #include "math_special.h"
 #include "math_const.h"
@@ -176,3 +177,28 @@ void GranSubModDampingCoeffRestitution::init()
     damp /= sqrt(MY_PI * MY_PI + logcor * logcor);
   }
 }
+
+/* ----------------------------------------------------------------------
+   MDR damping
+------------------------------------------------------------------------- */
+
+GranSubModDampingMDR::GranSubModDampingMDR(GranularModel *gm, LAMMPS *lmp) :
+    GranSubModDamping(gm, lmp)
+{
+  contact_radius_flag = 1;
+}
+
+/* ---------------------------------------------------------------------- */
+
+double GranSubModDampingMDR::calculate_forces()
+{
+  using namespace Granular_MDR_NS;
+  double *history = & gm->history[gm->normal_model->history_index]; // load in all history variables
+  //printf("%p %d damping\n", (void*)& history[DAMP_SCALE], gm->normal_model->history_index);
+  damp_prefactor = damp * history[DAMP_SCALE];
+  return -damp_prefactor * gm->vnnr;
+}
+
+  
+
+  //printf("DAMP_SCALE = %d, damp_scale_history = %e, damp = %e, damp_prefactor = %e, F_DAMP = %e  \n", DAMP_SCALE, history[DAMP_SCALE], damp, damp_prefactor, -damp_prefactor * gm->vnnr);

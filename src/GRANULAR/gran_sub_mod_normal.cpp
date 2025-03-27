@@ -445,7 +445,7 @@ GranSubModNormalMDR::GranSubModNormalMDR(GranularModel *gm, LAMMPS *lmp) :
 
   num_coeffs = 6;
   contact_radius_flag = 1;
-  size_history = 26;
+  size_history = 27;
   nsvector = 1;
   fix_mdr_flag = 0;
   id_fix = nullptr;
@@ -484,7 +484,7 @@ void GranSubModNormalMDR::coeffs_to_local()
   if (gamma < 0.0) error->all(FLERR, "Illegal MDR normal model, effective surface energy must be greater than or equal to 0");
   if (psi_b < 0.0 || psi_b > 1.0) error->all(FLERR, "Illegal MDR normal model, psi_b must be between 0 and 1.0");
   //if (CoR < 0.0 || CoR > 1.0) error->all(FLERR, "Illegal MDR normal model, coefficent of restitution must be between 0 and 1.0");
-  if (damp < 0.0) error->all(FLERR, "Illegal MDR normal model, damping coefficent must be greater than 1");
+  if (damp < 0.0) error->all(FLERR, "Illegal MDR normal model, damping coefficent must be greater than or equal to 0");
 
   G = E / (2.0 * (1.0 + nu));            // shear modulus
   kappa = E / (3.0 * (1.0 - 2.0 * nu));  // bulk modulus
@@ -1000,17 +1000,25 @@ double GranSubModNormalMDR::calculate_forces()
   const double wij = MAX(1.0 - pij, 0.0);
 
   // assign final force
-  double damp_prefactor;
+  double damp_scale;
   if (gm->contact_type != PAIR) {
     a_damp = a_damp/2.0;
-    damp_prefactor = 0.5*sqrt(gm->meff * 2.0 * Eeff2particle * a_damp);
+    damp_scale = 0.5*sqrt(gm->meff * 2.0 * Eeff2particle * a_damp);
     double *deltao_offset = &history[DELTAO_0];
     const double wfm = std::exp(10.7*(*deltao_offset)/Rinitial[gm->i] - 10.0) + 1.0; // wall force magnifier
     //const double wfm = 1.0;
     F = wij * F0 * wfm;
   } else {
-    damp_prefactor = 0.5*sqrt(gm->meff * 2.0 * Eeff * a_damp);
+    damp_scale = 0.5*sqrt(gm->meff * 2.0 * Eeff * a_damp);
     F = wij * (F0 + F1) * 0.5;
+  }
+
+  if (history_update) {
+    double *damp_scale_offset = & history[DAMP_SCALE];
+    //printf("damp_scale_history = %e  \n", history[DAMP_SCALE]);
+    (a_damp < 0.0) ? *damp_scale_offset = 0.0 : *damp_scale_offset = damp_scale;
+    //printf("DAMP_SCALE = %d, damp_scale_history = %e, damp = %e, a_damp = %e, damp_scale = %e  \n", DAMP_SCALE, history[DAMP_SCALE], damp, a_damp, damp_scale);
+    //printf("%p %d normal\n", (void*)& history[DAMP_SCALE], history_index);
   }
 
   // calculate damping force
@@ -1033,7 +1041,7 @@ double GranSubModNormalMDR::calculate_forces()
   //}
 
   // calculate damping force
-  if (F > 0.0) F += -wij * damp * gm->vnnr;
+  // if (F > 0.0) F += -wij * damp * gm->vnnr;
 
   //F += -wij * damp_prefactor * gm->vnnr;
 
