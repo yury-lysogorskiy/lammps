@@ -1431,7 +1431,7 @@ void Modify::addstep_compute(bigint newstep)
   }
 
   for (int icompute = 0; icompute < n_timeflag; icompute++)
-    if (compute[list_timeflag[icompute]]->invoked_flag)
+    if (compute[list_timeflag[icompute]]->invoked_flag >=0)
       compute[list_timeflag[icompute]]->addstep(newstep);
 }
 
