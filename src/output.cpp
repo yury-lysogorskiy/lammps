@@ -402,6 +402,7 @@ void Output::write(bigint ntimestep)
       next_dump_any = MIN(next_dump_any,next_dump[idump]);
     }
   }
+  modify->addstep_compute(next_dump_any);
 
   // next_restart does not force output on last step of run
   // for toggle = 0, replace "*" with current timestep in restart filename
