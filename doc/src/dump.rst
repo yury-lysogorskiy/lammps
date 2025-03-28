@@ -486,9 +486,11 @@ ExtXYZ) format as defined as defined in `the libAtoms specification
 information will be dumped:
 
 * timestep
-* time, if enabled with :doc:`dump_modify time yes <dump_modify>`
+* time, which can be disabled with :doc:`dump_modify time no <dump_modify>`
 * simulation box lattice and pbc conditions
-* atomic velocities and forces
+* atomic forces, which can be disabled with :doc:`dump_modify forces no <dump_modify>`
+* atomic velocities, which can be disabled with :doc:`dump_modify vel no <dump_modify>`
+* atomic masses, if enabled with :doc:`dump_modify mass yes <dump_modify>`
 
 Dump style *extxyz* requires either that a :doc:`type label map for atoms types
 <labelmap>` is defined or :doc:`dump_modify element <dump_modify>` is used to
