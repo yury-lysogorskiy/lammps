@@ -38,10 +38,6 @@
 #include "update.h"
 #include "variable.h"
 
-// wzunker
-#include "csv_writer.h"
-#include <sstream>
-
 using namespace LAMMPS_NS;
 using namespace Granular_NS;
 using namespace Granular_MDR_NS;
@@ -264,27 +260,8 @@ void FixGranularMDR::pre_force(int)
       if (dR > 0.0) dRavg[i] += (dR - dRavg[i]) / N_window;
 
       if (((radius[i] + dR) < (1.5 * Ro[i])) && (dR > 0.0)) radius[i] += dRavg[i];
-      
-      //(dR + dRavg[i])/2.0;
-      //dRavg[i] = (dR + dRavg[i])/2.0;
-
-        //// wzunker
-        //const double dRdenominatorTrue = (dRdenominator[i] - 4.0 * MY_PI * pow(R, 2.0));
-        //if (i == 0) {
-        //  CSVWriter csvWriter("/Users/willzunker/simulations/lammps/bulk_response/compression_sleeve/dR_parameters.csv");
-        //  std::stringstream rowDataStream;
-        //  rowDataStream << std::scientific << std::setprecision(8); // Set the format and precision
-        //  rowDataStream << dRnumerator[i] << ", " << dRdenominator[i] << ", " << dRavg[i] << ", " << R << ", " << dRdenominatorTrue << ", " << lmp->update->ntimestep;
-        //  std::string rowData = rowDataStream.str();
-        //  csvWriter.writeRow(rowData);
-        //}
-
     }
     Acon0[i] = Acon1[i];
-
-    // wzunker
-    //const double dR_tmp = MAX(dRnumerator[i] / (dRdenominator[i] - 4.0 * MY_PI * pow(R, 2.0)), 0.0);
-    //printf("i = %d, psi_b = %f, psi = %f, Atot = %f, Acon = %f, dRnumerator = %f, dRdenominator = %f, R = %f, dR = %f  \n", i, psi_b_coeff, psi[i], Atot[i], Acon1[i], dRnumerator[i], dRdenominator[i],radius[i],dR_tmp);
   }
 
   comm_stage = COMM_1;
@@ -541,9 +518,6 @@ void FixGranularMDR::calculate_contact_penalty()
                          "(e.g. increase the skin distance).");
 
             pjk[0] += 1.0 / (1.0 + std::exp(-50.0 * (alpha / MY_PI - 0.5)));
-
-            // wzunker
-            //printf("i = %d, j = %d, k = %d, pij = %f, pik = %f, pjk = %f  \n", i, j, k, pij[0], pik[0], pjk[0]);
           }
         }
       }

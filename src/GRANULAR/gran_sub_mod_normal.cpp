@@ -26,9 +26,6 @@
 #include <iomanip>
 #include <sstream>
 
-// wzunker
-#include "csv_writer.h"
-
 using namespace LAMMPS_NS;
 using namespace Granular_NS;
 using namespace MathConst;
@@ -605,12 +602,6 @@ double GranSubModNormalMDR::calculate_forces()
   if (gm->delta >= *deltamax_offset) *deltamax_offset = gm->delta;
   double deltamax = *deltamax_offset;
 
-  //wzunker
-  double F_MDR0;
-  double F_BULK0;
-  double F_MDR1;
-  double F_BULK1;
-
   for (int contactSide = 0; contactSide < 2; contactSide++) {
 
     double *delta_offset, *deltao_offset, *delta_MDR_offset, *delta_BULK_offset;
@@ -912,21 +903,15 @@ double GranSubModNormalMDR::calculate_forces()
     }
     Ac_avg += wij * Ac;
 
-    // wzunker damping contact area related things
+    // contact radius for damping
     (gamma > 0.0) ? a_damp += aAdh : a_damp += a_na;  
 
     // bulk force calculation
     double F_BULK;
     (delta_BULK <= 0.0) ? F_BULK = 0.0 : F_BULK = (1.0 / Vgeo[i]) * Acon0[i] * delta_BULK * kappa * Ac;
 
-    // force-magnifier
-
     // total force calculation
     (contactSide == 0) ? F0 = F_MDR + F_BULK : F1 = F_MDR + F_BULK;
-
-    // wzunker
-    (contactSide == 0) ? F_MDR0 = F_MDR : F_MDR1 = F_MDR;
-    (contactSide == 0) ? F_BULK0 = F_BULK : F_BULK1 = F_BULK;
 
     if (history_update) {
       // mean surface displacement calculation
@@ -951,32 +936,6 @@ double GranSubModNormalMDR::calculate_forces()
       dRnumerator[i] -= Vo * (eps_bar_contact - *eps_bar_offset);
       dRnumerator[i] -= wij * MY_PI * ddeltao * (2 * deltao * Ro - pow(deltao, 2) + pow(R, 2) - pow(Ro, 2));
       dRdenominator[i] += wij * 2.0 * MY_PI * R * (deltao + R - Ro);
-
-      
-      // wzunker
-      //if (gm->contact_type == PAIR && i == 0) {
-      //  CSVWriter csvWriter("/Users/willzunker/simulations/lammps/bulk_response/compression_sleeve/dR_parameters_0.csv");
-      //  std::stringstream rowDataStream;
-      //  rowDataStream << std::scientific << std::setprecision(8); // Set the format and precision
-      //  rowDataStream << wij << ", " << dRnumerator[i] << ", " << dRdenominator[i] << ", " << eps_bar_contact << ", " << *eps_bar_offset << ", " << ddeltao << ", " << deltao << ", " << R << ", " << Fntmp << ", " << lmp->update->ntimestep;
-      //  std::string rowData = rowDataStream.str();
-      //  csvWriter.writeRow(rowData);
-      //}
-//
-      //if (gm->contact_type == PAIR && i == 1) {
-      //  CSVWriter csvWriter("/Users/willzunker/simulations/lammps/bulk_response/compression_sleeve/dR_parameters_1.csv");
-      //  std::stringstream rowDataStream;
-      //  rowDataStream << std::scientific << std::setprecision(8); // Set the format and precision
-      //  rowDataStream << wij << ", " << dRnumerator[i] << ", " << dRdenominator[i] << ", " << eps_bar_contact << ", " << *eps_bar_offset << ", " << ddeltao << ", " << deltao << ", " << R << ", " << Fntmp << ", " << lmp->update->ntimestep;
-      //  std::string rowData = rowDataStream.str();
-      //  csvWriter.writeRow(rowData);
-      //}
-
-    // wzunker
-    //if (gm->contact_type == PAIR) {
-     // printf("i = %d, j = %d, contact_type = %d, dRnumerator = %f, dRdenominator = %f, eps_bar_contact = %f, eps_bar_offset = %f, wij = %f, ddelto = %f, deltao = %f, R = %f, Fntmp = %f  \n", i, gm->j, gm->contact_type, dRnumerator[i], dRdenominator[i], eps_bar_contact, *eps_bar_offset, wij, ddeltao, deltao, R, Fntmp);
-    //}
-
     }
 
     if (history_update) {
@@ -1015,98 +974,8 @@ double GranSubModNormalMDR::calculate_forces()
 
   if (history_update) {
     double *damp_scale_offset = & history[DAMP_SCALE];
-    //printf("damp_scale_history = %e  \n", history[DAMP_SCALE]);
     (a_damp < 0.0) ? *damp_scale_offset = 0.0 : *damp_scale_offset = damp_scale;
-    //printf("DAMP_SCALE = %d, damp_scale_history = %e, damp = %e, a_damp = %e, damp_scale = %e  \n", DAMP_SCALE, history[DAMP_SCALE], damp, a_damp, damp_scale);
-    //printf("%p %d normal\n", (void*)& history[DAMP_SCALE], history_index);
   }
-
-  // calculate damping force
-  //if (F > 0.0) {
-  //  double Eeff2;
-  //  double Reff2;
-  //  if (gm->contact_type == PAIR) {
-  //    Eeff2 = E / (2.0 * (1.0 - pow(nu, 2)));
-  //    Reff2 = 1.0 / ((1.0 / gm->radi + 1.0 / gm->radj));
-  //  } else {
-  //    Eeff2 = E / (1.0 - pow(nu, 2));
-  //    Reff2 = gm->radi;
-  //  }
-  //  const double kn = Eeff2 * Reff2;
-  //  const double beta = -log(CoR) / sqrt(pow(log(CoR), 2) + PISQ);
-  //  const double damp_prefactor = beta * sqrt(gm->meff * kn);
-  //  const double F_DAMP = -damp_prefactor * gm->vnnr;
-  //
-  //  F += wij * F_DAMP;
-  //}
-
-  // calculate damping force
-  // if (F > 0.0) F += -wij * damp * gm->vnnr;
-
-  //F += -wij * damp_prefactor * gm->vnnr;
-
-  //printf("i = %d, j = %d, wij = %f, damp = %f, vnnr = %e, F_DAMP = %e  \n", gm->i, gm->j, wij, damp, gm->vnnr, -wij * damp * gm->vnnr);
-
-  // wzunker
-  double *delta_offset_0 = &history[DELTA_0];
-  double *delta_offset_1 = &history[DELTA_0 + 1];
-  const double delta0 = *delta_offset_0;
-  const double delta1 = *delta_offset_1;
-  double *delta_BULK_offset_0 = &history[DELTA_BULK_0];
-  double *delta_BULK_offset_1 = &history[DELTA_BULK_0 + 1];
-  const double deltaBULK0 = *delta_BULK_offset_0;
-  const double deltaBULK1 = *delta_BULK_offset_1;
-  double *aAdh_offset_0 = &history[AADH_0];
-  double *aAdh_offset_1 = &history[AADH_0 + 1];
-  const double aAdh0 = *aAdh_offset_0;
-  const double aAdh1 = *aAdh_offset_1;
-  double *Ac_offset_0 = &history[AC_0];
-  double *Ac_offset_1 = &history[AC_0 + 1];
-  const double Ac0 = *Ac_offset_0;
-  const double Ac1 = *Ac_offset_1;
-  double F_DAMP = -wij * damp * gm->vnnr;
-
-  const double i_0 = 0;
-  const double i_1 = 1;
-  double psi_0;
-  double psi_1;
-  double Acon_0;
-  double Acon_1;
-  double Vgeo_0;
-  double Vgeo_1;
-  if (itag_true == i_0) {
-    psi_0 = psi[gm->i];
-    psi_1 = psi[gm->j];
-    Acon_0 = Acon0[gm->i];
-    Acon_1 = Acon0[gm->j];
-    Vgeo_0 = Vgeo[gm->i];
-    Vgeo_1 = Vgeo[gm->j];
-  } else {
-    psi_0 = psi[gm->j];
-    psi_1 = psi[gm->i];
-    Acon_0 = Acon0[gm->j];
-    Acon_1 = Acon0[gm->i];
-    Vgeo_0 = Vgeo[gm->j];
-    Vgeo_1 = Vgeo[gm->i];
-  }
-
-  //if ( (itag_true == i_0 && jtag_true == i_1) || (itag_true == i_1 && jtag_true == i_0) ) {
-  //  CSVWriter csvWriter("/Users/willzunker/simulations/lammps/avicel_tableting/avicel_tableting_pair_info.csv");
-  //  std::stringstream rowDataStream;
-  //  rowDataStream << std::scientific << std::setprecision(8); // Set the format and precision
-  //  rowDataStream << itag_true << ", " << jtag_true << ", " << delta0 << ", " << delta1 << ", " << F0 << ", " << F1 << ", " << F << ", " << gm->radi << ", " << gm->radj << ", "  << wij <<  ", " << psi_0 << ", " << psi_1 << ", " << aAdh0 << ", " << aAdh1 << ", " << Ac0 << ", " << Ac1 << ", " << F_MDR0 << ", " << F_MDR1 << ", " << F_BULK0 << ", " << F_BULK1 << ", " << deltaBULK0 << ", " << deltaBULK1 << ", " << Acon_0 << ", " << Acon_1 << ", " << Vgeo_0 << ", " << Vgeo_1 << ", " << kappa << ", " << lmp->update->ntimestep;
-  //  std::string rowData = rowDataStream.str();
-  //  csvWriter.writeRow(rowData);
-  //}
-
-  //if ( (gm->contact_type == PAIR) ) {
-  //  CSVWriter csvWriter("/Users/willzunker/simulations/lammps/bulk_response/sticky/pair_info.csv");
-  //  std::stringstream rowDataStream;
-  //  rowDataStream << std::scientific << std::setprecision(8); // Set the format and precision
-  //  rowDataStream << itag_true << ", " << jtag_true << ", " << delta0 << ", " << delta1 << ", " << F0 << ", " << F1 << ", " << F << ", " << gm->radi << ", " << gm->radj << ", "  << wij <<  ", " << psi_0 << ", " << psi_1 << ", " << aAdh0 << ", " << aAdh1 << ", " << Ac0 << ", " << Ac1 << ", " << F_MDR0 << ", " << F_MDR1 << ", " << F_BULK0 << ", " << F_BULK1 << ", " << deltaBULK0 << ", " << deltaBULK1 << ", " << Acon_0 << ", " << Acon_1 << ", " << Vgeo_0 << ", " << Vgeo_1 << ", " << kappa << ", " << F_DAMP << ", " << gm->vnnr << ", " << delta << ", " << lmp->update->ntimestep;
-  //  std::string rowData = rowDataStream.str();
-  //  csvWriter.writeRow(rowData);
-  //}
 
   return F;
 }

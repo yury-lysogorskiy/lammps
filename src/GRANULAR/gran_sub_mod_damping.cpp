@@ -77,12 +77,8 @@ GranSubModDampingVelocity::GranSubModDampingVelocity(GranularModel *gm, LAMMPS *
 
 double GranSubModDampingVelocity::calculate_forces()
 {
-  if (gm->normal_model->name == "mdr") {
-    return 0.0;
-  } else {
-    damp_prefactor = damp;
-    return -damp_prefactor * gm->vnnr;
-  }
+  damp_prefactor = damp;
+  return -damp_prefactor * gm->vnnr;
 }
 
 /* ----------------------------------------------------------------------
