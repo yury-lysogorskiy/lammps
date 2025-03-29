@@ -19,25 +19,25 @@ character encoding <https://en.wikipedia.org/wiki/ASCII>`_ which
 represents the digits 0 to 9, the lower and upper case letters a to z,
 some common punctuation and other symbols and a few whitespace
 characters including a regular "space character", "line feed", "carriage
-return", "tabulator". These are all represented by single bytes with a
-value smaller than 128 and only 95 of those 128 values represent
-printable characters.  This is sufficient to represent most English
+return", "tabulator". These characters are all represented by single bytes
+with a value smaller than 128 and only 95 of those 128 values represent
+printable characters.  This list is sufficient to represent most English
 text, but misses accented characters or umlauts or Greek symbols and
 more.
 
 Modern text often uses `UTF-8 character encoding
-<https://en.wikipedia.org/wiki/UTF-8>`_ instead.  This is a way to
-represent many more different characters as defined by the Unicode
-standard.  This is compatible with ASCII, since the first 128 values are
+<https://en.wikipedia.org/wiki/UTF-8>`_ instead.  This encoding is a way
+to represent many more different characters as defined by the Unicode
+standard.  UFT-8 is compatible with ASCII, since the first 128 values are
 identical with the ASCII encoding.  It is important to note, however,
 that there are Unicode characters that *look* similar to ASCII
 characters, but have a different binary representation.  As a general
 rule, these characters may not be correctly recognized by LAMMPS.  For
 some parts of LAMMPS' text processing, translation tables with known
-"lookalike" characters are used.  Those transparently substitute
+"lookalike" characters are used.  The tables are used to substitute
 non-ASCII characters with their ASCII equivalents.  Non-ASCII lookalike
 characters are often used by web browsers or PDF viewers to improve the
-readability of text.  Thus, when using copy-n-paste to transfer text
+readability of text.  Thus, when using copy and paste to transfer text
 from such an application to your input file, you may unintentionally
 create text that is not exclusively using ASCII encoding and may cause
 errors when LAMMPS is trying to read it.
@@ -85,11 +85,11 @@ A LAMMPS input file is a text file with commands. It is read
 line-by-line and each line is processed *immediately*.  Before looking
 for commands and executing them, there is a pre-processing step where
 comments (non-quoted text starting with a pound sign '#') are removed,
-`${variable}` and `$(expression)` constructs are expanded or evaluated,
+``${variable}`` and ``$(expression)`` constructs are expanded or evaluated,
 and lines that end in the ampersand character '&' are combined with the
-next line (similar to Fortran 90 free format source code).  After the
-pre-processing, lines are split into "words" and the first word must be a
-:doc:`command <Commands_all>` and everything else is considered argument.
+next line (similar to Fortran 90 free-format source code).  After the
+pre-processing, lines are split into "words" and evaluated. The first word
+must be a :doc:`command <Commands_all>` and all following words are arguments.
 Below are some example lines:
 
 .. code-block:: LAMMPS
@@ -102,11 +102,12 @@ Below are some example lines:
    # ^^ command    ^^ argument(s)
 
    variable        x index 1       # may be overridden from command line with -var x <value>
-   variable        xx equal 20*$x  # variable "xx" is always 20 time "x"
+   variable        xx equal 20*$x  # variable "xx" is always 20 times "x"
 
    lattice         fcc 0.8442
 
-   # multi-line command, uses spacing from "lattice" command, else add "units box" to command
+   # example of a command written across multiple lines
+   # the "region" command uses spacing from "lattice" command, unless "units box" is specified
    region          box block 0.0 ${xx} &
                              0.0 40.0  &
                              0.0 30.0
@@ -144,7 +145,7 @@ There is a frequent misconception about the :doc:`if command <if>`:
 this is a command for conditional execution **outside** a run or
 minimization.  To trigger actions on specific conditions **during**
 a run is a non-trivial operation that usually requires adopting one
-of the available fix commands or creating a new one.
+of the available "fix" commands or creating a new "fix" command.
 
 LAMMPS commands change the internal state and thus the order of commands
 matters and reordering them can produce different results.  For example,
@@ -155,7 +156,7 @@ dimensions will be different depending on the order of the two commands.
 Each line must have an "end-of-line" character (line feed or carriage
 return plus line feed).  Some text editors do not automatically insert
 one which may cause LAMMPS to ignore the last command.  It is thus
-recommended, to always have an empty line at the end of an input file.
+recommended to always have an empty line at the end of an input file.
 
 The specific details describing how LAMMPS input is processed and parsed
 are explained in :doc:`Commands_parse`.
@@ -164,33 +165,32 @@ Data file
 ^^^^^^^^^
 
 A LAMMPS data file contains a description of a system suitable for
-reading with the :doc:`read_data command <read_data>`.  This is commonly
-used for setting up more complex and particularly molecular systems
-which can be difficult to achieve with the commands :doc:`create_box
-<create_box>` and :doc:`create_atoms <create_atoms>` alone.  Also, data
-files can be used as a portable alternatives to a :doc:`binary restart
-file <restart>`.  A restart file can be converted into a data file
-from the :doc:`command line <Run_options>`.
+reading with the :doc:`read_data command <read_data>`.  Data files are
+commonly used for setting up complex molecular systems that can be 
+difficult to achieve with the commands :doc:`create_box <create_box>`
+and :doc:`create_atoms <create_atoms>` alone.  Also, data files can be
+used as a portable alternatives to a :doc:`binary restart file <restart>`.
+A restart file can be converted into a data file from the 
+:doc:`command line <Run_options>`.
 
-The file is generally structured into a header section at the very
-beginning of the file and multiple titled sections like "Atoms",
-Masses", "Pair Coeffs", and so on.  Header keywords can only be used
-*before* the first title section.
+Data files have a header section at the very beginning of the file and
+multiple titled sections such as "Atoms", Masses", "Pair Coeffs", and so on.
+Header keywords can only be used *before* the first title section.
 
 The data file **always** starts with a "title" line, which will be
 **ignored** by LAMMPS.  Omitting the title line can lead to unexpected
-behavior as then a line of the header with an actual setting may be
-ignored.  This is often a line with the "atoms" keyword, which results
-in LAMMPS assuming that there are no atoms in the data file and thus
-throwing an error on the contents of the "Atoms" section.  The title
-line may contain some keywords that can be used by external programs to
-convey information about the system (included as comments), that is not
-required and not read by LAMMPS.
+behavior because a line of the header with an actual setting may be
+ignored.  In this case, the mistakenly ignored line often contains the
+"atoms" keyword, which results in LAMMPS assuming that there are no atoms
+in the data file and thus throwing an error on the contents of the "Atoms"
+section.  The title line may contain some keywords that can be used by
+external programs to convey information about the system (included as
+comments), that is not required and not read by LAMMPS.
 
-The line following a section title is also **ignored**.  Skipping it
-will lead to short reads and thus errors.  The number of lines in titled
+The line following a section title is also **ignored**.  An error will occur
+if an empty line is not placed after a section title.  The number of lines in titled
 sections depends on header keywords, like the number of atom types, the
-number of atoms, the number of bond types, or the number of bonds and so
+number of atoms, the number of bond types, the number of bonds, and so
 on.  The data in those sections has to be complete.  A special case are
 the "Pair Coeffs" and "PairIJ Coeffs" sections; the former is for force
 fields and pair styles that use mixing of non-bonded potential
@@ -261,10 +261,10 @@ full <atom_style>`.
         10  0.00265028 -0.00189329 -0.00293198
 
 The common problem is processing the "Atoms" section, since its format depends
-on the :doc:`atom style <atom_style>` used and that setting must be done in the
+on the :doc:`atom style <atom_style>` used, and that setting must be done in the
 input file *before* reading the data file.  To assist with detecting incompatible
 data files, a comment is appended to the "Atoms" title indicating the atom style
-used (or intended) when *writing* the data file.  For example below is the same
+used (or intended) when *writing* the data file.  For example, below is an "Atoms"
 section for :doc:`atom style charge <atom_style>`, which omits the molecule ID
 column.
 
@@ -287,11 +287,11 @@ column.
 Another source of confusion about the "Atoms" section format is the
 ordering of columns.  The three atom style variants `atom_style full`,
 `atom_style hybrid charge molecular`, and `atom_style hybrid molecular
-charge` all carry the same per-atom information, but in the data file
+charge` all carry the same per-atom information. However, in data files,
 the Atoms section has the columns 'Atom-ID Molecule-ID Atom-type Charge
-X Y Z' for atom style full, but hybrid atom styles the first columns are
-always 'Atom-ID Atom-type X Y Z' and then followed by any *additional*
-data added by the hybrid styles, and thus 'Charge Molecule-ID' for the
+X Y Z' for atom style full, but for hybrid atom styles the first columns are
+always 'Atom-ID Atom-type X Y Z' followed by any *additional*
+data added by the hybrid styles, for example, 'Charge Molecule-ID' for the
 first hybrid style and 'Molecule-ID Charge' in the second hybrid style
 variant.  Finally, an alternative to a hybrid atom style is to use fix
 property/atom, e.g. to add molecule IDs to atom style charge.  In this
@@ -307,27 +307,26 @@ Molecule file
 
 Molecule files for use with the :doc:`molecule command <molecule>` look
 quite similar to data files but they do not have a compatible format,
-i.e. one cannot use a data file as molecule file and vice versa. Below
+i.e., one cannot use a data file as molecule file and vice versa.  Below
 is a simple example for a water molecule (SPC/E model).  Same as a data
 file, there is an ignored title line and you can use comments.  However,
 there is no information about the number of types or the box dimensions.
-These are set when the simulation box is created.  Thus the header only
-has the count of atoms, bonds, and so on.
+These parameters are set when the simulation box is created.  Thus the
+header only has the count of atoms, bonds, and so on.
 
-While there also is a header part and sections and the sections must
-come after the header, the (required) section names are may be
-different.  There is no "Atoms" section and the section format is
-independent of the atom style. Its information is split across multiple
-sections, like "Coords", "Types", and "Charges".  Note that no "Masses"
-section is needed here.  The atom masses are by default tied to the atom
-type and set with a data file or the :doc:`mass command <mass>`.  A
+Molecule files have a header followed by sections, but the section names are
+different than those of a data file.  There is no "Atoms" section and the
+section format is independent of the atom style.  Its information is split
+across multiple sections, like "Coords", "Types", and "Charges".  Note that
+no "Masses" section is needed here.  The atom masses are by default tied to
+the atom type and set with a data file or the :doc:`mass command <mass>`.  A
 "Masses" section would only be required for atom styles with per-atom
 masses, e.g. atom style sphere.
 
 Since the entire file is a 'molecule', LAMMPS will assign a new
 molecule-ID (if supported by the atom style) when atoms are instantiated
 from a molecule file, e.g. with the :doc:`create_atoms command
-<create_atoms>`.  It is possible to include a "Molecules" section, in
+<create_atoms>`.  It is possible to include a "Molecules" section in
 case the atoms belong to multiple 'molecules'.  Atom-IDs and
 molecule-IDs in the molecule file are relative for the file (starting
 from 1) and will be translated into actual atom-IDs also when the
@@ -370,8 +369,8 @@ molecule is created.
 
 
 There are also optional sections, e.g. about :doc:`SHAKE <fix_shake>` and
-:doc:`special bonds <special_bonds>`. Those are only needed if the molecule
-command is issues *before* the simulation box is defined.  Otherwise, the
+:doc:`special bonds <special_bonds>`. Those sections are only needed if the molecule
+command is issued *before* the simulation box is defined.  Otherwise, the
 molecule command can derive the required settings internally.
 
 Native Dump file
@@ -383,11 +382,11 @@ Restart file
 LAMMPS restart files are binary files and not available in text format.
 They can be identified by the first few bytes that contain the (C-style)
 string "LammpS RestartT" as `magic string
-<https://en.wikipedia.org/wiki/Magic_string>`_.  This is followed by a
+<https://en.wikipedia.org/wiki/Magic_string>`_.  This string is followed by a
 16-bit integer of the number 1 used for detecting whether the computer
 writing the restart has the same `endianness
 <https://en.wikipedia.org/wiki/Endianness>`_ as the computer reading it.
-If not the file cannot be read correctly.  This is followed by a 32-bit
+If not, the file cannot be read correctly.  This integer is followed by a 32-bit
 integer indicating the file format revision (currently 3), which can be
 used to implement backward compatibility for reading older revisions.
 
