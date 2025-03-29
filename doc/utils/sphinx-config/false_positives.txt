@@ -4016,6 +4016,7 @@ username
 usleep
 usolve
 usr
+utf
 util
 utils
 utsa
