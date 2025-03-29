@@ -186,7 +186,8 @@ Related commands
 """"""""""""""""
 
 :doc:`pair_style reaxff <pair_reaxff>`, :doc:`fix qeq/reaxff <fix_qeq_reaxff>`,
-:doc:`fix acks2/reaxff <fix_acks2_reaxff>`, :doc:`fix qeqr/reaxff <fix_qeqr_reaxff>`
+:doc:`fix acks2/reaxff <fix_acks2_reaxff>`,
+:doc:`fix qeq/rel/reaxff <fix_qeq_rel_reaxff>`
 
 Default
 """""""

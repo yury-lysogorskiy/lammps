@@ -1,4 +1,3 @@
-// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
    https://www.lammps.org/, Sandia National Laboratories
@@ -18,7 +17,7 @@
 
 ------------------------------------------------------------------------- */
 
-#include "fix_qeqr_reaxff.h"
+#include "fix_qeq_rel_reaxff.h"
 
 #include "atom.h"
 #include "comm.h"
@@ -40,46 +39,45 @@ static constexpr double ANGSTROM_TO_BOHRRADIUS = 1.8897261259;
 
 /* ---------------------------------------------------------------------- */
 
-FixQEqrReaxFF::FixQEqrReaxFF(LAMMPS *lmp, int narg, char **arg) :
-  FixQtpieReaxFF(lmp, narg, arg)
+FixQEqRelReaxFF::FixQEqRelReaxFF(LAMMPS *lmp, int narg, char **arg) : FixQtpieReaxFF(lmp, narg, arg)
 {
 }
 
 /* ---------------------------------------------------------------------- */
 
-void FixQEqrReaxFF::calc_chi_eff()
+void FixQEqRelReaxFF::calc_chi_eff()
 {
-  memset(&chi_eff[0],0,atom->nmax*sizeof(double));
+  memset(&chi_eff[0], 0, atom->nmax * sizeof(double));
 
-  const auto x = (const double * const *)atom->x;
+  const auto x = (const double *const *) atom->x;
   const int *type = atom->type;
 
-  double dist,overlap,sum_n,sum_d,expa,expb,chia,phia,phib,p,m;
-  int i,j;
+  double dist, overlap, sum_n, sum_d, expa, expb, chia, phia, phib, p, m;
+  int i, j;
 
   // check ghost atoms are stored up to the distance cutoff for overlap integrals
-  const double comm_cutoff = MAX(neighbor->cutneighmax,comm->cutghostuser);
-  if(comm_cutoff < dist_cutoff/ANGSTROM_TO_BOHRRADIUS) {
-    error->all(FLERR,"comm cutoff = {} Angstrom is smaller than distance cutoff = {} Angstrom "
-               "for overlap integrals in {}. Increase comm cutoff with comm_modify",
-               comm_cutoff, dist_cutoff/ANGSTROM_TO_BOHRRADIUS, style);
+  const double comm_cutoff = MAX(neighbor->cutneighmax, comm->cutghostuser);
+  if (comm_cutoff < dist_cutoff / ANGSTROM_TO_BOHRRADIUS) {
+    error->all(FLERR, Error::NOLASTLINE,
+               "Comm cutoff {} is smaller than distance cutoff {} for overlap integrals in fix {}. "
+               "Increase accordingly using comm_modify cutoff",
+               comm_cutoff, dist_cutoff / ANGSTROM_TO_BOHRRADIUS, style);
   }
 
   // efield energy is in real units of kcal/mol, factor needed for conversion to eV
   const double qe2f = force->qe2f;
-  const double factor = 1.0/qe2f;
+  const double factor = 1.0 / qe2f;
 
   if (efield) {
-    if (efield->varflag != FixEfield::CONSTANT)
-      efield->update_efield_variables();
+    if (efield->varflag != FixEfield::CONSTANT) efield->update_efield_variables();
 
     // compute chi_eff for each local atom
     for (i = 0; i < nn; i++) {
       expa = gauss_exp[type[i]];
       chia = chi[type[i]];
       if (efield->varflag != FixEfield::ATOM) {
-        phia = -factor*(x[i][0]*efield->ex  + x[i][1]*efield->ey + x[i][2]*efield->ez);
-      } else { // atom-style potential from FixEfield
+        phia = -factor * (x[i][0] * efield->ex + x[i][1] * efield->ey + x[i][2] * efield->ez);
+      } else {    // atom-style potential from FixEfield
         phia = efield->efield[i][3];
       }
 
@@ -87,7 +85,7 @@ void FixQEqrReaxFF::calc_chi_eff()
       sum_d = 0.0;
 
       for (j = 0; j < nt; j++) {
-        dist = distance(x[i],x[j])*ANGSTROM_TO_BOHRRADIUS; // in atomic units
+        dist = distance(x[i], x[j]) * ANGSTROM_TO_BOHRRADIUS;    // in atomic units
 
         if (dist < dist_cutoff) {
           expb = gauss_exp[type[j]];
@@ -95,11 +93,11 @@ void FixQEqrReaxFF::calc_chi_eff()
           // overlap integral of two normalised 1s Gaussian type orbitals
           p = expa + expb;
           m = expa * expb / p;
-          overlap = pow((4.0*m/p),0.75) * exp(-m*dist*dist);
+          overlap = pow((4.0 * m / p), 0.75) * exp(-m * dist * dist);
 
           if (efield->varflag != FixEfield::ATOM) {
-            phib = -factor*(x[j][0]*efield->ex  + x[j][1]*efield->ey + x[j][2]*efield->ez);
-          } else { // atom-style potential from FixEfield
+            phib = -factor * (x[j][0] * efield->ex + x[j][1] * efield->ey + x[j][2] * efield->ez);
+          } else {    // atom-style potential from FixEfield
             phib = efield->efield[j][3];
           }
           sum_n += (chia + scale * (phia - phib)) * overlap;
@@ -109,8 +107,6 @@ void FixQEqrReaxFF::calc_chi_eff()
       chi_eff[i] = sum_n / sum_d;
     }
   } else {
-    for (i = 0; i < nn; i++) {
-      chi_eff[i] = chi[type[i]];
-    }
+    for (i = 0; i < nn; i++) { chi_eff[i] = chi[type[i]]; }
   }
 }

@@ -13,20 +13,20 @@
 
 #ifdef FIX_CLASS
 // clang-format off
-FixStyle(qeqr/reaxff,FixQEqrReaxFF);
+FixStyle(qeq/rel/reaxff,FixQEqRelReaxFF);
 // clang-format on
 #else
 
-#ifndef LMP_FIX_QEQR_REAXFF_H
-#define LMP_FIX_QEQR_REAXFF_H
+#ifndef LMP_FIX_QEQ_REL_REAXFF_H
+#define LMP_FIX_QEQ_REL_REAXFF_H
 
 #include "fix_qtpie_reaxff.h"
 
 namespace LAMMPS_NS {
 
-class FixQEqrReaxFF : public FixQtpieReaxFF {
+class FixQEqRelReaxFF : public FixQtpieReaxFF {
  public:
-  FixQEqrReaxFF(class LAMMPS *, int, char **);
+  FixQEqRelReaxFF(class LAMMPS *, int, char **);
 
  protected:
   void calc_chi_eff() override;

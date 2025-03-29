@@ -123,8 +123,10 @@ components in non-periodic directions.
 Related commands
 """"""""""""""""
 
-:doc:`pair_style reaxff <pair_reaxff>`, :doc:`fix qeq/reaxff <fix_qeq_reaxff>`,
-:doc:`fix qtpie/reaxff <fix_qtpie_reaxff>`, :doc:`fix qeqr/reaxff <fix_qeqr_reaxff>`
+:doc:`pair_style reaxff <pair_reaxff>`,
+:doc:`fix qeq/reaxff <fix_qeq_reaxff>`,
+:doc:`fix qtpie/reaxff <fix_qtpie_reaxff>`,
+:doc:`fix qeq/rel/reaxff <fix_qeq_rel_reaxff>`
 
 Default
 """""""
