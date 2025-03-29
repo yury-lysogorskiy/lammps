@@ -30,6 +30,7 @@
 #include "error.h"
 #include "fix_reaxff.h"
 #include "force.h"
+#include "info.h"
 #include "memory.h"
 #include "modify.h"
 #include "neigh_list.h"
@@ -443,7 +444,9 @@ void PairReaxFF::setup()
 
 double PairReaxFF::init_one(int i, int j)
 {
-  if (setflag[i][j] == 0) error->all(FLERR,"All pair coeffs are not set");
+  if (setflag[i][j] == 0)
+    error->all(FLERR, Error::NOLASTLINE,
+               "All pair coeffs are not set. Status\n" + Info::get_pair_coeff_status(lmp));
 
   cutghost[i][j] = cutghost[j][i] = cutmax;
   return cutmax;
