@@ -314,23 +314,25 @@ there is no information about the number of types or the box dimensions.
 These parameters are set when the simulation box is created.  Thus the
 header only has the count of atoms, bonds, and so on.
 
-Molecule files have a header followed by sections, but the section names
-are different than those of a data file.  There is no "Atoms" section
-and the section format is independent of the atom style.  Its
-information is split across multiple sections, like "Coords", "Types",
-and "Charges".  Note that no "Masses" section is needed here.  The atom
-masses are by default tied to the atom type and set with a data file or
-the :doc:`mass command <mass>`.  A "Masses" section would only be
-required for atom styles with per-atom masses, e.g. atom style sphere.
+Molecule files have a header followed by sections (just as in data
+files), but the section names are different than those of a data file.
+There is no "Atoms" section and the section formats in molecule files is
+independent of the atom style.  Its information is split across multiple
+sections, like "Coords", "Types", and "Charges".  Note that no "Masses"
+section is needed here.  The atom masses are by default tied to the atom
+type and set with a data file or the :doc:`mass command <mass>`.  A
+"Masses" section would only be required for atom styles with per-atom
+masses, e.g. atom style sphere, where in data files you would provide
+the density and the diameter instead of the mass.
 
 Since the entire file is a 'molecule', LAMMPS will assign a new
 molecule-ID (if supported by the atom style) when atoms are instantiated
 from a molecule file, e.g. with the :doc:`create_atoms command
-<create_atoms>`.  It is possible to include a "Molecules" section in
-case the atoms belong to multiple 'molecules'.  Atom-IDs and
-molecule-IDs in the molecule file are relative for the file (starting
-from 1) and will be translated into actual atom-IDs also when the
-molecule is created.
+<create_atoms>`.  It is possible to include a "Molecules" section to
+indicate that the atoms belong to multiple 'molecules'.  Atom-IDs and
+molecule-IDs in the molecule file are relative for the file
+(i.e. starting from 1) and will be translated into actual atom-IDs also
+when the atoms from the molecule are created.
 
 .. code-block:: bash
 
@@ -406,7 +408,6 @@ are in the ``lmprestart.h`` header file.
 
 LAMMPS restart files are not expected to be portable between platforms
 or LAMMPS versions, but changes to the file format are rare.
-
 
 .. Native Dump file
 .. ^^^^^^^^^^^^^^^^
