@@ -1,4 +1,4 @@
-.. index:: fix qaq/rel/reaxff
+.. index:: fix qeq/rel/reaxff
 
 fix qeq/rel/reaxff command
 ==========================
