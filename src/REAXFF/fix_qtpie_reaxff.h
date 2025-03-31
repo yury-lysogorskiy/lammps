@@ -90,7 +90,7 @@ class FixQtpieReaxFF : public Fix {
   char *pertype_option;    // argument to determine how per-type info is obtained
   char *gauss_file;        // input file for gaussian orbital exponents
   double *gauss_exp;       // array of gaussian orbital exponents for each atom type
-  double dist_cutoff;      // separation distance beyond which to neglect overlap integrals
+  double dist_cutoff_sq;   // separation distance squared beyond which overlap integrals are neglected
   double scale;            // scaling factor for electric polarization effects
 
   void pertype_parameters(char *);
@@ -131,7 +131,6 @@ class FixQtpieReaxFF : public Fix {
 
   virtual void calc_chi_eff();
   double find_min_exp(const double*, const int);
-  double distance(const double*, const double*);
 
   int matvecs_s, matvecs_t;    // Iteration count for each system
 };

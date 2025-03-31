@@ -51,7 +51,7 @@ using namespace FixConst;
 
 static constexpr double CONV_TO_EV = 14.4;
 static constexpr double QSUMSMALL = 0.00001;
-static constexpr double ANGSTROM_TO_BOHRRADIUS = 1.8897261259;
+static constexpr double ANGSTROM_TO_BOHRRADIUS_SQ = 3.571064831;
 
 static const char cite_fix_qtpie_reax[] =
   "fix qtpie/reaxff command: \n\n"
@@ -244,7 +244,7 @@ void FixQtpieReaxFF::pertype_parameters(char *arg)
         if (exp < 0)
           throw TokenizerException("Fix qtpie/reaxff: Invalid orbital exponent in gauss file",
                                    std::to_string(exp));
-        gauss_exp[itype] = exp;
+        gauss_exp[itype] = exp * ANGSTROM_TO_BOHRRADIUS_SQ;
       }
       fclose(fp);
     } catch (std::exception &e) {
@@ -254,11 +254,11 @@ void FixQtpieReaxFF::pertype_parameters(char *arg)
 
   MPI_Bcast(gauss_exp,ntypes+1,MPI_DOUBLE,0,world);
 
-  // define a cutoff distance (in atomic units) beyond which overlap integrals are neglected
-  // in calc_chi_eff()
-  const double exp_min = find_min_exp(gauss_exp,ntypes+1);
-  const int olap_cut = 10; // overlap integrals are neglected if less than pow(10,-olap_cut)
-  dist_cutoff = sqrt(2*olap_cut/exp_min*log(10.0));
+  // calculate a cutoff distance to neglect overlap integrals in calc_chi_eff()
+  // when less than pow(10, -olap_cut)
+  const double exp_min = find_min_exp(gauss_exp, ntypes+1);
+  const int olap_cut = 10;
+  dist_cutoff_sq = 2 * olap_cut * log(10.0) / exp_min;
 
   // read chi, eta and gamma
 
@@ -1131,15 +1131,16 @@ void FixQtpieReaxFF::calc_chi_eff()
   const auto x = (const double * const *)atom->x;
   const int *type = atom->type;
 
-  double dist,overlap,sum_n,sum_d,expa,expb,chia,chib,phia,phib,p,m;
+  double dx,dy,dz,dist_sq,overlap,sum_n,sum_d,expa,expb,chia,chib,phia,phib,p,m;
   int i,j;
 
   // check ghost atoms are stored up to the distance cutoff for overlap integrals
   const double comm_cutoff = MAX(neighbor->cutneighmax,comm->cutghostuser);
-  if(comm_cutoff < dist_cutoff/ANGSTROM_TO_BOHRRADIUS) {
-    error->all(FLERR,"comm cutoff = {} Angstrom is smaller than distance cutoff = {} Angstrom "
-               "for overlap integrals in {}. Increase comm cutoff with comm_modify",
-               comm_cutoff, dist_cutoff/ANGSTROM_TO_BOHRRADIUS, style);
+  if(comm_cutoff*comm_cutoff < dist_cutoff_sq) {
+    error->all(FLERR, Error::NOLASTLINE,
+               "Comm cutoff {} is smaller than distance cutoff {} for overlap integrals in fix {}. "
+               "Increase accordingly using comm_modify cutoff",
+               comm_cutoff, sqrt(dist_cutoff_sq), style);
   }
 
   // efield energy is in real units of kcal/mol, factor needed for conversion to eV
@@ -1167,16 +1168,19 @@ void FixQtpieReaxFF::calc_chi_eff()
     sum_d = 0.0;
 
     for (j = 0; j < nt; j++) {
-      dist = distance(x[i],x[j])*ANGSTROM_TO_BOHRRADIUS; // in atomic units
+      dx = x[i][0] - x[j][0];
+      dy = x[i][1] - x[j][1];
+      dz = x[i][2] - x[j][2];
+      dist_sq = (dx*dx + dy*dy + dz*dz);
 
-      if (dist < dist_cutoff) {
+      if (dist_sq < dist_cutoff_sq) {
         expb = gauss_exp[type[j]];
         chib = chi[type[j]];
 
         // overlap integral of two normalised 1s Gaussian type orbitals
         p = expa + expb;
         m = expa * expb / p;
-        overlap = pow((4.0*m/p),0.75) * exp(-m*dist*dist);
+        overlap = pow((4.0 * m / p), 0.75) * exp(-m * dist_sq);
 
         if (efield) {
           if (efield->varflag != FixEfield::ATOM) {
@@ -1208,15 +1212,4 @@ double FixQtpieReaxFF::find_min_exp(const double *array, const int array_length)
       exp_min = array[i];
   }
   return exp_min;
-}
-
-/* ---------------------------------------------------------------------- */
-
-double FixQtpieReaxFF::distance(const double *posa, const double *posb)
-{
-  double dx, dy, dz;
-  dx = posb[0] - posa[0];
-  dy = posb[1] - posa[1];
-  dz = posb[2] - posa[2];
-  return sqrt(dx*dx + dy*dy + dz*dz);
 }

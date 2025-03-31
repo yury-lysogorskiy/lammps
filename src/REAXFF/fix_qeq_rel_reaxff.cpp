@@ -35,8 +35,6 @@
 using namespace LAMMPS_NS;
 using namespace FixConst;
 
-static constexpr double ANGSTROM_TO_BOHRRADIUS = 1.8897261259;
-
 /* ---------------------------------------------------------------------- */
 
 FixQEqRelReaxFF::FixQEqRelReaxFF(LAMMPS *lmp, int narg, char **arg) : FixQtpieReaxFF(lmp, narg, arg)
@@ -52,16 +50,16 @@ void FixQEqRelReaxFF::calc_chi_eff()
   const auto x = (const double *const *) atom->x;
   const int *type = atom->type;
 
-  double dist, overlap, sum_n, sum_d, expa, expb, chia, phia, phib, p, m;
+  double dx, dy, dz, dist_sq, overlap, sum_n, sum_d, expa, expb, chia, phia, phib, p, m;
   int i, j;
 
   // check ghost atoms are stored up to the distance cutoff for overlap integrals
   const double comm_cutoff = MAX(neighbor->cutneighmax, comm->cutghostuser);
-  if (comm_cutoff < dist_cutoff / ANGSTROM_TO_BOHRRADIUS) {
+  if(comm_cutoff*comm_cutoff < dist_cutoff_sq) {
     error->all(FLERR, Error::NOLASTLINE,
                "Comm cutoff {} is smaller than distance cutoff {} for overlap integrals in fix {}. "
                "Increase accordingly using comm_modify cutoff",
-               comm_cutoff, dist_cutoff / ANGSTROM_TO_BOHRRADIUS, style);
+               comm_cutoff, sqrt(dist_cutoff_sq), style);
   }
 
   // efield energy is in real units of kcal/mol, factor needed for conversion to eV
@@ -85,26 +83,29 @@ void FixQEqRelReaxFF::calc_chi_eff()
       sum_d = 0.0;
 
       for (j = 0; j < nt; j++) {
-        dist = distance(x[i], x[j]) * ANGSTROM_TO_BOHRRADIUS;    // in atomic units
+          dx = x[i][0] - x[j][0];
+          dy = x[i][1] - x[j][1];
+          dz = x[i][2] - x[j][2];
+	  dist_sq = (dx*dx + dy*dy + dz*dz);
 
-        if (dist < dist_cutoff) {
+        if (dist_sq < dist_cutoff_sq) {
           expb = gauss_exp[type[j]];
 
           // overlap integral of two normalised 1s Gaussian type orbitals
           p = expa + expb;
           m = expa * expb / p;
-          overlap = pow((4.0 * m / p), 0.75) * exp(-m * dist * dist);
+          overlap = pow((4.0 * m / p), 0.75) * exp(-m * dist_sq);
 
           if (efield->varflag != FixEfield::ATOM) {
             phib = -factor * (x[j][0] * efield->ex + x[j][1] * efield->ey + x[j][2] * efield->ez);
           } else {    // atom-style potential from FixEfield
             phib = efield->efield[j][3];
           }
-          sum_n += (chia + scale * (phia - phib)) * overlap;
+          sum_n += phib * overlap;
           sum_d += overlap;
         }
       }
-      chi_eff[i] = sum_n / sum_d;
+      chi_eff[i] = chia + scale * (phia - sum_n / sum_d);
     }
   } else {
     for (i = 0; i < nn; i++) { chi_eff[i] = chi[type[i]]; }
