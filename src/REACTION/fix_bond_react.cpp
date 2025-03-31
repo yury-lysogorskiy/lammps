@@ -191,7 +191,7 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
 
   int iarg = 3;
   stabilization_flag = 0;
-  molid_mode = Reset_mol_ids::Yes;
+  molid_mode = RESET_MOL_IDS::YES;
   int num_common_keywords = 2;
   for (int m = 0; m < num_common_keywords; m++) {
     if (strcmp(arg[iarg],"stabilization") == 0) {
@@ -209,9 +209,9 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
       if (iarg+2 > narg) error->all(FLERR,"Illegal fix bond/react command: "
                                     "'reset_mol_ids' keyword has too few arguments");
       std::string str = arg[iarg+1];
-      if (str == "yes") molid_mode = Reset_mol_ids::Yes;
-      else if (str == "no") molid_mode = Reset_mol_ids::No;
-      else if (str == "molmap") molid_mode = Reset_mol_ids::Molmap;
+      if (str == "yes") molid_mode = RESET_MOL_IDS::YES;
+      else if (str == "no") molid_mode = RESET_MOL_IDS::NO;
+      else if (str == "molmap") molid_mode = RESET_MOL_IDS::MOLMAP;
       else error->all(FLERR,"Unknown option for 'reset_mol_ids' keyword");
       iarg += 2;
     } else if (strcmp(arg[iarg],"react") == 0) {
@@ -219,7 +219,7 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
     } else error->all(FLERR,"Illegal fix bond/react command: unknown keyword");
   }
 
-  if (molid_mode == Reset_mol_ids::Yes) {
+  if (molid_mode == RESET_MOL_IDS::YES) {
     delete reset_mol_ids;
     reset_mol_ids = new ResetAtomsMol(lmp);
     reset_mol_ids->create_computes(id,group->names[igroup]);
@@ -492,7 +492,7 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
     }
   }
 
-  if (molid_mode == Reset_mol_ids::Molmap) {
+  if (molid_mode == RESET_MOL_IDS::MOLMAP) {
     for (int myrxn = 0; myrxn < nreacts; myrxn++) {
       onemol = atom->molecules[unreacted_mol[myrxn]];
       twomol = atom->molecules[reacted_mol[myrxn]];
@@ -3152,7 +3152,7 @@ void FixBondReact::update_everything()
 
     // find current max molecule ID and shift for each proc
     tagint moloffset = 0;
-    if (molid_mode == Reset_mol_ids::Molmap) {
+    if (molid_mode == RESET_MOL_IDS::MOLMAP) {
       tagint maxmol_all = 0;
       for (int i = 0; i < atom->nlocal; i++) maxmol_all = MAX(maxmol_all, atom->molecule[i]);
       MPI_Allreduce(MPI_IN_PLACE, &maxmol_all, 1, MPI_LMP_TAGINT, MPI_MAX, world);
@@ -3175,7 +3175,7 @@ void FixBondReact::update_everything()
     // assumes consistent molecule IDs in pre- and post-reaction template
     // NOTE: all procs assumed to have same update_mega_glove for second pass
     // NOTE: must be done before add atoms, because add_atoms deletes ghost info
-    if (molid_mode == Reset_mol_ids::Molmap) {
+    if (molid_mode == RESET_MOL_IDS::MOLMAP) {
       for (int i = 0; i < update_num_mega; i++) {
         rxnID = update_mega_glove[0][i];
         onemol = atom->molecules[unreacted_mol[rxnID]];
@@ -4506,7 +4506,7 @@ void FixBondReact::post_integrate_respa(int ilevel, int /*iloop*/)
 
 void FixBondReact::post_force(int /*vflag*/)
 {
-  if (molid_mode == Reset_mol_ids::Yes) reset_mol_ids->reset();
+  if (molid_mode == RESET_MOL_IDS::YES) reset_mol_ids->reset();
 }
 
 /* ---------------------------------------------------------------------- */
