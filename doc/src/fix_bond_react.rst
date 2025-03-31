@@ -28,7 +28,7 @@ Syntax
            *no* = no reaction site stabilization (default)
          group_prefix = user-assigned prefix for the dynamic group of atoms not currently involved in a reaction
          xmax = value that is used by an internally-created :doc:`nve/limit <fix_nve_limit>` integrator
-       *reset_mol_ids* values = *yes* or *no*
+       *reset_mol_ids* values = *yes* or *no* or *molmap*
          *yes* = update molecule IDs based on new global topology (default)
          *no* = do not update molecule IDs
          *molmap* = customize how molecule IDs are updated
@@ -189,6 +189,10 @@ due to the internal dynamic grouping performed by fix bond/react.
    If the group-ID is an existing static group, react-group-IDs
    should also be specified as this static group or a subset.
 
+.. versionadded:: TBD
+
+   New *molmap* option
+
 If the *reset_mol_ids* keyword is set to *yes* (default), the
 :doc:`reset_atoms mol <reset_atoms>` command is invoked after a reaction
 occurs, to ensure that molecule IDs are consistent with the new bond
@@ -198,17 +202,17 @@ global operation, so it can be slow for very large systems.  If the
 *reset_mol_ids* keyword is set to *no*, molecule IDs are not updated.
 If the *reset_mol_ids* keyword is set to *molmap*, molecule IDs are
 updated consistently with the molecule IDs listed in the *Molecules*
-section of the pre- and post-reaction templates.  If a post-reaction atom
-has the same molecule ID as one or more pre-reaction atoms in the
+section of the pre- and post-reaction templates.  If a post-reaction
+atom has the same molecule ID as one or more pre-reaction atoms in the
 templates, then the post-reaction simulation atom will be assigned the
 same simulation molecule ID that those corresponding pre-reaction
 simulation atoms had before the reaction.  The *molmap* option is only
 guaranteed to work correctly if all the pre-reaction atoms that have
-equivalent template molecule IDs also have equivalent molecule IDs in the
-simulation.  No check is performed to test for this consistency.  For
-post-reaction atoms that have a template molecule ID that does not exist
-in pre-reaction template, they are assigned a new molecule ID that does
-not currently exist in the simulation.
+equivalent template molecule IDs also have equivalent molecule IDs in
+the simulation.  No check is performed to test for this consistency.
+For post-reaction atoms that have a template molecule ID that does not
+exist in pre-reaction template, they are assigned a new molecule ID that
+does not currently exist in the simulation.
 
 The following comments pertain to each *react* argument (in other
 words, they can be customized for each reaction, or reaction step):
