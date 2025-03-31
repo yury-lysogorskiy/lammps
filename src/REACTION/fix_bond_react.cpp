@@ -577,9 +577,9 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
   }
 
   for (int i = 0; i < nreacts; i++) {
-    delete [] files[i];
+    delete[] files[i];
   }
-  delete [] files;
+  delete[] files;
 
   if (atom->molecular != Atom::MOLECULAR)
     error->all(FLERR,"Fix bond/react: Cannot use fix bond/react with non-molecular systems");
@@ -660,12 +660,12 @@ FixBondReact::~FixBondReact()
   for (int i = 0; i < narrhenius; i++) {
     delete rrhandom[i];
   }
-  delete [] rrhandom;
+  delete[] rrhandom;
 
   for (int i = 0; i < nreacts; i++) {
     delete random[i];
   }
-  delete [] random;
+  delete[] random;
 
   delete reset_mol_ids;
 
@@ -1650,14 +1650,14 @@ void FixBondReact::make_a_guess()
   for (int i = 0; i < atom->ntypes; i++) {
     if (mol_ntypes[i] != lcl_ntypes[i]) {
       status = GUESSFAIL;
-      delete [] mol_ntypes;
-      delete [] lcl_ntypes;
+      delete[] mol_ntypes;
+      delete[] lcl_ntypes;
       return;
     }
   }
 
-  delete [] mol_ntypes;
-  delete [] lcl_ntypes;
+  delete[] mol_ntypes;
+  delete[] lcl_ntypes;
 
   // okay everything seems to be in order. let's assign some ID pairs!!!
   neighbor_loop();
@@ -2784,7 +2784,7 @@ void FixBondReact::dedup_mega_gloves(int dedup_mode)
       dedup_glove[j][k] = temp_rxn[j];
     }
   }
-  delete [] temp_rxn;
+  delete[] temp_rxn;
 
   for (int i = 0; i < dedup_size; i++) {
     if (dedup_mask[i] == 0) {
@@ -2841,7 +2841,7 @@ void FixBondReact::dedup_mega_gloves(int dedup_mode)
   }
 
   memory->destroy(dedup_glove);
-  delete [] dedup_mask;
+  delete[] dedup_mask;
 }
 
 /* ----------------------------------------------------------------------
@@ -2955,7 +2955,7 @@ void FixBondReact::ghost_glovecast()
     global_megasize = global_megasize + allncols[i];
 
   if (global_megasize == 0) {
-    delete [] allncols;
+    delete[] allncols;
     return;
   }
 
@@ -3004,8 +3004,8 @@ void FixBondReact::ghost_glovecast()
   MPI_Bcast(&global_megasize,1,MPI_INT,0,world);
   MPI_Bcast(&(global_mega_glove[0][0]), global_megasize, column, 0, world);
 
-  delete [] allstarts;
-  delete [] allncols;
+  delete[] allstarts;
+  delete[] allncols;
 
   MPI_Type_free(&column);
   MPI_Type_free(&columnunsized);
@@ -3148,7 +3148,7 @@ void FixBondReact::update_everything()
         update_num_mega++;
       }
     }
-    delete [] noccur;
+    delete[] noccur;
 
     // find current max molecule ID and shift for each proc
     tagint moloffset = 0;
@@ -4400,7 +4400,7 @@ void FixBondReact::ReadConstraints(char *line, int myrxn)
     } else error->one(FLERR,"Fix bond/react: Illegal constraint type in 'Constraints' section of map file");
   }
   strcat(constraintstr[myrxn],")"); // close boolean constraint logic string
-  delete [] constraint_type;
+  delete[] constraint_type;
   memory->destroy(strargs);
 }
 
