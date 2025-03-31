@@ -171,7 +171,7 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
 
   // by using fixed group names, only one instance of fix bond/react is allowed.
   if (modify->get_fix_by_style("^bond/react").size() != 0)
-    error->all(FLERR,"Only one instance of fix bond/react allowed at a time");
+    error->all(FLERR, Error::NOLASTLINE, "Only one instance of fix bond/react allowed at a time");
 
   // let's find number of reactions specified
   nreacts = 0;
@@ -179,13 +179,12 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
     if (strcmp(arg[i],"react") == 0) {
       nreacts++;
       i = i + 6; // skip past mandatory arguments
-      if (i > narg) error->all(FLERR,"Illegal fix bond/react command: "
-                               "'react' has too few arguments");
+      if (i > narg) utils::missing_cmd_args(FLERR,"fix bond/react react", error);
     }
   }
 
-  if (nreacts == 0) error->all(FLERR,"Illegal fix bond/react command: "
-                               "missing mandatory 'react' argument");
+  if (nreacts == 0)
+    error->all(FLERR, Error::NOLASTLINE, "Fix bond/react is missing mandatory 'react' keyword");
 
   size_vector = nreacts;
 
@@ -195,28 +194,26 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
   int num_common_keywords = 2;
   for (int m = 0; m < num_common_keywords; m++) {
     if (strcmp(arg[iarg],"stabilization") == 0) {
-      if (iarg+2 > narg) error->all(FLERR,"Illegal fix bond/react command: "
-                                    "'stabilization' keyword has too few arguments");
+      if (iarg+2 > narg) utils::missing_cmd_args(FLERR,"fix bond/react stabilization", error);
       stabilization_flag = utils::logical(FLERR,arg[iarg+1],false,lmp);
       if (stabilization_flag) {
-        if (iarg+4 > narg) error->all(FLERR,"Illegal fix bond/react command:"
-                                      "'stabilization' keyword has too few arguments");
+        if (iarg+4 > narg)
+          utils::missing_cmd_args(FLERR, "fix bond/react stabilization yes", error);
         exclude_group = utils::strdup(arg[iarg+2]);
         nve_limit_xmax = arg[iarg+3];
         iarg += 4;
       } else iarg += 2;
     } else if (strcmp(arg[iarg],"reset_mol_ids") == 0) {
-      if (iarg+2 > narg) error->all(FLERR,"Illegal fix bond/react command: "
-                                    "'reset_mol_ids' keyword has too few arguments");
+      if (iarg+2 > narg) utils::missing_cmd_args(FLERR,"fix bond/react reset_mol_ids", error);
       std::string str = arg[iarg+1];
       if (str == "yes") molid_mode = RESET_MOL_IDS::YES;
       else if (str == "no") molid_mode = RESET_MOL_IDS::NO;
       else if (str == "molmap") molid_mode = RESET_MOL_IDS::MOLMAP;
-      else error->all(FLERR,"Unknown option for 'reset_mol_ids' keyword");
+      else error->all(FLERR, iarg+1, "Unknown option {} for 'reset_mol_ids' keyword", str);
       iarg += 2;
     } else if (strcmp(arg[iarg],"react") == 0) {
       break;
-    } else error->all(FLERR,"Illegal fix bond/react command: unknown keyword");
+    } else error->all(FLERR, iarg, "Unknown fix bond/react command keyword {}", arg[iarg]);
   }
 
   if (molid_mode == RESET_MOL_IDS::YES) {
