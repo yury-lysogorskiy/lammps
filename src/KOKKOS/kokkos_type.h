@@ -159,7 +159,7 @@ template<class DeviceType>
 class KKDevice {
  public:
 #if ((defined(KOKKOS_ENABLE_CUDA) && defined(KOKKOS_ENABLE_CUDA_UVM)) || \
-     (defined(KOKKOS_ENABLE_HIP) && defined(KOKKOS_ENABLE_IMPL_HIP_UNIFIED_MEMORY)))
+     (defined(KOKKOS_ENABLE_HIP) && defined(KOKKOS_ARCH_AMD_GFX942_APU)))
   typedef Kokkos::Device<DeviceType,LMPDeviceType::memory_space> value;
 #else
   typedef Kokkos::Device<DeviceType,typename DeviceType::memory_space> value;
@@ -792,6 +792,14 @@ typedef tdual_float_3d::t_dev_um t_float_3d_um;
 typedef tdual_float_3d::t_dev_const_um t_float_3d_const_um;
 typedef tdual_float_3d::t_dev_const_randomread t_float_3d_randomread;
 
+//4d float array n
+typedef Kokkos::DualView<LMP_FLOAT****, Kokkos::LayoutRight, LMPDeviceType> tdual_float_4d;
+typedef tdual_float_4d::t_dev t_float_4d;
+typedef tdual_float_4d::t_dev_const t_float_4d_const;
+typedef tdual_float_4d::t_dev_um t_float_4d_um;
+typedef tdual_float_4d::t_dev_const_um t_float_4d_const_um;
+typedef tdual_float_4d::t_dev_const_randomread t_float_4d_randomread;
+
 #ifdef LMP_KOKKOS_NO_LEGACY
 typedef Kokkos::DualView<X_FLOAT*[4], Kokkos::LayoutLeft, LMPDeviceType> tdual_float_1d_4;
 #else
@@ -1125,6 +1133,14 @@ typedef tdual_float_3d::t_host_const t_float_3d_const;
 typedef tdual_float_3d::t_host_um t_float_3d_um;
 typedef tdual_float_3d::t_host_const_um t_float_3d_const_um;
 typedef tdual_float_3d::t_host_const_randomread t_float_3d_randomread;
+
+//4d float array n
+typedef Kokkos::DualView<LMP_FLOAT****, Kokkos::LayoutRight, LMPDeviceType> tdual_float_4d;
+typedef tdual_float_4d::t_host t_float_4d;
+typedef tdual_float_4d::t_host_const t_float_4d_const;
+typedef tdual_float_4d::t_host_um t_float_4d_um;
+typedef tdual_float_4d::t_host_const_um t_float_4d_const_um;
+typedef tdual_float_4d::t_host_const_randomread t_float_4d_randomread;
 
 #ifdef LMP_KOKKOS_NO_LEGACY
 typedef Kokkos::DualView<X_FLOAT*[4], Kokkos::LayoutLeft, LMPDeviceType> tdual_float_1d_4;

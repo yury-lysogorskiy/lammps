@@ -40,6 +40,7 @@ Settings howto
    Howto_walls
    Howto_nemd
    Howto_dispersion
+   Howto_bulk2slab
 
 Analysis howto
 ==============
@@ -103,6 +104,7 @@ Tutorials howto
    Howto_github
    Howto_lammps_gui
    Howto_moltemplate
+   Howto_python
    Howto_pylammps
    Howto_wsl
 

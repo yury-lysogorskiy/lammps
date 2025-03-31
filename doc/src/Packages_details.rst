@@ -994,6 +994,7 @@ Additional pair styles that are less commonly used.
 
 * ``src/EXTRA-PAIR``: filenames -> commands
 * :doc:`pair_style <pair_style>`
+* ``examples/PACKAGES/dispersion``
 
 ----------
 
@@ -2427,7 +2428,7 @@ ways to use LAMMPS and Python together.
 
    Building with the PYTHON package assumes you have a Python development
    environment (headers and libraries) available on your system, which needs
-   to be either Python version 2.7 or Python 3.5 and later.
+   to be Python version 3.6 or later.
 
 **Install:**
 

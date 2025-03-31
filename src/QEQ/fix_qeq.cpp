@@ -41,6 +41,9 @@ using namespace LAMMPS_NS;
 using namespace FixConst;
 
 static constexpr double QSUMSMALL = 0.00001;
+static constexpr int MIN_CAP = 50;
+static constexpr double SAFE_ZONE = 1.2;
+static constexpr bigint MIN_NBRS = 100;
 
 namespace {
   class qeq_parser_error : public std::exception {
@@ -333,7 +336,8 @@ void FixQEq::init()
   MPI_Allreduce(&qsum_local,&qsum,1,MPI_DOUBLE,MPI_SUM,world);
 
   if ((comm->me == 0) && (fabs(qsum) > QSUMSMALL))
-    error->warning(FLERR,"Fix {} group is not charge neutral, net charge = {:.8}", style, qsum);
+    error->warning(FLERR,"Fix {} group is not charge neutral, net charge = {:.8}{}",
+                   style, qsum, utils::errorurl(29));
 }
 
 /* ---------------------------------------------------------------------- */
