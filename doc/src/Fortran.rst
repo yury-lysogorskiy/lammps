@@ -1470,7 +1470,7 @@ Procedures Bound to the :f:type:`lammps` Derived Type
    LAMMPS equal style variable string, evaluates it and returns the resulting
    scalar value as a floating-point number.
 
-   .. versionadded:: TBD
+   .. versionadded:: 4Feb2025
 
    :p character(len=\*) expr: string to be evaluated
    :to: :cpp:func:`lammps_eval`
@@ -1482,7 +1482,7 @@ Procedures Bound to the :f:type:`lammps` Derived Type
 
    Clear whether a compute has been invoked
 
-   .. versionadded:: TBD
+   .. versionadded:: 4Feb2025
 
    :to: :cpp:func:`lammps_clearstep_compute`
 
@@ -1493,7 +1493,7 @@ Procedures Bound to the :f:type:`lammps` Derived Type
    Add timestep to list of future compute invocations
    if the compute has been invoked on the current timestep
 
-   .. versionadded:: TBD
+   .. versionadded:: 4Feb2025
 
    overloaded for 32-bit and 64-bit integer arguments
 
@@ -1506,7 +1506,7 @@ Procedures Bound to the :f:type:`lammps` Derived Type
 
    Add timestep to list of future compute invocations
 
-   .. versionadded:: TBD
+   .. versionadded:: 4Feb2025
 
    overloaded for 32-bit and 64-bit integer arguments
 
@@ -2773,8 +2773,7 @@ Procedures Bound to the :f:type:`lammps` Derived Type
         END SUBROUTINE external_callback
       END INTERFACE
 
-   where ``c_bigint`` is ``c_int`` if ``-DLAMMPS_SMALLSMALL`` was used and
-   ``c_int64_t`` otherwise; and ``c_tagint`` is ``c_int64_t`` if
+   where ``c_bigint`` is ``c_int64_t`` and ``c_tagint`` is ``c_int64_t`` if
    ``-DLAMMPS_BIGBIG`` was used and ``c_int`` otherwise.
 
    The argument *caller* to :f:subr:`set_fix_external_callback` is unlimited

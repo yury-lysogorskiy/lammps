@@ -41,18 +41,18 @@ Compute::Compute(LAMMPS *lmp, int narg, char **arg) :
 {
   instance_me = instance_total++;
 
-  if (narg < 3) error->all(FLERR,"Illegal compute command");
+  if (narg < 3) utils::missing_cmd_args(FLERR,"compute", error);
 
   // compute ID, group, and style
   // ID must be all alphanumeric chars or underscores
 
   id = utils::strdup(arg[0]);
   if (!utils::is_id(id))
-    error->all(FLERR,"Compute ID must be alphanumeric or underscore characters");
+    error->all(FLERR,"Compute ID {} must only have alphanumeric or underscore characters", id);
 
+  groupbit = group->get_bitmask_by_id(FLERR, arg[1], fmt::format("compute {}", arg[2]));
   igroup = group->find(arg[1]);
-  if (igroup == -1) error->all(FLERR,"Could not find compute group ID");
-  groupbit = group->bitmask[igroup];
+  if (igroup == -1) error->all(FLERR,"Could not find compute group ID {}", arg[1]);
 
   style = utils::strdup(arg[2]);
 
