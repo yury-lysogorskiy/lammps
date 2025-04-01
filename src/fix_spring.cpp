@@ -55,7 +55,7 @@ FixSpring::FixSpring(LAMMPS *lmp, int narg, char **arg) :
 
   if (strcmp(arg[3], "tether") == 0) {
     if (narg != 9)
-      error->all(FLERR, Error::NOPOINTER, "Icorrect number of arguments for tether mode");
+      error->all(FLERR, Error::NOPOINTER, "Incorrect number of arguments for tether mode");
     styleflag = TETHER;
     k_spring = utils::numeric(FLERR,arg[4],false,lmp);
     xflag = yflag = zflag = 1;
@@ -70,7 +70,7 @@ FixSpring::FixSpring(LAMMPS *lmp, int narg, char **arg) :
 
   } else if (strcmp(arg[3],"couple") == 0) {
     if (narg != 10)
-      error->all(FLERR, Error::NOPOINTER, "Icorrect number of arguments for couple mode");
+      error->all(FLERR, Error::NOPOINTER, "Incorrect number of arguments for couple mode");
     styleflag = COUPLE;
 
     group2 = utils::strdup(arg[4]);
