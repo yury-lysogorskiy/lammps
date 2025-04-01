@@ -111,6 +111,8 @@ FixQtpieReaxFF::FixQtpieReaxFF(LAMMPS *lmp, int narg, char **arg) :
     iarg++;
   }
   shld = nullptr;
+  prefactor = nullptr;
+  expfactor = nullptr;
 
   nn = nt = n_cap = 0;
   nmax = 0;
@@ -172,8 +174,10 @@ FixQtpieReaxFF::~FixQtpieReaxFF()
   FixQtpieReaxFF::deallocate_matrix();
 
   memory->destroy(shld);
-
   memory->destroy(gauss_exp);
+  memory->destroy(prefactor);
+  memory->destroy(expfactor);
+
   if (!reaxflag) {
     memory->destroy(chi);
     memory->destroy(eta);
@@ -502,6 +506,7 @@ void FixQtpieReaxFF::init()
 
   init_shielding();
   init_taper();
+  init_olap();
 
   if (utils::strmatch(update->integrate_style,"^respa"))
     nlevels_respa = (dynamic_cast<Respa *>(update->integrate))->nlevels;
@@ -565,6 +570,31 @@ void FixQtpieReaxFF::init_taper()
   Tap[1] = 140.0 * swa3 * swb3 / d7;
   Tap[0] = (-35.0*swa3*swb2*swb2 + 21.0*swa2*swb3*swb2 -
             7.0*swa*swb3*swb3 + swb3*swb3*swb) / d7;
+}
+
+/* ---------------------------------------------------------------------- */
+
+void FixQtpieReaxFF::init_olap()
+{
+  int i,j;
+  int ntypes;
+  double expa,expb,expsum,expnorm;
+
+  ntypes = atom->ntypes;
+  if (prefactor == nullptr)
+    memory->create(prefactor,ntypes+1,ntypes+1,"qtpie:overlap_prefactor");
+  if (expfactor == nullptr)
+    memory->create(expfactor,ntypes+1,ntypes+1,"qtpie:overlap_expfactor");
+
+  for (i = 1; i <= ntypes; ++i)
+    for (j = 1; j <= ntypes; ++j) {
+      expa = gauss_exp[i];
+      expb = gauss_exp[j];
+      expsum = expa + expb;
+      expnorm = expa * expb / expsum;
+      prefactor[i][j] = pow((4.0 * expnorm / expsum), 0.75);
+      expfactor[i][j] = expnorm;
+    }
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1131,7 +1161,7 @@ void FixQtpieReaxFF::calc_chi_eff()
   const auto x = (const double * const *)atom->x;
   const int *type = atom->type;
 
-  double dx,dy,dz,dist_sq,overlap,sum_n,sum_d,expa,expb,chia,chib,phia,phib,p,m;
+  double dx,dy,dz,dist_sq,overlap,sum_n,sum_d,chia,chib,phia,phib;
   int i,j;
 
   // check ghost atoms are stored up to the distance cutoff for overlap integrals
@@ -1154,7 +1184,6 @@ void FixQtpieReaxFF::calc_chi_eff()
 
   // compute chi_eff for each local atom
   for (i = 0; i < nn; i++) {
-    expa = gauss_exp[type[i]];
     chia = chi[type[i]];
     if (efield) {
       if (efield->varflag != FixEfield::ATOM) {
@@ -1174,13 +1203,10 @@ void FixQtpieReaxFF::calc_chi_eff()
       dist_sq = (dx*dx + dy*dy + dz*dz);
 
       if (dist_sq < dist_cutoff_sq) {
-        expb = gauss_exp[type[j]];
         chib = chi[type[j]];
 
         // overlap integral of two normalised 1s Gaussian type orbitals
-        p = expa + expb;
-        m = expa * expb / p;
-        overlap = pow((4.0 * m / p), 0.75) * exp(-m * dist_sq);
+        overlap = prefactor[type[i]][type[j]] * exp(-expfactor[type[i]][type[j]] * dist_sq);
 
         if (efield) {
           if (efield->varflag != FixEfield::ATOM) {

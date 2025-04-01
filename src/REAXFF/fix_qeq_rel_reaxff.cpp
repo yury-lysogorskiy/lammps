@@ -50,12 +50,12 @@ void FixQEqRelReaxFF::calc_chi_eff()
   const auto x = (const double *const *) atom->x;
   const int *type = atom->type;
 
-  double dx, dy, dz, dist_sq, overlap, sum_n, sum_d, expa, expb, chia, phia, phib, p, m;
+  double dx, dy, dz, dist_sq, overlap, sum_n, sum_d, chia, phia, phib;
   int i, j;
 
   // check ghost atoms are stored up to the distance cutoff for overlap integrals
   const double comm_cutoff = MAX(neighbor->cutneighmax, comm->cutghostuser);
-  if(comm_cutoff*comm_cutoff < dist_cutoff_sq) {
+  if (comm_cutoff*comm_cutoff < dist_cutoff_sq) {
     error->all(FLERR, Error::NOLASTLINE,
                "Comm cutoff {} is smaller than distance cutoff {} for overlap integrals in fix {}. "
                "Increase accordingly using comm_modify cutoff",
@@ -71,7 +71,6 @@ void FixQEqRelReaxFF::calc_chi_eff()
 
     // compute chi_eff for each local atom
     for (i = 0; i < nn; i++) {
-      expa = gauss_exp[type[i]];
       chia = chi[type[i]];
       if (efield->varflag != FixEfield::ATOM) {
         phia = -factor * (x[i][0] * efield->ex + x[i][1] * efield->ey + x[i][2] * efield->ez);
@@ -86,15 +85,12 @@ void FixQEqRelReaxFF::calc_chi_eff()
           dx = x[i][0] - x[j][0];
           dy = x[i][1] - x[j][1];
           dz = x[i][2] - x[j][2];
-	  dist_sq = (dx*dx + dy*dy + dz*dz);
+          dist_sq = (dx*dx + dy*dy + dz*dz);
 
         if (dist_sq < dist_cutoff_sq) {
-          expb = gauss_exp[type[j]];
 
           // overlap integral of two normalised 1s Gaussian type orbitals
-          p = expa + expb;
-          m = expa * expb / p;
-          overlap = pow((4.0 * m / p), 0.75) * exp(-m * dist_sq);
+          overlap = prefactor[type[i]][type[j]] * exp(-expfactor[type[i]][type[j]] * dist_sq);
 
           if (efield->varflag != FixEfield::ATOM) {
             phib = -factor * (x[j][0] * efield->ex + x[j][1] * efield->ey + x[j][2] * efield->ez);
