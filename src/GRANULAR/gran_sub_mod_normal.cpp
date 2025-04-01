@@ -472,7 +472,6 @@ void GranSubModNormalMDR::coeffs_to_local()
   Y = coeffs[2];      // yield stress
   gamma = coeffs[3];  // effective surface energy
   psi_b = coeffs[4];  // bulk response trigger based on ratio of remaining free area: A_{free}/A_{total}
-  //CoR = coeffs[5];    // coefficent of restitution
   damp = coeffs[5];   // coefficent of restitution
 
   if (E <= 0.0) error->all(FLERR, "Illegal MDR normal model, Young's modulus must be greater than 0");
@@ -480,7 +479,6 @@ void GranSubModNormalMDR::coeffs_to_local()
   if (Y < 0.0) error->all(FLERR, "Illegal MDR normal model, yield stress must be greater than or equal to 0");
   if (gamma < 0.0) error->all(FLERR, "Illegal MDR normal model, effective surface energy must be greater than or equal to 0");
   if (psi_b < 0.0 || psi_b > 1.0) error->all(FLERR, "Illegal MDR normal model, psi_b must be between 0 and 1.0");
-  //if (CoR < 0.0 || CoR > 1.0) error->all(FLERR, "Illegal MDR normal model, coefficent of restitution must be between 0 and 1.0");
   if (damp < 0.0) error->all(FLERR, "Illegal MDR normal model, damping coefficent must be greater than or equal to 0");
 
   G = E / (2.0 * (1.0 + nu));            // shear modulus
@@ -531,7 +529,7 @@ void GranSubModNormalMDR::init()
   index_sigmaxx = atom->find_custom("sigmaxx", tmp1, tmp2);             // xx-component of the stress tensor, not necessary for force calculation
   index_sigmayy = atom->find_custom("sigmayy", tmp1, tmp2);             // yy-component of the stress tensor, not necessary for force calculation
   index_sigmazz = atom->find_custom("sigmazz", tmp1, tmp2);             // zz-component of the stress tensor, not necessary for force calculation
-  index_dRavg = atom->find_custom("dRavg", tmp1, tmp2);                 // radius update increment 
+  index_dRavg = atom->find_custom("dRavg", tmp1, tmp2);                 // radius update increment
 }
 
 /* ---------------------------------------------------------------------- */
@@ -871,7 +869,7 @@ double GranSubModNormalMDR::calculate_forces()
             if (aAdh < acrit) {
               aAdh = 0.0;
               F_MDR = 0.0;
-            } else { 
+            } else {
               g_aAdh = A * 0.5 - A * Binv * sqrt(Bsq * 0.25 - pow(aAdh, 2));
               g_aAdh = round_up_negative_epsilon(g_aAdh);
 
@@ -879,7 +877,7 @@ double GranSubModNormalMDR::calculate_forces()
               const double F_na = calculate_nonadhesive_mdr_force(deltaeAdh, Ainv, Eeff, A, B);
               const double F_Adhes = 2.0 * Eeff * (deltae1D - deltaeAdh) * aAdh;
               F_MDR = F_na + F_Adhes;
-              if (std::isnan(F_MDR)) 
+              if (std::isnan(F_MDR))
                 error->one(FLERR, "F_MDR is NaN, case 3: tensile springs exceed critical length");
             }
           }
@@ -904,7 +902,7 @@ double GranSubModNormalMDR::calculate_forces()
     Ac_avg += wij * Ac;
 
     // contact radius for damping
-    (gamma > 0.0) ? a_damp += aAdh : a_damp += a_na;  
+    (gamma > 0.0) ? a_damp += aAdh : a_damp += a_na;
 
     // bulk force calculation
     double F_BULK;
