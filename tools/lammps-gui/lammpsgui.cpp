@@ -84,8 +84,7 @@ LammpsGui::LammpsGui(QWidget *parent, const QString &filename) :
     current_file.clear();
     current_dir = QDir(".").absolutePath();
     // use $HOME if we get dropped to "/" like on macOS or the installation folder like on Windows
-    if ((current_dir == "/") || (current_dir.path().contains("AppData")))
-        current_dir = QDir::homePath();
+    if ((current_dir == "/") || (current_dir.contains("AppData"))) current_dir = QDir::homePath();
     QDir::setCurrent(current_dir);
 
     inspectList.clear();
