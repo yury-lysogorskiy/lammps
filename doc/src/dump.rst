@@ -478,7 +478,7 @@ label). This option will help many visualization programs to guess bonds
 and colors. You can use the :doc:`dump_modify types labels <dump_modify>`
 option to replace numeric atom types with :doc:`type labels <Howto_type_labels>`.
 
-.. versionadded:: TBD
+.. versionadded:: 2Apr2025
 
 The *extxyz* style writes XYZ files compatible with the Extended XYZ (or
 ExtXYZ) format as defined as defined in `the libAtoms specification
