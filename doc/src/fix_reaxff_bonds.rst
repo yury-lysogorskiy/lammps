@@ -56,7 +56,7 @@ If the filename ends with ".gz", the output file is written in gzipped
 format.  A gzipped dump file will be about 3x smaller than the text
 version, but will also take longer to write.
 
-.. versionadded:: TBD
+.. versionadded:: 2Apr2025
 
 If the filename contains the wildcard character "\*", a new file is
 created on every timestep there bond information is written.  The "\*"

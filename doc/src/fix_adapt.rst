@@ -433,7 +433,7 @@ this fix uses to reset theta0 needs to generate values in radians.
 
 ----------
 
-.. versionadded:: TBD
+.. versionadded:: 2Apr2025
 
 The *improper* keyword uses the specified variable to change the value of
 an improper coefficient over time, very similar to how the *angle* keyword
