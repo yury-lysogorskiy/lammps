@@ -736,6 +736,7 @@ dE
 De
 deallocate
 deallocated
+deallocation
 debye
 Debye
 Decius
@@ -4015,6 +4016,7 @@ username
 usleep
 usolve
 usr
+utf
 util
 utils
 utsa

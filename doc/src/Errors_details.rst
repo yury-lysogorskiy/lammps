@@ -10,7 +10,9 @@ then for specific errors.  In the latter cases, LAMMPS will output a
 short message and then provide a URL that links to a specific section on
 this page.
 
-.. contents::
+-------
+
+.. contents:: Individual paragraphs
 
 ------
 
@@ -471,7 +473,7 @@ pair-wise additive pair styles like :doc:`Lennard-Jones <pair_lj>`,
 :doc:`Morse <pair_morse>`, :doc:`Born-Meyer-Huggins <pair_born>`, and
 similar.  Such required callbacks have not been implemented for
 many-body potentials so one would have to implement them to add
-compatiability with these computes (which may be difficult to do in a
+compatibility with these computes (which may be difficult to do in a
 generic fashion).  Whether this warning indicates that contributions to
 the computed properties are missing depends on the groups used.  At any
 rate, careful testing of the results is advised when this warning
@@ -931,7 +933,7 @@ the documentation carefully.
 XXX command before simulation box is defined
 --------------------------------------------
 
-This error occurs when trying to excute a LAMMPS command that requires
+This error occurs when trying to execute a LAMMPS command that requires
 information about the system dimensions, or the number atom, bond,
 angle, dihedral, or improper types, or the number of atoms or similar
 data that is only available *after* the simulation box has been created.
@@ -943,7 +945,7 @@ created <hint12>` for additional information.
 XXX command after simulation box is defined
 --------------------------------------------
 
-This error occurs when trying to excute a LAMMPS command that changes a
+This error occurs when trying to execute a LAMMPS command that changes a
 global setting *after* it is locked in when the simulation box is
 created (for instance defining the :doc:`atom style <atom_style>`,
 :doc:`dimension <dimension>`, :doc:`newton <newton>`, or :doc:`units
@@ -951,3 +953,32 @@ created (for instance defining the :doc:`atom style <atom_style>`,
 simulation box has been created.  See the paragraph on :ref:`errors
 before or after the simulation box is created <hint12>` for additional
 information.
+
+.. _err0035:
+
+Error messages ending in 'Please contact the LAMMPS developers'
+---------------------------------------------------------------
+
+Such error messages indicate that something unexpected has happened and
+that it will require a good understanding of the details of the design
+of LAMMPS to resolve this.  This can be due to some bug in contributed
+code, and oversight when updating functionality, a feature that is
+scheduled to be removed or reaching a combination of flags and settings
+that should not be possible or similar.
+
+Even if you find a way to work around this error or warning, you should
+contact the LAMMPS developers and prepare a minimal set of inputs that
+can be used to reproduce this error or warning.  By providing the input,
+the LAMMPS developers can then assess whether additional action is
+needed and who else to contact about this, if needed.
+
+There are multiple ways to get into contact and report your issue. In
+order of preference there are:
+
+- Submit a bug report `issue in the LAMMPS GitHub
+  <https://github.com/lammps/lammps/issues>` repository
+- Post a message in the "LAMMPS Development" forum in the
+  `MatSci Community Discourse <https://matsci.org/c/lammps/lammps-development/42>`_
+- Send an email to ``developers@lammps.org``
+- Send an email to an :doc:`individual LAMMPS developer <Intro_authors>`
+  that you know and trust
