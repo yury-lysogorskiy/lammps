@@ -189,7 +189,7 @@ due to the internal dynamic grouping performed by fix bond/react.
    If the group-ID is an existing static group, react-group-IDs
    should also be specified as this static group or a subset.
 
-.. versionadded:: TBD
+.. versionadded:: 2Apr2025
 
    New *molmap* option
 

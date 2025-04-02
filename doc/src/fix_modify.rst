@@ -185,7 +185,7 @@ replaces the string for that specific keyword. The *colname* keyword can
 be used multiple times. If multiple *colname* settings refer to the same
 keyword, the last setting has precedence.
 
-.. versionadded:: TBD
+.. versionadded:: 2Apr2025
 
 The *pad* keyword only applies when a fix produces a file and the output
 filename is specified with a wildcard "\*" character which becomes the

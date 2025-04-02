@@ -7502,7 +7502,7 @@ int lammps_has_error(void *handle)
 
 \verbatim embed:rst
 
-.. versionadded:: TBD
+.. versionadded:: 2Apr2025
 
 This function can be used to stop LAMMPS from printing error messages
 *before* LAMMPS throws a :ref:`C++ exception <exceptions>`.  This is so
