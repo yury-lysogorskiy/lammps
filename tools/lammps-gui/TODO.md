@@ -2,6 +2,7 @@ LAMMPS-GUI TODO list:
 
 # Short term goals (v1.x)
 
+- add a dialog to apply http(s) proxy settings for LAMMPS' geturl command
 - implement a timed "Auto-Save" feature that saves after some idle time.  set timeout in Editor preferences.
 - add a "Filter data" checkbox to the "Charts" window to select whether data should be dropped.
 - add a "Charts tab" to the preferences with the following (default) settings:
