@@ -56,8 +56,8 @@ PairMLIAPKokkos<DeviceType>::~PairMLIAPKokkos()
   memoryKK->destroy_kokkos(k_map, map);
   memoryKK->destroy_kokkos(k_cutsq, cutsq);
   memoryKK->destroy_kokkos(k_setflag, setflag);
-  memoryKK->destroy_kokkos(k_eatom,eatom);
-  memoryKK->destroy_kokkos(k_vatom,vatom);
+  memoryKK->destroy_kokkos(k_eatom, eatom);
+  memoryKK->destroy_kokkos(k_vatom, vatom);
   delete model;
   delete descriptor;
   model=nullptr;
