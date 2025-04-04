@@ -726,7 +726,7 @@ Tutorials
 
 The *Tutorials* menu is to support the set of LAMMPS tutorials for
 beginners and intermediate LAMMPS users documented in (:ref:`Gravelle1
-<Gravelle1>`).  From the dropdown menu you can select which of the eight
+<Gravelle1>`).  From the drop down menu you can select which of the eight
 currently available tutorial sessions you want to start and then will be
 taken to a 'wizard' dialog where you can choose in which folder you want
 to work, whether you want that folder to be cleared, and also whether
@@ -862,6 +862,11 @@ General Settings:
   the plots in the *Charts* window in milliseconds.  The default is to
   redraw the plots every 500 milliseconds.  This is just for the drawing,
   data collection is managed with the previous setting.
+- *HTTPS proxy setting:* Allows to enter a URL for an HTTPS proxy.  This
+  may be needed when the LAMMPS input contains :doc:`geturl commands <geturl>`
+  or for downloading tutorial files from the *Tutorials* menu.  If the
+  ``https_proxy`` environment variable was set externally, its value is
+  displayed but cannot be changed.
 
 Accelerators:
 ^^^^^^^^^^^^^
