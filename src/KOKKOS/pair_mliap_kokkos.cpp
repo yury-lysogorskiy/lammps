@@ -37,7 +37,7 @@ using namespace LAMMPS_NS;
 /* ---------------------------------------------------------------------- */
 
 template<class DeviceType>
-PairMLIAPKokkos<DeviceType>::PairMLIAPKokkos(class LAMMPS* l) : PairMLIAP(l)
+PairMLIAPKokkos<DeviceType>::PairMLIAPKokkos(class LAMMPS *lmp) : PairMLIAP(lmp)
 {
   kokkosable = 1;
   execution_space = ExecutionSpaceFromDevice<DeviceType>::space;
@@ -45,7 +45,6 @@ PairMLIAPKokkos<DeviceType>::PairMLIAPKokkos(class LAMMPS* l) : PairMLIAP(l)
   is_child=true;
   reverse_comm_device = 1;
   comm_type=COMM_TYPE::UNSET;
-
 }
 
 /* ---------------------------------------------------------------------- */
@@ -217,10 +216,7 @@ void PairMLIAPKokkos<DeviceType>::settings(int narg, char ** arg)
 template<class DeviceType>
 void PairMLIAPKokkos<DeviceType>::coeff(int narg, char **arg) {
   if (narg < 3) error->all(FLERR,"Incorrect args for pair coefficients" + utils::errorurl(21));
-  if (!allocated) {
-    PairMLIAP::allocate();
-    allocate();
-  }
+  if (!allocated) allocate();
 
   char* type1 = arg[0];
   char* type2 = arg[1];
