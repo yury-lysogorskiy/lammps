@@ -10,7 +10,7 @@
    fun:MPIDI_OFI_init_local
    ...
    fun:PMPI_Init
-   fun:main
+   ...
 }
 {
    MPICH_MPI_init2
@@ -25,7 +25,7 @@
    fun:MPIDI_OFI_init_local
    ...
    fun:PMPI_Init
-   fun:main
+   ...
 }
 {
    MPICH_MPI_init3
@@ -37,7 +37,7 @@
    fun:MPIDI_OFI_init_local
    ...
    fun:PMPI_Init
-   fun:main
+   ...
 }
 {
    MPICH_MPI_init4
@@ -51,7 +51,7 @@
    fun:MPIDI_Init.constprop.0
    ...
    fun:PMPI_Init
-   fun:main
+   ...
 }
 {
    MPICH_MPI_init5
@@ -65,7 +65,7 @@
    fun:MPID_Init.constprop.0
    ...
    fun:PMPI_Init
-   fun:main
+   ...
 }
 {
    MPICH_MPI_init6
@@ -79,7 +79,7 @@
    ...
    obj:*
    fun:PMPI_Init
-   fun:main
+   ...
 }
 {
    MPICH_MPI_init7
@@ -91,7 +91,7 @@
    fun:psmx3_sep_open
    ...
    fun:PMPI_Init
-   fun:main
+   ...
 }
 {
    MPICH_MPI_init8
@@ -107,7 +107,7 @@
    fun:*
    fun:*
    fun:PMPI_Finalize
-   fun:main
+   ...
 }
 {
    MPICH_MPI_init9
@@ -119,5 +119,5 @@
    fun:MPIDI_OFI_init_local
    ...
    fun:PMPI_Init
-   fun:main
+   ...
 }
