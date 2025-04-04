@@ -40,7 +40,7 @@ variable psi_b              equal 0.5
 # linear_history = k_t, x_gammat, mu_s
 variable kt         equal 2/7*${YoungsModulus}*${atomRadius}
 variable kt_wall    equal 2/7*${YoungsModulus}*${atomRadius}
-variable xgammat    equal 1.0 
+variable xgammat    equal 1.0
 variable mu_s       equal 0.7
 variable mu_s_wall  equal 0.1
 
@@ -49,7 +49,10 @@ variable mu_roll     equal 0.6
 variable k_roll      equal 2.25*${mu_roll}*${mu_roll}*${YoungsModulus}*${atomRadius}
 variable gamma_roll  equal 0.0
 
-pair_coeff * * mdr ${YoungsModulus} ${PoissonsRatio} ${YieldStress} ${SurfaceEnergy} ${psi_b} ${damp} damping mdr tangential linear_history ${kt} ${xgammat} ${mu_s} rolling sds ${k_roll} ${gamma_roll} ${mu_roll}
+pair_coeff * * mdr ${YoungsModulus} ${PoissonsRatio} ${YieldStress} ${SurfaceEnergy} ${psi_b} ${damp} &
+    damping mdr &
+    tangential linear_history ${kt} ${xgammat} ${mu_s} &
+    rolling sds ${k_roll} ${gamma_roll} ${mu_roll}
 
 ######################################### ADD DIE AND PUNCH WALLS ############################################
 
@@ -73,7 +76,7 @@ variable avgUpperPunchForce equal c_avgUpperPunchForce
 compute avgLowerPunchForce all reduce sum f_lowerPunch[4]
 variable avgLowerPunchForce equal c_avgLowerPunchForce
 
-fix printFD all print 1 "${disp_upper} ${avgUpperPunchForce} ${avgLowerPunchForce}" file punch_force_disp_tableting200.csv screen no
+#fix printFD all print 1 "${disp_upper} ${avgUpperPunchForce} ${avgLowerPunchForce}" file punch_force_disp_tableting200.csv screen no
 
 ##################################### INTEGRATION AND GRAVITY #################################################
 
@@ -109,8 +112,8 @@ variable syy_ave equal c_sigmayy_ave
 variable szz_ave equal c_sigmazz_ave
 variable Vparticles equal c_Velas_sum
 
-fix log all print 1 "${sxx_ave} ${syy_ave} ${szz_ave} ${Vparticles}" file average_normal_stresses_tableting200.csv screen no
-dump dumpParticles all custom ${output_rate} tableting200.dump id type mass diameter x y z vx vy vz fx fy fz c_ke c_sigmaxx c_sigmayy c_sigmazz
+#fix log all print 1 "${sxx_ave} ${syy_ave} ${szz_ave} ${Vparticles}" file average_normal_stresses_tableting200.csv screen no
+#dump dumpParticles all custom ${output_rate} tableting200.dump id type mass diameter x y z vx vy vz fx fy fz c_ke c_sigmaxx c_sigmayy c_sigmazz
 #dump dumpParticlesVTK all vtk ${output_rate} post/particles_*.vtk id x y z fx fy fz vx vy vz c_ke radius c_sigmaxx c_sigmayy c_sigmazz
 
 ############################################## RUN SIMULATION #################################################

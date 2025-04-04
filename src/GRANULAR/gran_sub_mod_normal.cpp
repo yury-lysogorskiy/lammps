@@ -978,7 +978,6 @@ double GranSubModNormalMDR::calculate_forces()
   return F;
 }
 
-
 /* ---------------------------------------------------------------------- */
 
 double GranSubModNormalMDR::calculate_nonadhesive_mdr_force(double delta, double Ainv, double Eeff, double A, double B)

@@ -178,6 +178,8 @@ two-part series :ref:`Zunker and Kamrin Part I <Zunker2024I>` and
 :ref:`Zunker and Kamrin Part II <Zunker2024II>`. Further development
 and demonstrations of its application to industrially relevant powder
 compaction processes are presented in :ref:`Zunker et al. <Zunker2025>`.
+If you use the *mdr* normal model, is recommended you use the *mdr* damping model
+described below.
 
 The model requires the following inputs:
 
@@ -219,12 +221,6 @@ the smallest particle and :math:`k_\textrm{bulk} = \kappa R_\textrm{min}` is an
 effective stiffness related to the bulk elastic response.
 Here, :math:`\kappa = E/(3(1-2\nu))` is the bulk modulus and
 :math:`R_\textrm{min}` is the radius of the smallest particle.
-
-.. note::
-
-   The *mdr* model requires some specific settings to function properly,
-   please read the following text carefully to ensure all requirements are
-   followed.
 
 The *atom_style* must be set to *sphere 1* to enable dynamic particle
 radii. The *mdr* model is designed to respect the incompressibility of
@@ -335,7 +331,7 @@ for the damping model currently supported are:
 .. note::
 
    It is suggested to use the *mdr* damping model with when the normal
-   *mdr* contact model is defined. 
+   *mdr* contact model is defined.
 
 If the *damping* keyword is not specified, the *viscoelastic* model is
 used by default.
@@ -431,7 +427,7 @@ by the normal *mdr* contact model to determine the damping coefficent:
 
 .. math::
 
-   \eta_n = \eta_{n0} (m_{eff}k_{mdr})^{1/2}, 
+   \eta_n = \eta_{n0} (m_{eff}k_{mdr})^{1/2},
 
 where :math:`k_{mdr}` is proportional to contact radius :math:`a_{mdr}` tracked by the
 normal *mdr* contact model:

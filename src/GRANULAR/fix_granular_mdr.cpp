@@ -154,27 +154,27 @@ void FixGranularMDR::setup_pre_force(int /*vflag*/)
 
     norm_model2 = dynamic_cast<GranSubModNormalMDR *>(fix->model->normal_model);
 
-    if (norm_model && norm_model2 && (norm_model->E != norm_model2->E))
+    if (norm_model && norm_model2 && fabs(norm_model->E - norm_model2->E) > EPSILON)
       error->all(
           FLERR, Error::NOLASTLINE,
           "Young's modulus in pair style, {}, does not agree with value {} in fix gran/wall/region",
           norm_model->E, norm_model2->E);
-    if (norm_model->nu != norm_model2->nu)
+    if (fabs(norm_model->nu - norm_model2->nu) > EPSILON)
       error->all(
           FLERR, Error::NOLASTLINE,
           "Poisson's ratio in pair style, {}, does not agree with value {} in fix gran/wall/region",
           norm_model->nu, norm_model2->nu);
-    if (norm_model->Y != norm_model2->Y)
+    if (fabs(norm_model->Y - norm_model2->Y) > EPSILON)
       error->all(
           FLERR, Error::NOLASTLINE,
           "Yield stress in pair style, {}, does not agree with value {} in fix gran/wall/region",
           norm_model->Y, norm_model2->Y);
-    if (norm_model->psi_b != norm_model2->psi_b)
+    if (fabs(norm_model->psi_b - norm_model2->psi_b) > EPSILON)
       error->all(FLERR, Error::NOLASTLINE,
                  "Bulk response trigger in pair style, {}, does not agree with value {} in fix "
                  "gran/wall/region",
                  norm_model->psi_b, norm_model2->psi_b);
-    if (norm_model->CoR != norm_model2->CoR)
+    if (fabs(norm_model->CoR - norm_model2->CoR) > EPSILON)
       error->all(FLERR, Error::NOLASTLINE,
                  "Coefficient of restitution in pair style, {}, does not agree with value {} in "
                  "fix gran/wall/region",
@@ -243,18 +243,19 @@ void FixGranularMDR::pre_force(int)
     if (update->setupflag && (!new_atom)) continue;
 
     const double R = radius[i];
+    const double Rsq = R * R;
     const double Vo = 4.0 / 3.0 * MY_PI * pow(Ro[i], 3.0);
-    const double Vgeoi = 4.0 / 3.0 * MY_PI * pow(R, 3.0) - Vcaps[i];
+    const double Vgeoi = 4.0 / 3.0 * MY_PI * Rsq * R - Vcaps[i];
 
     Vgeo[i] = MIN(Vgeoi, Vo);
     Velas[i] = Vo * (1.0 + eps_bar[i]);
-    Atot[i] = 4.0 * MY_PI * pow(R, 2.0) + Atot_sum[i];
+    Atot[i] = 4.0 * MY_PI * Rsq + Atot_sum[i];
     psi[i] = (Atot[i] - Acon1[i]) / Atot[i];
 
     if (psi_b_coeff < psi[i]) {
       double w_confinement;
-      ( psi[i] > 0.1 ) ? w_confinement = 1.0/(1.0 + exp(-75.0*(psi[i]-0.2))) : w_confinement = 0.0;
-      const double dR = MAX(dRnumerator[i] / (dRdenominator[i] - 4.0 * MY_PI * pow(R, 2.0))*w_confinement, 0.0);
+      ( psi[i] > 0.1 ) ? w_confinement = 1.0 / (1.0 + exp(-75.0 * (psi[i] - 0.2))) : w_confinement = 0.0;
+      const double dR = MAX(dRnumerator[i] / (dRdenominator[i] - 4.0 * MY_PI * Rsq) * w_confinement, 0.0);
 
       const double N_window = 10.0;
       if (dR > 0.0) dRavg[i] += (dR - dRavg[i]) / N_window;

@@ -1,0 +1,779 @@
+LAMMPS (4 Feb 2025 - Development - patch_4Feb2025-581-g384d7f446b-modified)
+############################### SIMULATION SETTINGS ###################################################
+
+atom_style      sphere 1
+atom_modify     map array
+comm_modify vel yes
+units           si
+newton          off
+neighbor        2 bin
+neigh_modify    delay 0
+timestep        1e-6
+
+##################### SIMULATION BOUNDING BOX, INSERT PARTICLES, AND INTEGRATION #######################
+
+boundary f f f
+read_data spheres12.data
+Reading data file ...
+  orthogonal box = (-10 -10 -10) to (10 10 10)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  12 atoms
+  read_data CPU = 0.002 seconds
+fix integr all nve/sphere
+
+# create pair group for contact area outputs
+group particles_1_12 id 1 12
+2 atoms in group particles_1_12
+
+########################### PARTICLE MATERIAL PROPERTIES AND FORCE MODEL ###############################
+
+variable atomRadius equal 0.5
+
+pair_style granular
+
+# mdr = E, nu, Y, gamma, psi_b, damp
+variable YoungsModulus  equal 1e9
+variable PoissonsRatio  equal 0.3
+variable YieldStress    equal 50e6
+variable SurfaceEnergy  equal 0.0
+variable psi_b          equal 0.5
+variable damp            equal 1.0
+
+# linear_history = k_t, x_gamma,t, mu_s
+variable kt       equal 2/7*${YoungsModulus}*${atomRadius}
+variable kt       equal 2/7*1000000000*${atomRadius}
+variable kt       equal 2/7*1000000000*0.5
+variable xgammat  equal 0.0
+variable mu_s     equal 0.5
+
+pair_coeff * * mdr ${YoungsModulus} ${PoissonsRatio} ${YieldStress} ${SurfaceEnergy} ${psi_b} ${damp}    damping mdr    tangential linear_history ${kt} ${xgammat} ${mu_s}
+pair_coeff * * mdr 1000000000 ${PoissonsRatio} ${YieldStress} ${SurfaceEnergy} ${psi_b} ${damp}    damping mdr    tangential linear_history ${kt} ${xgammat} ${mu_s}
+pair_coeff * * mdr 1000000000 0.3 ${YieldStress} ${SurfaceEnergy} ${psi_b} ${damp}    damping mdr    tangential linear_history ${kt} ${xgammat} ${mu_s}
+pair_coeff * * mdr 1000000000 0.3 50000000 ${SurfaceEnergy} ${psi_b} ${damp}    damping mdr    tangential linear_history ${kt} ${xgammat} ${mu_s}
+pair_coeff * * mdr 1000000000 0.3 50000000 0 ${psi_b} ${damp}    damping mdr    tangential linear_history ${kt} ${xgammat} ${mu_s}
+pair_coeff * * mdr 1000000000 0.3 50000000 0 0.5 ${damp}    damping mdr    tangential linear_history ${kt} ${xgammat} ${mu_s}
+pair_coeff * * mdr 1000000000 0.3 50000000 0 0.5 1    damping mdr    tangential linear_history ${kt} ${xgammat} ${mu_s}
+pair_coeff * * mdr 1000000000 0.3 50000000 0 0.5 1    damping mdr    tangential linear_history 142857142.857143 ${xgammat} ${mu_s}
+pair_coeff * * mdr 1000000000 0.3 50000000 0 0.5 1    damping mdr    tangential linear_history 142857142.857143 0 ${mu_s}
+pair_coeff * * mdr 1000000000 0.3 50000000 0 0.5 1    damping mdr    tangential linear_history 142857142.857143 0 0.5
+
+######################################### ADD IN PLANES ################################################
+
+variable boxWidth equal 3
+variable halfBoxWidth equal ${boxWidth}/2
+variable halfBoxWidth equal 3/2
+
+variable plane_disp equal 0.0
+variable plane_disp_neg equal 0.0
+
+region plane_yz_pos plane ${halfBoxWidth} 0 0 -1 0 0 side in move v_plane_disp_neg NULL NULL units box
+region plane_yz_pos plane 1.5 0 0 -1 0 0 side in move v_plane_disp_neg NULL NULL units box
+region plane_yz_neg plane -${halfBoxWidth} 0 0 1 0 0 side in move v_plane_disp NULL NULL units box
+region plane_yz_neg plane -1.5 0 0 1 0 0 side in move v_plane_disp NULL NULL units box
+region plane_xz_pos plane 0 ${halfBoxWidth} 0 0 -1 0 side in move NULL v_plane_disp_neg NULL units box
+region plane_xz_pos plane 0 1.5 0 0 -1 0 side in move NULL v_plane_disp_neg NULL units box
+region plane_xz_neg plane 0 -${halfBoxWidth} 0 0 1 0 side in move NULL v_plane_disp NULL units box
+region plane_xz_neg plane 0 -1.5 0 0 1 0 side in move NULL v_plane_disp NULL units box
+region plane_xy_pos plane 0 0 ${halfBoxWidth} 0 0 -1  side in move NULL NULL v_plane_disp_neg units box
+region plane_xy_pos plane 0 0 1.5 0 0 -1  side in move NULL NULL v_plane_disp_neg units box
+region plane_xy_neg plane 0 0 -${halfBoxWidth} 0 0 1 side in move NULL NULL v_plane_disp units box
+region plane_xy_neg plane 0 0 -1.5 0 0 1 side in move NULL NULL v_plane_disp units box
+
+variable wall_contact_string string "granular mdr ${YoungsModulus} ${PoissonsRatio} ${YieldStress} ${SurfaceEnergy} ${psi_b} ${damp} damping mdr tangential linear_history ${kt} ${xgammat} ${mu_s} "
+granular mdr 1000000000 ${PoissonsRatio} ${YieldStress} ${SurfaceEnergy} ${psi_b} ${damp} damping mdr tangential linear_history ${kt} ${xgammat} ${mu_s} 
+granular mdr 1000000000 0.3 ${YieldStress} ${SurfaceEnergy} ${psi_b} ${damp} damping mdr tangential linear_history ${kt} ${xgammat} ${mu_s} 
+granular mdr 1000000000 0.3 50000000 ${SurfaceEnergy} ${psi_b} ${damp} damping mdr tangential linear_history ${kt} ${xgammat} ${mu_s} 
+granular mdr 1000000000 0.3 50000000 0 ${psi_b} ${damp} damping mdr tangential linear_history ${kt} ${xgammat} ${mu_s} 
+granular mdr 1000000000 0.3 50000000 0 0.5 ${damp} damping mdr tangential linear_history ${kt} ${xgammat} ${mu_s} 
+granular mdr 1000000000 0.3 50000000 0 0.5 1 damping mdr tangential linear_history ${kt} ${xgammat} ${mu_s} 
+granular mdr 1000000000 0.3 50000000 0 0.5 1 damping mdr tangential linear_history 142857142.857143 ${xgammat} ${mu_s} 
+granular mdr 1000000000 0.3 50000000 0 0.5 1 damping mdr tangential linear_history 142857142.857143 0 ${mu_s} 
+granular mdr 1000000000 0.3 50000000 0 0.5 1 damping mdr tangential linear_history 142857142.857143 0 0.5 
+
+fix plane_yz_pos all wall/gran/region ${wall_contact_string} region plane_yz_pos contacts
+fix plane_yz_pos all wall/gran/region granular mdr 1000000000 0.3 50000000 0 0.5 1 damping mdr tangential linear_history 142857142.857143 0 0.5  region plane_yz_pos contacts
+fix plane_yz_neg all wall/gran/region ${wall_contact_string} region plane_yz_neg contacts
+fix plane_yz_neg all wall/gran/region granular mdr 1000000000 0.3 50000000 0 0.5 1 damping mdr tangential linear_history 142857142.857143 0 0.5  region plane_yz_neg contacts
+fix plane_xz_pos all wall/gran/region ${wall_contact_string} region plane_xz_pos contacts
+fix plane_xz_pos all wall/gran/region granular mdr 1000000000 0.3 50000000 0 0.5 1 damping mdr tangential linear_history 142857142.857143 0 0.5  region plane_xz_pos contacts
+fix plane_xz_neg all wall/gran/region ${wall_contact_string} region plane_xz_neg contacts
+fix plane_xz_neg all wall/gran/region granular mdr 1000000000 0.3 50000000 0 0.5 1 damping mdr tangential linear_history 142857142.857143 0 0.5  region plane_xz_neg contacts
+fix plane_xy_pos all wall/gran/region ${wall_contact_string} region plane_xy_pos contacts
+fix plane_xy_pos all wall/gran/region granular mdr 1000000000 0.3 50000000 0 0.5 1 damping mdr tangential linear_history 142857142.857143 0 0.5  region plane_xy_pos contacts
+fix plane_xy_neg all wall/gran/region ${wall_contact_string} region plane_xy_neg contacts
+fix plane_xy_neg all wall/gran/region granular mdr 1000000000 0.3 50000000 0 0.5 1 damping mdr tangential linear_history 142857142.857143 0 0.5  region plane_xy_neg contacts
+
+compute plane_xy_neg_force all reduce sum f_plane_xy_neg[4]
+variable plane_xy_neg_force equal c_plane_xy_neg_force
+
+compute plane_xz_neg_force all reduce sum f_plane_xz_neg[3]
+variable plane_xz_neg_force equal c_plane_xz_neg_force
+
+compute plane_yz_neg_force all reduce sum f_plane_yz_neg[2]
+variable plane_yz_neg_force equal c_plane_yz_neg_force
+
+#fix print1 all print 1 "${plane_disp} ${plane_xy_neg_force} ${plane_xz_neg_force} ${plane_yz_neg_force}" file force_disp_triaxial12.csv screen no
+
+######################################## SCREEN OUTPUT  ####################################################
+
+compute       1 all erotate/sphere
+thermo_style  custom dt step atoms ke c_1 vol
+thermo        100
+thermo_modify lost ignore norm no
+
+##################################### DEFINE WALL MOVEMENT  #################################################
+
+variable disp_max equal 0.499
+variable ddisp equal 0.00001
+variable compression_steps equal round(${disp_max}/${ddisp})
+variable compression_steps equal round(0.499/${ddisp})
+variable compression_steps equal round(0.499/1e-05)
+variable output_rate equal round(${compression_steps}/100)
+variable output_rate equal round(49900/100)
+
+##################################### SET UP DUMP OUTPUTS  ####################################################
+
+#dump dumpParticles all custom ${output_rate} triaxial_compaction_12.dump id type mass x y z vx vy vz fx fy fz radius
+#dump   dmp all vtk ${output_rate} post/triaxial12particles_*.vtk id type mass x y z vx vy vz fx fy fz radius
+
+#################################### COMPRESS THE PARTICLES  ##################################################
+
+run 0
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+Your simulation uses code contributions which should be cited:
+
+- MDR contact model command: (i) https://doi.org/10.1016/j.jmps.2023.105492 || (ii) https://doi.org/10.1016/j.jmps.2023.105493 || (iii) https://doi.org/10.31224/4289
+
+@Article{zunker2024mechanicallyI,
+ author =  {Zunker, William and Kamrin, Ken},
+ title =   {A mechanically-derived contact model for adhesive elastic-perfectly plastic particles,
+            Part I: Utilizing the method of dimensionality reduction},
+ journal = {Journal of the Mechanics and Physics of Solids},
+ year =    {2024},
+ volume =  {183},
+ pages =   {105492},
+}
+
+@Article{zunker2024mechanicallyII,
+ author =  {Zunker, William and Kamrin, Ken},
+ title =   {A mechanically-derived contact model for adhesive elastic-perfectly plastic particles,
+            Part II: Contact under high compaction—modeling a bulk elastic response},
+ journal = {Journal of the Mechanics and Physics of Solids},
+ year =    {2024},
+ volume =  {183},
+ pages =   {105493},
+}
+
+@Article{zunker2025experimentally,
+ author =  {Zunker, William and Dunatunga, Sachith and Thakur, Subhash and Tang, Pingjun and Kamrin, Ken},
+ title =   {Experimentally validated DEM for large deformation powder compaction:
+            mechanically-derived contact model and screening of non-physical contacts},
+ year =    {2025},
+ journal = {engrXiv},
+}
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+Generated 0 of 0 mixed pair_coeff terms from geometric mixing rule
+Neighbor list info ...
+  update: every = 1 steps, delay = 0 steps, check = yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 3.2
+  ghost atom cutoff = 3.2
+  binsize = 1.6, bins = 13 13 13
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair granular, perpetual
+      attributes: half, newton off, size, history
+      pair build: half/size/bin/atomonly/newtoff
+      stencil: full/bin/3d
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 74.54 | 74.54 | 74.54 Mbytes
+      Dt          Step        Atoms        KinEng          c_1           Volume    
+ 1e-06                  0          12   0              0              8000         
+Loop time of 1.135e-06 on 1 procs for 0 steps with 12 atoms
+
+88.1% CPU use with 1 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0          | 0          | 0          |   0.0 |  0.00
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0          | 0          | 0          |   0.0 |  0.00
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 1.135e-06  |            |       |100.00
+
+Nlocal:             12 ave          12 max          12 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:              0 ave           0 max           0 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:             66 ave          66 max          66 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 66
+Ave neighs/atom = 5.5
+Neighbor list builds = 0
+Dangerous builds = 0
+
+# print out contact area evolution for particles 1 and 12
+compute Ac_1_12 particles_1_12 pair/local p13 cutoff radius
+compute Ac_1_12_sum particles_1_12 reduce sum c_Ac_1_12 inputs local
+variable Ac_1_12 equal c_Ac_1_12_sum
+#fix logArea all print 100 "${plane_disp} ${Ac_1_12}" file pair_1_12_contact_area_triaxial12.csv screen no
+
+variable plane_disp equal ${ddisp}*elapsed
+variable plane_disp equal 1e-05*elapsed
+variable plane_disp_neg equal -${ddisp}*elapsed
+variable plane_disp_neg equal -1e-05*elapsed
+
+run ${compression_steps}
+run 49900
+Generated 0 of 0 mixed pair_coeff terms from geometric mixing rule
+Neighbor list info ...
+  update: every = 1 steps, delay = 0 steps, check = yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 3.2
+  ghost atom cutoff = 3.2
+  binsize = 1.6, bins = 13 13 13
+  2 neighbor lists, perpetual/occasional/extra = 1 1 0
+  (1) pair granular, perpetual
+      attributes: half, newton off, size, history
+      pair build: half/size/bin/atomonly/newtoff
+      stencil: full/bin/3d
+      bin: standard
+  (2) compute pair/local, occasional
+      attributes: half, newton off, size
+      pair build: half/size/bin/atomonly/newtoff
+      stencil: full/bin/3d
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 75.17 | 75.17 | 75.17 Mbytes
+      Dt          Step        Atoms        KinEng          c_1           Volume    
+ 1e-06                  0          12   0              0              8000         
+ 1e-06                100          12   0.00013054111  0              8000         
+ 1e-06                200          12   0.013855547    0              8000         
+ 1e-06                300          12   0.14822185     0              8000         
+ 1e-06                400          12   0.73507149     0              8000         
+ 1e-06                500          12   2.4874475      0              8000         
+ 1e-06                600          12   6.7258963      0              8000         
+ 1e-06                700          12   15.636026      0              8000         
+ 1e-06                800          12   32.517811      0              8000         
+ 1e-06                900          12   62.020123      0              8000         
+ 1e-06               1000          12   110.35576      0              8000         
+ 1e-06               1100          12   185.492        0              8000         
+ 1e-06               1200          12   297.31164      0              8000         
+ 1e-06               1300          12   457.73953      0              8000         
+ 1e-06               1400          12   680.82988      0              8000         
+ 1e-06               1500          12   982.80999      0              8000         
+ 1e-06               1600          12   1382.0767      0              8000         
+ 1e-06               1700          12   1899.1422      0              8000         
+ 1e-06               1800          12   2556.5278      0              8000         
+ 1e-06               1900          12   3378.6026      0              8000         
+ 1e-06               2000          12   4391.3694      0              8000         
+ 1e-06               2100          12   5622.1967      0              8000         
+ 1e-06               2200          12   7099.4998      0              8000         
+ 1e-06               2300          12   8852.3743      0              8000         
+ 1e-06               2400          10   6989.9205      0              8000         
+ 1e-06               2500          10   8429.3452      0              8000         
+ 1e-06               2600          10   10069.898      0              8000         
+ 1e-06               2700          10   11924.3        0              8000         
+ 1e-06               2800          10   14004.078      0              8000         
+ 1e-06               2900          10   16319.307      0              8000         
+ 1e-06               3000          10   18878.365      0              8000         
+ 1e-06               3100          10   21687.702      0              8000         
+ 1e-06               3200          10   24751.634      0              8000         
+ 1e-06               3300          10   28072.177      0              8000         
+ 1e-06               3400          10   31649.069      0              8000         
+ 1e-06               3500          10   35479.937      0              8000         
+ 1e-06               3600          10   39560.508      0              8000         
+ 1e-06               3700          10   43884.837      0              8000         
+ 1e-06               3800          10   48445.544      0              8000         
+ 1e-06               3900          10   53234.048      0              8000         
+ 1e-06               4000          10   58240.786      0              8000         
+ 1e-06               4100          10   63455.398      0              8000         
+ 1e-06               4200          10   68866.878      0              8000         
+ 1e-06               4300          10   74463.666      0              8000         
+ 1e-06               4400          10   80233.692      0              8000         
+ 1e-06               4500          10   86164.354      0              8000         
+ 1e-06               4600          10   92242.435      0              8000         
+ 1e-06               4700          10   98453.963      0              8000         
+ 1e-06               4800          10   104784.03      0              8000         
+ 1e-06               4900          10   111216.58      0              8000         
+ 1e-06               5000          10   117734.15      0              8000         
+ 1e-06               5100          10   124317.68      0              8000         
+ 1e-06               5200          10   130946.27      0              8000         
+ 1e-06               5300          10   137597         0              8000         
+ 1e-06               5400          10   144244.91      0              8000         
+ 1e-06               5500          10   150862.88      0              8000         
+ 1e-06               5600          10   157421.78      0              8000         
+ 1e-06               5700          10   163890.67      0              8000         
+ 1e-06               5800          10   170237.02      0              8000         
+ 1e-06               5900          10   176427.24      0              8000         
+ 1e-06               6000          10   182427.1       0              8000         
+ 1e-06               6100          10   188202.4       0              8000         
+ 1e-06               6200          10   193719.65      0              8000         
+ 1e-06               6300          10   198946.82      0              8000         
+ 1e-06               6400          10   203854.11      0              8000         
+ 1e-06               6500          10   208414.76      0              8000         
+ 1e-06               6600          10   212605.82      0              8000         
+ 1e-06               6700          10   216408.93      0              8000         
+ 1e-06               6800          10   219811.02      0              8000         
+ 1e-06               6900          10   222804.99      0              8000         
+ 1e-06               7000          10   225390.45      0              8000         
+ 1e-06               7100          10   227574.39      0              8000         
+ 1e-06               7200          10   229372.23      0              8000         
+ 1e-06               7300          10   230809.43      0              8000         
+ 1e-06               7400          10   231925.78      0              8000         
+ 1e-06               7500          10   232793.77      0              8000         
+ 1e-06               7600          10   233468.99      0              8000         
+ 1e-06               7700          10   233964.52      1.1292815e-08  8000         
+ 1e-06               7800          10   234297.53      3.2638536e-06  8000         
+ 1e-06               7900          10   234490.97      4.5245711e-05  8000         
+ 1e-06               8000          10   234575.58      0.00027361033  8000         
+ 1e-06               8100          10   234598.71      0.001096929    8000         
+ 1e-06               8200          10   234623.44      0.0034192164   8000         
+ 1e-06               8300          10   234664.37      0.0089703149   8000         
+ 1e-06               8400          10   234728.48      0.020734818    8000         
+ 1e-06               8500          10   234824.44      0.043473962    8000         
+ 1e-06               8600          10   234962.62      0.084326224    8000         
+ 1e-06               8700          10   235155.17      0.15346362     8000         
+ 1e-06               8800          10   235415.94      0.26477255     8000         
+ 1e-06               8900          10   235760.43      0.43652067     8000         
+ 1e-06               9000          10   236205.62      0.69196571     8000         
+ 1e-06               9100          10   236769.75      1.0598579      8000         
+ 1e-06               9200          10   237472.3       1.5747862      8000         
+ 1e-06               9300          10   238334.06      2.2773199      8000         
+ 1e-06               9400          10   239377.46      3.2138993      8000         
+ 1e-06               9500          10   240626.63      4.4364369      8000         
+ 1e-06               9600          10   242107.53      6.0015993      8000         
+ 1e-06               9700          10   243847.86      7.9697503      8000         
+ 1e-06               9800          10   245876.93      10.403551      8000         
+ 1e-06               9900          10   248225.31      13.366224      8000         
+ 1e-06              10000          10   250924.44      16.919517      8000         
+ 1e-06              10100           8   234934.58      0              8000         
+ 1e-06              10200           8   235124.58      0              8000         
+ 1e-06              10300           8   235382.91      0              8000         
+ 1e-06              10400           8   235723.84      0              8000         
+ 1e-06              10500           8   236162.16      0              8000         
+ 1e-06              10600           8   236712.7       0              8000         
+ 1e-06              10700           8   237389.77      0              8000         
+ 1e-06              10800           8   238206.63      0              8000         
+ 1e-06              10900           8   239174.87      0              8000         
+ 1e-06              11000           8   240303.83      0              8000         
+ 1e-06              11100           8   241600.1       0              8000         
+ 1e-06              11200           8   243067         0              8000         
+ 1e-06              11300           8   244704.22      0              8000         
+ 1e-06              11400           8   246507.57      0              8000         
+ 1e-06              11500           8   248468.78      0              8000         
+ 1e-06              11600           8   250575.55      0              8000         
+ 1e-06              11700           8   252811.67      0              8000         
+ 1e-06              11800           6   201540.76      0              8000         
+ 1e-06              11900           6   203972.8       0              8000         
+ 1e-06              12000           6   206465.55      0              8000         
+ 1e-06              12100           6   208991.23      0              8000         
+ 1e-06              12200           6   211520.76      0              8000         
+ 1e-06              12300           6   214024.53      0              8000         
+ 1e-06              12400           6   216473.14      0              8000         
+ 1e-06              12500           6   218838.23      0              8000         
+ 1e-06              12600           6   221093.18      0              8000         
+ 1e-06              12700           6   223213.84      0              8000         
+ 1e-06              12800           6   225179.08      0              8000         
+ 1e-06              12900           6   226971.32      0              8000         
+ 1e-06              13000           6   228576.94      0              8000         
+ 1e-06              13100           6   229986.52      0              8000         
+ 1e-06              13200           6   231195.09      0              8000         
+ 1e-06              13300           6   232202.15      0              8000         
+ 1e-06              13400           6   233011.77      0              8000         
+ 1e-06              13500           6   233632.53      0              8000         
+ 1e-06              13600           6   234077.63      0              8000         
+ 1e-06              13700           6   234365.12      0              8000         
+ 1e-06              13800           6   234518.64      0              8000         
+ 1e-06              13900           6   234569.99      0              8000         
+ 1e-06              14000           6   234572.25      0              8000         
+ 1e-06              14100           6   234572.25      0              8000         
+ 1e-06              14200           6   234572.25      0              8000         
+ 1e-06              14300           6   234572.25      0              8000         
+ 1e-06              14400           6   234572.25      0              8000         
+ 1e-06              14500           6   234572.25      0              8000         
+ 1e-06              14600           6   234572.25      0              8000         
+ 1e-06              14700           6   234572.25      0              8000         
+ 1e-06              14800           6   234572.29      0              8000         
+ 1e-06              14900           6   234572.53      0              8000         
+ 1e-06              15000           6   234573.43      0              8000         
+ 1e-06              15100           6   234575.83      0              8000         
+ 1e-06              15200           6   234581.15      0              8000         
+ 1e-06              15300           6   234591.61      0              8000         
+ 1e-06              15400           6   234610.69      0              8000         
+ 1e-06              15500           6   234643.46      0              8000         
+ 1e-06              15600           6   234697         0              8000         
+ 1e-06              15700           6   234780.66      0              8000         
+ 1e-06              15800           6   234906.33      0              8000         
+ 1e-06              15900           6   235088.62      0              8000         
+ 1e-06              16000           6   235344.92      0              8000         
+ 1e-06              16100           6   235695.54      0              8000         
+ 1e-06              16200           6   236163.79      0              8000         
+ 1e-06              16300           6   236775.81      0              8000         
+ 1e-06              16400           6   237560.44      0              8000         
+ 1e-06              16500           6   238548.84      0              8000         
+ 1e-06              16600           6   239774.02      0              8000         
+ 1e-06              16700           6   241270.31      0              8000         
+ 1e-06              16800           6   243072.61      0              8000         
+ 1e-06              16900           6   245211.28      6.7509561e-05  8000         
+ 1e-06              17000           6   247685.18      0.0080448801   8000         
+ 1e-06              17100           6   250497.91      0.088500606    8000         
+ 1e-06              17200           6   253660.58      0.44413361     8000         
+ 1e-06              17300           6   257184.97      1.4994335      8000         
+ 1e-06              17400           6   261081.58      3.9820483      8000         
+ 1e-06              17500           6   265358.51      9.0005574      8000         
+ 1e-06              17600           6   270020.73      18.117195      8000         
+ 1e-06              17700           6   275069.6       33.413964      8000         
+ 1e-06              17800           6   280502.61      57.550525      8000         
+ 1e-06              17900           6   286303.62      93.814333      8000         
+ 1e-06              18000           6   292426.19      146.2099       8000         
+ 1e-06              18100           6   298823.02      219.66922      8000         
+ 1e-06              18200           6   305448.57      320.29091      8000         
+ 1e-06              18300           6   312257.06      455.50977      8000         
+ 1e-06              18400           6   319203.29      634.16436      8000         
+ 1e-06              18500           6   326243.62      866.44452      8000         
+ 1e-06              18600           6   333337.05      1163.7119      8000         
+ 1e-06              18700           6   340446.07      1538.1992      8000         
+ 1e-06              18800           6   347537.26      2002.6065      8000         
+ 1e-06              18900           6   354581.63      2569.6256      8000         
+ 1e-06              19000           6   361554.66      3251.4317      8000         
+ 1e-06              19100           6   368436.16      4059.1895      8000         
+ 1e-06              19200           6   375209.78      5002.6224      8000         
+ 1e-06              19300           6   381882.2       6109.6539      8000         
+ 1e-06              19400           6   388474.8       7416.2947      8000         
+ 1e-06              19500           6   395001.33      8944.9067      8000         
+ 1e-06              19600           6   401479.91      10717.67       8000         
+ 1e-06              19700           6   407931.4       12755.438      8000         
+ 1e-06              19800           6   414377.59      15076.566      8000         
+ 1e-06              19900           6   420839.43      17695.777      8000         
+ 1e-06              20000           6   427335.35      20623.111      8000         
+ 1e-06              20100           6   433879.62      23863.014      8000         
+ 1e-06              20200           6   440481.15      27413.577      8000         
+ 1e-06              20300           6   447142.48      31265.951      8000         
+ 1e-06              20400           6   453859.41      35403.784      8000         
+ 1e-06              20500           6   460622.17      39801.729      8000         
+ 1e-06              20600           6   467431.36      44452.106      8000         
+ 1e-06              20700           6   474330.29      49397.748      8000         
+ 1e-06              20800           6   481309.26      54624.638      8000         
+ 1e-06              20900           6   488358.84      60103.827      8000         
+ 1e-06              21000           6   495475.98      65790.173      8000         
+ 1e-06              21100           6   502655.34      71632.552      8000         
+ 1e-06              21200           6   509889.38      77576.424      8000         
+ 1e-06              21300           6   517172.66      83561.469      8000         
+ 1e-06              21400           6   524502.62      89522.951      8000         
+ 1e-06              21500           6   531876.86      95398.198      8000         
+ 1e-06              21600           6   539294.19      101129.04      8000         
+ 1e-06              21700           6   546755.8       106663.72      8000         
+ 1e-06              21800           6   554266.99      111958.45      8000         
+ 1e-06              21900           6   561839.98      116978.4       8000         
+ 1e-06              22000           6   569504.77      121698.15      8000         
+ 1e-06              22100           6   577194.68      126299.67      8000         
+ 1e-06              22200           6   584793.35      130939.81      8000         
+ 1e-06              22300           6   592287.59      135570.38      8000         
+ 1e-06              22400           6   599668.12      140143.02      8000         
+ 1e-06              22500           6   606930.15      144609.51      8000         
+ 1e-06              22600           6   614053.56      148921.72      8000         
+ 1e-06              22700           6   621008.46      153030.89      8000         
+ 1e-06              22800           6   627801.12      156883.57      8000         
+ 1e-06              22900           6   634468.16      160420.58      8000         
+ 1e-06              23000           6   640978.09      163613.12      8000         
+ 1e-06              23100           6   647287.63      166442.2       8000         
+ 1e-06              23200           6   653357.63      168893.16      8000         
+ 1e-06              23300           6   659133.28      170996.37      8000         
+ 1e-06              23400           6   664395.28      173122         8000         
+ 1e-06              23500           6   669082.71      175330.06      8000         
+ 1e-06              23600           6   673190.8       177582.02      8000         
+ 1e-06              23700           6   676722.56      179839.98      8000         
+ 1e-06              23800           6   679689.62      182067.03      8000         
+ 1e-06              23900           6   682113         184227.49      8000         
+ 1e-06              24000           6   684024.19      186286.94      8000         
+ 1e-06              24100           6   685466.31      188212.09      8000         
+ 1e-06              24200           6   686496.31      189970.05      8000         
+ 1e-06              24300           6   687194.14      191524.49      8000         
+ 1e-06              24400           6   687664.3       192834.65      8000         
+ 1e-06              24500           6   687952.12      193892.14      8000         
+ 1e-06              24600           6   688095.09      194698.81      8000         
+ 1e-06              24700           6   688136.6       195260.51      8000         
+ 1e-06              24800           6   688125.44      195586.96      8000         
+ 1e-06              24900           6   688096.3       195728.68      8000         
+ 1e-06              25000           6   687921.9       196064.13      8000         
+ 1e-06              25100           6   687620.45      196683.53      8000         
+ 1e-06              25200           6   687262.22      197578.87      8000         
+ 1e-06              25300           6   686921.27      198739.39      8000         
+ 1e-06              25400           6   686676.56      200150.16      8000         
+ 1e-06              25500           6   686616.59      201789.73      8000         
+ 1e-06              25600           6   686864.53      203620.41      8000         
+ 1e-06              25700           6   687515.07      205612.65      8000         
+ 1e-06              25800           6   688581.75      207765.95      8000         
+ 1e-06              25900           6   690068.86      210079.27      8000         
+ 1e-06              26000           6   691973.66      212549.89      8000         
+ 1e-06              26100           6   694286.34      215173.38      8000         
+ 1e-06              26200           6   696990.21      217943.63      8000         
+ 1e-06              26300           6   700062.02      220852.8       8000         
+ 1e-06              26400           6   703472.51      223891.43      8000         
+ 1e-06              26500           6   707187.07      227048.44      8000         
+ 1e-06              26600           6   711166.57      230311.27      8000         
+ 1e-06              26700           6   715368.28      233666         8000         
+ 1e-06              26800           6   719746.83      237097.44      8000         
+ 1e-06              26900           4   611074.01      219866.64      8000         
+ 1e-06              27000           4   613405.75      223401.9       8000         
+ 1e-06              27100           4   615906.25      226962.69      8000         
+ 1e-06              27200           4   618550.98      230530.7       8000         
+ 1e-06              27300           4   621314.15      234087.34      8000         
+ 1e-06              27400           4   624169.04      237613.98      8000         
+ 1e-06              27500           4   627088.41      241092.16      8000         
+ 1e-06              27600           4   630045.27      244503.29      8000         
+ 1e-06              27700           4   633017.68      247822.39      8000         
+ 1e-06              27800           4   635987.37      251019.87      8000         
+ 1e-06              27900           4   638936.67      254066.27      8000         
+ 1e-06              28000           4   641848.81      256932.77      8000         
+ 1e-06              28100           4   644708.19      259591.65      8000         
+ 1e-06              28200           4   647500.76      262016.69      8000         
+ 1e-06              28300           4   650214.19      264183.55      8000         
+ 1e-06              28400           4   652838.21      266070.17      8000         
+ 1e-06              28500           4   655364.7       267657.12      8000         
+ 1e-06              28600           4   657787.94      268927.87      8000         
+ 1e-06              28700           4   660104.66      269869.08      8000         
+ 1e-06              28800           4   662314.19      270470.82      8000         
+ 1e-06              28900           4   664418.47      270726.71      8000         
+ 1e-06              29000           4   666422.08      270634.03      8000         
+ 1e-06              29100           4   668332.27      270193.77      8000         
+ 1e-06              29200           4   670133.21      269455.46      8000         
+ 1e-06              29300           4   671623.88      268795.91      8000         
+ 1e-06              29400           4   672777.96      268288.08      8000         
+ 1e-06              29500           4   673622.53      267917.97      8000         
+ 1e-06              29600           4   674189.83      267670.08      8000         
+ 1e-06              29700           4   674518.57      267526.71      8000         
+ 1e-06              29800           4   674657.04      267466.37      8000         
+ 1e-06              29900           4   674676.17      267458.04      8000         
+ 1e-06              30000           4   674676.17      267458.04      8000         
+ 1e-06              30100           4   674676.17      267458.04      8000         
+ 1e-06              30200           2   304425.26      84084.197      8000         
+ 1e-06              30300           2   304425.26      84084.197      8000         
+ 1e-06              30400           2   304425.26      84084.197      8000         
+ 1e-06              30500           2   304425.26      84084.197      8000         
+ 1e-06              30600           2   304425.26      84084.197      8000         
+ 1e-06              30700           2   304425.26      84084.197      8000         
+ 1e-06              30800           2   304425.26      84084.197      8000         
+ 1e-06              30900           2   304425.26      84084.197      8000         
+ 1e-06              31000           2   304425.26      84084.197      8000         
+ 1e-06              31100           2   304425.26      84084.197      8000         
+ 1e-06              31200           2   304425.26      84084.197      8000         
+ 1e-06              31300           2   304425.26      84084.197      8000         
+ 1e-06              31400           2   304425.26      84084.197      8000         
+ 1e-06              31500           2   304425.26      84084.197      8000         
+ 1e-06              31600           2   304425.26      84084.197      8000         
+ 1e-06              31700           2   304425.26      84084.197      8000         
+ 1e-06              31800           2   304425.26      84084.197      8000         
+ 1e-06              31900           2   304425.26      84084.197      8000         
+ 1e-06              32000           2   304425.26      84084.197      8000         
+ 1e-06              32100           2   304425.26      84084.197      8000         
+ 1e-06              32200           2   304425.26      84084.197      8000         
+ 1e-06              32300           2   304425.26      84084.197      8000         
+ 1e-06              32400           2   304425.26      84084.197      8000         
+ 1e-06              32500           2   304425.26      84084.197      8000         
+ 1e-06              32600           2   304425.26      84084.197      8000         
+ 1e-06              32700           2   304425.26      84084.197      8000         
+ 1e-06              32800           2   304425.26      84084.197      8000         
+ 1e-06              32900           2   304425.26      84084.197      8000         
+ 1e-06              33000           2   304425.26      84084.197      8000         
+ 1e-06              33100           2   304425.26      84084.197      8000         
+ 1e-06              33200           2   304425.26      84084.197      8000         
+ 1e-06              33300           2   304425.26      84084.197      8000         
+ 1e-06              33400           2   304425.26      84084.197      8000         
+ 1e-06              33500           2   304425.26      84084.197      8000         
+ 1e-06              33600           2   304425.26      84084.197      8000         
+ 1e-06              33700           2   304425.26      84084.197      8000         
+ 1e-06              33800           2   304425.26      84084.197      8000         
+ 1e-06              33900           2   304425.26      84084.197      8000         
+ 1e-06              34000           2   304419.46      84084.197      8000         
+ 1e-06              34100           2   304377.55      84084.224      8000         
+ 1e-06              34200           2   304278.4       84084.45       8000         
+ 1e-06              34300           2   304108.46      84085.385      8000         
+ 1e-06              34400           2   303858.22      84088.048      8000         
+ 1e-06              34500           2   303521.62      84094.139      8000         
+ 1e-06              34600           2   303095.91      84106.182      8000         
+ 1e-06              34700           2   302581.78      84127.634      8000         
+ 1e-06              34800           2   301983.37      84162.962      8000         
+ 1e-06              34900           2   301308.35      84217.674      8000         
+ 1e-06              35000           2   300567.85      84298.29       8000         
+ 1e-06              35100           2   299776.31      84412.267      8000         
+ 1e-06              35200           2   298951.17      84567.862      8000         
+ 1e-06              35300           2   298112.52      84773.935      8000         
+ 1e-06              35400           2   297282.57      85039.703      8000         
+ 1e-06              35500           2   296485.02      85374.448      8000         
+ 1e-06              35600           2   295744.34      85787.18       8000         
+ 1e-06              35700           2   295085         86286.286      8000         
+ 1e-06              35800           2   294530.68      86879.159      8000         
+ 1e-06              35900           0   0              0              8000         
+ 1e-06              36000           0   0              0              8000         
+ 1e-06              36100           0   0              0              8000         
+ 1e-06              36200           0   0              0              8000         
+ 1e-06              36300           0   0              0              8000         
+ 1e-06              36400           0   0              0              8000         
+ 1e-06              36500           0   0              0              8000         
+ 1e-06              36600           0   0              0              8000         
+ 1e-06              36700           0   0              0              8000         
+ 1e-06              36800           0   0              0              8000         
+ 1e-06              36900           0   0              0              8000         
+ 1e-06              37000           0   0              0              8000         
+ 1e-06              37100           0   0              0              8000         
+ 1e-06              37200           0   0              0              8000         
+ 1e-06              37300           0   0              0              8000         
+ 1e-06              37400           0   0              0              8000         
+ 1e-06              37500           0   0              0              8000         
+ 1e-06              37600           0   0              0              8000         
+ 1e-06              37700           0   0              0              8000         
+ 1e-06              37800           0   0              0              8000         
+ 1e-06              37900           0   0              0              8000         
+ 1e-06              38000           0   0              0              8000         
+ 1e-06              38100           0   0              0              8000         
+ 1e-06              38200           0   0              0              8000         
+ 1e-06              38300           0   0              0              8000         
+ 1e-06              38400           0   0              0              8000         
+ 1e-06              38500           0   0              0              8000         
+ 1e-06              38600           0   0              0              8000         
+ 1e-06              38700           0   0              0              8000         
+ 1e-06              38800           0   0              0              8000         
+ 1e-06              38900           0   0              0              8000         
+ 1e-06              39000           0   0              0              8000         
+ 1e-06              39100           0   0              0              8000         
+ 1e-06              39200           0   0              0              8000         
+ 1e-06              39300           0   0              0              8000         
+ 1e-06              39400           0   0              0              8000         
+ 1e-06              39500           0   0              0              8000         
+ 1e-06              39600           0   0              0              8000         
+ 1e-06              39700           0   0              0              8000         
+ 1e-06              39800           0   0              0              8000         
+ 1e-06              39900           0   0              0              8000         
+ 1e-06              40000           0   0              0              8000         
+ 1e-06              40100           0   0              0              8000         
+ 1e-06              40200           0   0              0              8000         
+ 1e-06              40300           0   0              0              8000         
+ 1e-06              40400           0   0              0              8000         
+ 1e-06              40500           0   0              0              8000         
+ 1e-06              40600           0   0              0              8000         
+ 1e-06              40700           0   0              0              8000         
+ 1e-06              40800           0   0              0              8000         
+ 1e-06              40900           0   0              0              8000         
+ 1e-06              41000           0   0              0              8000         
+ 1e-06              41100           0   0              0              8000         
+ 1e-06              41200           0   0              0              8000         
+ 1e-06              41300           0   0              0              8000         
+ 1e-06              41400           0   0              0              8000         
+ 1e-06              41500           0   0              0              8000         
+ 1e-06              41600           0   0              0              8000         
+ 1e-06              41700           0   0              0              8000         
+ 1e-06              41800           0   0              0              8000         
+ 1e-06              41900           0   0              0              8000         
+ 1e-06              42000           0   0              0              8000         
+ 1e-06              42100           0   0              0              8000         
+ 1e-06              42200           0   0              0              8000         
+ 1e-06              42300           0   0              0              8000         
+ 1e-06              42400           0   0              0              8000         
+ 1e-06              42500           0   0              0              8000         
+ 1e-06              42600           0   0              0              8000         
+ 1e-06              42700           0   0              0              8000         
+ 1e-06              42800           0   0              0              8000         
+ 1e-06              42900           0   0              0              8000         
+ 1e-06              43000           0   0              0              8000         
+ 1e-06              43100           0   0              0              8000         
+ 1e-06              43200           0   0              0              8000         
+ 1e-06              43300           0   0              0              8000         
+ 1e-06              43400           0   0              0              8000         
+ 1e-06              43500           0   0              0              8000         
+ 1e-06              43600           0   0              0              8000         
+ 1e-06              43700           0   0              0              8000         
+ 1e-06              43800           0   0              0              8000         
+ 1e-06              43900           0   0              0              8000         
+ 1e-06              44000           0   0              0              8000         
+ 1e-06              44100           0   0              0              8000         
+ 1e-06              44200           0   0              0              8000         
+ 1e-06              44300           0   0              0              8000         
+ 1e-06              44400           0   0              0              8000         
+ 1e-06              44500           0   0              0              8000         
+ 1e-06              44600           0   0              0              8000         
+ 1e-06              44700           0   0              0              8000         
+ 1e-06              44800           0   0              0              8000         
+ 1e-06              44900           0   0              0              8000         
+ 1e-06              45000           0   0              0              8000         
+ 1e-06              45100           0   0              0              8000         
+ 1e-06              45200           0   0              0              8000         
+ 1e-06              45300           0   0              0              8000         
+ 1e-06              45400           0   0              0              8000         
+ 1e-06              45500           0   0              0              8000         
+ 1e-06              45600           0   0              0              8000         
+ 1e-06              45700           0   0              0              8000         
+ 1e-06              45800           0   0              0              8000         
+ 1e-06              45900           0   0              0              8000         
+ 1e-06              46000           0   0              0              8000         
+ 1e-06              46100           0   0              0              8000         
+ 1e-06              46200           0   0              0              8000         
+ 1e-06              46300           0   0              0              8000         
+ 1e-06              46400           0   0              0              8000         
+ 1e-06              46500           0   0              0              8000         
+ 1e-06              46600           0   0              0              8000         
+ 1e-06              46700           0   0              0              8000         
+ 1e-06              46800           0   0              0              8000         
+ 1e-06              46900           0   0              0              8000         
+ 1e-06              47000           0   0              0              8000         
+ 1e-06              47100           0   0              0              8000         
+ 1e-06              47200           0   0              0              8000         
+ 1e-06              47300           0   0              0              8000         
+ 1e-06              47400           0   0              0              8000         
+ 1e-06              47500           0   0              0              8000         
+ 1e-06              47600           0   0              0              8000         
+ 1e-06              47700           0   0              0              8000         
+ 1e-06              47800           0   0              0              8000         
+ 1e-06              47900           0   0              0              8000         
+ 1e-06              48000           0   0              0              8000         
+ 1e-06              48100           0   0              0              8000         
+ 1e-06              48200           0   0              0              8000         
+ 1e-06              48300           0   0              0              8000         
+ 1e-06              48400           0   0              0              8000         
+ 1e-06              48500           0   0              0              8000         
+ 1e-06              48600           0   0              0              8000         
+ 1e-06              48700           0   0              0              8000         
+ 1e-06              48800           0   0              0              8000         
+ 1e-06              48900           0   0              0              8000         
+ 1e-06              49000           0   0              0              8000         
+ 1e-06              49100           0   0              0              8000         
+ 1e-06              49200           0   0              0              8000         
+ 1e-06              49300           0   0              0              8000         
+ 1e-06              49400           0   0              0              8000         
+ 1e-06              49500           0   0              0              8000         
+ 1e-06              49600           0   0              0              8000         
+ 1e-06              49700           0   0              0              8000         
+ 1e-06              49800           0   0              0              8000         
+ 1e-06              49900           0   0              0              8000         
+Loop time of 0.419125 on 1 procs for 49900 steps with 0 atoms
+
+99.7% CPU use with 1 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0.015815   | 0.015815   | 0.015815   |   0.0 |  3.77
+Neigh   | 1.795e-05  | 1.795e-05  | 1.795e-05  |   0.0 |  0.00
+Comm    | 0.0015216  | 0.0015216  | 0.0015216  |   0.0 |  0.36
+Output  | 0.0024194  | 0.0024194  | 0.0024194  |   0.0 |  0.58
+Modify  | 0.3932     | 0.3932     | 0.3932     |   0.0 | 93.81
+Other   |            | 0.006155   |            |       |  1.47
+
+Nlocal:              0 ave           0 max           0 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:              0 ave           0 max           0 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:              0 ave           0 max           0 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 0
+Neighbor list builds = 6
+Dangerous builds = 0
+Total wall time: 0:00:00

@@ -13,6 +13,7 @@
 
 #include "gran_sub_mod_damping.h"
 
+#include "error.h"
 #include "gran_sub_mod_normal.h"
 #include "fix_granular_mdr.h"
 #include "granular_model.h"
@@ -181,6 +182,14 @@ GranSubModDampingMDR::GranSubModDampingMDR(GranularModel *gm, LAMMPS *lmp) :
     GranSubModDamping(gm, lmp)
 {
   contact_radius_flag = 1;
+}
+
+/* ---------------------------------------------------------------------- */
+
+void GranSubModDampingMDR::init()
+{
+  if (gm->normal_model->name != "mdr")
+    error->all(FLERR, "Damping mdr can only be used with mdr normal model");
 }
 
 /* ---------------------------------------------------------------------- */

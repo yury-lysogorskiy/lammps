@@ -49,7 +49,6 @@ namespace Granular_NS {
   class GranSubModDampingNone : public GranSubModDamping {
    public:
     GranSubModDampingNone(class GranularModel *, class LAMMPS *);
-    void init() override{};
     double calculate_forces() override;
   };
 
@@ -99,6 +98,7 @@ namespace Granular_NS {
   class GranSubModDampingMDR : public GranSubModDamping {
    public:
     GranSubModDampingMDR(class GranularModel *, class LAMMPS *);
+    void init() override;
     double calculate_forces() override;
   };
 
