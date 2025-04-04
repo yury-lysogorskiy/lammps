@@ -143,7 +143,7 @@ namespace Granular_NS {
     void coeffs_to_local() override;
     void init() override;
     double calculate_forces() override;
-    double E, nu, Y, gamma, CoR, psi_b; // specified coeffs
+    double E, nu, Y, gamma, psi_b; // specified coeffs
 
    protected:
     double G, kappa, Eeff; // derived coeffs

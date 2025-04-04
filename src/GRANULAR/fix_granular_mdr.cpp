@@ -174,11 +174,11 @@ void FixGranularMDR::setup_pre_force(int /*vflag*/)
                  "Bulk response trigger in pair style, {}, does not agree with value {} in fix "
                  "gran/wall/region",
                  norm_model->psi_b, norm_model2->psi_b);
-    if (fabs(norm_model->CoR - norm_model2->CoR) > EPSILON)
+    if (fabs(norm_model->get_damp() - norm_model2->get_damp()) > EPSILON)
       error->all(FLERR, Error::NOLASTLINE,
-                 "Coefficient of restitution in pair style, {}, does not agree with value {} in "
+                 "Damping in pair style, {}, does not agree with value {} in "
                  "fix gran/wall/region",
-                 norm_model->CoR, norm_model2->CoR);
+                 norm_model->get_damp(), norm_model2->get_damp());
   }
 
   fix_history = dynamic_cast<FixNeighHistory *>(modify->get_fix_by_id("NEIGH_HISTORY_GRANULAR"));
