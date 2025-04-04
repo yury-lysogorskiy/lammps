@@ -190,6 +190,8 @@ void GranSubModDampingMDR::init()
 {
   if (gm->normal_model->name != "mdr")
     error->all(FLERR, "Damping mdr can only be used with mdr normal model");
+
+  damp = gm->normal_model->get_damp();
 }
 
 /* ---------------------------------------------------------------------- */

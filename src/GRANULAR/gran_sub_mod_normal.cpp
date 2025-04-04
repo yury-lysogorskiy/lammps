@@ -807,10 +807,8 @@ double GranSubModNormalMDR::calculate_forces()
           F_MDR = calculate_nonadhesive_mdr_force(deltae1D, Ainv, Eeff, A, B);
         }
 
-        if (std::isnan(F_MDR)) {
-          printf("itag = %d, jtag = %d  \n", itag_true, jtag_true);
-          error->one(FLERR, "F_MDR is NaN, case 1: no tensile springs");
-        }
+        if (std::isnan(F_MDR))
+          error->one(FLERR, "F_MDR is NaN, case 1: no tensile springs for atoms {} and {}", itag_true, jtag_true);
 
         if (history_update) *aAdh_offset = a_fac * a_na;
       } else {
