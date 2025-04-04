@@ -12,6 +12,7 @@ valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
    --suppressions=/path/to/lammps/tools/valgrind/LLVM.supp \
    --suppressions=/path/to/lammps/tools/valgrind/Python3.supp \
    --suppressions=/path/to/lammps/tools/valgrind/GTest.supp \
+   --suppressions=/path/to/lammps/tools/valgrind/Kokkos.supp \
    --suppressions=/path/to/lammps/tools/valgrind/FlexiBLAS.supp \
    --suppressions=/path/to/lammps/tools/valgrind/readline.supp \
     lmp -in in.melt
@@ -26,6 +27,7 @@ Or you can create a file $HOME/.valgrindrc with one option per line:
 --suppressions=/path/to/lammps/tools/valgrind/MPICH.supp
 --suppressions=/path/to/lammps/tools/valgrind/LLVM.supp
 --suppressions=/path/to/lammps/tools/valgrind/GTest.supp
+--suppressions=/path/to/lammps/tools/valgrind/Kokkos.supp
 --suppressions=/path/to/lammps/tools/valgrind/FlexiBLAS.supp
 --suppressions=/path/to/lammps/tools/valgrind/readline.supp
 --suppressions=/path/to/lammps/tools/valgrind/Python3.supp
