@@ -139,6 +139,53 @@
    ...
 }
 {
+   MPICH_library2
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:MPIDI_OFI_init_local
+   ...
+   fun:PMPI_Init
+   fun:lammps_mpi_init
+   fun:lammps_mpi_init
+   fun:lammps_open
+   ...
+}
+{
+   MPICH_library3
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:calloc
+   ...
+   fun:MPID_Comm_commit_pre_hook
+   fun:MPID_Comm_commit_internal
+   fun:MPID_Comm_commit
+   fun:MPIR_init_comm_world
+   ...
+   fun:PMPI_Init
+   fun:lammps_mpi_init
+   fun:lammps_mpi_init
+   fun:lammps_open
+   ...
+}
+{
+   MPICH_library4
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:*
+   fun:udev_new
+   ...
+   fun:hwloc_topology_load
+   ...
+   fun:PMPI_Init
+   fun:lammps_mpi_init
+   fun:lammps_mpi_init
+   fun:lammps_open
+   ...
+}
+{
    MPICH_json1
    Memcheck:Leak
    match-leak-kinds: reachable
