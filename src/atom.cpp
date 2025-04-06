@@ -3409,111 +3409,107 @@ int Atom::extract_size(const char *name, int type)
       }
     }
   } else {
-    if (type == LMP_SIZE_COLS) {
-      return 0;
-    } else if (type == LMP_SIZE_ROWS) {
 
-      if (strcmp(name,"mass") == 0) return ntypes + 1;
+    if (strcmp(name,"mass") == 0) return ntypes + 1;
 
-      if (strcmp(name,"id") == 0) return nall;
-      if (strcmp(name,"type") == 0) return nall;
-      if (strcmp(name,"mask") == 0) return nall;
-      if (strcmp(name,"image") == 0) return nlocal;
-      if (strcmp(name,"molecule") == 0) return nall;
-      if (strcmp(name,"q") == 0) return nall;
-      if (strcmp(name,"radius") == 0) return nall;
-      if (strcmp(name,"rmass") == 0) return nall;
+    if (strcmp(name,"id") == 0) return nall;
+    if (strcmp(name,"type") == 0) return nall;
+    if (strcmp(name,"mask") == 0) return nall;
+    if (strcmp(name,"image") == 0) return nlocal;
+    if (strcmp(name,"molecule") == 0) return nall;
+    if (strcmp(name,"q") == 0) return nall;
+    if (strcmp(name,"radius") == 0) return nall;
+    if (strcmp(name,"rmass") == 0) return nall;
 
-      // ASPHERE package
+    // ASPHERE package
 
-      if (strcmp(name,"ellipsoid") == 0) return nlocal;
+    if (strcmp(name,"ellipsoid") == 0) return nlocal;
 
-      // BODY package
+    // BODY package
 
-      if (strcmp(name,"line") == 0) return nlocal;
-      if (strcmp(name,"tri") == 0) return nlocal;
-      if (strcmp(name,"body") == 0) return nlocal;
+    if (strcmp(name,"line") == 0) return nlocal;
+    if (strcmp(name,"tri") == 0) return nlocal;
+    if (strcmp(name,"body") == 0) return nlocal;
 
-      // PERI package (and in part MACHDYN)
+    // PERI package (and in part MACHDYN)
 
-      if (strcmp(name,"vfrac") == 0) return nall;
-      if (strcmp(name,"s0") == 0) return nall;
+    if (strcmp(name,"vfrac") == 0) return nall;
+    if (strcmp(name,"s0") == 0) return nall;
 
-      // AWPMD package (and in part EFF and ELECTRODE)
+    // AWPMD package (and in part EFF and ELECTRODE)
 
-      if (strcmp(name,"espin") == 0) return nall;
-      if (strcmp(name,"spin") == 0) return nall;   // backwards compatibility
-      if (strcmp(name,"eradius") == 0) return nall;
-      if (strcmp(name,"ervel") == 0) return nlocal;
-      if (strcmp(name,"erforce") == 0) return nlocal;
-      if (strcmp(name,"ervelforce") == 0) return nlocal;
-      if (strcmp(name,"etag") == 0) return nall;
+    if (strcmp(name,"espin") == 0) return nall;
+    if (strcmp(name,"spin") == 0) return nall;   // backwards compatibility
+    if (strcmp(name,"eradius") == 0) return nall;
+    if (strcmp(name,"ervel") == 0) return nlocal;
+    if (strcmp(name,"erforce") == 0) return nlocal;
+    if (strcmp(name,"ervelforce") == 0) return nlocal;
+    if (strcmp(name,"etag") == 0) return nall;
 
-      // CG-DNA package
+    // CG-DNA package
 
-      if (strcmp(name,"id5p") == 0) return nall;
+    if (strcmp(name,"id5p") == 0) return nall;
 
-      // RHEO package
+    // RHEO package
 
-      if (strcmp(name,"temperature") == 0) return nlocal;
-      if (strcmp(name,"heatflow") == 0) return nlocal;
-      if (strcmp(name,"rheo_status") == 0) return nall;
-      if (strcmp(name,"conductivity") == 0) return nlocal;
-      if (strcmp(name,"pressure") == 0) return nlocal;
-      if (strcmp(name,"viscosity") == 0) return nlocal;
+    if (strcmp(name,"temperature") == 0) return nlocal;
+    if (strcmp(name,"heatflow") == 0) return nlocal;
+    if (strcmp(name,"rheo_status") == 0) return nall;
+    if (strcmp(name,"conductivity") == 0) return nlocal;
+    if (strcmp(name,"pressure") == 0) return nlocal;
+    if (strcmp(name,"viscosity") == 0) return nlocal;
 
-      // SPH package
+    // SPH package
 
-      if (strcmp(name,"rho") == 0) return nall;
-      if (strcmp(name,"drho") == 0) return nlocal;
-      if (strcmp(name,"esph") == 0) return nall;
-      if (strcmp(name,"desph") == 0) return nlocal;
-      if (strcmp(name,"cv") == 0) return nall;
+    if (strcmp(name,"rho") == 0) return nall;
+    if (strcmp(name,"drho") == 0) return nlocal;
+    if (strcmp(name,"esph") == 0) return nall;
+    if (strcmp(name,"desph") == 0) return nlocal;
+    if (strcmp(name,"cv") == 0) return nall;
 
-      // MACHDYN package
+    // MACHDYN package
 
-      if (strcmp(name, "contact_radius") == 0) return nall;
-      if (strcmp(name, "eff_plastic_strain") == 0) return nlocal;
-      if (strcmp(name, "eff_plastic_strain_rate") == 0) return nlocal;
-      if (strcmp(name, "damage") == 0) return nlocal;
+    if (strcmp(name, "contact_radius") == 0) return nall;
+    if (strcmp(name, "eff_plastic_strain") == 0) return nlocal;
+    if (strcmp(name, "eff_plastic_strain_rate") == 0) return nlocal;
+    if (strcmp(name, "damage") == 0) return nlocal;
 
-      // DPD-REACT package
+    // DPD-REACT package
 
-      if (strcmp(name,"dpdTheta") == 0) return nall;
+    if (strcmp(name,"dpdTheta") == 0) return nall;
 
-      // DPD-MESO package
+    // DPD-MESO package
 
-      if (strcmp(name,"edpd_temp") == 0) return nall;
+    if (strcmp(name,"edpd_temp") == 0) return nall;
 
-      // DIELECTRIC package
+    // DIELECTRIC package
 
-      if (strcmp(name,"area") == 0) return nall;
-      if (strcmp(name,"ed") == 0) return nall;
-      if (strcmp(name,"em") == 0) return nall;
-      if (strcmp(name,"epsilon") == 0) return nall;
-      if (strcmp(name,"curvature") == 0) return nall;
-      if (strcmp(name,"q_unscaled") == 0) return nall;
+    if (strcmp(name,"area") == 0) return nall;
+    if (strcmp(name,"ed") == 0) return nall;
+    if (strcmp(name,"em") == 0) return nall;
+    if (strcmp(name,"epsilon") == 0) return nall;
+    if (strcmp(name,"curvature") == 0) return nall;
+    if (strcmp(name,"q_unscaled") == 0) return nall;
 
-      // end of customization section
-      // --------------------------------------------------------------------
+    // end of customization section
+    // --------------------------------------------------------------------
 
-      // custom vectors
+    // custom vectors
 
-      if (utils::strmatch(name,"^[id]_")) {
-        int which = 0;
-        if (name[0] == 'd') which = 1;
+    if (utils::strmatch(name,"^[id]_")) {
+      int which = 0;
+      if (name[0] == 'd') which = 1;
 
-        int index,flag,cols,ghost;
-        index = find_custom_ghost(&name[2],flag,cols,ghost);
+      int index,flag,cols,ghost;
+      index = find_custom_ghost(&name[2],flag,cols,ghost);
 
-        // consistency checks
-        if (index < 0) return -1;
-        if (which != flag) return -1;
-        if (cols) return -1;
+      // consistency checks
+      if (index < 0) return -1;
+      if (which != flag) return -1;
+      if (cols) return -1;
 
-        if (ghost) return nall;
-        else return nlocal;
-      }
+      if (ghost) return nall;
+      else return nlocal;
     }
   }
   return -1;
