@@ -122,20 +122,23 @@
    ...
 }
 {
+   MPICH_MPI_init10
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:MPII_Init_thread.isra.0
+   ...
+   fun:PMPI_Init
+   ...
+}
+{
    MPICH_library1
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
    ...
    fun:PMPI_Init
-   fun:lammps_mpi_init
-   fun:lammps_mpi_init
-   fun:lammps_open
-   ...
-   fun:Run
-   fun:*
-   fun:*
-   fun:Run
    ...
 }
 {
@@ -147,9 +150,6 @@
    fun:MPIDI_OFI_init_local
    ...
    fun:PMPI_Init
-   fun:lammps_mpi_init
-   fun:lammps_mpi_init
-   fun:lammps_open
    ...
 }
 {
@@ -164,9 +164,6 @@
    fun:MPIR_init_comm_world
    ...
    fun:PMPI_Init
-   fun:lammps_mpi_init
-   fun:lammps_mpi_init
-   fun:lammps_open
    ...
 }
 {
@@ -180,9 +177,6 @@
    fun:hwloc_topology_load
    ...
    fun:PMPI_Init
-   fun:lammps_mpi_init
-   fun:lammps_mpi_init
-   fun:lammps_open
    ...
 }
 {
@@ -208,13 +202,7 @@
    fun:MPIR_init_comm_world
    ...
    fun:PMPI_Init
-   fun:lammps_mpi_init
-   fun:lammps_mpi_init
-   fun:lammps_open
    ...
-   fun:Run
-   fun:*
-   fun:*
 }
 {
    MPICH_comm2
@@ -228,13 +216,7 @@
    fun:MPIR_init_comm_world
    ...
    fun:PMPI_Init
-   fun:lammps_mpi_init
-   fun:lammps_mpi_init
-   fun:lammps_open
    ...
-   fun:Run
-   fun:*
-   fun:*
 }
 {
    MPICH_comm3
@@ -248,13 +230,7 @@
    fun:MPIR_init_comm_self
    ...
    fun:PMPI_Init
-   fun:lammps_mpi_init
-   fun:lammps_mpi_init
-   fun:lammps_open
    ...
-   fun:Run
-   fun:*
-   fun:*
 }
 {
    MPICH_comm4
@@ -268,13 +244,7 @@
    fun:MPIR_init_comm_self
    ...
    fun:PMPI_Init
-   fun:lammps_mpi_init
-   fun:lammps_mpi_init
-   fun:lammps_open
    ...
-   fun:Run
-   fun:*
-   fun:*
 }
 {
    MPICH_psm3_1
@@ -307,8 +277,7 @@
    fun:MPIDI_OFI_init_local
    ...
    fun:PMPI_Init
-   fun:lammps_mpi_init
-   fun:lammps_mpi_init
+   ...
 }
 {
    MPICH_psm3_3
@@ -344,8 +313,7 @@
    fun:MPIDI_OFI_init_local
    ...
    fun:PMPI_Init
-   fun:lammps_mpi_init
-   fun:lammps_mpi_init
+   ...
 }
 {
    MPICH_hwloc1
@@ -362,9 +330,7 @@
    fun:hwloc_topology_load
    ...
    fun:PMPI_Init
-   fun:lammps_mpi_init
-   fun:lammps_mpi_init
-   fun:lammps_open
+   ...
 }
 {
    MPICH_hwloc2
@@ -379,10 +345,16 @@
    fun:hwloc_topology_load
    ...
    fun:PMPI_Init
-   fun:lammps_mpi_init
-   fun:lammps_mpi_init
-   fun:lammps_open
+   ...
+}
+{
+   MPICH_hwloc3
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
    fun:*
-   fun:*
-   fun:*
+   fun:hwloc__topology_init
+   ...
+   fun:PMPI_Init
+   ...
 }
