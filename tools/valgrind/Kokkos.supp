@@ -22,8 +22,5 @@
    fun:_ZNK6Kokkos9HostSpace13impl_allocateEPKcmm28Kokkos_Profiling_SpaceHandle
    fun:_ZNK6Kokkos9HostSpace8allocateEPKcmm
    fun:_ZN6Kokkos4Impl14OpenMPInternal18resize_thread_dataEmmmm
-   fun:execute
-   ...
-   fun:operator()
    ...
 }
