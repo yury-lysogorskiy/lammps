@@ -123,7 +123,8 @@ def main():
         help="temperature for KbT plot [default none]",
     )
     parser.add_argument(
-        "--recompute-energy",
+        "-d",
+        "--diff-num",
         dest="recompute",
         action="store_true",
         help="Recompute the energies from forces and distances through finite differences",
