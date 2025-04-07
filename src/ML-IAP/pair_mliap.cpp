@@ -361,6 +361,7 @@ double PairMLIAP::init_one(int i, int j)
                "All pair coeffs are not set. Status\n" + Info::get_pair_coeff_status(lmp));
 
   double cutmax = sqrt(descriptor->cutsq[map[i]][map[j]]);
+  if (ghostneigh) cutghost[i][j] =  cutghost[j][i] = cutmax;
   return cutmax;
 }
 
