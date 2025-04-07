@@ -35,7 +35,8 @@ MLIAPDescriptor::MLIAPDescriptor(LAMMPS *lmp) :
 
 MLIAPDescriptor::~MLIAPDescriptor()
 {
-  for (int i = 0; i < nelements; i++) delete[] elements[i];
+  if (allocated_elements)
+    for (int i = 0; i < nelements; i++) delete[] elements[i];
   delete[] elements;
   memory->destroy(cutsq);
   memory->destroy(radelem);

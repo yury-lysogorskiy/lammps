@@ -111,7 +111,8 @@ void MLIAPDummyDescriptor::set_elements(char **elems, int nelems)
 {
   nelements = nelems;
   elements = new char *[nelems];
-  for (int i = 0; i < nelems; i++) { elements[i] = utils::strdup(elems[i]); }
+  for (int i = 0; i < nelems; i++) elements[i] = utils::strdup(elems[i]);
+  allocated_elements = 1;
 }
 
 /* ---------------------------------------------------------------------- */
