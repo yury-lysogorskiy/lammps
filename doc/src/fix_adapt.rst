@@ -457,11 +457,13 @@ all types from 1 to :math:`N`.  A leading asterisk means all types from
 If :doc:`dihedral_style hybrid <dihedral_hybrid>` is used, *dstyle* should be a
 sub-style name. The dihedral styles that currently work with fix adapt are:
 
-+---------------------------------------------------------+----------------+----------------+
-| :doc:`opls <dihedral_opls>`                             | k1,k2,k3,k4    | type dihedrals |
-+---------------------------------------------------------+----------------+----------------+
-| :doc:`quadratic <dihedral_quadratic>`                   | k,phi0         | type dihedrals |
-+---------------------------------------------------------+----------------+----------------+
++------------------------------------------------------------------------+----------------+----------------+
+| :doc:`cosine/squared/restricted <dihedral_cosine_squared_restricted>`  | k,phi0         | type dihedrals |
++------------------------------------------------------------------------+----------------+----------------+
+| :doc:`opls <dihedral_opls>`                                            | k1,k2,k3,k4    | type dihedrals |
++------------------------------------------------------------------------+----------------+----------------+
+| :doc:`quadratic <dihedral_quadratic>`                                  | k,phi0         | type dihedrals |
++------------------------------------------------------------------------+----------------+----------------+
 
 Note that internally, phi0 is stored in radians, so the variable
 this fix use to reset phi0 needs to generate values in radians.
