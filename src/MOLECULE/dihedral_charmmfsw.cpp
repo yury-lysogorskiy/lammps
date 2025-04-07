@@ -483,7 +483,7 @@ void DihedralCharmmfsw::write_data(FILE *fp)
  void *DihedralCharmmfsw::extract(const char *str, int &dim)
  {
    dim = 1;
-   if (strcmp(str, "k") == 0) return (void *) k0;
+   if (strcmp(str, "k") == 0) return (void *) k;
    if (strcmp(str, "n") == 0) return (void *) multiplicity;
    if (strcmp(str, "d") == 0) return (void *) shift;
    return nullptr;
