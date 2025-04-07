@@ -42,16 +42,16 @@ public:
   typedef ArrayTypes<DeviceType> AT;
 
   PairMLIAPKokkos(class LAMMPS*);
-  ~PairMLIAPKokkos();
-  void settings(int narg, char ** arg);
-  void init_style();
+  ~PairMLIAPKokkos() override;
+  void settings(int narg, char ** arg) override;
+  void init_style() override;
 
-  void compute(int, int);
+  void compute(int, int) override;
   void e_tally(MLIAPData* data);
 
-  void allocate();
+  void allocate() override;
 
-  void coeff(int narg, char **arg);
+  void coeff(int narg, char **arg) override;
 
   //Outward facing functions to be invoked by the ML layer via MLIAPDataKokkosDevice
   template <typename CommType>
