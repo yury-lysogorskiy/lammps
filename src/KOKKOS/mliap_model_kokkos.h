@@ -35,6 +35,7 @@ template <class DeviceType> class MLIAPModelKokkos : protected Pointers {
 
   void set_k_coeffelem()
   {
+    if ( model->coeffelem == nullptr ) return; 
     double **tmp = nullptr;
     memoryKK->create_kokkos(k_coeffelem, tmp, model->nelements, model->nparams,
                             "MLIAPModelKokkos::coeffelem");
