@@ -73,6 +73,7 @@ PairMLIAP::~PairMLIAP()
     memory->destroy(setflag);
     memory->destroy(cutsq);
     memory->destroy(map);
+    memory->destroy(cutghost);
   }
 }
 
@@ -125,6 +126,7 @@ void PairMLIAP::allocate()
   memory->create(setflag,n+1,n+1,"pair:setflag");
   memory->create(cutsq,n+1,n+1,"pair:cutsq");
   memory->create(map,n+1,"pair:map");
+  if (ghostneigh) memory->create(cutghost, n+1, n+1, "pair:cutghost");
 }
 
 /* ----------------------------------------------------------------------
@@ -341,12 +343,7 @@ void PairMLIAP::init_style()
   // need a full neighbor list
 
   if (ghostneigh == 1) {
-    // AK: 2025-04-07 nothing seems to be using this feature and it was leaking memory, too.
-    error->all(FLERR, Error::NOLASTLINE,
-               "Pair_style mliap does not support requesting neighbors of ghost atoms anymore.\n"
-               "If you have a model requiring this setting, please contact the LAMMPS developers"
-               + utils::errorurl(35));
-    // neighbor->add_request(this, NeighConst::REQ_FULL | NeighConst::REQ_GHOST);
+    neighbor->add_request(this, NeighConst::REQ_FULL | NeighConst::REQ_GHOST);
   } else {
     neighbor->add_request(this, NeighConst::REQ_FULL);
   }
