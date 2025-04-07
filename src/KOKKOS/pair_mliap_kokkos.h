@@ -108,6 +108,7 @@ public:
   typename AT::t_f_array f;
   DAT::tdual_int_1d k_map;
   DAT::tdual_double_2d k_cutsq;
+  DAT::tdual_double_2d k_cutghost;
   DAT::tdual_int_2d k_setflag;
   DAT::tdual_efloat_1d k_eatom;
   DAT::tdual_double_2d k_vatom;

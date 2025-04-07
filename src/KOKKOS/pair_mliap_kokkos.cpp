@@ -57,6 +57,7 @@ PairMLIAPKokkos<DeviceType>::~PairMLIAPKokkos()
   memoryKK->destroy_kokkos(k_setflag, setflag);
   memoryKK->destroy_kokkos(k_eatom, eatom);
   memoryKK->destroy_kokkos(k_vatom, vatom);
+  if (ghostneigh) memoryKK->destroy_kokkos(k_cutghost, cutghost);
   delete model;
   delete descriptor;
   model=nullptr;
@@ -147,6 +148,7 @@ void PairMLIAPKokkos<DeviceType>::allocate()
   memoryKK->create_kokkos(k_cutsq, cutsq, n+1, n+1, "pair_mliap:cutsq");
   memoryKK->create_kokkos(k_setflag, setflag, n+1, n+1, "pair_mliap:setflag");
 
+  if (ghostneigh) memoryKK->create_kokkos(k_cutghost, cutghost, n+1, n+1, "pair_mliap:cutghost");
   // this is for the base class so it doesn't double delete
   allocated = 1;
 }
