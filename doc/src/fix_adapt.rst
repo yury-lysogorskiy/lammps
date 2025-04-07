@@ -464,6 +464,8 @@ sub-style name. The dihedral styles that currently work with fix adapt are:
 +------------------------------------------------------------------------+----------------+----------------+
 | :doc:`cosine/squared/restricted <dihedral_cosine_squared_restricted>`  | k,phi0         | type dihedrals |
 +------------------------------------------------------------------------+----------------+----------------+
+| :doc:`helix <dihedral_helix>`                                          | a,b,c          | type dihedrals |
++------------------------------------------------------------------------+----------------+----------------+
 | :doc:`multi/harmonic <dihedral_multi_harmonic>`                        | a1,a2,a3,a4,a5 | type dihedrals |
 +------------------------------------------------------------------------+----------------+----------------+
 | :doc:`opls <dihedral_opls>`                                            | k1,k2,k3,k4    | type dihedrals |
