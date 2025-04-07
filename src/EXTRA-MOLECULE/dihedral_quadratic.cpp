@@ -443,7 +443,7 @@ void DihedralQuadratic::born_matrix(int nd, int i1, int i2, int i3, int i4,
 void *DihedralQuadratic::extract(const char *str, int &dim)
 {
   dim = 1;
-  if (strcmp(str, "k") == 0) return (void *) k0;
+  if (strcmp(str, "k") == 0) return (void *) k;
   if (strcmp(str, "phi0") == 0) return (void *) phi0;
   return nullptr;
 }
