@@ -77,6 +77,11 @@ TEST(MliapUnified, VersusLJMelt)
     lammps_close(mliap);
 }
 
+#if 0
+
+// This setting was producing wrong results and leaking memory.
+// Thus support for it was removed from LAMMPS.
+
 TEST(MliapUnified, VersusLJMeltGhost)
 {
     const char *lmpargv[] = {"melt", "-log", "none", "-nocite"};
@@ -112,5 +117,5 @@ TEST(MliapUnified, VersusLJMeltGhost)
     lammps_close(ljmelt);
     lammps_close(mliap);
 }
-
+#endif
 } // namespace LAMMPS_NS

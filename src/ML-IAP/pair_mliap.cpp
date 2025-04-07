@@ -336,12 +336,17 @@ void PairMLIAP::v_tally(int i, int j, double *fij, double *rij)
 void PairMLIAP::init_style()
 {
   if (force->newton_pair == 0)
-    error->all(FLERR,"Pair style MLIAP requires newton pair on");
+    error->all(FLERR, Error::NOLASTLINE, "Pair style mliap requires newton pair on");
 
   // need a full neighbor list
 
   if (ghostneigh == 1) {
-    neighbor->add_request(this, NeighConst::REQ_FULL | NeighConst::REQ_GHOST);
+    // AK: 2025-04-07 nothing seems to be using this feature and it was leaking memory, too.
+    error->all(FLERR, Error::NOLASTLINE,
+               "Pair_style mliap does not support requesting neighbors of ghost atoms anymore.\n"
+               "If you have a model requiring this setting, please contact the LAMMPS developers"
+               + utils::errorurl(35));
+    // neighbor->add_request(this, NeighConst::REQ_FULL | NeighConst::REQ_GHOST);
   } else {
     neighbor->add_request(this, NeighConst::REQ_FULL);
   }
