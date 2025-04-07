@@ -458,6 +458,8 @@ If :doc:`dihedral_style hybrid <dihedral_hybrid>` is used, *dstyle* should be a
 sub-style name. The dihedral styles that currently work with fix adapt are:
 
 +---------------------------------------------------------+----------------+----------------+
+| :doc:`opls <dihedral_opls>`                             | k1,k2,k3,k4    | type dihedrals |
++---------------------------------------------------------+----------------+----------------+
 | :doc:`quadratic <dihedral_quadratic>`                   | k,phi0         | type dihedrals |
 +---------------------------------------------------------+----------------+----------------+
 
