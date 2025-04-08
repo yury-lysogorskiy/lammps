@@ -77,7 +77,17 @@ GranSubModDampingVelocity::GranSubModDampingVelocity(GranularModel *gm, LAMMPS *
 
 double GranSubModDampingVelocity::calculate_forces()
 {
-  damp_prefactor = damp;
+  if (gm->normal_model->name == "mdr") {
+    using namespace Granular_MDR_NS;
+    double *history = & gm->history[gm->normal_model->history_index];
+    if (history[DAMP_SCALE] == 0.0) {
+      damp_prefactor == 0.0;
+    } else {
+      damp_prefactor = damp;
+    }
+  } else { 
+    damp_prefactor = damp;
+  }
   return -damp_prefactor * gm->vnnr;
 }
 
@@ -181,7 +191,6 @@ void GranSubModDampingCoeffRestitution::init()
 GranSubModDampingMDR::GranSubModDampingMDR(GranularModel *gm, LAMMPS *lmp) :
     GranSubModDamping(gm, lmp)
 {
-  contact_radius_flag = 1;
 }
 
 /* ---------------------------------------------------------------------- */

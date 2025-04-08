@@ -89,7 +89,7 @@ and their required arguments are:
 4. *dmt* : E, :math:`\eta_{n0}` (or :math:`e`), :math:`\nu`, :math:`\gamma`
 5. *jkr* : E, :math:`\eta_{n0}` (or :math:`e`), :math:`\nu`, :math:`\gamma`
 6. *mdr* : :math:`E`, :math:`\nu`, :math:`Y`, :math:`\Delta\gamma`,
-:math:`\psi_b`, :math:`\eta_{n0}`
+   :math:`\psi_b`, :math:`\eta_{n0}`
 
 Here, :math:`k_n` is spring stiffness (with units that depend on model
 choice, see below); :math:`\eta_{n0}` is a damping prefactor (or, in its
@@ -178,8 +178,9 @@ two-part series :ref:`Zunker and Kamrin Part I <Zunker2024I>` and
 :ref:`Zunker and Kamrin Part II <Zunker2024II>`. Further development
 and demonstrations of its application to industrially relevant powder
 compaction processes are presented in :ref:`Zunker et al. <Zunker2025>`.
-If you use the *mdr* normal model, is recommended you use the *mdr* damping model
-described below.
+If you use the *mdr* normal model, the default, and recommended damping model is
+the *mdr* damping model described below. The other currently supported damping model
+for the *mdr* normal model is *velocity*, all others will result in an error.
 
 The model requires the following inputs:
 
@@ -203,8 +204,8 @@ The model requires the following inputs:
    triggered. Lower values of :math:`\psi_b` delay the onset of the bulk elastic
    response.
 
-   6. *Coefficient of restitution* :math:`0 \le e \le 1` : The coefficient of
-   restitution is a tunable parameter that controls damping in the normal direction.
+   6. *Damping coefficent* :math:`\eta_{n0} \ge 0` : The damping coefficient
+   is a tunable parameter that controls damping in the normal direction.
 
 .. note::
 
@@ -216,7 +217,7 @@ The *mdr* model produces a nonlinear force-displacement response, therefore the
 critical timestep :math:`\Delta t` depends on the inputs and level of
 deformation. As a conservative starting point the timestep can be assumed to be
 dictated by the bulk elastic response such that
-:math:`\Delta t = 0.35\sqrt{m/k_\textrm{bulk}}`, where :math:`m` is the mass of
+:math:`\Delta t = 0.08\sqrt{m/k_\textrm{bulk}}`, where :math:`m` is the mass of
 the smallest particle and :math:`k_\textrm{bulk} = \kappa R_\textrm{min}` is an
 effective stiffness related to the bulk elastic response.
 Here, :math:`\kappa = E/(3(1-2\nu))` is the bulk modulus and
@@ -334,7 +335,8 @@ for the damping model currently supported are:
    *mdr* contact model is defined.
 
 If the *damping* keyword is not specified, the *viscoelastic* model is
-used by default.
+used by default. The exception is when the normal model is set
+to *mdr* then the *mdr* damping model will be used by default.
 
 For *damping velocity*, the normal damping is simply equal to the
 user-specified damping coefficient in the *normal* model:
@@ -344,7 +346,7 @@ user-specified damping coefficient in the *normal* model:
    \eta_n = \eta_{n0}
 
 Here, :math:`\eta_{n0}` is the damping coefficient specified for the normal
-contact model, in units of *mass*\ /\ *time*\ .
+contact model, in units of *mass*\ /\ *time*\ . 
 
 For *damping mass_velocity*, the normal damping is given by:
 
@@ -1082,8 +1084,8 @@ a bulk elastic response. Journal of the Mechanics and Physics of Solids,
 
 **(Zunker et al, 2025)** Zunker, W., Dunatunga, S., Thakur, S.,
 Tang, P., & Kamrin, K. (2025). Experimentally validated DEM for large
-deformation powder compaction: mechanically-derived contact model and
-screening of non-physical contacts.
+deformation powder compaction: Mechanically-derived contact model and
+screening of non-physical contacts. Powder Technology, 120972.
 
 .. _Luding2008:
 

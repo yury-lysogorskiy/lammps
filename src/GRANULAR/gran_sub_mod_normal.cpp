@@ -73,8 +73,9 @@ static const char cite_mdr[] =
     " author =  {Zunker, William and Dunatunga, Sachith and Thakur, Subhash and Tang, Pingjun and Kamrin, Ken},\n"
     " title =   {Experimentally validated DEM for large deformation powder compaction:\n"
     "            mechanically-derived contact model and screening of non-physical contacts},\n"
+    " journal = {Powder Technology},\n"
     " year =    {2025},\n"
-    " journal = {engrXiv},\n"
+    " pages =   {120972},\n"
     "}\n\n";
 
 /* ----------------------------------------------------------------------
@@ -958,19 +959,18 @@ double GranSubModNormalMDR::calculate_forces()
   double damp_scale;
   if (gm->contact_type != PAIR) {
     a_damp = a_damp/2.0;
-    damp_scale = 0.5*sqrt(gm->meff * 2.0 * Eeff2particle * a_damp);
+    damp_scale = sqrt(gm->meff * 2.0 * Eeff2particle * a_damp);
     double *deltao_offset = &history[DELTAO_0];
     const double wfm = std::exp(10.7*(*deltao_offset)/Rinitial[gm->i] - 10.0) + 1.0; // wall force magnifier
-    //const double wfm = 1.0;
     F = wij * F0 * wfm;
   } else {
-    damp_scale = 0.5*sqrt(gm->meff * 2.0 * Eeff * a_damp);
+    damp_scale = sqrt(gm->meff * 2.0 * Eeff * a_damp);
     F = wij * (F0 + F1) * 0.5;
   }
 
   if (history_update) {
     double *damp_scale_offset = & history[DAMP_SCALE];
-    (a_damp < 0.0) ? *damp_scale_offset = 0.0 : *damp_scale_offset = damp_scale;
+    (a_damp <= 0.0) ? *damp_scale_offset = 0.0 : *damp_scale_offset = damp_scale;
   }
 
   return F;
