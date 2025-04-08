@@ -346,7 +346,7 @@ user-specified damping coefficient in the *normal* model:
    \eta_n = \eta_{n0}
 
 Here, :math:`\eta_{n0}` is the damping coefficient specified for the normal
-contact model, in units of *mass*\ /\ *time*\ . 
+contact model, in units of *mass*\ /\ *time*\ .
 
 For *damping mass_velocity*, the normal damping is given by:
 

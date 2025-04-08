@@ -85,7 +85,7 @@ double GranSubModDampingVelocity::calculate_forces()
     } else {
       damp_prefactor = damp;
     }
-  } else { 
+  } else {
     damp_prefactor = damp;
   }
   return -damp_prefactor * gm->vnnr;
