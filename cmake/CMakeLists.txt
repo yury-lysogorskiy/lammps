@@ -129,19 +129,6 @@ if((CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC") OR (CMAKE_CXX_COMPILER_ID STREQUAL "
   set(CMAKE_CXX_FLAGS_${BTYPE} "${CMAKE_CXX_FLAGS_${BTYPE}} -Minform=severe")
 endif()
 
-# this hack is required to compile fmt lib with CrayClang version 15.0.2
-# CrayClang is only directly recognized by version 3.28 and later
-if(CMAKE_VERSION VERSION_LESS 3.28)
-  get_filename_component(_exe "${CMAKE_CXX_COMPILER}" NAME)
-  if((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") AND (_exe STREQUAL "crayCC"))
-    set(CMAKE_CXX_FLAGS_${BTYPE} "${CMAKE_CXX_FLAGS_${BTYPE}} -DFMT_STATIC_THOUSANDS_SEPARATOR")
-  endif()
-else()
-  if(CMAKE_CXX_COMPILER_ID STREQUAL "CrayClang")
-    set(CMAKE_CXX_FLAGS_${BTYPE} "${CMAKE_CXX_FLAGS_${BTYPE}} -DFMT_STATIC_THOUSANDS_SEPARATOR")
-  endif()
-endif()
-
 # silence nvcc warnings
 if((PKG_KOKKOS) AND (Kokkos_ENABLE_CUDA) AND NOT (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
   set(CMAKE_CXX_FLAGS_${BTYPE} "${CMAKE_CXX_FLAGS_${BTYPE}}" "-Xcudafe --diag_suppress=unrecognized_pragma,--diag_suppress=128")
@@ -448,6 +435,19 @@ else()
 endif()
 if(NOT ${LAMMPS_MEMALIGN} STREQUAL "0")
   target_compile_definitions(lammps PRIVATE -DLAMMPS_MEMALIGN=${LAMMPS_MEMALIGN})
+endif()
+
+# this hack is required to compile fmt lib with CrayClang version 15.0.2
+# CrayClang is only directly recognized by CMake version 3.28 and later
+if(CMAKE_VERSION VERSION_LESS 3.28)
+  get_filename_component(_exe "${CMAKE_CXX_COMPILER}" NAME)
+  if((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") AND (_exe STREQUAL "crayCC"))
+    target_compile_definitions(lammps PRIVATE -DFMT_STATIC_THOUSANDS_SEPARATOR)
+  endif()
+else()
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "CrayClang")
+    target_compile_definitions(lammps PRIVATE -DFMT_STATIC_THOUSANDS_SEPARATOR)
+  endif()
 endif()
 
 # "hard" dependencies between packages resulting
