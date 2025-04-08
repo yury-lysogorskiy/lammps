@@ -476,15 +476,15 @@ void DihedralCharmmfsw::write_data(FILE *fp)
     fprintf(fp, "%d %g %d %d %g\n", i, k[i], multiplicity[i], shift[i], weight[i]);
 }
 
- /* ----------------------------------------------------------------------
-    return ptr to internal members upon request
- ------------------------------------------------------------------------ */
- 
- void *DihedralCharmmfsw::extract(const char *str, int &dim)
- {
-   dim = 1;
-   if (strcmp(str, "k") == 0) return (void *) k;
-   if (strcmp(str, "n") == 0) return (void *) multiplicity;
-   if (strcmp(str, "d") == 0) return (void *) shift;
-   return nullptr;
- }
+/* ----------------------------------------------------------------------
+   return ptr to internal members upon request
+------------------------------------------------------------------------ */
+
+void *DihedralCharmmfsw::extract(const char *str, int &dim)
+{
+  dim = 1;
+  if (strcmp(str, "k") == 0) return (void *) k;
+  if (strcmp(str, "n") == 0) return (void *) multiplicity;
+  if (strcmp(str, "d") == 0) return (void *) shift;
+  return nullptr;
+}
