@@ -24,13 +24,7 @@ set(CMAKE_CXX_STANDARD 17 CACHE STRING "" FORCE)
 
 # set(_intel_sycl_flags " -w -fsycl -flink-huge-device-code -fsycl-targets=spir64_gen "
 set(_intel_sycl_flags " -w -fsycl -fsycl-device-code-split=per_kernel -fsycl-targets=spir64_gen "
-if (CMAKE_CXX_FLAGS)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${_intel_sycl_flags}" CACHE STRING "" FORCE)
-endif()
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${_intel_sycl_flags}" CACHE STRING "" FORCE)
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${_intel_sycl_flags}" CACHE STRING "" FORCE)
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${_intel_sycl_flags}" CACHE STRING "" FORCE)
-set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} ${_intel_sycl_flags}" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${_intel_sycl_flags}" CACHE STRING "" FORCE)
 
 #set(CMAKE_EXE_LINKER_FLAGS "-fsycl -flink-huge-device-code -fsycl-targets=spir64_gen " CACHE STRING "" FORCE)
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsycl -flink-huge-device-code " CACHE STRING "" FORCE)
