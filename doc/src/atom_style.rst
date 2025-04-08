@@ -10,7 +10,7 @@ Syntax
 
    atom_style style args
 
-* style = *amoeba* or *angle* or *atomic* or *body* or *bond* or *charge* or *dielectric* or *dipole* or  *dpd* or *edpd* or *electron* or *ellipsoid* or *full* or *line* or *mdpd* or *molecular* or *oxdna* or *peri* or *smd* or *sph* or *sphere* or *bpm/sphere* or *spin* or *tdpd* or *tri* or *template* or *wavepacket* or *hybrid*
+* style = *amoeba* or *angle* or *apip* or *atomic* or *body* or *bond* or *charge* or *dielectric* or *dipole* or  *dpd* or *edpd* or *electron* or *ellipsoid* or *full* or *line* or *mdpd* or *molecular* or *oxdna* or *peri* or *smd* or *sph* or *sphere* or *bpm/sphere* or *spin* or *tdpd* or *tri* or *template* or *wavepacket* or *hybrid*
 
   .. parsed-literal::
 
@@ -117,6 +117,10 @@ the Additional Information section below.
      - *bond* + "angle data"
      - :ref:`MOLECULE <PKG-MOLECULE>`
      - bead-spring polymers with stiffness
+   * - *apip*
+     - *atomic* + lambda, lambda_required, lambda_input, lambda_const, lambda_input_ta, e_simple, e_complex, f_const_lambda, f_dyn_lambda
+     - :ref:`APIP <PKG-APIP>`
+     - adaptive-precision interatomic potentials(APIP), see :doc:`APIP howto <Howto_apip>`
    * - *atomic*
      - tag, type, x, v, f, image, mask
      -

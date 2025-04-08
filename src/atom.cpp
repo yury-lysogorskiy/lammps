@@ -220,6 +220,11 @@ Atom::Atom(LAMMPS *_lmp) : Pointers(_lmp), atom_style(nullptr), avec(nullptr), a
 
   area = ed = em = epsilon = curvature = q_scaled = nullptr;
 
+  // APIP package
+  lambda_const = lambda = lambda_input = lambda_input_ta = e_simple = e_complex = nullptr;
+  lambda_required = nullptr;
+  f_const_lambda = f_dyn_lambda = nullptr;
+
   // end of customization section
   // --------------------------------------------------------------------
 
@@ -575,6 +580,17 @@ void Atom::peratom_create()
   add_peratom("curvature",&curvature,DOUBLE,0);
   add_peratom("q_scaled",&q_scaled,DOUBLE,0);
 
+  // APIP package
+  add_peratom("lambda",&lambda,DOUBLE,0);
+  add_peratom("lambda_required",&lambda_required,INT,0);
+  add_peratom("lambda_input",&lambda_input,DOUBLE,0);
+  add_peratom("lambda_input_ta",&lambda_input_ta,DOUBLE,0);
+  add_peratom("e_simple",&e_simple,DOUBLE,0);
+  add_peratom("e_complex",&e_complex,DOUBLE,0);
+  add_peratom("lambda_const",&lambda_const,DOUBLE,0);
+  add_peratom("f_const_lambda",&f_const_lambda,DOUBLE,3,1);
+  add_peratom("f_dyn_lambda",&f_dyn_lambda,DOUBLE,3,1);
+
   // end of customization section
   // --------------------------------------------------------------------
 }
@@ -658,6 +674,7 @@ void Atom::set_atomflag_defaults()
   contact_radius_flag = smd_data_9_flag = smd_stress_flag = 0;
   eff_plastic_strain_flag = eff_plastic_strain_rate_flag = 0;
   nspecial15_flag = 0;
+  lambda_flag = e_simple_flag = e_complex_flag = lambda_input_flag = lambda_input_ta_flag = lambda_required_flag = f_const_lambda_flag = f_dyn_lambda_flag = lambda_const_flag = 0;
 
   pdscale = 1.0;
 }
@@ -3116,6 +3133,18 @@ void *Atom::extract(const char *name)
   if (strcmp(name,"curvature") == 0) return (void *) curvature;
   if (strcmp(name,"q_scaled") == 0) return (void *) q_scaled;
 
+  // APIP package
+
+  if (strcmp(name,"lambda") == 0) return (void *) lambda;
+  if (strcmp(name,"lambda_required") == 0) return (void *) lambda_required;
+  if (strcmp(name,"lambda_input") == 0) return (void *) lambda_input;
+  if (strcmp(name,"lambda_input_ta") == 0) return (void *) lambda_input_ta;
+  if (strcmp(name,"e_simple") == 0) return (void *) e_simple;
+  if (strcmp(name,"e_complex") == 0) return (void *) e_complex;
+  if (strcmp(name,"f_const_lambda") == 0) return (void *) f_const_lambda;
+  if (strcmp(name,"f_dyn_lambda") == 0) return (void *) f_dyn_lambda;
+  if (strcmp(name,"lambda_const") == 0) return (void *) lambda_const;
+
   // end of customization section
   // --------------------------------------------------------------------
 
@@ -3247,6 +3276,17 @@ int Atom::extract_datatype(const char *name)
   if (strcmp(name,"curvature") == 0) return LAMMPS_DOUBLE;
   if (strcmp(name,"q_unscaled") == 0) return LAMMPS_DOUBLE;
 
+  // PACE package
+
+  if (strcmp(name,"lambda") == 0) return LAMMPS_DOUBLE;
+  if (strcmp(name,"lambda_required") == 0) return LAMMPS_INT;
+  if (strcmp(name,"lambda_input") == 0) return LAMMPS_DOUBLE;
+  if (strcmp(name,"lambda_input_ta") == 0) return LAMMPS_DOUBLE;
+  if (strcmp(name,"e_simple") == 0) return LAMMPS_DOUBLE;
+  if (strcmp(name,"e_complex") == 0) return LAMMPS_DOUBLE;
+  if (strcmp(name,"lambda_const") == 0) return LAMMPS_DOUBLE;
+  if (strcmp(name,"f_const_lambda") == 0) return LAMMPS_DOUBLE_2D;
+  if (strcmp(name,"f_dyn_lambda") == 0) return LAMMPS_DOUBLE_2D;
   // end of customization section
   // --------------------------------------------------------------------
 
@@ -3383,6 +3423,18 @@ int Atom::extract_size(const char *name, int type)
 
       if (strcmp(name, "smd_data_9") == 0) return 9;
       if (strcmp(name, "smd_stress") == 0) return 6;
+
+      // APIP package
+      if (strcmp(name, "lambda") == 0) return nlocal;
+      if (strcmp(name, "lambda_required") == 0) return nlocal;
+      if (strcmp(name, "lambda_input") == 0) return nlocal;
+      if (strcmp(name, "lambda_input_ta") == 0) return nlocal;
+      if (strcmp(name, "e_simple") == 0) return nlocal;
+      if (strcmp(name, "e_complex") == 0) return nlocal;
+      if (strcmp(name, "lambda_const") == 0) return nlocal;
+      if (strcmp(name, "f_const_lambda") == 0) return nall;
+      if (strcmp(name, "f_dyn_lambda") == 0) return nall;
+
     }
 
     // custom arrays

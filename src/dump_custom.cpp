@@ -45,6 +45,7 @@ enum{ID,MOL,PROC,PROCP1,TYPE,TYPELABEL,ELEMENT,MASS,
      Q,MUX,MUY,MUZ,MU,RADIUS,DIAMETER,
      OMEGAX,OMEGAY,OMEGAZ,ANGMOMX,ANGMOMY,ANGMOMZ,
      TQX,TQY,TQZ,
+     LAMBDA,LAMBDA_INPUT,LAMBDA_REQUIRED,ESIMPLE,ECOMPLEX, // APIP package
      COMPUTE,FIX,VARIABLE,IVEC,DVEC,IARRAY,DARRAY};
 enum{LT,LE,GT,GE,EQ,NEQ,XOR};
 
@@ -1223,6 +1224,25 @@ int DumpCustom::count()
         double **darray = atom->darray[iwhich];
         ptr = &darray[0][argindex[i]-1];
         nstride = atom->dcols[iwhich];
+
+      // APIP package
+      } else if (thresh_array[ithresh] == LAMBDA) {
+        ptr = &atom->lambda[0];
+        nstride = 1;
+      } else if (thresh_array[ithresh] == LAMBDA_INPUT) {
+        ptr = &atom->lambda_input[0];
+        nstride = 1;
+      } else if (thresh_array[ithresh] == LAMBDA_REQUIRED) {
+        int *lambda_required = atom->lambda_required;
+        for (i = 0; i < nlocal; i++) dchoose[i] = lambda_required[i];
+        ptr = dchoose;
+        nstride = 1;
+      } else if (thresh_array[ithresh] == ESIMPLE) {
+        ptr = &atom->e_simple[0];
+        nstride = 1;
+      } else if (thresh_array[ithresh] == ECOMPLEX) {
+        ptr = &atom->e_complex[0];
+        nstride = 1;
       }
 
       // unselect atoms that don't meet threshold criterion
@@ -1622,6 +1642,33 @@ int DumpCustom::parse_fields(int narg, char **arg)
       if (!atom->torque_flag)
         error->all(FLERR,"Dumping an atom property that isn't allocated");
       pack_choice[iarg] = &DumpCustom::pack_tqz;
+      vtype[iarg] = Dump::DOUBLE;
+
+    // APIP package
+    } else if (strcmp(arg[iarg],"lambda") == 0) {
+      if (!atom->lambda_flag)
+        error->all(FLERR,"Dumping an atom property that isn't allocated");
+      pack_choice[iarg] = &DumpCustom::pack_lambda;
+      vtype[iarg] = Dump::DOUBLE;
+    } else if (strcmp(arg[iarg],"lambda_input") == 0) {
+      if (!atom->lambda_input_flag)
+        error->all(FLERR,"Dumping an atom property that isn't allocated");
+      pack_choice[iarg] = &DumpCustom::pack_lambda_input;
+      vtype[iarg] = Dump::DOUBLE;
+    } else if (strcmp(arg[iarg],"lambda_required") == 0) {
+      if (!atom->lambda_required_flag)
+        error->all(FLERR,"Dumping an atom property that isn't allocated");
+      pack_choice[iarg] = &DumpCustom::pack_lambda_required;
+      vtype[iarg] = Dump::INT;
+    } else if (strcmp(arg[iarg],"e_simple") == 0) {
+      if (!atom->e_simple_flag)
+        error->all(FLERR,"Dumping an atom property that isn't allocated");
+      pack_choice[iarg] = &DumpCustom::pack_e_simple;
+      vtype[iarg] = Dump::DOUBLE;
+    } else if (strcmp(arg[iarg],"e_complex") == 0) {
+      if (!atom->e_complex_flag)
+        error->all(FLERR,"Dumping an atom property that isn't allocated");
+      pack_choice[iarg] = &DumpCustom::pack_e_complex;
       vtype[iarg] = Dump::DOUBLE;
 
     // compute or fix or variable or custom vector/array
@@ -2066,6 +2113,13 @@ int DumpCustom::modify_param(int narg, char **arg)
     else if (strcmp(arg[1],"tqx") == 0) thresh_array[nthresh] = TQX;
     else if (strcmp(arg[1],"tqy") == 0) thresh_array[nthresh] = TQY;
     else if (strcmp(arg[1],"tqz") == 0) thresh_array[nthresh] = TQZ;
+
+    // APIP package
+    else if (strcmp(arg[1],"lambda") == 0) thresh_array[nthresh] = LAMBDA;
+    else if (strcmp(arg[1],"lambda_input") == 0) thresh_array[nthresh] = LAMBDA_INPUT;
+    else if (strcmp(arg[1],"lambda_required") == 0) thresh_array[nthresh] = LAMBDA_REQUIRED;
+    else if (strcmp(arg[1],"e_simple") == 0) thresh_array[nthresh] = ESIMPLE;
+    else if (strcmp(arg[1],"e_complex") == 0) thresh_array[nthresh] = ECOMPLEX;
 
     // compute or fix or variable or custom vector/array
     // must grow field2index and argindex arrays, since access is beyond nfield
@@ -3445,6 +3499,66 @@ void DumpCustom::pack_tqz_triclinic_general(int n)
   for (int i = 0; i < nchoose; i++) {
     domain->restricted_to_general_vector(torque[clist[i]],tqtri);
     buf[n] = tqtri[2];
+    n += size_one;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+
+void DumpCustom::pack_lambda(int n)
+{
+  double *lambda = atom->lambda;
+
+  for (int i = 0; i < nchoose; i++) {
+    buf[n] = lambda[clist[i]];
+    n += size_one;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+
+void DumpCustom::pack_lambda_input(int n)
+{
+  double *lambda_input = atom->lambda_input;
+
+  for (int i = 0; i < nchoose; i++) {
+    buf[n] = lambda_input[clist[i]];
+    n += size_one;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+
+void DumpCustom::pack_lambda_required(int n)
+{
+  int *lambda_required = atom->lambda_required;
+
+  for (int i = 0; i < nchoose; i++) {
+    buf[n] = lambda_required[clist[i]];
+    n += size_one;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+
+void DumpCustom::pack_e_simple(int n)
+{
+  double *e_simple = atom->e_simple;
+
+  for (int i = 0; i < nchoose; i++) {
+    buf[n] = e_simple[clist[i]];
+    n += size_one;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+
+void DumpCustom::pack_e_complex(int n)
+{
+  double *e_complex = atom->e_complex;
+
+  for (int i = 0; i < nchoose; i++) {
+    buf[n] = e_complex[clist[i]];
     n += size_one;
   }
 }

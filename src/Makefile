@@ -59,6 +59,7 @@ PACKAGE = \
 	kspace \
 	adios \
 	amoeba \
+	apip \
 	asphere \
 	awpmd \
 	bocs \
@@ -225,6 +226,7 @@ PACKLIB = \
 	python \
 	voronoi \
 	adios \
+	apip \
 	atc \
 	awpmd \
 	colvars \
@@ -252,6 +254,7 @@ PACKINT = atc awpmd colvars electrode gpu kokkos lepton ml-pod poems
 
 PACKEXT = \
 	adios \
+	apip \
 	h5md \
 	kim \
 	machdyn \

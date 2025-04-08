@@ -1,0 +1,193 @@
+LAMMPS (4 Feb 2025 - Development - )
+Reading data file ...
+  orthogonal box = (0 0 0) to (28.92 28.92 28.92)
+  1 by 2 by 2 MPI processor grid
+  reading atoms ...
+  2047 atoms
+  reading velocities ...
+  2047 velocities
+  read_data CPU = 0.037 seconds
+ACE version: 2023.11.25
+Recursive evaluator is used by ACE
+Loading ../../../potentials/Cu-PBE-core-rep.ace
+Total number of basis functions
+	Cu: 16 (r=1) 726 (r>1)
+Mapping LAMMPS atom type #1(Cu) -> ACE species type #0
+atomic load lambda:
+	fast potential: extract eam/apip:time_per_atom
+	precise potential: extract pace/apip:time_per_atom
+	lambda_input: extract lambda_input:time_per_atom
+	lambda: extract lambda_zone:time_per_atom
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+Your simulation uses code contributions which should be cited:
+- fix lambda command: doi.org/10.1063/5.0245877
+The log file lists these citations in BibTeX format.
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+WARNING: The energy is not conserved when lambda changes as fix lambda_thermostat is not used. (../fix_lambda.cpp:247)
+Neighbor list info ...
+  update: every = 1 steps, delay = 0 steps, check = yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 14
+  ghost atom cutoff = 14
+  binsize = 7, bins = 5 5 5
+  4 neighbor lists, perpetual/occasional/extra = 4 0 0
+  (1) pair eam/fs/apip, perpetual
+      attributes: full, newton on
+      pair build: full/bin/atomonly
+      stencil: full/bin/3d
+      bin: standard
+  (2) pair pace/apip, perpetual, trim from (4)
+      attributes: full, newton on, cut 9.4
+      pair build: trim
+      stencil: none
+      bin: none
+  (3) pair lambda_input/csp, perpetual, trim from (2)
+      attributes: full, newton on, cut 8
+      pair build: trim
+      stencil: none
+      bin: none
+  (4) pair lambda/zone, perpetual
+      attributes: full, newton on, ghost, cut 14
+      pair build: full/bin/ghost
+      stencil: full/ghost/bin/3d
+      bin: standard
+Setting up Verlet run ...
+  Unit style    : metal
+  Current step  : 0
+  Time step     : 0.001
+Per MPI rank memory allocation (min/avg/max) = 58.65 | 58.75 | 59.03 Mbytes
+   Step         TotEng    
+         0  -7409.9869    
+         1  -7409.9869    
+         2  -7409.987     
+         3  -7409.987     
+         4  -7409.987     
+         5  -7409.987     
+         6  -7409.987     
+         7  -7409.987     
+         8  -7409.987     
+         9  -7409.987     
+        10  -7409.9871    
+        11  -7409.9876    
+        12  -7409.9876    
+        13  -7409.9876    
+        14  -7409.988     
+        15  -7409.9876    
+        16  -7409.9864    
+        17  -7409.9864    
+        18  -7409.9853    
+        19  -7409.9847    
+        20  -7409.9865    
+        21  -7409.9852    
+        22  -7409.9867    
+        23  -7409.9864    
+        24  -7409.9869    
+        25  -7409.9844    
+        26  -7409.9849    
+        27  -7409.9856    
+        28  -7409.9851    
+        29  -7409.9835    
+        30  -7409.9843    
+        31  -7409.9861    
+        32  -7409.9862    
+        33  -7409.9869    
+        34  -7409.9863    
+        35  -7409.9885    
+        36  -7409.9924    
+        37  -7409.9945    
+        38  -7409.9942    
+        39  -7409.9903    
+        40  -7409.9909    
+        41  -7409.9962    
+        42  -7409.996     
+        43  -7409.9959    
+        44  -7410.0004    
+        45  -7410.0044    
+        46  -7409.9993    
+        47  -7409.9948    
+        48  -7409.9923    
+        49  -7409.9844    
+        50  -7409.9861    
+        51  -7409.9849    
+        52  -7409.986     
+        53  -7409.9828    
+        54  -7409.9799    
+        55  -7409.9804    
+        56  -7409.9782    
+        57  -7409.9777    
+        58  -7409.9777    
+        59  -7409.9781    
+        60  -7409.982     
+        61  -7409.982     
+        62  -7409.9824    
+        63  -7409.9844    
+        64  -7409.9826    
+        65  -7409.9816    
+        66  -7409.9788    
+        67  -7409.9769    
+        68  -7409.9727    
+        69  -7409.9716    
+        70  -7409.9693    
+        71  -7409.9674    
+        72  -7409.9691    
+        73  -7409.9693    
+        74  -7409.9682    
+        75  -7409.9664    
+        76  -7409.9678    
+        77  -7409.966     
+        78  -7409.9674    
+        79  -7409.9654    
+        80  -7409.9649    
+        81  -7409.9636    
+        82  -7409.967     
+        83  -7409.9693    
+        84  -7409.9655    
+        85  -7409.9654    
+        86  -7409.9644    
+        87  -7409.961     
+        88  -7409.9609    
+        89  -7409.9594    
+        90  -7409.96      
+        91  -7409.9643    
+        92  -7409.9603    
+        93  -7409.9622    
+        94  -7409.9603    
+        95  -7409.9584    
+        96  -7409.9555    
+        97  -7409.9596    
+        98  -7409.9587    
+        99  -7409.9585    
+       100  -7409.9602    
+Loop time of 10.6279 on 4 procs for 100 steps with 2047 atoms
+
+Performance: 0.813 ns/day, 29.522 hours/ns, 9.409 timesteps/s, 19.261 katom-step/s
+99.2% CPU use with 4 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 7.4326     | 8.9455     | 10.524     |  49.4 | 84.17
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0.089305   | 1.6676     | 3.18       | 114.5 | 15.69
+Output  | 0.0028034  | 0.0041679  | 0.0061404  |   1.9 |  0.04
+Modify  | 0.0040779  | 0.0053928  | 0.0062702  |   1.1 |  0.05
+Other   |            | 0.005266   |            |       |  0.05
+
+Nlocal:         511.75 ave         529 max         502 min
+Histogram: 1 1 0 1 0 0 0 0 0 1
+Nghost:        7684.25 ave        7693 max        7668 min
+Histogram: 1 0 0 0 0 0 0 1 1 1
+Neighs:              0 ave           0 max           0 min
+Histogram: 4 0 0 0 0 0 0 0 0 0
+FullNghs:       490648 ave      507159 max      481313 min
+Histogram: 1 1 0 1 0 0 0 0 0 1
+
+Total # of neighbors = 1962590
+Ave neighs/atom = 958.76404
+Neighbor list builds = 0
+Dangerous builds = 0
+Total wall time: 0:00:12

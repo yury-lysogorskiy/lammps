@@ -177,6 +177,11 @@ class Atom : protected Pointers {
 
   double *area, *ed, *em, *epsilon, *curvature, *q_scaled;
 
+  // APIP package
+
+  double *lambda, *lambda_input, *lambda_input_ta, *e_simple, *e_complex, **f_const_lambda, **f_dyn_lambda, *lambda_const;
+  int *lambda_required;
+
   // end of customization section
   // --------------------------------------------------------------------
 
@@ -224,6 +229,10 @@ class Atom : protected Pointers {
   // DIELECTRIC package
 
   int dielectric_flag;
+
+  // APIP package
+
+  int lambda_flag, e_simple_flag, e_complex_flag, lambda_input_flag, lambda_input_ta_flag, lambda_required_flag, f_const_lambda_flag, f_dyn_lambda_flag, lambda_const_flag;
 
   // end of customization section
   // --------------------------------------------------------------------

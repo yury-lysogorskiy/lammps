@@ -141,6 +141,11 @@ FixStoreState::FixStoreState(LAMMPS *lmp, int narg, char **arg) :
         error->all(FLERR, "Cannot use fix store/state {} for atom style {}",
                    arg[iarg], atom->get_style());
       val.pack_choice = &FixStoreState::pack_q;
+    } else if (strcmp(arg[iarg],"lambda") == 0) {
+      if (!atom->lambda_flag)
+        error->all(FLERR, "Cannot use fix store/state {} for atom style {}",
+                   arg[iarg], atom->get_style());
+      val.pack_choice = &FixStoreState::pack_lambda;
     } else if (strcmp(arg[iarg],"mux") == 0) {
       if (!atom->mu_flag)
         error->all(FLERR, "Cannot use fix store/state {} for atom style {}",
@@ -1262,6 +1267,21 @@ void FixStoreState::pack_q(int n)
 
   for (int i = 0; i < nlocal; i++) {
     if (mask[i] & groupbit) vbuf[n] = q[i];
+    else vbuf[n] = 0.0;
+    n += values.size();
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+
+void FixStoreState::pack_lambda(int n)
+{
+  double *lambda = atom->lambda;
+  int *mask = atom->mask;
+  int nlocal = atom->nlocal;
+
+  for (int i = 0; i < nlocal; i++) {
+    if (mask[i] & groupbit) vbuf[n] = lambda[i];
     else vbuf[n] = 0.0;
     n += values.size();
   }

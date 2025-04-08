@@ -4992,6 +4992,30 @@ void Variable::peratom2global(int flag, char *word, double *vector, int nstride,
         if (!atom->q_flag)
           error->one(FLERR,"Variable uses atom property that isn't allocated");
         mine = atom->q[index];
+      } else if (strcmp(word,"lambda") == 0) {
+        if (!atom->lambda_flag)
+          error->one(FLERR,"Variable uses atom property that isn't allocated");
+        mine = atom->lambda[index];
+      } else if (strcmp(word,"lambda_required") == 0) {
+        if (!atom->lambda_required_flag)
+          error->one(FLERR,"Variable uses atom property that isn't allocated");
+        mine = atom->lambda_required[index];
+      } else if (strcmp(word,"lambda_input") == 0) {
+        if (!atom->lambda_input_flag)
+          error->one(FLERR,"Variable uses atom property that isn't allocated");
+        mine = atom->lambda_input[index];
+      } else if (strcmp(word,"lambda_const") == 0) {
+        if (!atom->lambda_const_flag)
+          error->one(FLERR,"Variable uses atom property that isn't allocated");
+        mine = atom->lambda_const[index];
+      } else if (strcmp(word,"e_simple") == 0) {
+        if (!atom->e_simple_flag)
+          error->one(FLERR,"Variable uses atom property that isn't allocated");
+        mine = atom->e_simple[index];
+      } else if (strcmp(word,"e_complex") == 0) {
+        if (!atom->e_complex_flag)
+          error->one(FLERR,"Variable uses atom property that isn't allocated");
+        mine = atom->e_complex[index];
       }
 
       else if (strcmp(word,"x") == 0) mine = atom->x[index][0];
@@ -5087,6 +5111,12 @@ int Variable::is_atom_vector(char *word)
   if (strcmp(word,"fx") == 0) return 1;
   if (strcmp(word,"fy") == 0) return 1;
   if (strcmp(word,"fz") == 0) return 1;
+  if (strcmp(word,"lambda") == 0) return 1;
+  if (strcmp(word,"lambda_input") == 0) return 1;
+  if (strcmp(word,"lambda_required") == 0) return 1;
+  if (strcmp(word,"lambda_const") == 0) return 1;
+  if (strcmp(word,"e_simple") == 0) return 1;
+  if (strcmp(word,"e_complex") == 0) return 1;
   return 0;
 }
 
@@ -5154,6 +5184,37 @@ void Variable::atom_vector(char *word, Tree **tree, Tree **treestack, int &ntree
     if (!atom->q_flag)
       error->one(FLERR,"Variable uses atom property 'q' that isn't allocated");
     newtree->array = atom->q;
+    newtree->nstride = 1;
+  } else if (strcmp(word,"lambda") == 0) {
+    if (!atom->lambda_flag)
+      error->one(FLERR,"Variable uses atom property 'lambda' that isn't allocated");
+    newtree->array = atom->lambda;
+    newtree->nstride = 1;
+  } else if (strcmp(word,"lambda_required") == 0) {
+    if (!atom->lambda_required_flag)
+      error->one(FLERR,"Variable uses atom property 'lambda_required' that isn't allocated");
+    newtree->type = INTARRAY;
+    newtree->nstride = 1;
+    newtree->iarray = atom->lambda_required;
+  } else if (strcmp(word,"lambda_input") == 0) {
+    if (!atom->lambda_input_flag)
+      error->one(FLERR,"Variable uses atom property 'lambda_input' that isn't allocated");
+    newtree->array = atom->lambda_input;
+    newtree->nstride = 1;
+  } else if (strcmp(word,"lambda_const") == 0) {
+    if (!atom->lambda_const_flag)
+      error->one(FLERR,"Variable uses atom property 'lambda_const' that isn't allocated");
+    newtree->array = atom->lambda_const;
+    newtree->nstride = 1;
+  } else if (strcmp(word,"e_simple") == 0) {
+    if (!atom->e_simple_flag)
+      error->one(FLERR,"Variable uses atom property 'e_simple' that isn't allocated");
+    newtree->array = atom->e_simple;
+    newtree->nstride = 1;
+  } else if (strcmp(word,"e_complex") == 0) {
+    if (!atom->e_complex_flag)
+      error->one(FLERR,"Variable uses atom property 'e_complex' that isn't allocated");
+    newtree->array = atom->e_complex;
     newtree->nstride = 1;
   }
 

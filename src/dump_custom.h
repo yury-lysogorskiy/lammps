@@ -235,6 +235,12 @@ class DumpCustom : public Dump {
   void pack_tqx_triclinic_general(int);
   void pack_tqy_triclinic_general(int);
   void pack_tqz_triclinic_general(int);
+
+  void pack_lambda(int);
+  void pack_lambda_input(int);
+  void pack_lambda_required(int);
+  void pack_e_simple(int);
+  void pack_e_complex(int);
 };
 
 }    // namespace LAMMPS_NS

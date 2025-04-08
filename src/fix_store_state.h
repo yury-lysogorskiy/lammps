@@ -106,6 +106,7 @@ class FixStoreState : public Fix {
   void pack_fy(int);
   void pack_fz(int);
   void pack_q(int);
+  void pack_lambda(int);
   void pack_mux(int);
   void pack_muy(int);
   void pack_muz(int);
