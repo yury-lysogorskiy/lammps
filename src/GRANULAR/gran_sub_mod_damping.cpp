@@ -45,6 +45,11 @@ GranSubModDamping::GranSubModDamping(GranularModel *gm, LAMMPS *lmp) : GranSubMo
 void GranSubModDamping::init()
 {
   damp = gm->normal_model->get_damp();
+  if (gm->normal_model->name == "mdr") {
+    if (gm->tangential_model->name != "mdr")
+      error->all(FLERR, "Only damping mdr may be used with the mdr normal model");
+    damp_type = gm->normal_model->get_damp_type();
+  }
 }
 
 /* ----------------------------------------------------------------------
@@ -77,17 +82,7 @@ GranSubModDampingVelocity::GranSubModDampingVelocity(GranularModel *gm, LAMMPS *
 
 double GranSubModDampingVelocity::calculate_forces()
 {
-  if (gm->normal_model->name == "mdr") {
-    using namespace Granular_MDR_NS;
-    double *history = & gm->history[gm->normal_model->history_index];
-    if (history[DAMP_SCALE] == 0.0) {
-      damp_prefactor == 0.0;
-    } else {
-      damp_prefactor = damp;
-    }
-  } else {
-    damp_prefactor = damp;
-  }
+  damp_prefactor = damp;
   return -damp_prefactor * gm->vnnr;
 }
 
@@ -209,6 +204,14 @@ double GranSubModDampingMDR::calculate_forces()
 {
   using namespace Granular_MDR_NS;
   double *history = & gm->history[gm->normal_model->history_index];
-  damp_prefactor = damp * history[DAMP_SCALE];
+  if (damp_type == 1) {
+    damp_prefactor = damp * history[DAMP_SCALE];
+  } else if (damp_type == 2) {
+    if (history[DAMP_SCALE] == 0.0) {
+      damp_prefactor == 0.0;
+    } else {
+      damp_prefactor = damp;
+    }
+  }
   return -damp_prefactor * gm->vnnr;
 }
