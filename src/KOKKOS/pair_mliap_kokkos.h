@@ -31,6 +31,7 @@ PairStyle(mliap/kk/host,PairMLIAPKokkos<LMPHostType>);
 #include "kokkos_type.h"
 #include "kokkos_base.h"
 #include "comm.h"
+
 #include <variant>
 
 namespace LAMMPS_NS {
