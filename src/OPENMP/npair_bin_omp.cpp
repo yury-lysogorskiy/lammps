@@ -252,7 +252,7 @@ void NPairBinOmp<HALF, NEWTON, TRI, SIZE, ATOMONLY>::build(NeighList *list)
     firstneigh[i] = neighptr;
     numneigh[i] = n;
     ipage.vgot(n);
-    if (ipage.status()) error->one(FLERR, "Neighbor list overflow, boost neigh_modify one");
+    if (ipage.status()) error->one(FLERR, Error::NOLASTLINE, "Neighbor list overflow, boost neigh_modify one" + utils::errorurl(36));
   }
   NPAIR_OMP_CLOSE;
   list->inum = nlocal;

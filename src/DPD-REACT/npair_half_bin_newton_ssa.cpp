@@ -99,12 +99,12 @@ void NPairHalfBinNewtonSSA::build(NeighList *list)
   MyPage<int> *ipage = list->ipage;
 
   auto ns_ssa = dynamic_cast<NStencilSSA*>(ns);
-  if (!ns_ssa) error->one(FLERR, "NStencil wasn't a NStencilSSA object");
+  if (!ns_ssa) error->one(FLERR, Error::NOLASTLINE, "NStencil wasn't a NStencilSSA object");
   int *nstencil_ssa = &(ns_ssa->nstencil_ssa[0]);
   int nstencil_full = ns_ssa->nstencil;
 
   auto nb_ssa = dynamic_cast<NBinSSA*>(nb);
-  if (!nb_ssa) error->one(FLERR, "NBin wasn't a NBinSSA object");
+  if (!nb_ssa) error->one(FLERR, Error::NOLASTLINE, "NBin wasn't a NBinSSA object");
   int *bins = nb_ssa->bins;
   int *binhead = nb_ssa->binhead;
   int *gairhead_ssa = &(nb_ssa->gairhead_ssa[0]);
@@ -160,7 +160,7 @@ void NPairHalfBinNewtonSSA::build(NeighList *list)
   for (zbin = lbinzlo + zoff; zbin < lbinzhi; zbin += sz1) {
   for (ybin = lbinylo + yoff - ns_ssa->sy; ybin < lbinyhi; ybin += sy1) {
   for (xbin = lbinxlo + xoff - ns_ssa->sx; xbin < lbinxhi; xbin += sx1) {
-    if (workItem >= phaseLenEstimate) error->one(FLERR,"phaseLenEstimate was too small");
+    if (workItem >= phaseLenEstimate) error->one(FLERR, Error::NOLASTLINE, "phaseLenEstimate was too small");
     ssa_itemLoc[workPhase][workItem] = inum; // record where workItem starts in ilist
 
     for (int subphase = 0; subphase < 4; subphase++) {
@@ -223,7 +223,7 @@ void NPairHalfBinNewtonSSA::build(NeighList *list)
         }
         ipage->vgot(n);
         if (ipage->status())
-          error->one(FLERR,"Neighbor list overflow, boost neigh_modify one");
+          error->one(FLERR, Error::NOLASTLINE, "Neighbor list overflow, boost neigh_modify one" + utils::errorurl(36));
       }
     }
     // record where workItem ends in ilist
@@ -239,7 +239,7 @@ void NPairHalfBinNewtonSSA::build(NeighList *list)
   }
   }
 
-  if (ssa_phaseCt != workPhase) error->one(FLERR,"ssa_phaseCt was wrong");
+  if (ssa_phaseCt != workPhase) error->one(FLERR, Error::NOLASTLINE, "ssa_phaseCt was wrong");
 
   list->inum = inum;
 
@@ -309,7 +309,7 @@ void NPairHalfBinNewtonSSA::build(NeighList *list)
       }
       ipage->vgot(n);
       if (ipage->status())
-        error->one(FLERR,"Neighbor (ghost) list overflow, boost neigh_modify one");
+        error->one(FLERR, Error::NOLASTLINE, "Neighbor (ghost) list overflow, boost neigh_modify one" + utils::errorurl(36));
     }
     ssa_gitemLen[workPhase][0] = locAIRct;
     ssa_gphaseLen[workPhase] = 1;
