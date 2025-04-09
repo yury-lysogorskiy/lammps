@@ -24,21 +24,19 @@ FixStyle(langevin,FixLangevin);
 
 namespace LAMMPS_NS {
 
-class FixLangevin : public Fix {
+class FixLangevinGJF : public Fix {
  public:
-  FixLangevin(class LAMMPS *, int, char **);
-  ~FixLangevin() override;
+  FixLangevinGJF(class LAMMPS *, int, char **);
+  ~FixLangevinGJF() override;
   int setmask() override;
   void init() override;
   void setup(int) override;
   void initial_integrate(int) override;
-  void post_force(int) override;
-  void post_force_respa(int, int, int) override;
+  void final_integrate() override;
   void end_of_step() override;
   void reset_target(double) override;
   void reset_dt() override;
   int modify_param(int, char **) override;
-  double compute_scalar() override;
   double memory_usage() override;
   void *extract(const char *, int &) override;
   void grow_arrays(int) override;
@@ -48,19 +46,13 @@ class FixLangevin : public Fix {
 
  protected:
   int osflag, GJmethod;
-  int flangevin_allocated;
   double t_start, t_stop, t_period, t_target;
-  double *gfactor1, *gfactor2, *ratio;
-  double energy, energy_onestep;
+  double *gfactor2;
   double tsqrt;
-  double gjfc1, gjfc2;
+  double gjfc1, gjfc2, gjfc3;
   int tstyle, tvar;
   char *tstr;
 
-  class AtomVecEllipsoid *avec;
-
-  int maxatom1, maxatom2;
-  double **flangevin;
   double *tforce;
   double **lv;    //half step velocity
 
@@ -71,11 +63,6 @@ class FixLangevin : public Fix {
   class RanMars *random;
   int seed;
 
-  template <int Tp_TSTYLEATOM, int Tp_TALLY, int Tp_BIAS, int Tp_RMASS, int Tp_ZERO>
-  void post_force_templated();
-
-  void omega_thermostat();
-  void angmom_thermostat();
   void compute_target();
 };
 
