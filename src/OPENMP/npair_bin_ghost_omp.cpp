@@ -135,7 +135,7 @@ void NPairBinGhostOmp<HALF>::build(NeighList *list)
             if (molecular != Atom::ATOMIC) {
               if (!moltemplate)
                 which = find_special(special[i], nspecial[i], tag[j]);
-              else if (imol >= 0)
+              else if ((imol >= 0) && onemols[imol]->special)
                 which = find_special(onemols[imol]->special[iatom], onemols[imol]->nspecial[iatom],
                                      tag[j] - tagprev);
               else
