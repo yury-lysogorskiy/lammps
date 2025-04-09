@@ -692,7 +692,7 @@ void PairILPGrapheneHBN::ILP_neigh()
     ILP_firstneigh[i] = neighptr;
     ILP_numneigh[i] = n;
     if (n > 3)
-      error->one(FLERR, Error::NOLASTLINE, 
+      error->one(FLERR, Error::NOLASTLINE,
                  "There are too many neighbors for some atoms, please check your configuration");
 
     ipage->vgot(n);

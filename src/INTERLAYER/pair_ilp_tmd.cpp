@@ -717,7 +717,7 @@ void PairILPTMD::calc_normal()
           }
         }
         else if (cont >= 3) {
-          error->one(FLERR, Error::NOLASTLINE, 
+          error->one(FLERR, Error::NOLASTLINE,
                      "There are too many neighbors for calculating normals of water molecules");
         }
       }
@@ -911,7 +911,7 @@ void PairILPTMD::calc_normal()
           }
         }    // end of cont == 3
         else
-          error->one(FLERR, Error::NOLASTLINE, 
+          error->one(FLERR, Error::NOLASTLINE,
                      "There are too many neighbors for calculating normals of B/N/C/H atoms");
       }    // for B/N/C/H
     }      // end of if(cont<Nnei)

@@ -673,7 +673,7 @@ void PairKolmogorovCrespiFull::KC_neigh()
     KC_firstneigh[i] = neighptr;
     KC_numneigh[i] = n;
     if (n > 3)
-      error->one(FLERR, Error::NOLASTLINE, 
+      error->one(FLERR, Error::NOLASTLINE,
                  "There are too many neighbors for some atoms, please check your configuration");
 
     ipage->vgot(n);

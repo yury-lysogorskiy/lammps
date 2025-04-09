@@ -1018,13 +1018,15 @@ list storage is typically the largest amount of RAM required by a
 LAMMPS calculation.
 
 Even though the LAMMPS error message recommends to increase the "one"
-parameter, this may not be the correct solution since the neighbor list
+parameter, this may not be the correct solution.  The neighbor list
 overflow can be a symptom of some other error that cannot be easily
 detected.  For example, a frequent reason for an (unexpected) high
 density are incorrect box boundaries or coordinates provided as
 fractional coordinates.  In both cases, LAMMPS cannot easily know
 whether the input geometry has such a high density (and thus requiring
-more neighbor list storage) intentionally.
+more neighbor list storage) intentionally.  Rather than blindly
+increasing the "one" parameter, it is worth checking if this is
+justified by the combination of density and cutoff.
 
 When boosting (= increasing) the "one" parameter, it is recommended to
 also increase the value for the "page" parameter to maintain the ratio
