@@ -482,7 +482,7 @@ void GranSubModNormalMDR::coeffs_to_local()
   if (gamma < 0.0) error->all(FLERR, "Illegal MDR normal model, effective surface energy must be greater than or equal to 0");
   if (psi_b < 0.0 || psi_b > 1.0) error->all(FLERR, "Illegal MDR normal model, psi_b must be between 0 and 1.0");
   if (damp < 0.0) error->all(FLERR, "Illegal MDR normal model, damping coefficent must be greater than or equal to 0");
-  if (damp_type != 1 && damp_type != 2) error->all(FLERR, "Illegal MDR normal model, damping type must an integer equal to 1 (mdr) or 2 (velocity)");
+  if (damp_type != 1 && damp_type != 2) error->all(FLERR, "Illegal MDR normal model, damping type must an integer equal to 1 or 2");
 
   G = E / (2.0 * (1.0 + nu));            // shear modulus
   kappa = E / (3.0 * (1.0 - 2.0 * nu));  // bulk modulus

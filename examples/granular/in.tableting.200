@@ -34,8 +34,9 @@ variable YieldStress        equal 1.9e5
 variable PoissonsRatio      equal 0.4
 variable SurfaceEnergy      equal 2
 variable SurfaceEnergyWall  equal 0.0
-variable damp               equal 0.2
 variable psi_b              equal 0.5
+variable damp               equal 0.2
+variable damp_type          equal 1
 
 # linear_history = k_t, x_gammat, mu_s
 variable kt         equal 2/7*${YoungsModulus}*${atomRadius}
@@ -49,7 +50,7 @@ variable mu_roll     equal 0.6
 variable k_roll      equal 2.25*${mu_roll}*${mu_roll}*${YoungsModulus}*${atomRadius}
 variable gamma_roll  equal 0.0
 
-pair_coeff * * mdr ${YoungsModulus} ${PoissonsRatio} ${YieldStress} ${SurfaceEnergy} ${psi_b} ${damp} &
+pair_coeff * * mdr ${YoungsModulus} ${PoissonsRatio} ${YieldStress} ${SurfaceEnergy} ${psi_b} ${damp} ${damp_type} &
     damping mdr &
     tangential linear_history ${kt} ${xgammat} ${mu_s} &
     rolling sds ${k_roll} ${gamma_roll} ${mu_roll}
@@ -59,7 +60,7 @@ pair_coeff * * mdr ${YoungsModulus} ${PoissonsRatio} ${YieldStress} ${SurfaceEne
 variable disp_upper      equal 0.0
 variable disp_lower      equal 0.0
 
-variable wall_contact_string string "granular mdr ${YoungsModulus} ${PoissonsRatio} ${YieldStress} ${SurfaceEnergyWall} ${psi_b} ${damp}  damping mdr tangential linear_history ${kt_wall} ${xgammat} ${mu_s_wall} rolling sds ${k_roll} ${gamma_roll} ${mu_roll}"
+variable wall_contact_string string "granular mdr ${YoungsModulus} ${PoissonsRatio} ${YieldStress} ${SurfaceEnergyWall} ${psi_b} ${damp} ${damp_type}  damping mdr tangential linear_history ${kt_wall} ${xgammat} ${mu_s_wall} rolling sds ${k_roll} ${gamma_roll} ${mu_roll}"
 
 variable dieHeight2 equal 2*${dieHeight}
 

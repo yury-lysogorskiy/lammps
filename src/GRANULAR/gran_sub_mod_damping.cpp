@@ -44,12 +44,10 @@ GranSubModDamping::GranSubModDamping(GranularModel *gm, LAMMPS *lmp) : GranSubMo
 
 void GranSubModDamping::init()
 {
+  if (gm->normal_model->name == "mdr")
+    error->all(FLERR, "Only damping mdr may be used with the mdr normal model");
+
   damp = gm->normal_model->get_damp();
-  if (gm->normal_model->name == "mdr") {
-    if (gm->tangential_model->name != "mdr")
-      error->all(FLERR, "Only damping mdr may be used with the mdr normal model");
-    damp_type = gm->normal_model->get_damp_type();
-  }
 }
 
 /* ----------------------------------------------------------------------
@@ -135,6 +133,9 @@ GranSubModDampingTsuji::GranSubModDampingTsuji(GranularModel *gm, LAMMPS *lmp) :
 
 void GranSubModDampingTsuji::init()
 {
+  if (gm->normal_model->name == "mdr")
+    error->all(FLERR, "Only damping mdr may be used with the mdr normal model");
+
   double tmp = gm->normal_model->get_damp();
   damp = 1.2728 - 4.2783 * tmp + 11.087 * square(tmp);
   damp += -22.348 * cube(tmp) + 27.467 * powint(tmp, 4);
@@ -168,6 +169,9 @@ GranSubModDampingCoeffRestitution::GranSubModDampingCoeffRestitution(GranularMod
 
 void GranSubModDampingCoeffRestitution::init()
 {
+  if (gm->normal_model->name == "mdr")
+    error->all(FLERR, "Only damping mdr may be used with the mdr normal model");
+
   // Calculate prefactor, assume Hertzian as default
   double cor = gm->normal_model->get_damp();
   double logcor = log(cor);
@@ -196,6 +200,7 @@ void GranSubModDampingMDR::init()
     error->all(FLERR, "Damping mdr can only be used with mdr normal model");
 
   damp = gm->normal_model->get_damp();
+  damp_type = gm->normal_model->get_damp_type();
 }
 
 /* ---------------------------------------------------------------------- */

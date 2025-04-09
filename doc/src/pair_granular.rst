@@ -44,7 +44,7 @@ Examples
    pair_coeff * * hertz 1000.0 50.0 tangential mindlin 1000.0 1.0 0.4 heat area 0.1
 
    pair_style granular
-   pair_coeff * * mdr 5e6 0.4 1.9e5 2.0 0.5 0.5 tangential linear_history 940.0 0.0 0.7 rolling sds 2.7e5 0.0 0.6 damping mdr
+   pair_coeff * * mdr 5e6 0.4 1.9e5 2.0 0.5 0.5 tangential linear_history 940.0 0.0 0.7 rolling sds 2.7e5 0.0 0.6 damping mdr 1
 
 Description
 """""""""""
@@ -89,7 +89,7 @@ and their required arguments are:
 4. *dmt* : E, :math:`\eta_{n0}` (or :math:`e`), :math:`\nu`, :math:`\gamma`
 5. *jkr* : E, :math:`\eta_{n0}` (or :math:`e`), :math:`\nu`, :math:`\gamma`
 6. *mdr* : :math:`E`, :math:`\nu`, :math:`Y`, :math:`\Delta\gamma`,
-   :math:`\psi_b`, :math:`\eta_{n0}`
+   :math:`\psi_b`, :math:`\eta_{n0}`, :math:`d_{type}`
 
 Here, :math:`k_n` is spring stiffness (with units that depend on model
 choice, see below); :math:`\eta_{n0}` is a damping prefactor (or, in its
@@ -178,9 +178,8 @@ two-part series :ref:`Zunker and Kamrin Part I <Zunker2024I>` and
 :ref:`Zunker and Kamrin Part II <Zunker2024II>`. Further development
 and demonstrations of its application to industrially relevant powder
 compaction processes are presented in :ref:`Zunker et al. <Zunker2025>`.
-If you use the *mdr* normal model, the default, and recommended damping model is
-the *mdr* damping model described below. The other currently supported damping model
-for the *mdr* normal model is *velocity*, all others will result in an error.
+If you use the *mdr* normal model the only supported damping option is
+the *mdr* damping class described below.
 
 The model requires the following inputs:
 
@@ -206,6 +205,9 @@ The model requires the following inputs:
 
    6. *Damping coefficent* :math:`\eta_{n0} \ge 0` : The damping coefficient
    is a tunable parameter that controls damping in the normal direction.
+
+   7. *Damping type* :math:`d_{type} =` 1 or 2  : The damping type specfies the
+   damping model defined for the *mdr* damping class described below.
 
 .. note::
 
@@ -329,14 +331,8 @@ for the damping model currently supported are:
 5. *coeff_restitution*
 6. *mdr*
 
-.. note::
-
-   It is suggested to use the *mdr* damping model with when the normal
-   *mdr* contact model is defined.
-
 If the *damping* keyword is not specified, the *viscoelastic* model is
-used by default. The exception is when the normal model is set
-to *mdr* then the *mdr* damping model will be used by default.
+used by default.
 
 For *damping velocity*, the normal damping is simply equal to the
 user-specified damping coefficient in the *normal* model:
@@ -423,8 +419,13 @@ the damping coefficient, it accurately reproduces the specified coefficient of
 restitution for both monodisperse and polydisperse particle pairs.  This damping
 model is not compatible with cohesive normal models such as *JKR* or *DMT*.
 
-The *mdr* damping model is only compatible with the normal *mdr* contact model.
-It takes into account the contact stiffness :math:`k_{mdr}` calulated
+The *mdr* damping class contains multiple damping models that can be toggled between
+by specifying different integer values for the :math:`d_{type}` parameter in the *mdr*
+normal model. This damping option is therefore only compatible with the normal *mdr*
+contact model.
+
+Setting :math:`d_{type} = 1` is the suggested damping option. This specifies a damping
+model that takes into account the contact stiffness :math:`k_{mdr}` calulated
 by the normal *mdr* contact model to determine the damping coefficent:
 
 .. math::
@@ -440,6 +441,15 @@ normal *mdr* contact model:
 
 In this case, :math:`\eta_{n0}` is simply a dimensionless coefficent that scales the
 the overall damping coefficent.
+
+The other supported option is :math:`d_{type} = 2`, which defines a simple damping model
+similar to the *velocity* option
+
+.. math::
+
+   \eta_n = \eta_{n0},
+
+but has additional checks to avoid non-physical damping after plastic deformation.
 
 The total normal force is computed as the sum of the elastic and
 damping components:
