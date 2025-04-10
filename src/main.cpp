@@ -17,6 +17,8 @@
 #include "input.h"
 #include "library.h"
 
+#include "nlohmann/json.hpp"
+
 #include <cstdlib>
 #include <mpi.h>
 #include <new>
@@ -30,6 +32,7 @@
 #include <mdi.h>
 #endif
 
+using json = nlohmann_lmp::json;
 using namespace LAMMPS_NS;
 
 // for convenience
@@ -87,6 +90,11 @@ int main(int argc, char **argv)
     exit(1);
   } catch (fmt::format_error &fe) {
     fprintf(stderr, "\nfmt::format_error: %s%s\n", fe.what(), utils::errorurl(12).c_str());
+    finalize();
+    MPI_Abort(MPI_COMM_WORLD, 1);
+    exit(1);
+  } catch (json::exception &je) {
+    fprintf(stderr, "\nJSON library error %d: %s\n", je.id, je.what());
     finalize();
     MPI_Abort(MPI_COMM_WORLD, 1);
     exit(1);
