@@ -129,7 +129,7 @@ FixLangevinGJF::FixLangevinGJF(LAMMPS *lmp, int narg, char **arg) :
   // register with Atom class
   // no need to set peratom_flag, b/c data is for internal use only
 
-  
+
   FixLangevinGJF::grow_arrays(atom->nmax);
   atom->add_callback(Atom::GROW);
 
@@ -282,12 +282,12 @@ void FixLangevinGJF::initial_integrate(int /* vflag */)
   }
 
   compute_target();
-  
+
   for (int i = 0; i < nlocal; i++) {
     if (mask[i] & groupbit) {
 
       if (tstyle == ATOM) tsqrt = sqrt(tforce[i]);
-      if (rmass) { 
+      if (rmass) {
         m = rmass[i];
         beta = tsqrt * sqrt(2.0*dt*m*boltz/t_period/mvv2e) / ftm2v;
       } else {
@@ -298,7 +298,7 @@ void FixLangevinGJF::initial_integrate(int /* vflag */)
       fran[0] = beta*random->gaussian();
       fran[1] = beta*random->gaussian();
       fran[2] = beta*random->gaussian();
-      
+
       // First integration delivers Eq. 24a and 24b:
       dtfm = dtf / m;
       v[i][0] += csq * dtfm * f[i][0];
@@ -307,12 +307,12 @@ void FixLangevinGJF::initial_integrate(int /* vflag */)
       x[i][0] += 0.5 * csq * dt * v[i][0];
       x[i][1] += 0.5 * csq * dt * v[i][1];
       x[i][2] += 0.5 * csq * dt * v[i][2];
-      
+
       // Calculate Eq. 24c:
       lv[i][0] = c1sqrt*v[i][0] + ftm2v * (c3sqrt / (2.0 * m)) * fran[0];
       lv[i][1] = c1sqrt*v[i][1] + ftm2v * (c3sqrt / (2.0 * m)) * fran[1];
       lv[i][2] = c1sqrt*v[i][2] + ftm2v * (c3sqrt / (2.0 * m)) * fran[2];
-      
+
       // Calculate Eq. 24d
       v[i][0] = (gjfc2 / c1sqrt) * lv[i][0] + ftm2v * csq * (0.5 / m) * fran[0];
       v[i][1] = (gjfc2 / c1sqrt) * lv[i][1] + ftm2v * csq * (0.5 / m) * fran[1];

@@ -56,20 +56,20 @@ quadratically with the timestep.  The option *vhalf* outputs the
 have any statistical errors for any stable time step.  An overview of
 statistically correct Boltzmann and Maxwell-Boltzmann sampling of true
 on-site and true half-step velocities is given in
-:ref:`Gronbech-Jensen-2020 <Gronbech-Jensen-2020>`. 
+:ref:`Gronbech-Jensen-2020 <Gronbech-Jensen-2020>`.
 
-This fix allows the use of any of the GJ methods as listed in :ref:`Gronbech-Jensen-2020 <Gronbech-Jensen-2020>`. 
-The GJ-VII method is described in :ref:`Finkelstein <Finkelstein>`. 
-The implementation follows the splitting form provided in Eqs. (24) and (25) 
-in :ref:`Gronbech-Jensen-2024 <Gronbech-Jensen-2024>`, including the application 
-of Gaussian noise values, per the description in 
+This fix allows the use of any of the GJ methods as listed in :ref:`Gronbech-Jensen-2020 <Gronbech-Jensen-2020>`.
+The GJ-VII method is described in :ref:`Finkelstein <Finkelstein>`.
+The implementation follows the splitting form provided in Eqs. (24) and (25)
+in :ref:`Gronbech-Jensen-2024 <Gronbech-Jensen-2024>`, including the application
+of Gaussian noise values, per the description in
 :ref:`Gronbech-Jensen-2023 <Gronbech-Jensen-2023>`.
 
 
 .. note::
 
    Unlike the :doc:`fix langevin <fix_langevin>` command which performs force
-   modifications only, this fix performs thermostatting and time integration.  
+   modifications only, this fix performs thermostatting and time integration.
    Thus you no longer need a separate time integration fix, like :doc:`fix nve <fix_nve>`.
 
 See the :doc:`Howto thermostat <Howto_thermostat>` page for
@@ -138,20 +138,16 @@ The keyword *method* selects one of the eight GJ-methods implemented in LAMMPS.
 
 ----------
 
-.. include:: accel_styles.rst
-
-----------
-
 Restart, fix_modify, output, run start/stop, minimize info
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-No information about this fix is written to :doc:`binary restart files <restart>`.  
-Because the state of the random number generator is not saved in restart files, 
-this means you cannot do "exact" restarts with this fix, where the simulation 
-continues on the same as if no restart had taken place.  However, in a 
-statistical sense, a restarted simulation should produce the same behavior. 
-The "exact" restart is done with either vfull or vhalf velocity output for as 
-long as the choice of vfull/vhalf is the same for the simulation as it is in 
+No information about this fix is written to :doc:`binary restart files <restart>`.
+Because the state of the random number generator is not saved in restart files,
+this means you cannot do "exact" restarts with this fix, where the simulation
+continues on the same as if no restart had taken place.  However, in a
+statistical sense, a restarted simulation should produce the same behavior.
+The "exact" restart is done with either vfull or vhalf velocity output for as
+long as the choice of vfull/vhalf is the same for the simulation as it is in
 the restart file.
 
 The :doc:`fix_modify <fix_modify>` *temp* option is supported by this
