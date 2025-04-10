@@ -23,6 +23,7 @@
 #include "comm.h"
 #include "domain.h"
 #include "error.h"
+#include "group.h"
 #include "input.h"
 #include "irregular.h"
 #include "lattice.h"
@@ -64,6 +65,16 @@ enum { NONE, RATIO, SUBSET };
 enum { BISECTION, QUASIRANDOM };
 
 static constexpr const char *mesh_name[] = {"recursive bisection", "quasi-random"};
+
+/* ---------------------------------------------------------------------- */
+
+CreateAtoms::CreateAtoms(LAMMPS *lmp) :
+    Command(lmp), basistype(nullptr), xmol(nullptr), vstr(nullptr), xstr(nullptr), ystr(nullptr),
+    zstr(nullptr), groupname(nullptr), region(nullptr), onemol(nullptr), ranmol(nullptr),
+    ranlatt(nullptr)
+{
+}
+
 /* ---------------------------------------------------------------------- */
 
 CreateAtoms::~CreateAtoms()
@@ -80,7 +91,6 @@ CreateAtoms::~CreateAtoms()
   delete ranmol;
   delete ranlatt;
 }
-CreateAtoms::CreateAtoms(LAMMPS *lmp) : Command(lmp), basistype(nullptr) {}
 
 /* ---------------------------------------------------------------------- */
 
@@ -179,8 +189,10 @@ void CreateAtoms::command(int narg, char **arg)
   mesh_density = 1.0;
 
   nbasis = domain->lattice->nbasis;
-  basistype = new int[nbasis];
-  for (int i = 0; i < nbasis; i++) basistype[i] = ntype;
+  if (nbasis > 0) {
+    basistype = new int[nbasis];
+    for (int i = 0; i < nbasis; i++) basistype[i] = ntype;
+  }
 
   while (iarg < narg) {
     if (strcmp(arg[iarg], "basis") == 0) {
@@ -273,6 +285,15 @@ void CreateAtoms::command(int narg, char **arg)
       if ((nsubset <= 0) || (subsetseed <= 0))
         error->all(FLERR, Error::NOPOINTER, "Illegal create_atoms subset settings");
       iarg += 3;
+    } else if (strcmp(arg[iarg], "group") == 0) {
+      if (iarg + 2 > narg) utils::missing_cmd_args(FLERR, "create_atoms group", error);
+      if (strcmp(arg[iarg + 1], "none") == 0) {
+        delete[] groupname;
+        groupname = nullptr;
+      } else {
+        groupname = utils::strdup(arg[iarg + 1]);
+      }
+      iarg += 2;
     } else if (strcmp(arg[iarg], "overlap") == 0) {
       if (style != RANDOM)
         error->all(FLERR, iarg, "Create_atoms overlap can only be used with random style");
@@ -675,18 +696,6 @@ void CreateAtoms::command(int narg, char **arg)
     if (domain->triclinic) domain->lamda2x(atom->nlocal);
   }
 
-  // clean up
-
-  delete ranmol;
-  delete ranlatt;
-
-  delete[] basistype;
-  delete[] vstr;
-  delete[] xstr;
-  delete[] ystr;
-  delete[] zstr;
-  if (mode == MOLECULE) memory->destroy(xmol);
-
   // for MOLECULE mode:
   // create special bond lists for molecular systems,
   //   but not for atom style template
@@ -697,6 +706,13 @@ void CreateAtoms::command(int narg, char **arg)
       Special special(lmp);
       special.build();
     }
+  }
+
+  // add atoms to group
+
+  if (groupname) {
+    int groupbit = group->bitmask[group->find_or_create(groupname)];
+    for (int i = nlocal_previous; i < atom->nlocal; ++i) atom->mask[i] |= groupbit;
   }
 
   // print status

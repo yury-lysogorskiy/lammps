@@ -46,6 +46,7 @@ class CreateAtoms : public Command {
 
   int varflag, vvar, xvar, yvar, zvar;
   char *vstr, *xstr, *ystr, *zstr;
+  char *groupname;
 
   int ilo, ihi, jlo, jhi, klo, khi;
 
