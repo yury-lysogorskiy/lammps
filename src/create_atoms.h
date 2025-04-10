@@ -27,6 +27,7 @@ namespace LAMMPS_NS {
 class CreateAtoms : public Command {
  public:
   CreateAtoms(class LAMMPS *);
+  ~CreateAtoms() override;
   void command(int, char **) override;
 
  private:
@@ -45,7 +46,6 @@ class CreateAtoms : public Command {
 
   int varflag, vvar, xvar, yvar, zvar;
   char *vstr, *xstr, *ystr, *zstr;
-  char *xstr_copy, *ystr_copy, *zstr_copy;
 
   int ilo, ihi, jlo, jhi, klo, khi;
 

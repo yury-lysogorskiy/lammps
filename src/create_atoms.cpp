@@ -66,6 +66,20 @@ enum { BISECTION, QUASIRANDOM };
 static constexpr const char *mesh_name[] = {"recursive bisection", "quasi-random"};
 /* ---------------------------------------------------------------------- */
 
+CreateAtoms::~CreateAtoms()
+{
+  delete[] basistype;
+  memory->destroy(xmol);
+
+  delete[] vstr;
+  delete[] xstr;
+  delete[] ystr;
+  delete[] zstr;
+  delete[] groupname;
+
+  delete ranmol;
+  delete ranlat;
+}
 CreateAtoms::CreateAtoms(LAMMPS *lmp) : Command(lmp), basistype(nullptr) {}
 
 /* ---------------------------------------------------------------------- */
