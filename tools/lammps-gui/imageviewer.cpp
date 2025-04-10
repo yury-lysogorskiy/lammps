@@ -559,6 +559,13 @@ void ImageViewer::change_molecule(int)
     auto *box = findChild<QComboBox *>("molecule");
     molecule  = box ? box->currentText() : "none";
 
+    box = findChild<QComboBox *>("group");
+    if (molecule == "none") {
+        box->setEnabled(true);
+    } else {
+        box->setEnabled(false);
+    }
+
     createImage();
 }
 
@@ -594,6 +601,7 @@ void ImageViewer::createImage()
         QString molcreate = "create_atoms 0 single %1 %2 %3 mol %4 312944 group %5 units box";
         group             = "imgviewer_tmp_mol";
         lammps->command(molcreate.arg(xmid).arg(ymid).arg(zmid).arg(molecule).arg(group));
+        lammps->command(QString("neigh_modify exclude group all %1").arg(group));
         lammps->command("run 0 post no");
     }
 
@@ -743,6 +751,7 @@ void ImageViewer::createImage()
     repaint();
 
     if (molecule != "none") {
+        lammps->command("neigh_modify exclude none");
         lammps->command(QString("delete_atoms group %1 compress no").arg(group));
         lammps->command(QString("group %1 delete").arg(group));
         group = oldgroup;

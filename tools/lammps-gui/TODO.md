@@ -2,8 +2,6 @@ LAMMPS-GUI TODO list:
 
 # Short term goals (v1.x)
 
-- add feature to visualize "molecules" from the molecule command.
-    this could use the image viewer, but create an empty system and then just one molecule
 - implement a timed "Auto-Save" feature that saves after some idle time.  set timeout in Editor preferences.
 - add a "Filter data" checkbox to the "Charts" window to select whether data should be dropped.
 - add a "Charts tab" to the preferences with the following (default) settings:
