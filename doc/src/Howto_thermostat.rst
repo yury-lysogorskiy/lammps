@@ -22,6 +22,7 @@ can be invoked via the *dpd/tstat* pair style:
 * :doc:`fix temp/berendsen <fix_temp_berendsen>`
 * :doc:`fix temp/csvr <fix_temp_csvr>`
 * :doc:`fix langevin <fix_langevin>`
+* :doc:`fix langevin/gjf <fix_langevin_gjf>`
 * :doc:`fix temp/rescale <fix_temp_rescale>`
 * :doc:`pair_style dpd/tstat <pair_dpd>`
 
@@ -82,7 +83,7 @@ that:
 
 .. note::
 
-   Only the nvt fixes perform time integration, meaning they update
+   Only the nvt and langevin/gjf fixes perform time integration, meaning they update
    the velocities and positions of particles due to forces and velocities
    respectively.  The other thermostat fixes only adjust velocities; they
    do NOT perform time integration updates.  Thus they should be used in

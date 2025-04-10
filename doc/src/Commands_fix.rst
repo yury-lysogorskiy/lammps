@@ -92,6 +92,7 @@ OPT.
    * :doc:`langevin (k) <fix_langevin>`
    * :doc:`langevin/drude <fix_langevin_drude>`
    * :doc:`langevin/eff <fix_langevin_eff>`
+   * :doc:`langevin/gjf <fix_langevin_gjf>`
    * :doc:`langevin/spin <fix_langevin_spin>`
    * :doc:`lb/fluid <fix_lb_fluid>`
    * :doc:`lb/momentum <fix_lb_momentum>`
