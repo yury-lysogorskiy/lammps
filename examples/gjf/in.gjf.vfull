@@ -1,4 +1,4 @@
-# GJF-2GJ thermostat
+# GJ thermostat
 
 units   	metal
 atom_style      full
@@ -14,8 +14,7 @@ neighbor 1 bin
 
 timestep 0.1
 
-fix lang all langevin 10 10 1 26488 gjf vfull
-fix nve all nve
+fix lang all langevin/gjf 10 10 1 26488 vel vfull method 4
 
 thermo 200
 run 5000

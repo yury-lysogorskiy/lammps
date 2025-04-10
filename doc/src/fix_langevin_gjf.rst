@@ -107,9 +107,7 @@ This is not done by default, but only if the :doc:`fix_modify
 <fix_modify>` command is used to assign a temperature compute to this
 fix that includes such a bias term.  See the doc pages for individual
 :doc:`compute temp commands <compute>` to determine which ones include
-a bias.  In this case, the thermostat works in the following manner:
-bias is removed from each atom, thermostatting is performed on the
-remaining thermal degrees of freedom, and the bias is added back in.
+a bias.
 
 The *damp* parameter is specified in time units and determines how
 rapidly the temperature is relaxed.  For example, a value of 100.0 means
@@ -148,13 +146,13 @@ Restart, fix_modify, output, run start/stop, minimize info
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 No information about this fix is written to :doc:`binary restart files <restart>`.  
-For the Bruenger thermostat: Because the state of the random number generator
-is not saved in restart files, this means you cannot do "exact"
-restarts with this fix, where the simulation continues on the same as
-if no restart had taken place.  However, in a statistical sense, a
-restarted simulation should produce the same behavior. The "exact" restart is 
-done with either vfull or vhalf velocity output for as long as the choice of 
-vfull/vhalf is the same for the simulation as it is in the restart file.
+Because the state of the random number generator is not saved in restart files, 
+this means you cannot do "exact" restarts with this fix, where the simulation 
+continues on the same as if no restart had taken place.  However, in a 
+statistical sense, a restarted simulation should produce the same behavior. 
+The "exact" restart is done with either vfull or vhalf velocity output for as 
+long as the choice of vfull/vhalf is the same for the simulation as it is in 
+the restart file.
 
 The :doc:`fix_modify <fix_modify>` *temp* option is supported by this
 fix.  You can use it to assign a temperature :doc:`compute <compute>`

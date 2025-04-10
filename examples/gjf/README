@@ -1,0 +1,46 @@
+LAMMPS GJ THERMOSTAT EXAMPLE
+
+Required LAMMPS packages: EXTRA-FIX, MOLECULE, EXTRA-PAIR
+
+This directory contains the ingredients to run an NVT simulation using the 
+GJ thermostats.
+
+Example:
+
+NP=4 #number of processors
+mpirun -np $NP lmp_mpi -in.gjf.vhalf
+
+Compared to other thermostats, the GJ thermostat allows for larger timesteps 
+with the correct Boltzmann statistics. A comparison using averaged properties
+from this example's input file is shown below. 'X' denotes a failed simulation.
+
+KINETIC ENERGY (eV)
+| Δt           ||  0.01  |  0.05  |  0.10  |  0.11  |  0.12  |  0.13  |  0.14  |
+|==============||========|========|========|========|========|========|========|
+| langevin/gjf ||  1.112 |  1.108 |  1.114 |  1.118 |  1.111 |  1.133 |  1.168 |
+| langevin     ||  1.113 |  1.125 |  1.121 |  1.135 |  1.152 |    X   |    X   |
+| nvt          ||  1.094 |  1.114 |  1.117 |  1.113 |  1.121 |    X   |    X   |
+|--------------||--------|--------|--------|--------|--------|--------|--------|
+
+POTENTIAL ENERGY (eV)
+| Δt           ||  0.01  |  0.05  |  0.10  |  0.11  |  0.12  |  0.13  |  0.14  |
+|==============||========|========|========|========|========|========|========|
+| langevin/gjf || -55.16 | -55.16 | -55.15 | -55.15 | -55.15 | -55.14 | -55.12 |
+| langevin     || -55.16 | -55.12 | -54.93 | -54.85 | -54.71 |    X   |    X   |
+| nvt          || -55.17 | -55.10 | -54.95 | -54.88 | -54.82 |    X   |    X   |
+|--------------||--------|--------|--------|--------|--------|--------|--------|
+
+
+Script Commands:
+--
+fix nve all nve
+fix lang all langevin 10 10 1 26488
+--
+vs
+--
+fix noho all nvt temp 10 10 1
+--
+vs
+--
+fix lang all langevin/gjf 10 10 1 26488
+--

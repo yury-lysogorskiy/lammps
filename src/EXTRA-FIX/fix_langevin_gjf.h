@@ -13,12 +13,12 @@
 
 #ifdef FIX_CLASS
 // clang-format off
-FixStyle(langevin,FixLangevin);
+FixStyle(langevin/gjf,FixLangevinGJF);
 // clang-format on
 #else
 
-#ifndef LMP_FIX_LANGEVIN_H
-#define LMP_FIX_LANGEVIN_H
+#ifndef LMP_FIX_LANGEVINGJF_H
+#define LMP_FIX_LANGEVINGJF_H
 
 #include "fix.h"
 
@@ -30,7 +30,6 @@ class FixLangevinGJF : public Fix {
   ~FixLangevinGJF() override;
   int setmask() override;
   void init() override;
-  void setup(int) override;
   void initial_integrate(int) override;
   void final_integrate() override;
   void end_of_step() override;
@@ -45,10 +44,8 @@ class FixLangevinGJF : public Fix {
   int unpack_exchange(int, double *) override;
 
  protected:
-  int osflag, GJmethod;
-  double t_start, t_stop, t_period, t_target;
-  double *gfactor2;
-  double tsqrt;
+  int osflag, GJmethod, maxatom, lv_allocated;
+  double t_start, t_stop, t_period, t_target, tsqrt;
   double gjfc1, gjfc2, gjfc3;
   int tstyle, tvar;
   char *tstr;
@@ -59,7 +56,6 @@ class FixLangevinGJF : public Fix {
   char *id_temp;
   class Compute *temperature;
 
-  int nlevels_respa;
   class RanMars *random;
   int seed;
 

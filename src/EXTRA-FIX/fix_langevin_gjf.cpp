@@ -15,17 +15,16 @@
    Contributing authors: Tim Linke & Niels Gronbech-Jensen (UC Davis)
 ------------------------------------------------------------------------- */
 
-#include "fix_langevin.h"
+#include "fix_langevin_gjf.h"
 
 #include "atom.h"
-#include "atom_vec_ellipsoid.h"
+#include "citeme.h"
 #include "comm.h"
 #include "compute.h"
 #include "error.h"
 #include "force.h"
 #include "group.h"
 #include "input.h"
-#include "math_extra.h"
 #include "memory.h"
 #include "modify.h"
 #include "random_mars.h"
@@ -42,21 +41,33 @@ using namespace FixConst;
 enum { NOBIAS, BIAS };
 enum { CONSTANT, EQUAL, ATOM };
 
+static const char cite_langevin_gjf[] =
+  "Langevin GJF methods: doi:10.1007/s10955-024-03345-1\n\n"
+  "@Article{gronbech_jensen_2024,\n"
+  "title = {On the Definition of Velocity in Discrete-Time, Stochastic Langevin Simulations},\n"
+  "volume = {191},\n"
+  "number = {10},\n"
+  "url = {https://doi.org/10.1007/s10955-024-03345-1},\n"
+  "doi = {10.1007/s10955-024-03345-1},\n"
+  "urldate = {2024-10-22},\n"
+  "journal = {J. Stat. Phys.},\n"
+  "author = {Gronbech-Jensen, Niels},\n"
+  "year = {2024},\n"
+  "pages = {137}\n"
+  "}\n\n";
+
+
 /* ---------------------------------------------------------------------- */
 
 FixLangevinGJF::FixLangevinGJF(LAMMPS *lmp, int narg, char **arg) :
-    Fix(lmp, narg, arg), gjfflag(0),
-    tstr(nullptr), flangevin(nullptr), tforce(nullptr), lv(nullptr), id_temp(nullptr), random(nullptr)
+    Fix(lmp, narg, arg), tstr(nullptr), tforce(nullptr), lv(nullptr), id_temp(nullptr), random(nullptr)
 {
-  if (narg < 8) error->all(FLERR, "Illegal fix langevin/gjf command");
+  if (lmp->citeme) lmp->citeme->add(cite_langevin_gjf);
+  if (narg < 7) error->all(FLERR, "Illegal fix langevin/gjf command");
 
   time_integrate = 1;
   restart_peratom = 1;
-  // dynamic_group_allow = 1;
-  // scalar_flag = 1;
-  // global_freq = 1;
-  // extscalar = 1;
-  // ecouple_flag = 1;
+  global_freq = 1;
   nevery = 1;
 
   if (utils::strmatch(arg[3], "^v_")) {
@@ -75,15 +86,17 @@ FixLangevinGJF::FixLangevinGJF(LAMMPS *lmp, int narg, char **arg) :
   if (seed <= 0) error->all(FLERR, "Illegal fix langevin/gjf command");
 
   // initialize Marsaglia RNG with processor-unique seed
-
   random = new RanMars(lmp, seed + comm->me);
 
-  int GJmethods = 8 // number of currently implemented GJ methods
+  int GJmethods = 8; // number of currently implemented GJ methods
+  maxatom = 0;
 
   // optional args
+  // per default, use half step and GJ-I
 
   osflag = 0;
-  GJmethod = 0;
+  GJmethod = 1;
+  lv_allocated = 0;
 
   int iarg = 7;
   while (iarg < narg) {
@@ -120,7 +133,7 @@ FixLangevinGJF::FixLangevinGJF(LAMMPS *lmp, int narg, char **arg) :
   FixLangevinGJF::grow_arrays(atom->nmax);
   atom->add_callback(Atom::GROW);
 
-  // initialize lv to zero
+  // initialize lv to onsite velocity
   int nlocal = atom->nlocal;
   for (int i = 0; i < nlocal; i++) {
     lv[i][0] = 0.0;
@@ -181,14 +194,8 @@ void FixLangevinGJF::init()
       error->all(FLERR, "Variable {} for fix langevin/gjf is invalid style", tstr);
   }
 
-  if (temperature && temperature->tempbias)
-    tbiasflag = BIAS;
-  else
-    tbiasflag = NOBIAS;
-
   if (utils::strmatch(update->integrate_style, "^respa")) {
-    nlevels_respa = (static_cast<Respa *>(update->integrate))->nlevels;
-    error->all(FLERR, "Fix langevin gjf and run style respa are not compatible");
+    error->all(FLERR, "Fix langevin/gjf and run style respa are not compatible");
   }
 
   // Complete set of thermostats is given in Gronbech-Jensen, Molecular Physics, 118 (2020)
@@ -215,7 +222,7 @@ void FixLangevinGJF::init()
       gjfc2 = 1; // TODO: correct this
       break;
     case 8: // provided in Gronbech-Jensen (2024)
-      gjfc2 = sqrt( (update->dt / t_period)*(update->dt / t_period) + 1.0 ) - update->dt / t_period;
+      gjfc2 = sqrt( (update->dt / t_period) * (update->dt / t_period) + 1.0 ) - update->dt / t_period;
       break;
     case 0:
       gjfc2 = 0.0;
@@ -239,7 +246,7 @@ void FixLangevinGJF::init()
 
 void FixLangevinGJF::initial_integrate(int /* vflag */)
 {
-  // This function provides the integration of the GJ formulation 24a-e
+  // This function provides the integration of the GJ formulation 24 a-e
   double **x = atom->x;
   double **v = atom->v;
   double **f = atom->f;
@@ -258,13 +265,13 @@ void FixLangevinGJF::initial_integrate(int /* vflag */)
 
   double dtf = 0.5 * dt * ftm2v;
   double dtfm;
-  double c1sq = sqrt(gjfc1);
-  double c3sq = sqrt(gjfc3);
+  double c1sqrt = sqrt(gjfc1);
+  double c3sqrt = sqrt(gjfc3);
   double csq = sqrt(gjfc3 / gjfc1);
   double m, beta;
 
   // If user elected vhalf, v needs to be reassigned to onsite velocity for integration
-  if (!osflag) {
+  if (!osflag && lv_allocated) {
     for (int i = 0; i < nlocal; i++)
       if (mask[i] & groupbit) {
         // lv is Eq. 24f from previous time step
@@ -275,8 +282,6 @@ void FixLangevinGJF::initial_integrate(int /* vflag */)
   }
 
   compute_target();
-
-  if (tbiasflag == BIAS) temperature->compute_scalar();
   
   for (int i = 0; i < nlocal; i++) {
     if (mask[i] & groupbit) {
@@ -284,10 +289,10 @@ void FixLangevinGJF::initial_integrate(int /* vflag */)
       if (tstyle == ATOM) tsqrt = sqrt(tforce[i]);
       if (rmass) { 
         m = rmass[i];
-        beta = tsqrt * sqrt(2.0*dt*rmass[i]*boltz/t_period/mvv2e) / ftm2v;
+        beta = tsqrt * sqrt(2.0*dt*m*boltz/t_period/mvv2e) / ftm2v;
       } else {
         m = mass[type[i]];
-        beta = tsqrt * sqrt(2.0*dt*atom->mass[i]*boltz/t_period/mvv2e) / ftm2v;
+        beta = tsqrt * sqrt(2.0*dt*m*boltz/t_period/mvv2e) / ftm2v;
       }
 
       fran[0] = beta*random->gaussian();
@@ -304,24 +309,14 @@ void FixLangevinGJF::initial_integrate(int /* vflag */)
       x[i][2] += 0.5 * csq * dt * v[i][2];
       
       // Calculate Eq. 24c:
-      if (tbiasflag == BIAS)
-        temperature->remove_bias(i,v[i]);
       lv[i][0] = c1sqrt*v[i][0] + ftm2v * (c3sqrt / (2.0 * m)) * fran[0];
       lv[i][1] = c1sqrt*v[i][1] + ftm2v * (c3sqrt / (2.0 * m)) * fran[1];
       lv[i][2] = c1sqrt*v[i][2] + ftm2v * (c3sqrt / (2.0 * m)) * fran[2];
       
-      if (tbiasflag == BIAS)
-        temperature->restore_bias(i,v[i]);
-        if (tbiasflag == BIAS)
-        temperature->restore_bias(i,lv[i]);
-      
       // Calculate Eq. 24d
-      if (tbiasflag == BIAS) temperature->remove_bias(i, v[i]);
-      
       v[i][0] = (gjfc2 / c1sqrt) * lv[i][0] + ftm2v * csq * (0.5 / m) * fran[0];
       v[i][1] = (gjfc2 / c1sqrt) * lv[i][1] + ftm2v * csq * (0.5 / m) * fran[1];
       v[i][2] = (gjfc2 / c1sqrt) * lv[i][2] + ftm2v * csq * (0.5 / m) * fran[2];
-      if (tbiasflag == BIAS) temperature->restore_bias(i, v[i]);
 
       // Calculate Eq. 24e. Final integrator then calculates Eq. 24f after force update.
       x[i][0] += 0.5 * csq * dt * v[i][0];
@@ -337,9 +332,9 @@ void FixLangevinGJF::final_integrate()
   double dt = update->dt;
   double ftm2v = force->ftm2v;
   double dtf = 0.5 * dt * ftm2v;
+  double csq = sqrt(gjfc3 / gjfc1);
 
   // update v of atoms in group
-
   double **v = atom->v;
   double **f = atom->f;
   double *rmass = atom->rmass;
@@ -367,6 +362,8 @@ void FixLangevinGJF::final_integrate()
         v[i][2] += csq * dtfm * f[i][2];
       }
   }
+
+  lv_allocated = 1;
 }
 
 /* ----------------------------------------------------------------------
@@ -395,10 +392,10 @@ void FixLangevinGJF::compute_target()
         error->one(FLERR, "Fix langevin/gjf variable returned negative temperature");
       tsqrt = sqrt(t_target);
     } else {
-      if (atom->nmax > maxatom2) {
-        maxatom2 = atom->nmax;
+      if (atom->nmax > maxatom) {
+        maxatom = atom->nmax;
         memory->destroy(tforce);
-        memory->create(tforce,maxatom2,"langevin:tforce");
+        memory->create(tforce,maxatom,"langevin_gjf:tforce");
       }
       input->variable->compute_atom(tvar,igroup,tforce,1,0);
       for (int i = 0; i < nlocal; i++)
