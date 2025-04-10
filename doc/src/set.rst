@@ -32,7 +32,7 @@ Syntax
   *volume* or *image* or *bond* or *angle* or *dihedral* or
   *improper* or *sph/e* or *sph/cv* or *sph/rho* or
   *smd/contact/radius* or *smd/mass/density* or *dpd/theta* or
-  *edpd/temp* or *edpd/cv* or *cc* or *epsilon* or
+  *edpd/temp* or *edpd/cv* or *cc* or *epsilon* or *lambda* or
   *i_name* or *d_name* or *i2_name* or *d2_name*
 
   .. parsed-literal::
@@ -143,6 +143,10 @@ Syntax
          index = index of a chemical species (1 to Nspecies)
          cc = chemical concentration of tDPD particles for a species (mole/volume units)
        *epsilon* value = dielectric constant of the medium where the atoms reside
+       *lambda* value = fast or precise or float
+         fast = switching parameter of fast potential (1) (APIP package)
+         precise = switching parameter of fast potential (0) (APIP package)
+         float = constant float or atom-style variable (between 0 and 1) (APIP package)
        *i_name* value = custom integer vector with name
        *d_name* value = custom floating-point vector with name
        *i2_name* value = column of a custom integer array with name
@@ -568,6 +572,13 @@ will rescale the particle charge accordingly so that the real charge
 charges, one needs to use the set command with the *charge*
 keyword. Care must be taken to ensure that the real and scaled charges,
 and dielectric constants are consistent.
+
+Keyword *lambda* sets the switching parameter of an
+adaptive-precision interatomic potential (:doc:`APIP <Howto_apip>`).
+The precise potential is used for an atom when its switching parameter
+:math:`\lambda` is 0. The fast potential is used for an atom when its
+switching parameter :math:`\lambda` is 1. Both potentials are partially
+used for :math:`\lambda\in(0,1)`.
 
 Keywords *i_name*, *d_name*, *i2_name*, *d2_name* refer to custom
 per-atom integer and floating-point vectors or arrays that have been

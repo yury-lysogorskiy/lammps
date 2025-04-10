@@ -126,8 +126,8 @@ FixApipAtomWeight::FixApipAtomWeight(LAMMPS *lmp, int narg, char **arg) :
       error->all(FLERR, "apip_atom_weight: simple time cannot be extracted with {} from {}",
                  time_simple_extract_name, force->pair_style);
   } else {
-    if (time_simple_atom <= 0)
-      error->all(FLERR, "apip_atom_weight: time_simple_atom needs to be positive instead of {}",
+    if (time_simple_atom < 0)
+      error->all(FLERR, "apip_atom_weight: time_simple_atom needs to be non-negative instead of {}",
                  time_simple_atom);
   }
 
@@ -136,8 +136,9 @@ FixApipAtomWeight::FixApipAtomWeight(LAMMPS *lmp, int narg, char **arg) :
       error->all(FLERR, "apip_atom_weight: complex time cannot be extracted with {} from {}",
                  time_complex_extract_name, force->pair_style);
   } else {
-    if (time_complex_atom <= 0)
-      error->all(FLERR, "apip_atom_weight: time_complex_atom needs to be positive instead of {}",
+    if (time_complex_atom < 0)
+      error->all(FLERR,
+                 "apip_atom_weight: time_complex_atom needs to be non-negative instead of {}",
                  time_complex_atom);
   }
 
@@ -146,8 +147,8 @@ FixApipAtomWeight::FixApipAtomWeight(LAMMPS *lmp, int narg, char **arg) :
       error->all(FLERR, "apip_atom_weight: group time cannot be extracted with {} from {}",
                  time_group_extract_name, force->pair_style);
   } else {
-    if (time_group_atom <= 0)
-      error->all(FLERR, "apip_atom_weight: time_group_atom needs to be positive instead of {}",
+    if (time_group_atom < 0)
+      error->all(FLERR, "apip_atom_weight: time_group_atom needs to be non-negative instead of {}",
                  time_group_atom);
   }
 
@@ -156,8 +157,8 @@ FixApipAtomWeight::FixApipAtomWeight(LAMMPS *lmp, int narg, char **arg) :
       error->all(FLERR, "apip_atom_weight: lambda time cannot be extracted with {} from {}",
                  time_lambda_extract_name, force->pair_style);
   } else {
-    if (time_lambda_atom <= 0)
-      error->all(FLERR, "apip_atom_weight: time_lambda_atom needs to be positive instead of {}",
+    if (time_lambda_atom < 0)
+      error->all(FLERR, "apip_atom_weight: time_lambda_atom needs to be non-negative instead of {}",
                  time_lambda_atom);
   }
 
@@ -257,6 +258,8 @@ void FixApipAtomWeight::init()
     }
   }
   if (counter > 1) error->all(FLERR, "More than one fix lambda");
+  if (counter == 0 && (time_lambda_extract_name || time_lambda_atom > 0))
+    error->all(FLERR, "fix lambda required to approximate weight of pair style lambda/zone");
 
   // This fix is evaluated in pre_exchange, but needs to be evaluated before load-balancing fixes.
   for (auto ifix : modify->get_fix_list()) {
@@ -415,16 +418,9 @@ void FixApipAtomWeight::calc_work_per_particle()
   mask = atom->mask;
   lambda_required = atom->lambda_required;
 
-  // get lambda(time averaged lambda input)
-  lambda_input_history = (double **) fix_lambda->extract("fix_lambda:lambda_input_history", dim);
-  const int histlen_lambda_input =
-      *((int *) fix_lambda->extract("fix_lambda:lambda_input_history_len", dim));
-  if (lambda_input_history == nullptr || histlen_lambda_input < 1)
-    error->all(FLERR, "apip_atom_weight: extracting fix_lambda:lambda_input_history failed");
-
   int nlocal = atom->nlocal;
   // assume a homogeneous time per simple and complex particle
-  n_simple = n_complex = n_group = n_lambda = 0;
+  n_simple = n_complex = 0;
   for (int i = 0; i < nlocal; i++) {
     work_atom = 0;
     if (lambda_required[i] & LambdaRequired::SIMPLE) {
@@ -435,15 +431,34 @@ void FixApipAtomWeight::calc_work_per_particle()
       work_atom += time_complex_atom;
       n_complex++;
     }
-    if (mask[i] & time_group_bit) {
-      work_atom += time_group_atom;
-      n_group++;
-    }
-    if (lambda_input_history[i][histlen_lambda_input + 1] != 1) {
-      work_atom += time_lambda_atom;
-      n_lambda++;
-    }
     weight[i] = work_atom;
+  }
+
+  n_group = 0;
+  if (time_group_atom > 0) {
+    for (int i = 0; i < nlocal; i++) {
+      if (mask[i] & time_group_bit) {
+        weight[i] += time_group_atom;
+        n_group++;
+      }
+    }
+  }
+
+  n_lambda = 0;
+  if (time_lambda_atom > 0) {
+    // get lambda(time averaged lambda input)
+    lambda_input_history = (double **) fix_lambda->extract("fix_lambda:lambda_input_history", dim);
+    const int histlen_lambda_input =
+        *((int *) fix_lambda->extract("fix_lambda:lambda_input_history_len", dim));
+    if (lambda_input_history == nullptr || histlen_lambda_input < 1)
+      error->all(FLERR, "apip_atom_weight: extracting fix_lambda:lambda_input_history failed");
+
+    for (int i = 0; i < nlocal; i++) {
+      if (lambda_input_history[i][histlen_lambda_input + 1] != 1) {
+        weight[i] += time_lambda_atom;
+        n_lambda++;
+      }
+    }
   }
 
   if (rescale_work) {

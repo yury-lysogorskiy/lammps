@@ -3,7 +3,8 @@ Adaptive-precision interatomic potentials (APIP)
 
 The :ref:`APIP package <PKG-APIP>` allows to use adaptive-precision potentials
 according to :ref:`(Immel) <Immel2025_1>`.
-The potential energy :math:`E_i` of an atom :math:`i` of an adaptive-precision
+The potential energy :math:`E_i` of an atom :math:`i` described by an
+adaptive-precision
 interatomic potential is given by :ref:`(Immel) <Immel2025_1>`
 
 .. math::
@@ -14,7 +15,11 @@ whereas :math:`E_i^\text{(fast)}` is the potential energy of atom :math:`i`
 according to a fast interatomic potential,
 :math:`E_i^\text{(precise)}` is the potential energy according to a precise
 interatomic potential and :math:`\lambda_i\in[0,1]` is the
-switching parameter that decides which potential energy is used.
+switching parameter that decides how the potential energies are weighted.
+
+Adaptive-precision saves computation time when the computation of the
+precise potential is not required for many atoms, i.e., when
+:math:`\lambda_i=1` applies for many atoms.
 
 The currently implemented potentials are:
 
@@ -33,20 +38,40 @@ interatomic potential. How to implement a new (fast or precise)
 adaptive-precision
 potential is explained in :ref:`here <implementing_new_apip_styles>`.
 
+The switching parameter :math:`\lambda_i` that combines the two potentials
+can be dynamically calculated during a
+simulation.
+Alternatively, one can set a constant switching parameter before the start
+of a simulation.
 To run a simulation with an adaptive-precision potential, one needs the
 following components:
 
-  #. :doc:`atom_style apip <atom_style>` so that the switching parameter :math:`\lambda_i` can be stored.
-  #. A fast potential: :doc:`eam/apip <pair_eam_apip>` or :doc:`pace/apip/fast <pair_pace_apip>`.
-  #. A precise potential: :doc:`pace/apip/precise <pair_pace_apip>`.
-  #. :doc:`pair_style lambda_input  <pair_lambda_input>` to calculate :math:`\lambda_i^\text{input}`, from which :math:`\lambda_i` is calculated.
-  #. :doc:`fix lambda <fix_lambda>` to calculate the switching parameter.
-  #. :doc:`pair_style lambda/zone <pair_lambda_zone>` to calculate the spatial transition zone of the switching parameter.
-  #. :doc:`pair_style hybrid/overlay <pair_hybrid>` to combine the previously mentioned pair_styles.
-  #. :doc:`fix lambda_thermostat <fix_lambda_thermostat>` to conserve the energy when switching parameters change.
-  #. :doc:`fix apip_atom_weight <fix_apip_atom_weight>` to approximate the load caused by every atom, as the computations of the pair_styles are only required for a subset of atoms.
-  #. :doc:`fix balance <fix_balance>` to perform dynamic load balancing with the calculated load.
+.. tabs::
 
+   .. tab:: dynamic switching parameter
+
+        #. :doc:`atom_style apip <atom_style>` so that the switching parameter :math:`\lambda_i` can be stored.
+        #. A fast potential: :doc:`eam/apip <pair_eam_apip>` or :doc:`pace/apip/fast <pair_pace_apip>`.
+        #. A precise potential: :doc:`pace/apip/precise <pair_pace_apip>`.
+        #. :doc:`pair_style lambda_input  <pair_lambda_input>` to calculate :math:`\lambda_i^\text{input}`, from which :math:`\lambda_i` is calculated.
+        #. :doc:`fix lambda <fix_lambda>` to calculate the switching parameter :math:`\lambda_i`.
+        #. :doc:`pair_style lambda/zone <pair_lambda_zone>` to calculate the spatial transition zone of the switching parameter.
+        #. :doc:`pair_style hybrid/overlay <pair_hybrid>` to combine the previously mentioned pair_styles.
+        #. :doc:`fix lambda_thermostat <fix_lambda_thermostat>` to conserve the energy when switching parameters change.
+        #. :doc:`fix apip_atom_weight <fix_apip_atom_weight>` to approximate the load caused by every atom, as the computations of the pair_styles are only required for a subset of atoms.
+        #. :doc:`fix balance <fix_balance>` to perform dynamic load balancing with the calculated load.
+
+   .. tab:: constant switching parameter
+
+        #. :doc:`atom_style apip <atom_style>` so that the switching parameter :math:`\lambda_i` can be stored.
+        #. A fast potential: :doc:`eam/apip <pair_eam_apip>` or :doc:`pace/apip/fast <pair_pace_apip>`.
+        #. A precise potential: :doc:`pace/apip/precise <pair_pace_apip>`.
+        #. :doc:`set <fix_lambda>` command to set the switching parameter :math:`\lambda_i`.
+        #. :doc:`pair_style hybrid/overlay <pair_hybrid>` to combine the previously mentioned pair_styles.
+        #. :doc:`fix apip_atom_weight <fix_apip_atom_weight>` to approximate the load caused by every atom, as the computations of the pair_styles are only required for a subset of atoms.
+        #. :doc:`fix balance <fix_balance>` to perform dynamic load balancing with the calculated load.
+
+----------
 
 Example
 """""""
@@ -55,40 +80,85 @@ Example
    How to select the values of the parameters of an adaptive-precision
    interatomic potential is discussed in detail in :ref:`(Immel) <Immel2025_1>`.
 
-The affected parts of a LAMMPS script can look as follows:
 
-.. code-block:: LAMMPS
+.. tabs::
 
-   atom_style apip
-   comm_style tiled
+   .. tab:: dynamic switching parameter
 
-   pair_style hybrid/overlay eam/fs/apip pace/apip/precise lambda_input/csp fcc cutoff 5.0 lambda/zone 12.0
-   pair_coeff * * eam/fs/apip Cu.eam.fs Cu
-   pair_coeff * * pace/apip Cu.yace Cu
-   pair_coeff * * lambda_input/csp
-   pair_coeff * * lambda/zone
+      The affected parts of a LAMMPS script can look as follows:
 
-   fix 2 all lambda 2.5 3.0 time_averaged_zone 4.0 12.0 110 110 min_delta_lambda 0.01
-   fix 3 all lambda_thermostat N_rescaling 200
-   fix 4 all apip_atom_weight 100 eam ace lambda_input lambda all
+      .. code-block:: LAMMPS
 
-   variable myweight atom f_4
+         atom_style apip
+         comm_style tiled
 
-   fix 5 all balance 100 1.1 rcb weight var myweight
+         pair_style hybrid/overlay eam/fs/apip pace/apip/precise lambda_input/csp fcc cutoff 5.0 lambda/zone 12.0
+         pair_coeff * * eam/fs/apip Cu.eam.fs Cu
+         pair_coeff * * pace/apip Cu.yace Cu
+         pair_coeff * * lambda_input/csp
+         pair_coeff * * lambda/zone
 
-First, the :doc:`atom_style <atom_style>` and the communication style are set.
+         fix 2 all lambda 2.5 3.0 time_averaged_zone 4.0 12.0 110 110 min_delta_lambda 0.01
+         fix 3 all lambda_thermostat N_rescaling 200
+         fix 4 all apip_atom_weight 100 eam ace lambda_input lambda all
 
-.. note::
-   Note, that :doc:`comm_style <comm_style>` *tiled* is required for the style *rcb* of
-   :doc:`fix balance <fix_balance>`, but not for APIP.
-   However, the flexibility offered by the balancing style *rcb*, compared to the
-   balancing style *shift*, is advantageous for APIP.
+         variable myweight atom f_4
 
-An adaptive-precision EAM-ACE potential, for which the switching parameter
-:math:`\lambda` is calculated from the CSP is defined via
-:doc:`pair_style hybrid/overlay <pair_hybrid>`.
-The fixes ensure that the switching parameter is calculated, the energy conserved,
-the weight for the load balancing calculated and the load-balancing itself is done.
+         fix 5 all balance 100 1.1 rcb weight var myweight
+
+      First, the :doc:`atom_style apip <atom_style>` and the communication style are set.
+
+      .. note::
+         Note, that :doc:`comm_style <comm_style>` *tiled* is required for the style *rcb* of
+         :doc:`fix balance <fix_balance>`, but not for APIP.
+         However, the flexibility offered by the balancing style *rcb*, compared to the
+         balancing style *shift*, is advantageous for APIP.
+
+      An adaptive-precision EAM-ACE potential, for which the switching parameter
+      :math:`\lambda` is calculated from the CSP, is defined via
+      :doc:`pair_style hybrid/overlay <pair_hybrid>`.
+      The fixes ensure that the switching parameter is calculated, the energy conserved,
+      the weight for the load balancing calculated and the load-balancing itself is done.
+
+   .. tab:: constant switching parameter
+
+      The affected parts of a LAMMPS script can look as follows:
+
+      .. code-block:: LAMMPS
+
+         atom_style apip
+         comm_style tiled
+
+         pair_style hybrid/overlay eam/fs/apip pace/apip/precise
+         pair_coeff * * eam/fs/apip Cu.eam.fs Cu
+         pair_coeff * * pace/apip Cu.yace Cu
+
+         # calculate lambda somehow
+         variable lambda atom ...
+         set group all lambda v_lambda
+
+         fix 4 all apip_atom_weight 100 eam ace lambda_input lambda all
+
+         variable myweight atom f_4
+
+         fix 5 all balance 100 1.1 rcb weight var myweight
+
+      First, the :doc:`atom_style apip <atom_style>` and the communication style are set.
+
+      .. note::
+         Note, that :doc:`comm_style <comm_style>` *tiled* is required for the style *rcb* of
+         :doc:`fix balance <fix_balance>`, but not for APIP.
+         However, the flexibility offered by the balancing style *rcb*, compared to the
+         balancing style *shift*, is advantageous for APIP.
+
+      An adaptive-precision EAM-ACE potential is defined via
+      :doc:`pair_style hybrid/overlay <pair_hybrid>`.
+      The switching parameter :math:`\lambda_i` of the adaptive-precision
+      EAM-ACE potential is set via the :doc:`set command <set>`.
+      The parameter is not updated during the simulation.
+      Therefore, the potential is conservative.
+      The fixes ensure that the weight for the load balancing is calculated
+      and the load-balancing itself is done.
 
 ----------
 

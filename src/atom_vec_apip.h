@@ -31,6 +31,7 @@ class AtomVecApip : public AtomVec {
   void grow_pointers();
 
   void force_clear(int, size_t) override;
+  void data_atom_post(int) override;
 
  protected:
   double *lambda, *lambda_input, *lambda_const, *lambda_input_ta, *e_simple, *e_complex,

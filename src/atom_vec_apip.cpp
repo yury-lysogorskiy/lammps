@@ -82,6 +82,28 @@ void AtomVecApip::grow_pointers()
 }
 
 /* ----------------------------------------------------------------------
+   modify what AtomVec::data_atom() just unpacked
+   or initialize other atom quantities
+------------------------------------------------------------------------- */
+
+void AtomVecApip::data_atom_post(int ilocal)
+{
+  lambda[ilocal] = 0;
+  lambda_const[ilocal] = 0;
+  lambda_required[ilocal] = LambdaRequired::UNKNOWN;
+  lambda_input[ilocal] = 0;
+  lambda_input_ta[ilocal] = 0;
+  e_simple[ilocal] = 0;
+  e_complex[ilocal] = 0;
+  f_const_lambda[ilocal][0] = 0;
+  f_const_lambda[ilocal][1] = 0;
+  f_const_lambda[ilocal][2] = 0;
+  f_dyn_lambda[ilocal][0] = 0;
+  f_dyn_lambda[ilocal][1] = 0;
+  f_dyn_lambda[ilocal][2] = 0;
+}
+
+/* ----------------------------------------------------------------------
    clear extra forces starting at atom n
    natoms = # of atoms to clear
    nbytes = natoms * sizeof(double)

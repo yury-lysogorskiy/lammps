@@ -35,6 +35,7 @@ This is the list of packages that may require additional steps.
    :columns: 6
 
    * :ref:`ADIOS <adios>`
+   * :ref:`APIP <apip>`
    * :ref:`ATC <atc>`
    * :ref:`AWPMD <awpmd>`
    * :ref:`COLVARS <colvar>`
@@ -1269,6 +1270,46 @@ systems.
       .. code-block:: bash
 
          ADIOS2_DIR=path make yes-adios   # path is where ADIOS 2.x is installed
+
+----------
+
+.. _apip:
+
+APIP package
+-----------------------------
+
+The APIP package depends on the library of the
+:ref:`ML-PACE <ml-pace>` package.
+The code for the library can be found
+at: `https://github.com/ICAMS/lammps-user-pace/ <https://github.com/ICAMS/lammps-user-pace/>`_
+
+.. tabs::
+
+   .. tab:: CMake build
+
+      No additional settings are needed besides ``-D PKG_APIP=yes``
+      and ``-D PKG_ML-PACE=yes``.
+      One can use a local version of the ML-PACE library instead of
+      automatically downloading the library as described :ref:`here <ml-pace>`.
+
+
+   .. tab:: Traditional make
+
+      You can download and build the ML-PACE library
+      in one step from the ``lammps/src`` dir, using these commands,
+      which invoke the ``lib/pace/Install.py`` script.
+
+      .. code-block:: bash
+
+         # print help message
+         make lib-pace
+
+         # download and build the default version in lib/pace
+         make lib-pace args="-b"
+
+      You should not need to edit the ``lib/pace/Makefile.lammps`` file.
+
+      The APIP package itself is activated with ``make yes-APIP``.
 
 ----------
 

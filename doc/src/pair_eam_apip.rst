@@ -57,8 +57,9 @@ interatomic potential (APIP) according to :ref:`(Immel) <Immel2025_5>` is given 
 
    E_i^\text{APIP} = \lambda_i E_i^\text{(fast)} + (1-\lambda_i) E_i^\text{(precise)}\,,
 
-whereas the switching parameter :math:`\lambda_i` is computed by
-:doc:`fix lambda <fix_lambda>`.
+whereas the switching parameter :math:`\lambda_i` is computed
+dynamically during a simulation by :doc:`fix lambda <fix_lambda>`
+or set prior to a simulation via :doc:`set <set>`.
 
 The pair style *eam/fs/apip* computes the potential energy
 :math:`\lambda_i E_i^\text{EAM}` and the

@@ -9,8 +9,8 @@ variable	ace_file2 string "../../../potentials/Cu-PBE-core-rep.ace"
 variable	csp_lattice string "fcc"
 variable	csp_cutoff equal 6.0
 # The range [r_sw_lo, r_sw_hi] determines where the switching parameter changes from 0 to 1.
-variable	r_sw_lo equal 4.0
-variable	r_sw_hi equal 12.0
+variable	r_sw_lo equal 2.0
+variable	r_sw_hi equal 3.0
 # Thresholds between which the switching parameter changes from 1 to 0 based on the csp.
 variable	lambda_input_thr_lo equal 2.5
 variable	lambda_input_thr_hi equal 3.0
@@ -63,7 +63,14 @@ fix		weight_atom all apip_atom_weight 100 eam ace lambda_input lambda/zone all
 fix		lambda_thermostat all lambda_thermostat N_rescaling ${N_rescaling} store_atomic_forces 100
 
 
-thermo_style	custom step etotal
+# get statistics about lambda
+variable	flag_simple atom lambda==1
+variable	flag_switch atom lambda<1&&lambda>0
+variable	flag_complex atom lambda==0
+compute		lambda_types all reduce sum v_flag_simple v_flag_switch v_flag_complex
+
+
+thermo_style	custom step etotal c_lambda_types[*]
 thermo		1
 
 run		100

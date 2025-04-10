@@ -63,8 +63,9 @@ interatomic potential (APIP) according to
 
    E_i^\text{APIP} = \lambda_i E_i^\text{(fast)} + (1-\lambda_i) E_i^\text{(precise)}\,,
 
-whereas the switching parameter :math:`\lambda_i` is computed by
-:doc:`fix lambda <fix_lambda>`.
+whereas the switching parameter :math:`\lambda_i` is computed
+dynamically during a simulation by :doc:`fix lambda <fix_lambda>`
+or set prior to a simulation via :doc:`set <set>`.
 
 The pair style *pace/apip/precise* computes the potential energy
 :math:`(1-\lambda_i) E_i^\text{(pace)}` and the
