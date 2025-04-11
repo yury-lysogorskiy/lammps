@@ -1007,15 +1007,20 @@ two main advantages:
 
 This is controlled by the two parameters "one" and "page", respectively,
 that can be set via the :doc:`neigh_modify command <neigh_modify>`. The
-parameter "one" is the estimate for the number of entries in a single
-neighbor list. The parameter "page" is the size of the page.  The
-default settings are suitable for most systems.  They need to be changed
-when simulating a system with a very high density or when setting a very
-long cutoff (e.g. :math:`\gtrapprox 15 \AA` with :doc:`units real
-<units>`).  The value of "page" must be at least 10x the value of "one",
-but 50x or 100x are recommended to avoid wasting memory.  The neighbor
-list storage is typically the largest amount of RAM required by a
-LAMMPS calculation.
+parameter "one" is the estimate for the maximum number of entries in a
+list of neighbors for a single atom.  The parameter "page" is the size
+of the page.  Before determining the neighbors for the next atom, the
+neighbor list code checks, if there are "one" entries left in the
+current page; if not, a new page is allocated.  The error is triggered
+when there is not enough space left in the page when adding neighbors.
+
+The default settings are suitable for most systems.  They need to be
+changed, for instance, when simulating a system with a very high density
+or when setting a very long cutoff (e.g. :math:`\gtrapprox 15 \AA` with
+:doc:`units real <units>`).  The value of "page" **must** be at least
+10x the value of "one", but 50x to 100x are recommended to avoid wasting
+memory.  The neighbor list storage is typically the largest amount of
+RAM required by a LAMMPS calculation.
 
 Even though the LAMMPS error message recommends to increase the "one"
 parameter, this may not be the correct solution.  The neighbor list
