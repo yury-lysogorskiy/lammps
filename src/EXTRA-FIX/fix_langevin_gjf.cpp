@@ -66,7 +66,6 @@ FixLangevinGJF::FixLangevinGJF(LAMMPS *lmp, int narg, char **arg) :
   if (narg < 7) error->all(FLERR, "Illegal fix langevin/gjf command");
 
   time_integrate = 1;
-  restart_peratom = 1;
   global_freq = 1;
   nevery = 1;
 
@@ -219,7 +218,10 @@ void FixLangevinGJF::init()
       gjfc2 = (1.0 / (1.0 + update->dt / 2.0 / t_period)) * (1.0 / (1.0 + update->dt / 2.0 / t_period));
       break;
     case 7: // provided in Finkelstein (2021)
-      gjfc2 = 1; // TODO: correct this
+      gjfc2 = (1.0 - update->dt / 2.0 / t_period) / (1.0 + update->dt / 2.0 / t_period); //using GJ-I
+      gjfc1 = (1.0 + gjfc2) / 2.0;
+      gjfc3 = (1.0 - gjfc2) * t_period / update->dt;
+      gjfc2 = exp(-sqrt(gjfc3/gjfc1)*update->dt / t_period);
       break;
     case 8: // provided in Gronbech-Jensen (2024)
       gjfc2 = sqrt( (update->dt / t_period) * (update->dt / t_period) + 1.0 ) - update->dt / t_period;
@@ -470,7 +472,10 @@ void FixLangevinGJF::reset_dt()
       gjfc2 = (1.0 / (1.0 + update->dt / 2.0 / t_period)) * (1.0 / (1.0 + update->dt / 2.0 / t_period));
       break;
     case 7: // provided in Finkelstein (2021)
-      gjfc2 = 1; // TODO: correct this
+      gjfc2 = (1.0 - update->dt / 2.0 / t_period) / (1.0 + update->dt / 2.0 / t_period); //using GJ-I
+      gjfc1 = (1.0 + gjfc2) / 2.0;
+      gjfc3 = (1.0 - gjfc2) * t_period / update->dt;
+      gjfc2 = exp(-sqrt(gjfc3/gjfc1)*update->dt / t_period);
       break;
     case 8: // provided in Gronbech-Jensen (2024)
       gjfc2 = sqrt( (update->dt / t_period)*(update->dt / t_period) + 1.0 ) - update->dt / t_period;
