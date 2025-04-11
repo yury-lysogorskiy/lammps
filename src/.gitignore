@@ -109,6 +109,8 @@
 /pair_pace_extrapolation.cpp
 /pair_pace_extrapolation.h
 
+/atom_vec_apip.cpp
+/atom_vec_apip.h
 /fix_lambda.cpp
 /fix_lambda.h
 /fix_lambda_thermostat.cpp
