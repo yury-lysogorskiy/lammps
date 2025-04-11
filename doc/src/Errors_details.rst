@@ -1007,12 +1007,11 @@ two main advantages:
 
 This is controlled by the two parameters "one" and "page", respectively,
 that can be set via the :doc:`neigh_modify command <neigh_modify>`. The
-parameter "one" is the estimate for the maximum number of entries in a
-list of neighbors for a single atom.  The parameter "page" is the size
-of the page.  Before determining the neighbors for the next atom, the
-neighbor list code checks, if there are "one" entries left in the
-current page; if not, a new page is allocated.  The error is triggered
-when there is not enough space left in the page when adding neighbors.
+parameter "one" is the maximum number of entries in a list of neighbors
+for a single atom.  If an atom has more neighbors as the "one" parameter
+allows, the "overflow" error message is triggered.  The parameter "page"
+sets the size of the page.  The neighbor list code checks, if there are
+"one" entries left in the current page.  If not, a new page is allocated.
 
 The default settings are suitable for most systems.  They need to be
 changed, for instance, when simulating a system with a very high density
@@ -1023,16 +1022,19 @@ memory.  The neighbor list storage is typically the largest amount of
 RAM required by a LAMMPS calculation.
 
 Even though the LAMMPS error message recommends to increase the "one"
-parameter, this may not be the correct solution.  The neighbor list
-overflow can be a symptom of some other error that cannot be easily
-detected.  For example, a frequent reason for an (unexpected) high
-density are incorrect box boundaries or coordinates provided as
-fractional coordinates.  In both cases, LAMMPS cannot easily know
+parameter, this may not always be the correct solution.  The neighbor
+list overflow can also be a symptom for some other error that cannot be
+easily detected.  For example, a frequent reason for an (unexpected)
+high density are incorrect box boundaries (since LAMMPS wraps atoms back
+into the principal box with periodic boundaries) or coordinates provided
+as fractional coordinates.  In both cases, LAMMPS cannot easily know
 whether the input geometry has such a high density (and thus requiring
-more neighbor list storage) intentionally.  Rather than blindly
-increasing the "one" parameter, it is worth checking if this is
+more neighbor list storage per atom) by intention.  Rather than blindly
+increasing the "one" parameter, it is thus worth checking if this is
 justified by the combination of density and cutoff.
 
 When boosting (= increasing) the "one" parameter, it is recommended to
 also increase the value for the "page" parameter to maintain the ratio
-between "one" and "page".
+between "one" and "page" to reduce waste of memory.  For some more
+details, please check out the documentation for the :doc:`neigh_modify
+command <neigh_modify>`.
