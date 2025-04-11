@@ -392,6 +392,13 @@ void Neighbor::init()
   }
   cutneighmaxsq = cutneighmax * cutneighmax;
 
+  // update cutneighmin based on individual neighbor list requests
+
+  for (i = 0; i < nrequest; ++i) {
+    if (requests[i]->cut) cutneighmin = MIN(cutneighmin, requests[i]->cutoff +
+                                            (requests[i]->occasional ? 0.0 : skin));
+  }
+
   // Define cutoffs for multi
   if (style == Neighbor::MULTI) {
     int icollection, jcollection;

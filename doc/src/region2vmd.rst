@@ -166,11 +166,7 @@ Only the following region styles are currently supported: *block*,
 *cone*, *cylinder*, *ellipsoid*, *prism*, and *sphere*. Regions formed
 from unions or intersections of other regions are not supported.
 
-For region style *cone* one of the two radii must be zero, since the
-equivalent VMD graphics primitive does not support truncated cones.
-Also the VMD graphics primitive does not support open cones.
-
-Rotating regions are not supported.
+Rotating regions are currently not supported.
 
 Related commands
 """"""""""""""""

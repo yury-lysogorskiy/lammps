@@ -11,44 +11,42 @@
    See the README file in the top-level LAMMPS directory.
 ------------------------------------------------------------------------- */
 
-#ifdef REGION_CLASS
+#ifdef COMPUTE_CLASS
 // clang-format off
-RegionStyle(plane,RegPlane);
+ComputeStyle(vacf/chunk,ComputeVACFChunk);
 // clang-format on
 #else
 
-#ifndef LMP_REGION_PLANE_H
-#define LMP_REGION_PLANE_H
+#ifndef LMP_COMPUTE_VACF_CHUNK_H
+#define LMP_COMPUTE_VACF_CHUNK_H
 
-#include "region.h"
+#include "compute_chunk.h"
 
 namespace LAMMPS_NS {
 
-class RegPlane : public Region {
-  friend class Region2VMD;
-
+class ComputeVACFChunk : public ComputeChunk {
  public:
-  RegPlane(class LAMMPS *, int, char **);
-  ~RegPlane() override;
+  ComputeVACFChunk(class LAMMPS *, int, char **);
+  ~ComputeVACFChunk() override;
   void init() override;
-  int inside(double, double, double) override;
-  int surface_interior(double *, double) override;
-  int surface_exterior(double *, double) override;
-  void shape_update() override;
+  void setup() override;
 
- private:
-  double xp, yp, zp;
-  double normal[3];
+  void compute_array() override;
 
-  int xstyle, xvar;
-  int ystyle, yvar;
-  int zstyle, zvar;
-  char *xstr, *ystr, *zstr;
+  double memory_usage() override;
 
-  void variable_check();
+ protected:
+  bigint vacfnchunk;
+
+  char *id_fix;
+  class FixStoreGlobal *fix;
+
+  double *massproc, *masstotal;
+  double **vcm, **vcmall;
+  double **vacf;
+
+  void allocate() override;
 };
-
 }    // namespace LAMMPS_NS
-
 #endif
 #endif
