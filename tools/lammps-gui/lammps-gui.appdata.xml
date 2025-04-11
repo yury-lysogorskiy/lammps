@@ -59,6 +59,7 @@
       <description>
         Change working directory to user's home dir if initial directory is "/" or the Application folder
         Add preferences option to set https proxy, if not already set via environment variable
+        Add option to visualize molecules defined through the molecule command
       </description>
     </release>
      <release version="1.6.12" timestamp="1734890080">
