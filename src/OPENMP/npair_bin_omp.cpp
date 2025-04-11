@@ -209,7 +209,7 @@ void NPairBinOmp<HALF, NEWTON, TRI, SIZE, ATOMONLY>::build(NeighList *list)
                   which = find_special(special[i], nspecial[i], tag[j]);
                 else if ((imol >= 0) && onemols[imol]->special)
                   which = find_special(onemols[imol]->special[iatom],
-                                       onemols[imol]  ->nspecial[iatom], tag[j] - tagprev);
+                                       onemols[imol]->nspecial[iatom], tag[j] - tagprev);
                 else
                   which = 0;
                 if (which == 0)

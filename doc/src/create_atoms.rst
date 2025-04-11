@@ -400,7 +400,9 @@ of processors used.
 
 The *group* keyword adds the newly created atoms to the named
 :doc:`group <group>`.  If the group does not yet exist it will be
-created.  All created atoms are always added to the group "all".
+created.  There can be only one such group, thus if the *group* keyword
+is used multiple times, only the last one will be used.  All created
+atoms are always added to the group "all".
 
 The *remap* keyword only applies to the *single* style.  If it is set
 to *yes*, then if the specified position is outside the simulation
