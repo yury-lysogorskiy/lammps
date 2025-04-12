@@ -41,8 +41,37 @@ using namespace FixConst;
 enum { NOBIAS, BIAS };
 enum { CONSTANT, EQUAL, ATOM };
 
+
 static const char cite_langevin_gjf[] =
-  "Langevin GJF methods: doi:10.1007/s10955-024-03345-1\n\n"
+  "Langevin GJ methods: doi:10.1080/00268976.2019.1662506\n\n"
+  "@Article{gronbech-jensen_complete_2020,\n"
+	"title = {Complete set of stochastic Verlet-type thermostats for correct Langevin simulations},\n"
+	"volume = {118},\n"
+  "number = {8},\n"
+	"url = {https://www.tandfonline.com/doi/full/10.1080/00268976.2019.1662506},\n"
+	"doi = {10.1080/00268976.2019.1662506},\n"	
+	"journal = {Molecular Physics},\n"
+	"author = {Grønbech-Jensen, Niels},\n"
+	"year = {2020},\n"
+  "}\n\n";
+
+static const char cite_langevin_gjf_7[] =
+  "Langevin GJ-VII method: doi:10.1063/5.0066008\n\n"
+  "@Article{finkelstein_2021,\n"
+  "title = {Bringing discrete-time Langevin splitting methods into agreement with thermodynamics},\n"
+  "volume = {155},\n"
+  "number = {18},\n"
+  "url = {https://doi.org/10.1063/5.0066008},\n"
+  "doi = {10.1063/5.0066008},\n"
+  "urldate = {2021-11-14},\n"
+  "journal = {J. Chem. Phys.},\n"
+  "author = {Finkelstein, Joshua and Cheng, Chungho and Fiorin, Giacomo and Seibold, Benjamin and Grønbech-Jensen, Niels},\n"
+  "year = {2021},\n"
+  "pages = {184104}\n"
+  "}\n\n";
+
+static const char cite_langevin_gjf_8[] =
+  "Langevin GJ-VIII method: doi:10.1007/s10955-024-03345-1\n\n"
   "@Article{gronbech_jensen_2024,\n"
   "title = {On the Definition of Velocity in Discrete-Time, Stochastic Langevin Simulations},\n"
   "volume = {191},\n"
@@ -55,7 +84,7 @@ static const char cite_langevin_gjf[] =
   "year = {2024},\n"
   "pages = {137}\n"
   "}\n\n";
-
+  
 
 /* ---------------------------------------------------------------------- */
 
@@ -109,10 +138,20 @@ FixLangevinGJF::FixLangevinGJF(LAMMPS *lmp, int narg, char **arg) :
         error->all(FLERR, "Illegal fix langevin/gjf command");
       iarg += 2;
     } else if (strcmp(arg[iarg], "method") == 0) {
-      if (iarg + 2 > narg) error->all(FLERR, "Illegal fix langevin/gjf command");
       GJmethod = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
-      if (GJmethod < 0 || GJmethod > GJmethods) error->all(FLERR, "Invalid GJ method choice in langevin/gjf command");
-      iarg += 2;
+      if (GJmethod = 7) {
+        if (iarg + 3 > narg) error->all(FLERR, "Illegal fix langevin/gjf command for GJ-VII");
+        gjfc2 = utils::numeric(FLERR, arg[iarg + 2], false, lmp);
+        if (gjfc2 < 0 || gjfc2 > 1) error->all(FLERR, "Choice of c2 in GJ-VII must be 0≤c2≤1");
+        iarg += 3;
+        if (lmp->citeme) lmp->citeme->add(cite_langevin_gjf_7);
+      }
+      else {
+        if (iarg + 2 > narg) error->all(FLERR, "Illegal fix langevin/gjf command");
+        if (GJmethod < 0 || GJmethod > GJmethods) error->all(FLERR, "Invalid GJ method choice in langevin/gjf command");
+        if (GJmethod = 8) if (lmp->citeme) lmp->citeme->add(cite_langevin_gjf_8);
+        iarg += 2;
+      }
     } else
       error->all(FLERR, "Illegal fix langevin/gjf command");
   }
@@ -218,10 +257,7 @@ void FixLangevinGJF::init()
       gjfc2 = (1.0 / (1.0 + update->dt / 2.0 / t_period)) * (1.0 / (1.0 + update->dt / 2.0 / t_period));
       break;
     case 7: // provided in Finkelstein (2021)
-      gjfc2 = (1.0 - update->dt / 2.0 / t_period) / (1.0 + update->dt / 2.0 / t_period); //using GJ-I
-      gjfc1 = (1.0 + gjfc2) / 2.0;
-      gjfc3 = (1.0 - gjfc2) * t_period / update->dt;
-      gjfc2 = exp(-sqrt(gjfc3/gjfc1)*update->dt / t_period);
+      update->dt = (1.0 + gjfc2) / (1.0 - gjfc2) * log(gjfc2) * log(gjfc2) * 0.5 * t_period;
       break;
     case 8: // provided in Gronbech-Jensen (2024)
       gjfc2 = sqrt( (update->dt / t_period) * (update->dt / t_period) + 1.0 ) - update->dt / t_period;
@@ -238,11 +274,11 @@ void FixLangevinGJF::init()
 }
 
 /* ----------------------------------------------------------------------
-  integrate position and velocity according to the GJF method
+  integrate position and velocity according to the GJ methods
   in Grønbech-Jensen, J Stat Phys 191, 137 (2024). The general workflow is
-    1. Langevin GJF Initial Integration
+    1. Langevin GJ Initial Integration
     2. Force Update
-    3. Langevin GJF Final Integration
+    3. Langevin GJ Final Integration
     4. Velocity Choice in end_of_step()
 ------------------------------------------------------------------------- */
 
@@ -336,7 +372,6 @@ void FixLangevinGJF::final_integrate()
   double dtf = 0.5 * dt * ftm2v;
   double csq = sqrt(gjfc3 / gjfc1);
 
-  // update v of atoms in group
   double **v = atom->v;
   double **f = atom->f;
   double *rmass = atom->rmass;
@@ -346,6 +381,7 @@ void FixLangevinGJF::final_integrate()
   int nlocal = atom->nlocal;
   if (igroup == atom->firstgroup) nlocal = atom->nfirst;
 
+  // Calculate Eq. 24f.
   if (rmass) {
     for (int i = 0; i < nlocal; i++)
       if (mask[i] & groupbit) {
@@ -410,7 +446,7 @@ void FixLangevinGJF::compute_target()
 }
 
 /* ----------------------------------------------------------------------
-   select velocity for GJF
+   select velocity for GJ
 ------------------------------------------------------------------------- */
 
 void FixLangevinGJF::end_of_step()
@@ -472,10 +508,7 @@ void FixLangevinGJF::reset_dt()
       gjfc2 = (1.0 / (1.0 + update->dt / 2.0 / t_period)) * (1.0 / (1.0 + update->dt / 2.0 / t_period));
       break;
     case 7: // provided in Finkelstein (2021)
-      gjfc2 = (1.0 - update->dt / 2.0 / t_period) / (1.0 + update->dt / 2.0 / t_period); //using GJ-I
-      gjfc1 = (1.0 + gjfc2) / 2.0;
-      gjfc3 = (1.0 - gjfc2) * t_period / update->dt;
-      gjfc2 = exp(-sqrt(gjfc3/gjfc1)*update->dt / t_period);
+      update->dt = (1.0 + gjfc2) / (1.0 - gjfc2) * log(gjfc2) * log(gjfc2) * 0.5 * t_period;
       break;
     case 8: // provided in Gronbech-Jensen (2024)
       gjfc2 = sqrt( (update->dt / t_period)*(update->dt / t_period) + 1.0 ) - update->dt / t_period;

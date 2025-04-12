@@ -33,14 +33,13 @@ POTENTIAL ENERGY (eV)
 
 Script Commands:
 --
+fix lang all langevin/gjf 10 10 1 26488
+vs
+--
 fix nve all nve
 fix lang all langevin 10 10 1 26488
 --
 vs
 --
 fix noho all nvt temp 10 10 1
---
-vs
---
-fix lang all langevin/gjf 10 10 1 26488
 --
