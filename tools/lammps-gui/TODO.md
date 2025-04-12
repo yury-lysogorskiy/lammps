@@ -2,8 +2,6 @@ LAMMPS-GUI TODO list:
 
 # Short term goals (v1.x)
 
-- implement a timed "Auto-Save" feature that saves after some idle time.  set timeout in Editor preferences.
-- add a "Filter data" checkbox to the "Charts" window to select whether data should be dropped.
 - add a "Charts tab" to the preferences with the following (default) settings:
   - default filter data yes/no
   - default smooth parameters
@@ -14,10 +12,7 @@ LAMMPS-GUI TODO list:
   colors to individual atom types.
 - Support color by property (e.g. scan computes or fixes with per-atom data), define colormaps etc.
 - Add a "Diameters" dialog where diamaters can by specified by atom type
-- figure out how widgets can be resized to fraction of available screen size.
-- figure out stacking order of frames and whether it can be more flexible
 
-- implement indenting regions for (nested) loops?
 - implement data file manager GUI with the following features:
    - import coordinates and topology via VMD molfile plugins
    - import coordinates and topology from intermol
