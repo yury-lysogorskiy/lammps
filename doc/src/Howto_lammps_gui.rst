@@ -481,22 +481,31 @@ types.
 |gui-image1|  |gui-image2|
 
 The default image size, some default image quality settings, the view
-style and some colors can be changed in the *Preferences* dialog
-window.  From the image viewer window further adjustments can be made:
-actual image size, high-quality (SSAO) rendering, anti-aliasing, view
-style, display of box or axes, zoom factor.  The view of the system can
-be rotated horizontally and vertically.  It is also possible to only
-display the atoms within a group defined in the input script (default is
-"all").  The image can also be re-centered on the center of mass of the
-selected group.  After each change, the image is rendered again and the
-display updated.  The small palette icon on the top left is colored
-while LAMMPS is running to render the new image; it is grayed out when
-LAMMPS is finished.  When there are many atoms to render and high
-quality images with anti-aliasing are requested, re-rendering may take
-several seconds.  From the *File* menu of the image window, the
-current image can be saved to a file (keyboard shortcut `Ctrl-S`) or
-copied to the clipboard (keyboard shortcut `Ctrl-C`) for pasting the
-image into another application.
+style and some colors can be changed in the *Preferences* dialog window.
+From the image viewer window further adjustments can be made: actual
+image size, high-quality (SSAO) rendering, anti-aliasing, view style,
+display of box or axes, zoom factor.  The view of the system can be
+rotated horizontally and vertically.
+
+It is also possible to display only the atoms within a :doc:`group
+defined in the input script <group>` (default is "all").  The available
+groups can be selected from the drop down list next to the "Group:"
+label.  Similarly, if there are :doc:`molecules defined in the input
+<molecule>`, it is possible to select one of them (default is "none")
+and visualize it (it will be shown at the center of the simulation box).
+While a molecule is selected, the group selection is disabled.  It can
+be restored by selecting the molecule "none".
+
+The image can also be re-centered on the center of mass of the selected
+group.  After each change, the image is rendered again and the display
+updated.  The small palette icon on the top left is colored while LAMMPS
+is running to render the new image; it is grayed out when LAMMPS is
+finished.  When there are many atoms to render and high quality images
+with anti-aliasing are requested, re-rendering may take several seconds.
+From the *File* menu of the image window, the current image can be saved
+to a file (keyboard shortcut `Ctrl-S`) or copied to the clipboard
+(keyboard shortcut `Ctrl-C`) for pasting the image into another
+application.
 
 From the *File* menu it is also possible to copy the current
 :doc:`dump image <dump_image>` and :doc:`dump_modify <dump_image>`
