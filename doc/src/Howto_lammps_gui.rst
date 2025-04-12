@@ -1,36 +1,25 @@
 Using LAMMPS-GUI
 ================
 
+LAMMPS-GUI is a graphical text editor programmed using the `Qt Framework
+<https://www.qt.io/>`_ and customized for editing LAMMPS input files.  It
+is linked to the :ref:`LAMMPS library <lammps_c_api>` and thus can run
+LAMMPS directly using the contents of the editor's text buffer as input.
+
+It *differs* from other known interfaces to LAMMPS in that it can
+retrieve and display information from LAMMPS *while it is running*,
+display visualizations created with the :doc:`dump image command
+<dump_image>`, can launch the online LAMMPS documentation for known
+LAMMPS commands and styles, and directly integrates with a collection
+of LAMMPS tutorials (:ref:`Gravelle1 <Gravelle1>`).
+
 This document describes **LAMMPS-GUI version 1.6**.
 
 -----
 
-LAMMPS-GUI is a graphical text editor customized for editing LAMMPS
-input files that is linked to the :ref:`LAMMPS library <lammps_c_api>`
-and thus can run LAMMPS directly using the contents of the editor's text
-buffer as input.  It can retrieve and display information from LAMMPS
-while it is running, display visualizations created with the :doc:`dump
-image command <dump_image>`, and is adapted specifically for editing
-LAMMPS input files through text completion and reformatting, and linking
-to the online LAMMPS documentation for known LAMMPS commands and styles.
+.. contents::
 
-.. note::
-
-   Pre-compiled, ready-to-use LAMMPS-GUI executables for Linux x86\_64
-   (Ubuntu 20.04LTS or later and compatible), macOS (version 11 aka Big
-   Sur or later), and Windows (version 10 or later) :ref:`are available
-   <lammps_gui_install>` for download.  Non-MPI LAMMPS executables (as
-   ``lmp``) for running LAMMPS from the command-line and :doc:`some
-   LAMMPS tools <Tools>` compiled executables are also included.  Also,
-   the pre-compiled LAMMPS-GUI packages include the WHAM executables
-   from http://membrane.urmc.rochester.edu/content/wham/ for use with
-   LAMMPS tutorials documented in this paper (:ref:`Gravelle1
-   <Gravelle1>`).
-
-   The source code for LAMMPS-GUI is included in the LAMMPS source code
-   distribution and can be found in the ``tools/lammps-gui`` folder.  It
-   can be compiled alongside LAMMPS when :doc:`compiling with CMake
-   <Build_cmake>`.
+----
 
 LAMMPS-GUI tries to provide an experience similar to what people
 traditionally would have running LAMMPS using a command-line window and
@@ -65,8 +54,8 @@ simple LAMMPS simulations.  It is very suitable for tutorials on LAMMPS
 since you only need to learn how to use a single program for most tasks
 and thus time can be saved and people can focus on learning LAMMPS.
 The tutorials at https://lammpstutorials.github.io/ are specifically
-updated for use with LAMMPS-GUI and can their tutorial materials can
-be downloaded and loaded directly from the GUI.
+updated for use with LAMMPS-GUI and their tutorial materials can
+be downloaded and edited directly from the GUI.
 
 Another design goal is to keep the barrier low when replacing part of
 the functionality of LAMMPS-GUI with external tools.  That said, LAMMPS-GUI
@@ -79,9 +68,30 @@ has some unique functionality that is not found elsewhere:
 - monitoring of simulation progress
 - interactive visualization using the :doc:`dump image <dump_image>`
   command with the option to copy-paste the resulting settings
-- automatic slide show generation from dump image out at runtime
-- automatic plotting of thermodynamics data at runtime
+- automatic slide show generation from dump image output at runtime
+- automatic plotting of thermodynamic data at runtime
 - inspection of binary restart files
+
+.. admonition:: Download LAMMPS-GUI for your platform
+   :class: Hint
+
+   Pre-compiled, ready-to-use LAMMPS-GUI executables for Linux x86\_64
+   (Ubuntu 20.04LTS or later and compatible), macOS (version 11 aka Big
+   Sur or later), and Windows (version 10 or later) :ref:`are available
+   <lammps_gui_install>` for download.  Non-MPI LAMMPS executables (as
+   ``lmp``) for running LAMMPS from the command-line and :doc:`some
+   LAMMPS tools <Tools>` compiled executables are also included.  Also,
+   the pre-compiled LAMMPS-GUI packages include the WHAM executables
+   from http://membrane.urmc.rochester.edu/content/wham/ for use with
+   LAMMPS tutorials documented in this paper (:ref:`Gravelle1
+   <Gravelle1>`).
+
+   The source code for LAMMPS-GUI is included in the LAMMPS source code
+   distribution and can be found in the ``tools/lammps-gui`` folder.  It
+   can be compiled alongside LAMMPS when :doc:`compiling with CMake
+   <Build_cmake>`.
+
+-----
 
 The following text provides a detailed tour of the features and
 functionality of LAMMPS-GUI.  Suggestions for new features and
@@ -93,9 +103,11 @@ channels as for LAMMPS itself <Errors_bugs>` for that purpose.
 Installing Pre-compiled LAMMPS-GUI Packages
 -------------------------------------------
 
-LAMMPS-GUI is available as pre-compiled binary packages for Linux
-x86\_64, macOS 11 and later, and Windows 10 and later.  Alternately, it
-can be compiled from source.
+LAMMPS-GUI is available for download as pre-compiled binary packages for
+Linux x86\_64, macOS 11 and later, and Windows 10 and later from the
+`LAMMPS release pages on GitHub <https://github.com/lammps/lammps/releases/>`_.
+A backup download location is at https://download.lammps.org/static/
+Alternately, LAMMPS-GUI can be compiled from source when building LAMMPS.
 
 Windows 10 and later
 ^^^^^^^^^^^^^^^^^^^^
@@ -467,11 +479,11 @@ correspond to (via their mass) and then colorize them in the image and
 set their atom diameters accordingly.  If this is not possible, for
 instance when using reduced (= 'lj') :doc:`units <units>`, then
 LAMMPS-GUI will check the current pair style and if it is a
-Lennard-Jones type potential, it will extract the *sigma* parameter
-for each atom type and assign atom diameters from those numbers.
-For cases where atom diameters are not auto-detected, the *Atom size* field
-can be edited and a suitable value set manually. The default value
-is inferred from the x-direction lattice spacing.
+Lennard-Jones type potential, it will extract the *sigma* parameter for
+each atom type and assign atom diameters from those numbers.  For cases
+where atom diameters are not auto-detected, the *Atom size* field can be
+edited and a suitable value set manually. The default value is inferred
+from the x-direction lattice spacing.
 
 If elements cannot be detected the default sequence of colors of the
 :doc:`dump image <dump_image>` command is assigned to the different atom
@@ -1027,3 +1039,7 @@ Window), and `Ctrl-Q` (Quit Application) are supported.
 .. _Gravelle2:
 
 **(Gravelle2)** Gravelle https://lammpstutorials.github.io/
+
+.. raw:: latex
+
+   \clearpage
