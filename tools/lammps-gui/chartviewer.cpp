@@ -49,6 +49,7 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     stopAct(nullptr), quitAct(nullptr), smooth(nullptr), window(nullptr), order(nullptr),
     chartTitle(nullptr), chartXlabel(nullptr), chartYlabel(nullptr), filename(_filename)
 {
+    QSettings settings;
     auto *top = new QHBoxLayout;
     menu->addMenu(file);
     menu->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
@@ -58,30 +59,47 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     dummy->hide();
 
     // plot title and axis labels
-
-    chartTitle  = new QLineEdit(QString("Thermo: %1").arg(filename));
-    chartXlabel = new QLineEdit("Time step");
+    settings.beginGroup("charts");
+    chartTitle =
+        new QLineEdit(settings.value("title", "Thermo: %f").toString().replace("%f", filename));
+    chartXlabel = new QLineEdit(settings.value("xlabel", "Time step").toString());
     chartYlabel = new QLineEdit("");
 
     // plot smoothing
-    do_raw    = true;
-    do_smooth = true;
+    int smoothchoice = settings.value("smoothchoice",2).toInt();
+    switch (smoothchoice) {
+    case 0:
+        do_raw = true;
+        do_smooth = false;
+        break;
+    case 1:
+        do_raw = false;
+        do_smooth = true;
+        break;
+    case 2: // fallthrough
+    default:
+        do_raw = true;
+        do_smooth = true;
+        break;
+    }
+    // list of choices must be kepy in sync with list in preferences
     smooth    = new QComboBox;
     smooth->addItem("Raw");
     smooth->addItem("Smooth");
     smooth->addItem("Both");
-    smooth->setCurrentIndex(2);
+    smooth->setCurrentIndex(smoothchoice);
     smooth->show();
     window = new QSpinBox;
     window->setRange(5, 999);
-    window->setValue(10);
+    window->setValue(settings.value("smoothwindow", 10).toInt());
     window->setEnabled(true);
     window->setToolTip("Smoothing Window Size");
     order = new QSpinBox;
     order->setRange(1, 20);
-    order->setValue(4);
+    order->setValue(settings.value("smoothorder", 4).toInt());
     order->setEnabled(true);
     order->setToolTip("Smoothing Order");
+    settings.endGroup();
 
     auto *normal = new QPushButton(QIcon(":/icons/gtk-zoom-fit.png"), "");
     normal->setToolTip("Reset zoom to normal");
@@ -139,7 +157,6 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     connect(columns, SIGNAL(currentIndexChanged(int)), this, SLOT(change_chart(int)));
     installEventFilter(this);
 
-    QSettings settings;
     resize(settings.value("chartx", 500).toInt(), settings.value("charty", 320).toInt());
 }
 
@@ -186,6 +203,7 @@ void ChartWindow::add_chart(const QString &title, int index)
     }
     charts.append(chart);
     update_labels();
+    select_smooth(0);
 }
 
 void ChartWindow::add_data(int step, double data, int index)

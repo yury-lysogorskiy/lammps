@@ -2,11 +2,6 @@ LAMMPS-GUI TODO list:
 
 # Short term goals (v1.x)
 
-- add a "Charts tab" to the preferences with the following (default) settings:
-  - default filter data yes/no
-  - default smooth parameters
-  - default plot colors
-  - enable "raw" or "smooth" or "both"
 - add a "Colors" menu to the image viewer to adjust color settings for the
   current image (unlike the defaults in the perferences) including assigning
   colors to individual atom types.
