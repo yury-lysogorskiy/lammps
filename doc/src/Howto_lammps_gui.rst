@@ -752,13 +752,16 @@ Tutorials
 
 The *Tutorials* menu is to support the set of LAMMPS tutorials for
 beginners and intermediate LAMMPS users documented in (:ref:`Gravelle1
-<Gravelle1>`).  From the drop down menu you can select which of the eight
-currently available tutorial sessions you want to start and then will be
-taken to a 'wizard' dialog where you can choose in which folder you want
-to work, whether you want that folder to be cleared, and also whether
-you want to download the solutions files (can be large).  The dialog
-will then start downloading the files requested and load the first input
-file for the selected session into LAMMPS-GUI.
+<Gravelle1>`).  From the drop down menu you can select which of the
+eight currently available tutorial sessions you want to start and then
+will be taken to a 'wizard' dialog where you can choose in which folder
+you want to work, whether you want that folder to be wiped from *any*
+files, whether you want to download the solutions files (which can be
+large) to a ``solution`` sub-folder, and whether you want the
+corresponding tutorial's online version opened in your web browser.  The
+dialog will then start downloading the files requested (download
+progress is reported in the status line) and load the first input file
+for the selected session into LAMMPS-GUI.
 
 About
 ^^^^^
