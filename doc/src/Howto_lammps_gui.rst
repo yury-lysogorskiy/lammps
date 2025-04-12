@@ -350,8 +350,13 @@ data or both.  The smoothing uses a `Savitzky-Golay convolution filter
 window width (left) and order (right) parameters can be set in the boxes
 next to the drop down menu.  Default settings are 10 and 4 which means
 that the smoothing window includes 10 points each to the left and the
-right of the current data point and a fourth order polynomial is fit to
-the data in the window.
+right of the current data point for a total of 21 points and a fourth
+order polynomial is fitted to the data in the window.
+
+With the "Title:", "X:", and "Y:" boxes you can edit the text shown as
+the plot title and the x- or y-axis labels, respectively.  The "Title:"
+and "X:" text is applied to *all* charts, while the "Y:" text *only* to
+the y-axis of the currently selected plot.
 
 You can use the mouse to zoom into the graph (hold the left button and
 drag to mark an area) or zoom out (right click) and you can reset the

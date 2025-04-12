@@ -9,7 +9,6 @@ LAMMPS-GUI TODO list:
   - default smooth parameters
   - default plot colors
   - enable "raw" or "smooth" or "both"
-- add QLineEdit fields to enter plot title, axis labels and units
 - add a "Colors" menu to the image viewer to adjust color settings for the
   current image (unlike the defaults in the perferences) including assigning
   colors to individual atom types.
