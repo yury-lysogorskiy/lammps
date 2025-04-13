@@ -53,7 +53,7 @@ private slots:
     void stop_run();
     void select_smooth(int selection);
     void update_smooth();
-    void update_labels();
+    void update_tlabel();
     void update_ylabel();
 
     void saveAs();
@@ -76,7 +76,7 @@ private:
     QAction *closeAct, *stopAct, *quitAct;
     QComboBox *smooth;
     QSpinBox *window, *order;
-    QLineEdit *chartTitle, *chartXlabel, *chartYlabel;
+    QLineEdit *chartTitle, *chartYlabel;
 
     QString filename;
     QList<QtCharts::ChartViewer *> charts;
@@ -107,7 +107,7 @@ public:
     QString get_title() const { return series->name(); }
     double get_step(int index) const { return (index < 0) ? 0.0 : series->at(index).x(); }
     double get_data(int index) const { return (index < 0) ? 0.0 : series->at(index).y(); }
-    void set_labels(const QString &tlabel, const QString &xlabel);
+    void set_tlabel(const QString &tlabel);
     void set_ylabel(const QString &ylabel);
     QString get_tlabel() const { return chart->title(); }
     QString get_xlabel() const { return xaxis->titleText(); }

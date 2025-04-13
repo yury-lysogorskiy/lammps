@@ -58,7 +58,7 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     QWidget(parent), menu(new QMenuBar), file(new QMenu("&File")), saveAsAct(nullptr),
     exportCsvAct(nullptr), exportDatAct(nullptr), exportYamlAct(nullptr), closeAct(nullptr),
     stopAct(nullptr), quitAct(nullptr), smooth(nullptr), window(nullptr), order(nullptr),
-    chartTitle(nullptr), chartXlabel(nullptr), chartYlabel(nullptr), filename(_filename)
+    chartTitle(nullptr), chartYlabel(nullptr), filename(_filename)
 {
     QSettings settings;
     auto *top = new QHBoxLayout;
@@ -73,7 +73,6 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     settings.beginGroup("charts");
     chartTitle =
         new QLineEdit(settings.value("title", "Thermo: %f").toString().replace("%f", filename));
-    chartXlabel = new QLineEdit(settings.value("xlabel", "Time step").toString());
     chartYlabel = new QLineEdit("");
 
     // plot smoothing
@@ -121,8 +120,6 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     top->addWidget(dummy);
     top->addWidget(new QLabel("Title:"));
     top->addWidget(chartTitle);
-    top->addWidget(new QLabel("X:"));
-    top->addWidget(chartXlabel);
     top->addWidget(new QLabel("Y:"));
     top->addWidget(chartYlabel);
     top->addWidget(new QLabel("Plot:"));
@@ -156,8 +153,7 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     layout->addLayout(top);
     setLayout(layout);
 
-    connect(chartTitle, &QLineEdit::editingFinished, this, &ChartWindow::update_labels);
-    connect(chartXlabel, &QLineEdit::editingFinished, this, &ChartWindow::update_labels);
+    connect(chartTitle, &QLineEdit::editingFinished, this, &ChartWindow::update_tlabel);
     connect(chartYlabel, &QLineEdit::editingFinished, this, &ChartWindow::update_ylabel);
     connect(smooth, SIGNAL(currentIndexChanged(int)), this, SLOT(select_smooth(int)));
     connect(window, &QAbstractSpinBox::editingFinished, this, &ChartWindow::update_smooth);
@@ -213,7 +209,7 @@ void ChartWindow::add_chart(const QString &title, int index)
         chartYlabel->setText(title);
     }
     charts.append(chart);
-    update_labels();
+    update_tlabel();
     select_smooth(0);
 }
 
@@ -279,10 +275,10 @@ void ChartWindow::update_smooth()
         c->smooth_param(do_raw, do_smooth, wval, oval);
 }
 
-void ChartWindow::update_labels()
+void ChartWindow::update_tlabel()
 {
     for (auto &c : charts)
-        c->set_labels(chartTitle->text(), chartXlabel->text());
+        c->set_tlabel(chartTitle->text());
 }
 
 void ChartWindow::update_ylabel()
@@ -412,7 +408,6 @@ void ChartWindow::change_chart(int)
         if (choice == c->get_index()) {
             c->show();
             chartTitle->setText(c->get_tlabel());
-            chartXlabel->setText(c->get_xlabel());
             chartYlabel->setText(c->get_ylabel());
         } else {
             c->hide();
@@ -460,7 +455,7 @@ ChartViewer::ChartViewer(const QString &title, int _index, QWidget *parent) :
     chart->legend()->hide();
     chart->addAxis(xaxis, Qt::AlignBottom);
     chart->addAxis(yaxis, Qt::AlignLeft);
-    chart->setTitle("Thermo Output");
+    chart->setTitle("");
     xaxis->setTitleText("Time step");
     xaxis->setTickCount(5);
     xaxis->setLabelFormat("%d");
@@ -587,10 +582,9 @@ void ChartViewer::smooth_param(bool _do_raw, bool _do_smooth, int _window, int _
 
 /* -------------------------------------------------------------------- */
 
-void ChartViewer::set_labels(const QString &tlabel, const QString &xlabel)
+void ChartViewer::set_tlabel(const QString &tlabel)
 {
     chart->setTitle(tlabel);
-    xaxis->setTitleText(xlabel);
 }
 
 /* -------------------------------------------------------------------- */

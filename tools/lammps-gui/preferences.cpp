@@ -213,8 +213,6 @@ void Preferences::accept()
     settings->beginGroup("charts");
     field = tabWidget->findChild<QLineEdit *>("title");
     if (field) settings->setValue("title", field->text());
-    field = tabWidget->findChild<QLineEdit *>("xlabel");
-    if (field) settings->setValue("xlabel", field->text());
     combo = tabWidget->findChild<QComboBox *>("smoothchoice");
     if (combo) settings->setValue("smoothchoice", combo->currentIndex());
     combo = tabWidget->findChild<QComboBox *>("rawbrush");
@@ -666,9 +664,6 @@ ChartsTab::ChartsTab(QSettings *_settings, QWidget *parent) : QWidget(parent), s
     auto *titletxt = new QLineEdit(settings->value("title", "Thermo: %f").toString());
     auto *titlehlp = new QLabel("(use %f for current input file)");
 
-    auto *xlabellbl = new QLabel("Default x-axis label:");
-    auto *xlabeltxt = new QLineEdit(settings->value("xlabel", "Time step").toString());
-
     // list of choices must be kepy in sync with list in chartviewer
     auto *smoothlbl = new QLabel("Default plot data choice:");
     auto *smoothval = new QComboBox;
@@ -727,8 +722,6 @@ ChartsTab::ChartsTab(QSettings *_settings, QWidget *parent) : QWidget(parent), s
     grid->addWidget(titlelbl, i, 0, Qt::AlignTop);
     grid->addWidget(titletxt, i, 1, Qt::AlignTop);
     grid->addWidget(titlehlp, i++, 2, Qt::AlignTop);
-    grid->addWidget(xlabellbl, i, 0, Qt::AlignTop);
-    grid->addWidget(xlabeltxt, i++, 1, Qt::AlignTop);
     grid->addWidget(smoothlbl, i, 0, Qt::AlignTop);
     grid->addWidget(smoothval, i++, 1, Qt::AlignTop);
     grid->addWidget(rawbrlbl, i, 0, Qt::AlignTop);
