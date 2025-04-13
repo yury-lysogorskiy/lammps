@@ -217,6 +217,10 @@ void Preferences::accept()
     if (field) settings->setValue("xlabel", field->text());
     combo = tabWidget->findChild<QComboBox *>("smoothchoice");
     if (combo) settings->setValue("smoothchoice", combo->currentIndex());
+    combo = tabWidget->findChild<QComboBox *>("rawbrush");
+    if (combo) settings->setValue("rawbrush", combo->currentIndex());
+    combo = tabWidget->findChild<QComboBox *>("smoothbrush");
+    if (combo) settings->setValue("smoothbrush", combo->currentIndex());
     spin = tabWidget->findChild<QSpinBox *>("smoothwindow");
     if (spin) settings->setValue("smoothwindow", spin->value());
     spin = tabWidget->findChild<QSpinBox *>("smoothorder");
@@ -308,7 +312,7 @@ GeneralTab::GeneralTab(QSettings *_settings, LammpsWrapper *_lammps, QWidget *pa
 
     auto https_proxy = QString::fromLocal8Bit(qgetenv("https_proxy"));
     if (https_proxy.isEmpty()) {
-        https_proxy = settings->value("https_proxy", "").toString();
+        https_proxy     = settings->value("https_proxy", "").toString();
         auto *proxyedit = new QLineEdit(https_proxy);
         proxyedit->setObjectName("proxyval");
         gridlayout->addWidget(proxyedit, 3, 1);
@@ -674,6 +678,26 @@ ChartsTab::ChartsTab(QSettings *_settings, QWidget *parent) : QWidget(parent), s
     smoothval->setObjectName("smoothchoice");
     smoothval->setCurrentIndex(settings->value("smoothchoice", 2).toInt());
 
+    auto *rawbrlbl = new QLabel("Raw plot color:");
+    auto *rawbrush = new QComboBox;
+    rawbrush->addItem("Black");
+    rawbrush->addItem("Blue");
+    rawbrush->addItem("Red");
+    rawbrush->addItem("Green");
+    rawbrush->addItem("Gray");
+    rawbrush->setObjectName("rawbrush");
+    rawbrush->setCurrentIndex(settings->value("rawbrush", 1).toInt());
+
+    auto *smoothbrlbl = new QLabel("Smooth plot color:");
+    auto *smoothbrush = new QComboBox;
+    smoothbrush->addItem("Black");
+    smoothbrush->addItem("Blue");
+    smoothbrush->addItem("Red");
+    smoothbrush->addItem("Green");
+    smoothbrush->addItem("Gray");
+    smoothbrush->setObjectName("smoothbrush");
+    smoothbrush->setCurrentIndex(settings->value("smoothbrush", 2).toInt());
+
     auto *smwindlbl = new QLabel("Default smoothing window:");
     auto *smwindval = new QSpinBox;
     smwindval->setRange(5, 999);
@@ -707,6 +731,10 @@ ChartsTab::ChartsTab(QSettings *_settings, QWidget *parent) : QWidget(parent), s
     grid->addWidget(xlabeltxt, i++, 1, Qt::AlignTop);
     grid->addWidget(smoothlbl, i, 0, Qt::AlignTop);
     grid->addWidget(smoothval, i++, 1, Qt::AlignTop);
+    grid->addWidget(rawbrlbl, i, 0, Qt::AlignTop);
+    grid->addWidget(rawbrush, i++, 1, Qt::AlignTop);
+    grid->addWidget(smoothbrlbl, i, 0, Qt::AlignTop);
+    grid->addWidget(smoothbrush, i++, 1, Qt::AlignTop);
     grid->addWidget(smwindlbl, i, 0, Qt::AlignTop);
     grid->addWidget(smwindval, i++, 1, Qt::AlignTop);
     grid->addWidget(smordrlbl, i, 0, Qt::AlignTop);

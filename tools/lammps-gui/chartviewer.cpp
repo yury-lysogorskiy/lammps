@@ -27,6 +27,7 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineSeries>
+#include <QList>
 #include <QMenu>
 #include <QMenuBar>
 #include <QPushButton>
@@ -42,6 +43,16 @@
 #include <cmath>
 
 using namespace QtCharts;
+
+// brush color index must be kept in sync with preferences
+
+static const QList<QBrush> mybrushes = {
+    QBrush(QColor(0, 0, 0)),       // black
+    QBrush(QColor(100, 150, 255)), // blue
+    QBrush(QColor(255, 125, 125)), // red
+    QBrush(QColor(100, 200, 100)), // green
+    QBrush(QColor(120, 120, 120)), // grey
+};
 
 ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     QWidget(parent), menu(new QMenuBar), file(new QMenu("&File")), saveAsAct(nullptr),
@@ -66,24 +77,24 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     chartYlabel = new QLineEdit("");
 
     // plot smoothing
-    int smoothchoice = settings.value("smoothchoice",2).toInt();
+    int smoothchoice = settings.value("smoothchoice", 2).toInt();
     switch (smoothchoice) {
-    case 0:
-        do_raw = true;
-        do_smooth = false;
-        break;
-    case 1:
-        do_raw = false;
-        do_smooth = true;
-        break;
-    case 2: // fallthrough
-    default:
-        do_raw = true;
-        do_smooth = true;
-        break;
+        case 0:
+            do_raw    = true;
+            do_smooth = false;
+            break;
+        case 1:
+            do_raw    = false;
+            do_smooth = true;
+            break;
+        case 2: // fallthrough
+        default:
+            do_raw    = true;
+            do_smooth = true;
+            break;
     }
     // list of choices must be kepy in sync with list in preferences
-    smooth    = new QComboBox;
+    smooth = new QComboBox;
     smooth->addItem("Raw");
     smooth->addItem("Smooth");
     smooth->addItem("Both");
@@ -597,11 +608,19 @@ static QList<QPointF> calc_sgsmooth(const QList<QPointF> &input, const int windo
 
 void ChartViewer::update_smooth()
 {
+    QSettings settings;
+    settings.beginGroup("charts");
+    int rawidx    = settings.value("rawbrush", 1).toInt();
+    int smoothidx = settings.value("smoothbrush", 2).toInt();
+    if ((rawidx < 0) || (rawidx >= mybrushes.size())) rawidx = 0;
+    if ((smoothidx < 0) || (smoothidx >= mybrushes.size())) smoothidx = 0;
+    settings.endGroup();
+
     auto allseries = chart->series();
     if (do_raw) {
         // add raw data if not in chart
         if (!allseries.contains(series)) {
-            series->setPen(QPen(QBrush(QColor(100, 150, 255)), 3, Qt::SolidLine, Qt::RoundCap));
+            series->setPen(QPen(mybrushes[rawidx], 3, Qt::SolidLine, Qt::RoundCap));
             chart->addSeries(series);
             series->attachAxis(xaxis);
             series->attachAxis(yaxis);
@@ -612,7 +631,7 @@ void ChartViewer::update_smooth()
         if (series->count() > (2 * window)) {
             if (!smooth) {
                 smooth = new QLineSeries;
-                smooth->setPen(QPen(QBrush(QColor(255, 125, 125)), 3, Qt::SolidLine, Qt::RoundCap));
+                smooth->setPen(QPen(mybrushes[smoothidx], 3, Qt::SolidLine, Qt::RoundCap));
                 chart->addSeries(smooth);
                 smooth->attachAxis(xaxis);
                 smooth->attachAxis(yaxis);
