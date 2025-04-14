@@ -365,10 +365,10 @@ that the smoothing window includes 10 points each to the left and the
 right of the current data point for a total of 21 points and a fourth
 order polynomial is fitted to the data in the window.
 
-With the "Title:", "X:", and "Y:" boxes you can edit the text shown as
-the plot title and the x- or y-axis labels, respectively.  The "Title:"
-and "X:" text is applied to *all* charts, while the "Y:" text *only* to
-the y-axis of the currently selected plot.
+With the "Title:" and "Y:" boxes you can edit the text shown as the plot
+title and the y-axis label, respectively.  The "Title:" text is applied
+to *all* charts, while the "Y:" text is applied *only* to the y-axis of
+the currently selected plot.
 
 You can use the mouse to zoom into the graph (hold the left button and
 drag to mark an area) or zoom out (right click) and you can reset the
@@ -399,6 +399,11 @@ from the *Charts* window differs from that of the *Output* window:
 here you get the compounded data set starting with the last change of
 output fields or timestep setting, while the export from the log will
 contain *all* YAML output but *segmented* into individual runs.
+
+The *Preferences* dialog has a *Charts* tab that allows to set multiple
+chart related settings, like the default title, colors for the raw and
+smooth graph, default choice of the raw / smooth graph selection, and
+the default chart graph size.
 
 Image Slide Show
 ----------------
@@ -826,18 +831,21 @@ look of LAMMPS-GUI.  The settings are grouped and each group is
 displayed within a tab.
 
 .. |guiprefs1| image:: JPG/lammps-gui-prefs-general.png
-   :width: 24%
+   :width: 19%
 
 .. |guiprefs2| image:: JPG/lammps-gui-prefs-accel.png
-   :width: 24%
+   :width: 19%
 
 .. |guiprefs3| image:: JPG/lammps-gui-prefs-image.png
-   :width: 24%
+   :width: 19%
 
 .. |guiprefs4| image:: JPG/lammps-gui-prefs-editor.png
-   :width: 24%
+   :width: 19%
 
-|guiprefs1|  |guiprefs2|  |guiprefs3|  |guiprefs4|
+.. |guiprefs5| image:: JPG/lammps-gui-prefs-charts.png
+   :width: 19%
+
+|guiprefs1|  |guiprefs2|  |guiprefs3|  |guiprefs4|  |guiprefs5|
 
 General Settings:
 ^^^^^^^^^^^^^^^^^
@@ -932,7 +940,7 @@ lists to select the background and box colors.
 Editor Settings:
 ^^^^^^^^^^^^^^^^
 
-This tab allows tweaking settings of the editor window.  Specifically
+This tab allows tweaking settings of the editor window.  Specifically,
 the amount of padding to be added to LAMMPS commands, types or type
 ranges, IDs (e.g. for fixes), and names (e.g. for groups).  The value
 set is the minimum width for the text element and it can be chosen in
@@ -943,6 +951,16 @@ reformatting when hitting the 'Enter' key, the automatic display of
 the completion pop-up window, and whether auto-save mode is enabled.
 In auto-save mode the editor buffer is saved before a run or before
 exiting LAMMPS-GUI.
+
+Charts Settings:
+----------------
+
+This tab allows tweaking settings of the *Charts* window.  Specifically,
+one can set the default chart title (if the title contains '%f' it will
+be replaced with the name of the current input file), one can select
+whether by default the raw data, the smoothed data or both will be
+plotted, one can set the colors for the two lines, the default smoothing
+parameters, and the default size of the chart graph in pixels.
 
 -----------
 
