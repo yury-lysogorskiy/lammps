@@ -104,7 +104,8 @@ Installing Pre-compiled LAMMPS-GUI Packages
 -------------------------------------------
 
 LAMMPS-GUI is available for download as pre-compiled binary packages for
-Linux x86\_64, macOS 11 and later, and Windows 10 and later from the
+Linux x86\_64 (Ubuntu 20.04LTS or later and compatible), macOS (version
+11 aka Big Sur or later), and Windows (version 10 or later) from the
 `LAMMPS release pages on GitHub <https://github.com/lammps/lammps/releases/>`_.
 A backup download location is at https://download.lammps.org/static/
 Alternately, LAMMPS-GUI can be compiled from source when building LAMMPS.
@@ -365,10 +366,10 @@ that the smoothing window includes 10 points each to the left and the
 right of the current data point for a total of 21 points and a fourth
 order polynomial is fitted to the data in the window.
 
-With the "Title:" and "Y:" boxes you can edit the text shown as the plot
-title and the y-axis label, respectively.  The "Title:" text is applied
-to *all* charts, while the "Y:" text is applied *only* to the y-axis of
-the currently selected plot.
+The "Title:" and "Y:" input boxes allow to edit the text shown as the
+plot title and the y-axis label, respectively.  The text entered in the
+"Title:" box is applied to *all* charts, while the "Y:" text changes
+only the y-axis label of the currently *selected* plot.
 
 You can use the mouse to zoom into the graph (hold the left button and
 drag to mark an area) or zoom out (right click) and you can reset the
@@ -400,10 +401,10 @@ here you get the compounded data set starting with the last change of
 output fields or timestep setting, while the export from the log will
 contain *all* YAML output but *segmented* into individual runs.
 
-The *Preferences* dialog has a *Charts* tab that allows to set multiple
-chart related settings, like the default title, colors for the raw and
-smooth graph, default choice of the raw / smooth graph selection, and
-the default chart graph size.
+The *Preferences* dialog has a *Charts* tab, where you can configure
+multiple chart-related settings, like the default title, colors for the
+graphs, default choice of the raw / smooth graph selection, and the
+default chart graph size.
 
 Image Slide Show
 ----------------
@@ -758,15 +759,15 @@ Tutorials
 The *Tutorials* menu is to support the set of LAMMPS tutorials for
 beginners and intermediate LAMMPS users documented in (:ref:`Gravelle1
 <Gravelle1>`).  From the drop down menu you can select which of the
-eight currently available tutorial sessions you want to start and then
-will be taken to a 'wizard' dialog where you can choose in which folder
-you want to work, whether you want that folder to be wiped from *any*
-files, whether you want to download the solutions files (which can be
-large) to a ``solution`` sub-folder, and whether you want the
-corresponding tutorial's online version opened in your web browser.  The
-dialog will then start downloading the files requested (download
-progress is reported in the status line) and load the first input file
-for the selected session into LAMMPS-GUI.
+eight currently available tutorial sessions you want to begin.  This
+opens a 'wizard' dialog where you can choose in which folder you want to
+work, whether you want that folder to be wiped from *any* files, whether
+you want to download the solutions files (which can be large) to a
+``solution`` sub-folder, and whether you want the corresponding
+tutorial's online version opened in your web browser.  The dialog will
+then start downloading the files requested (download progress is
+reported in the status line) and load the first input file for the
+selected session into LAMMPS-GUI.
 
 About
 ^^^^^
