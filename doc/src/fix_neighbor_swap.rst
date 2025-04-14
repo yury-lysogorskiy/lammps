@@ -48,11 +48,11 @@ Description
 
 .. versionadded:: TBD
 
-This fix performs Monte-Carlo (MC) evaluations to enable kinetic 
-Monte Carlo (kMC)-type behavior during MD simulation by allowing 
+This fix performs Monte-Carlo (MC) evaluations to enable kinetic
+Monte Carlo (kMC)-type behavior during MD simulation by allowing
 neighboring atoms to swap their positions. In constrast to the :doc:`fix
 atom/swap <fix_atom_swap>` command which swaps pairs of atoms anywhere
-in the simulation domain, the restriction of the MC swapping to 
+in the simulation domain, the restriction of the MC swapping to
 neighbors enables a hybrid MD/kMC-like simulation.
 
 Neighboring atoms are defined by using a Voronoi tesselation performed
@@ -115,7 +115,7 @@ computed correctly.
 Limitations are imposed on selection of *I,J* atom pairs to avoid
 swapping of atoms which are outside of a reasonable cutoff (e.g. due
 to a Voronoi tesselation near free surfaces) though the
-use of a distance-weighted probabiltiy scaling. 
+use of a distance-weighted probabiltiy scaling.
 
 ----------
 
