@@ -139,7 +139,7 @@ FixLangevinGJF::FixLangevinGJF(LAMMPS *lmp, int narg, char **arg) :
       iarg += 2;
     } else if (strcmp(arg[iarg], "method") == 0) {
       GJmethod = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
-      if (GJmethod = 7) {
+      if (GJmethod == 7) {
         if (iarg + 3 > narg) error->all(FLERR, "Illegal fix langevin/gjf command for GJ-VII");
         gjfc2 = utils::numeric(FLERR, arg[iarg + 2], false, lmp);
         if (gjfc2 < 0 || gjfc2 > 1) error->all(FLERR, "Choice of c2 in GJ-VII must be 0≤c2≤1");
@@ -149,7 +149,7 @@ FixLangevinGJF::FixLangevinGJF(LAMMPS *lmp, int narg, char **arg) :
       else {
         if (iarg + 2 > narg) error->all(FLERR, "Illegal fix langevin/gjf command");
         if (GJmethod < 0 || GJmethod > GJmethods) error->all(FLERR, "Invalid GJ method choice in langevin/gjf command");
-        if (GJmethod = 8) if (lmp->citeme) lmp->citeme->add(cite_langevin_gjf_8);
+        if (GJmethod == 8) if (lmp->citeme) lmp->citeme->add(cite_langevin_gjf_8);
         iarg += 2;
       }
     } else
