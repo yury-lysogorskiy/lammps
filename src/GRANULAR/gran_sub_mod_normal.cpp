@@ -446,6 +446,7 @@ GranSubModNormalMDR::GranSubModNormalMDR(GranularModel *gm, LAMMPS *lmp) :
   size_history = 27;
   nsvector = 1;
   fix_mdr_flag = 0;
+  material_properties = 1;
   id_fix = nullptr;
 
   nondefault_history_transfer = 1;
@@ -468,23 +469,23 @@ GranSubModNormalMDR::~GranSubModNormalMDR()
 
 void GranSubModNormalMDR::coeffs_to_local()
 {
-  E = coeffs[0];         // Young's modulus
-  nu = coeffs[1];        // Poisson's ratio
+  Emod = coeffs[0];      // Young's modulus
+  poiss = coeffs[1];     // Poisson's ratio
   Y = coeffs[2];         // yield stress
   gamma = coeffs[3];     // effective surface energy
   psi_b = coeffs[4];     // bulk response trigger based on ratio of remaining free area: A_{free}/A_{total}
   damp = coeffs[5];      // coefficent of restitution
 
-  if (E <= 0.0) error->all(FLERR, "Illegal MDR normal model, Young's modulus must be greater than 0");
-  if (nu < 0.0 || nu > 0.5) error->all(FLERR, "Illegal MDR normal model, Poisson's ratio must be between 0 and 0.5");
+  if (Emod <= 0.0) error->all(FLERR, "Illegal MDR normal model, Young's modulus must be greater than 0");
+  if (poiss < 0.0 || poiss > 0.5) error->all(FLERR, "Illegal MDR normal model, Poisson's ratio must be between 0 and 0.5");
   if (Y < 0.0) error->all(FLERR, "Illegal MDR normal model, yield stress must be greater than or equal to 0");
   if (gamma < 0.0) error->all(FLERR, "Illegal MDR normal model, effective surface energy must be greater than or equal to 0");
   if (psi_b < 0.0 || psi_b > 1.0) error->all(FLERR, "Illegal MDR normal model, psi_b must be between 0 and 1.0");
   if (damp < 0.0) error->all(FLERR, "Illegal MDR normal model, damping coefficent must be greater than or equal to 0");
 
-  G = E / (2.0 * (1.0 + nu));            // shear modulus
-  kappa = E / (3.0 * (1.0 - 2.0 * nu));  // bulk modulus
-  Eeff = E / (1.0 - pow(nu, 2.0));       // composite plane strain modulus
+  G = Emod / (2.0 * (1.0 + poiss));            // shear modulus
+  kappa = Emod / (3.0 * (1.0 - 2.0 * poiss));  // bulk modulus
+  Eeff = Emod / (1.0 - pow(poiss, 2.0));       // composite plane strain modulus
 
   // precomputing factors
 
@@ -613,15 +614,15 @@ double GranSubModNormalMDR::calculate_forces()
       // itag and jtag persist after neighbor list builds, use tags to compare to match
       // contact history variables consistently across steps for a particle pair.
       if ((contactSide == 0 && itag_true > jtag_true) || (contactSide != 0 && itag_true < jtag_true)) {
-          gm->i = i_true;
-          gm->j = j_true;
-          gm->radi = radi_true;
-          gm->radj = radj_true;
+        gm->i = i_true;
+        gm->j = j_true;
+        gm->radi = radi_true;
+        gm->radj = radj_true;
       } else {
-          gm->i = j_true;
-          gm->j = i_true;
-          gm->radi = radj_true;
-          gm->radj = radi_true;
+        gm->i = j_true;
+        gm->j = i_true;
+        gm->radi = radj_true;
+        gm->radj = radi_true;
       }
 
       // determine the two maximum experienced geometric overlaps on either side of rigid flat
@@ -757,7 +758,7 @@ double GranSubModNormalMDR::calculate_forces()
       // depth of particle center
       const double zR = R - (deltamax_MDR - deltae1Dmax);
 
-      deltaR = 2 * amaxsq * (-1 + nu) - (-1 + 2 * nu) * zR * (-zR + sqrt(amaxsq + pow(zR, 2)));
+      deltaR = 2 * amaxsq * (-1 + poiss) - (-1 + 2 * poiss) * zR * (-zR + sqrt(amaxsq + pow(zR, 2)));
       deltaR *= Fmax / (MY_2PI * amaxsq * G * sqrt(amaxsq + pow(zR, 2)));
 
       // transformed elastic displacement
@@ -961,7 +962,7 @@ double GranSubModNormalMDR::calculate_forces()
     a_damp = a_damp/2.0;
     damp_scale = sqrt(gm->meff * 2.0 * Eeff2particle * a_damp);
     double *deltao_offset = &history[DELTAO_0];
-    const double wfm = std::exp(10.7*(*deltao_offset)/Rinitial[gm->i] - 10.0) + 1.0; // wall force magnifier
+    const double wfm = std::exp(10.7 * (*deltao_offset) / Rinitial[gm->i] - 10.0) + 1.0; // wall force magnifier
     F = wij * F0 * wfm;
   } else {
     damp_scale = sqrt(gm->meff * 2.0 * Eeff * a_damp);

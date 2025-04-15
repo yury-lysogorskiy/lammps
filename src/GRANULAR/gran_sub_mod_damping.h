@@ -42,7 +42,6 @@ namespace Granular_NS {
    protected:
     double damp_prefactor;
     double damp;
-    int damp_type;  // damping type is only used by normal mdr model
   };
 
   /* ---------------------------------------------------------------------- */
@@ -102,6 +101,9 @@ namespace Granular_NS {
     void coeffs_to_local() override;
     void init() override;
     double calculate_forces() override;
+
+   protected:
+    int damp_type;
   };
 
   /* ---------------------------------------------------------------------- */

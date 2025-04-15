@@ -154,16 +154,16 @@ void FixGranularMDR::setup_pre_force(int /*vflag*/)
 
     norm_model2 = dynamic_cast<GranSubModNormalMDR *>(fix->model->normal_model);
 
-    if (norm_model && norm_model2 && fabs(norm_model->E - norm_model2->E) > EPSILON)
+    if (norm_model && norm_model2 && fabs(norm_model->get_emod() - norm_model2->get_emod()) > EPSILON)
       error->all(
           FLERR, Error::NOLASTLINE,
           "Young's modulus in pair style, {}, does not agree with value {} in fix gran/wall/region",
-          norm_model->E, norm_model2->E);
-    if (fabs(norm_model->nu - norm_model2->nu) > EPSILON)
+          norm_model->get_emod(), norm_model2->get_emod());
+    if (fabs(norm_model->get_poiss() - norm_model2->get_poiss()) > EPSILON)
       error->all(
           FLERR, Error::NOLASTLINE,
           "Poisson's ratio in pair style, {}, does not agree with value {} in fix gran/wall/region",
-          norm_model->nu, norm_model2->nu);
+          norm_model->get_poiss(), norm_model2->get_poiss());
     if (fabs(norm_model->Y - norm_model2->Y) > EPSILON)
       error->all(
           FLERR, Error::NOLASTLINE,
