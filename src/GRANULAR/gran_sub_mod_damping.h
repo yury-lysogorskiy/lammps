@@ -42,7 +42,7 @@ namespace Granular_NS {
    protected:
     double damp_prefactor;
     double damp;
-    int damp_type;
+    int damp_type;  // damping type is only used by normal mdr model
   };
 
   /* ---------------------------------------------------------------------- */
@@ -99,6 +99,7 @@ namespace Granular_NS {
   class GranSubModDampingMDR : public GranSubModDamping {
    public:
     GranSubModDampingMDR(class GranularModel *, class LAMMPS *);
+    void coeffs_to_local() override;
     void init() override;
     double calculate_forces() override;
   };

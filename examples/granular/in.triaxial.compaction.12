@@ -38,8 +38,8 @@ variable kt       equal 2/7*${YoungsModulus}*${atomRadius}
 variable xgammat  equal 0.0
 variable mu_s     equal 0.5
 
-pair_coeff * * mdr ${YoungsModulus} ${PoissonsRatio} ${YieldStress} ${SurfaceEnergy} ${psi_b} ${damp} ${damp_type} &
-   damping mdr &
+pair_coeff * * mdr ${YoungsModulus} ${PoissonsRatio} ${YieldStress} ${SurfaceEnergy} ${psi_b} ${damp} &
+   damping mdr ${damp_type} &
    tangential linear_history ${kt} ${xgammat} ${mu_s}
 
 ######################################### ADD IN PLANES ################################################
@@ -57,7 +57,7 @@ region plane_xz_neg plane 0 -${halfBoxWidth} 0 0 1 0 side in move NULL v_plane_d
 region plane_xy_pos plane 0 0 ${halfBoxWidth} 0 0 -1  side in move NULL NULL v_plane_disp_neg units box
 region plane_xy_neg plane 0 0 -${halfBoxWidth} 0 0 1 side in move NULL NULL v_plane_disp units box
 
-variable wall_contact_string string "granular mdr ${YoungsModulus} ${PoissonsRatio} ${YieldStress} ${SurfaceEnergy} ${psi_b} ${damp} ${damp_type} damping mdr tangential linear_history ${kt} ${xgammat} ${mu_s} "
+variable wall_contact_string string "granular mdr ${YoungsModulus} ${PoissonsRatio} ${YieldStress} ${SurfaceEnergy} ${psi_b} ${damp} damping mdr ${damp_type} tangential linear_history ${kt} ${xgammat} ${mu_s} "
 
 fix plane_yz_pos all wall/gran/region ${wall_contact_string} region plane_yz_pos contacts
 fix plane_yz_neg all wall/gran/region ${wall_contact_string} region plane_yz_neg contacts

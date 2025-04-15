@@ -41,7 +41,6 @@ namespace Granular_NS {
 
     int get_cohesive_flag() const { return cohesive_flag; }
     double get_damp() const { return damp; }
-    double get_damp_type() const { return damp_type; }
     double get_emod() const { return Emod; }
     double get_fncrit() const { return Fncrit; }
     int get_material_properties() const { return material_properties; }
@@ -52,7 +51,6 @@ namespace Granular_NS {
    protected:
     double damp;    // argument historically needed by damping
                     // typically (but not always) equals eta_n0
-    int damp_type;  // damping type is only used by normal mdr model
     double Emod, poiss;
     double Fncrit;
     int material_properties, cohesive_flag;

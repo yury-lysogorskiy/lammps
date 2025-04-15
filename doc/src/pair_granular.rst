@@ -44,7 +44,7 @@ Examples
    pair_coeff * * hertz 1000.0 50.0 tangential mindlin 1000.0 1.0 0.4 heat area 0.1
 
    pair_style granular
-   pair_coeff * * mdr 5e6 0.4 1.9e5 2.0 0.5 0.5 tangential linear_history 940.0 0.0 0.7 rolling sds 2.7e5 0.0 0.6 damping mdr 1
+   pair_coeff * * mdr 5e6 0.4 1.9e5 2.0 0.5 0.5 tangential linear_history 940.0 1.0 0.7 rolling sds 2.7e5 0.0 0.6 damping mdr 1
 
 Description
 """""""""""
@@ -89,7 +89,7 @@ and their required arguments are:
 4. *dmt* : E, :math:`\eta_{n0}` (or :math:`e`), :math:`\nu`, :math:`\gamma`
 5. *jkr* : E, :math:`\eta_{n0}` (or :math:`e`), :math:`\nu`, :math:`\gamma`
 6. *mdr* : :math:`E`, :math:`\nu`, :math:`Y`, :math:`\Delta\gamma`,
-   :math:`\psi_b`, :math:`\eta_{n0}`, :math:`d_{type}`
+   :math:`\psi_b`, :math:`\eta_{n0}`
 
 Here, :math:`k_n` is spring stiffness (with units that depend on model
 choice, see below); :math:`\eta_{n0}` is a damping prefactor (or, in its
@@ -206,9 +206,6 @@ The model requires the following inputs:
    6. *Damping coefficent* :math:`\eta_{n0} \ge 0` : The damping coefficient
    is a tunable parameter that controls damping in the normal direction.
 
-   7. *Damping type* :math:`d_{type} =` 1 or 2  : The damping type specfies the
-   damping model defined for the *mdr* damping class described below.
-
 .. note::
 
    The values for :math:`E`, :math:`\nu`, :math:`Y`, and :math:`\Delta\gamma` (i.e.,
@@ -263,7 +260,7 @@ The *mdr* model currently only supports *fix wall/gran/region*, not
 any *fix wall/gran/region* commands must also use the *mdr* model.
 Additionally, the following *mdr* inputs must match between the
 *pair_style* and *fix wall/gran/region* definitions: :math:`E`,
-:math:`\nu`, :math:`Y`, :math:`\psi_b`, and :math:`e`. The exception
+:math:`\nu`, :math:`Y`, :math:`\psi_b`, and :math:`\eta_{n0}`. The exception
 is :math:`\Delta\gamma`, which may vary, permitting different
 adhesive behaviors between particle-particle and particle-wall interactions.
 
@@ -329,7 +326,7 @@ for the damping model currently supported are:
 3. *viscoelastic*
 4. *tsuji*
 5. *coeff_restitution*
-6. *mdr*
+6. *mdr* (class) : :math:`d_{type}`
 
 If the *damping* keyword is not specified, the *viscoelastic* model is
 used by default.
@@ -420,9 +417,8 @@ restitution for both monodisperse and polydisperse particle pairs.  This damping
 model is not compatible with cohesive normal models such as *JKR* or *DMT*.
 
 The *mdr* damping class contains multiple damping models that can be toggled between
-by specifying different integer values for the :math:`d_{type}` parameter in the *mdr*
-normal model. This damping option is therefore only compatible with the normal *mdr*
-contact model.
+by specifying different integer values for the :math:`d_{type}` input parameter. This
+damping option is only compatible with the normal *mdr* contact model.
 
 Setting :math:`d_{type} = 1` is the suggested damping option. This specifies a damping
 model that takes into account the contact stiffness :math:`k_{mdr}` calulated

@@ -190,6 +190,13 @@ void GranSubModDampingCoeffRestitution::init()
 GranSubModDampingMDR::GranSubModDampingMDR(GranularModel *gm, LAMMPS *lmp) :
     GranSubModDamping(gm, lmp)
 {
+  num_coeffs = 1;
+}
+
+void GranSubModDampingMDR::coeffs_to_local()
+{
+  damp_type = coeffs[0]; // damping type 1 = mdr stiffness or 2 = velocity
+  if (damp_type != 1 && damp_type != 2) error->all(FLERR, "Illegal MDR normal model, damping type must an integer equal to 1 or 2");
 }
 
 /* ---------------------------------------------------------------------- */
@@ -200,7 +207,6 @@ void GranSubModDampingMDR::init()
     error->all(FLERR, "Damping mdr can only be used with mdr normal model");
 
   damp = gm->normal_model->get_damp();
-  damp_type = gm->normal_model->get_damp_type();
 }
 
 /* ---------------------------------------------------------------------- */

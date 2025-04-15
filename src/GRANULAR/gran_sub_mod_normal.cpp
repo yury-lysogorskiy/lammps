@@ -441,7 +441,7 @@ GranSubModNormalMDR::GranSubModNormalMDR(GranularModel *gm, LAMMPS *lmp) :
 {
   if (lmp->citeme) lmp->citeme->add(cite_mdr);
 
-  num_coeffs = 7;
+  num_coeffs = 6;
   contact_radius_flag = 1;
   size_history = 27;
   nsvector = 1;
@@ -474,7 +474,6 @@ void GranSubModNormalMDR::coeffs_to_local()
   gamma = coeffs[3];     // effective surface energy
   psi_b = coeffs[4];     // bulk response trigger based on ratio of remaining free area: A_{free}/A_{total}
   damp = coeffs[5];      // coefficent of restitution
-  damp_type = coeffs[6]; // damping type 1 = mdr or 2 = velocity
 
   if (E <= 0.0) error->all(FLERR, "Illegal MDR normal model, Young's modulus must be greater than 0");
   if (nu < 0.0 || nu > 0.5) error->all(FLERR, "Illegal MDR normal model, Poisson's ratio must be between 0 and 0.5");
@@ -482,7 +481,6 @@ void GranSubModNormalMDR::coeffs_to_local()
   if (gamma < 0.0) error->all(FLERR, "Illegal MDR normal model, effective surface energy must be greater than or equal to 0");
   if (psi_b < 0.0 || psi_b > 1.0) error->all(FLERR, "Illegal MDR normal model, psi_b must be between 0 and 1.0");
   if (damp < 0.0) error->all(FLERR, "Illegal MDR normal model, damping coefficent must be greater than or equal to 0");
-  if (damp_type != 1 && damp_type != 2) error->all(FLERR, "Illegal MDR normal model, damping type must an integer equal to 1 or 2");
 
   G = E / (2.0 * (1.0 + nu));            // shear modulus
   kappa = E / (3.0 * (1.0 - 2.0 * nu));  // bulk modulus
