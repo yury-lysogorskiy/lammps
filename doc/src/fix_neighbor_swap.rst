@@ -50,7 +50,7 @@ Description
 
 This fix performs Monte-Carlo (MC) evaluations to enable kinetic
 Monte Carlo (kMC)-type behavior during MD simulation by allowing
-neighboring atoms to swap their positions. In constrast to the :doc:`fix
+neighboring atoms to swap their positions. In contrast to the :doc:`fix
 atom/swap <fix_atom_swap>` command which swaps pairs of atoms anywhere
 in the simulation domain, the restriction of the MC swapping to
 neighbors enables a hybrid MD/kMC-like simulation.
@@ -68,7 +68,7 @@ Metropolis criterion after evaluating the change in system energy due
 to the swap.
 
 A detailed explanation of the original implementation of this
-algorithm can be found in :ref:`(Tavenner 2023) <_TavennerMDkMC>`
+algorithm can be found in :ref:`(Tavenner 2023) <TavennerMDkMC>`
 where it was used to simulated accelerated diffusion in an MD context.
 
 Simulating inherently kinetically-limited behaviors which rely on rare
@@ -81,41 +81,46 @@ the processes of atomic diffusion to be approximated during an MD
 simulation, effectively decoupling the MD atomic vibrational timescale
 and the atomic hopping (kMC event) timescale.
 
-The algorithm implemented by this fix is as follows. The MD
-simulation is paused every *N* stepsA Voronoi tesselation is
-performed for the current atom configuration.  Then *X* atom swaps are
-attempted, one after the other.  For each swap, an atom *I* is
-selected randomly from the list of atom types specified by either the
-*types* or *diff* keywords.  One of *I*'s Voronoi neighbors *J* is
-selected using the distance-weighted probability for each neighbor
-detailed below.  The *I,J* atom IDs are communicated to all processors
-so that a global energy evaluation can be performed for the post-swap
-state of the system.  The swap is accepted or rejected based on the
-Metropolis criterion using the energy change of the system and the
-specified temperature *T*.
+The algorithm implemented by this fix is as follows:
+
+   - The MD simulation is paused every *N* steps
+   - A Voronoi tesselation is performed for the current atom configuration.
+   - Then *X* atom swaps are attempted, one after the other.
+   - For each swap, an atom *I* is selected randomly from the list of
+     atom types specified by either the *types* or *diff* keywords.
+   - One of *I*'s Voronoi neighbors *J* is selected using the
+     distance-weighted probability for each neighbor detailed below.
+   - The *I,J* atom IDs are communicated to all processors so that a
+     global energy evaluation can be performed for the post-swap state
+     of the system.
+   - The swap is accepted or rejected based on the Metropolis criterion
+     using the energy change of the system and the specified temperature
+     *T*.
 
 Here are a few comments on the computational cost of the swapping
 algorithm.
 
-(1) The cost of a global energy evaluation is similar to that of an MD
-timestep.
+   1. The cost of a global energy evaluation is similar to that of an MD
+      timestep.
 
-(2) Simliar to other MC algorithms in LAMMPS, an optimized parallel efficiency
-is achieved with a smaller number of atoms per processor than would typically
-be used in an standard MD simulation. This is because the per-energy evaluation
-cost increases relative to the balance of MD/MC steps as indicated by (1), but
-the communication cost remains relatively constant for a given number of MD steps.
+   2. Similar to other MC algorithms in LAMMPS, improved parallel
+      efficiency is achieved with a smaller number of atoms per
+      processor than would typically be used in an standard MD
+      simulation. This is because the per-energy evaluation cost
+      increases relative to the balance of MD/MC steps as indicated by
+      1., but the communication cost remains relatively constant for a
+      given number of MD steps.
 
-(3) The MC portion of the simulation will run dramatically slower if
-the pair style uses different cutoffs for different atom types (or
-type pairs).  This is because each atom swap then requires a rebuild
-of the neighbor list to ensure the post-swap global energy can be
-computed correctly.
+   3. The MC portion of the simulation will run dramatically slower if
+      the pair style uses different cutoffs for different atom types (or
+      type pairs).  This is because each atom swap then requires a
+      rebuild of the neighbor list to ensure the post-swap global energy
+      can be computed correctly.
 
 Limitations are imposed on selection of *I,J* atom pairs to avoid
-swapping of atoms which are outside of a reasonable cutoff (e.g. due
-to a Voronoi tesselation near free surfaces) though the
-use of a distance-weighted probabiltiy scaling.
+swapping of atoms which are outside of a reasonable cutoff (e.g. due to
+a Voronoi tesselation near free surfaces) though the use of a
+distance-weighted probability scaling.
 
 ----------
 
@@ -133,8 +138,8 @@ sets the radius :math:`r_0` in this formula
 
 where :math:`p_{ij}` is the probability of selecting atom :math:`j` to
 swap with atom :math:`i`.  Typically, a value for *R0* around the
-average nearest-neighbor spacing is appropriate.  Since this is simply
-a proability weighting, the swapping behavior is not very sensitive to
+average nearest-neighbor spacing is appropriate.  Since this is simply a
+probability weighting, the swapping behavior is not very sensitive to
 the exact value of *R0*.
 
 The keyword *types* takes two or more atom types as its values.  Only
@@ -157,7 +162,7 @@ this:
 
 Note that the *neighbors yes* option must be enabled for use with this
 fix. The group-ID should include all the atoms which this fix will
-potentialy select. I.e. the group-ID used in the voronoi compute should
+potentially select. I.e. the group-ID used in the voronoi compute should
 include the same atoms as that indicated by the *types* keyword. If the
 *diff* keyword is used, the group-ID should include atoms of all types
 in the simulation.
@@ -221,7 +226,7 @@ Restrictions
 This fix is part of the MC package.  It is only enabled if LAMMPS was
 built with that package.  See the :doc:`Build package <Build_package>`
 doc page for more info.  Also this fix requires that the :ref:`VORONOI
-package <PKG-VORONOI>` be installed, otherwise the fix will not be
+package <PKG-VORONOI>` is installed, otherwise the fix will not be
 compiled.
 
 The :doc:`compute voronoi/atom <compute_voronoi_atom>` command
