@@ -12,15 +12,16 @@
 ------------------------------------------------------------------------- */
 
 #include "lmptype.h"
-#include "nlohmann/json.hpp"
+
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include <exception>
 #include <string>
 
+#include "json.h"
+
 using namespace LAMMPS_NS;
 using ::testing::Eq;
-using json = ::nlohmann_lmp::json;
 
 #define STRINGIFY(val) XSTR(val)
 #define XSTR(val) #val

@@ -17,7 +17,7 @@
 #include "input.h"
 #include "library.h"
 
-#include "nlohmann/json.hpp"
+#include "json.h"
 
 #include <cstdlib>
 #include <mpi.h>
@@ -32,7 +32,6 @@
 #include <mdi.h>
 #endif
 
-using json = nlohmann_lmp::json;
 using namespace LAMMPS_NS;
 
 // for convenience
