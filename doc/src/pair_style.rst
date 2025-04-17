@@ -267,6 +267,7 @@ accelerated styles exist.
 * :doc:`lj/expand/sphere <pair_lj_expand_sphere>` - Variable size LJ where per-atom radius is used as delta (size)
 * :doc:`lj/gromacs <pair_gromacs>` - GROMACS-style Lennard-Jones potential
 * :doc:`lj/gromacs/coul/gromacs <pair_gromacs>` - GROMACS-style LJ and Coulomb potential
+* :doc:`lj/improved/cut <pair_lj_improved_cut>` - Improved LJ potential
 * :doc:`lj/long/coul/long <pair_lj_long>` - long-range LJ and long-range Coulomb
 * :doc:`lj/long/coul/long/dielectric <pair_dielectric>` -
 * :doc:`lj/long/dipole/long <pair_dipole>` - long-range LJ and long-range point dipoles
