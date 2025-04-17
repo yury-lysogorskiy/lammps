@@ -174,6 +174,7 @@ OPT.
    * :doc:`lj/expand/sphere (o) <pair_lj_expand_sphere>`
    * :doc:`lj/gromacs (gko) <pair_gromacs>`
    * :doc:`lj/gromacs/coul/gromacs (ko) <pair_gromacs>`
+   * :doc:`lj/improved/cut <pair_lj_improved_cut>`
    * :doc:`lj/long/coul/long (iot) <pair_lj_long>`
    * :doc:`lj/long/coul/long/dielectric <pair_dielectric>`
    * :doc:`lj/long/dipole/long <pair_dipole>`
