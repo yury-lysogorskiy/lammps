@@ -21,10 +21,6 @@
 #include <mpi.h>
 #include <new>
 
-#if defined(LAMMPS_TRAP_FPE) && defined(_GNU_SOURCE)
-#include <fenv.h>
-#endif
-
 // import MolSSI Driver Interface library
 #if defined(LMP_MDI)
 #include <mdi.h>
@@ -60,17 +56,6 @@ int main(int argc, char **argv)
 
   if (mdi_flag)
     if (MDI_MPI_get_world_comm(&lammps_comm)) MPI_Abort(MPI_COMM_WORLD, 1);
-#endif
-
-#if defined(LAMMPS_TRAP_FPE) && defined(_GNU_SOURCE)
-  // enable trapping selected floating point exceptions.
-  // this uses GNU extensions and is only tested on Linux
-  // therefore we make it depend on -D_GNU_SOURCE, too.
-  fesetenv(FE_NOMASK_ENV);
-  fedisableexcept(FE_ALL_EXCEPT);
-  feenableexcept(FE_DIVBYZERO);
-  feenableexcept(FE_INVALID);
-  feenableexcept(FE_OVERFLOW);
 #endif
 
   try {
