@@ -48,9 +48,8 @@ Lennard-Jones (ILJ) potential according to :ref:`(Pirani) <Pirani>`:
 
 An additional parameter, :math:`\alpha`, has been introduced in order
 to be able to recover the traditional Lennard-Jones (LJ) 12-6 with an adequate
-choice of parameters. With
-:math:`R_m \equiv r_0 = \sigma \cdot 2^{
-  1 / 6}`, :math:`\alpha = 0`, :math:`\beta = 12` and :math:`\gamma = 6`
+choice of parameters. With :math:`R_m \equiv r_0 = \sigma \cdot 2^{1 / 6}`,
+:math:`\alpha = 0`, :math:`\beta = 12` and :math:`\gamma = 6`
 it is straightforward to prove that LJ 12-6 is obtained.
 
 
