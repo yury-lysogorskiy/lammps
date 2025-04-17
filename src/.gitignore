@@ -1254,6 +1254,8 @@
 /pair_lebedeva_z.h
 /pair_lj_expand_coul_long.cpp
 /pair_lj_expand_coul_long.h
+/pair_lj_improved_cut.cpp
+/pair_lj_improved_cut.h
 /pair_local_density.cpp
 /pair_local_density.h
 /pair_edip.cpp
