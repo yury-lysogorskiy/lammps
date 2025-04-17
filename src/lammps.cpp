@@ -1456,6 +1456,7 @@ void LAMMPS::print_config(FILE *fp)
              platform::compiler_info(),platform::openmp_standard(),
              platform::cxx_standard());
   fputs(Info::get_fmt_info().c_str(),fp);
+  fputs(Info::get_json_info().c_str(),fp);
 
   int major,minor;
   std::string infobuf = platform::mpi_info(major,minor);
