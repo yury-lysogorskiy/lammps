@@ -103,6 +103,7 @@ void PairLJImprovedCut::compute(int eflag, int vflag)
   double pow_rx_n_x, pow_rx_gamma;
   double filj1, filj2, filj3, filj4, filj5, filj6, forceilj;
   double ilj1, ilj2;
+  double fxtmp, fytmp, fztmp;
 
   evdwl = 0.0;
   ev_init(eflag, vflag);
@@ -129,6 +130,7 @@ void PairLJImprovedCut::compute(int eflag, int vflag)
     itype = type[i];
     jlist = firstneigh[i];
     jnum = numneigh[i];
+    fxtmp = fytmp = fztmp = 0.0;
 
     for (jj = 0; jj < jnum; jj++) {
       j = jlist[jj];
@@ -170,9 +172,9 @@ void PairLJImprovedCut::compute(int eflag, int vflag)
         forceilj = -epsilon[itype][jtype] * (filj1 + filj2 + filj3 + filj4 + filj5 + filj6);
         fpair = factor_lj * forceilj / r;    // F_x = -x/r * dV/dr (chain rule)
 
-        f[i][0] += delx * fpair;
-        f[i][1] += dely * fpair;
-        f[i][2] += delz * fpair;
+        fxtmp += delx * fpair;
+        fytmp += dely * fpair;
+        fztmp += delz * fpair;
         if (newton_pair || j < nlocal) {
           f[j][0] -= delx * fpair;
           f[j][1] -= dely * fpair;
@@ -192,8 +194,10 @@ void PairLJImprovedCut::compute(int eflag, int vflag)
         if (evflag) ev_tally(i, j, nlocal, newton_pair, evdwl, 0.0, fpair, delx, dely, delz);
       }
     }
+    f[i][0] += fxtmp;
+    f[i][1] += fytmp;
+    f[i][2] += fztmp;
   }
-
   if (vflag_fdotr) virial_fdotr_compute();
 }
 
@@ -212,6 +216,7 @@ void PairLJImprovedCut::compute_inner()
   double pow_rx_n_x, pow_rx_gamma;
   double filj1, filj2, filj3, filj4, filj5, filj6, forceilj;
   double ilj1, ilj2;
+  double fxtmp, fytmp, fztmp;
 
   double **x = atom->x;
   double **f = atom->f;
@@ -242,6 +247,7 @@ void PairLJImprovedCut::compute_inner()
     itype = type[i];
     jlist = firstneigh[i];
     jnum = numneigh[i];
+    fxtmp = fytmp = fztmp = 0.0;
 
     for (jj = 0; jj < jnum; jj++) {
       j = jlist[jj];
@@ -287,9 +293,9 @@ void PairLJImprovedCut::compute_inner()
           fpair *= 1.0 - rsw * rsw * (3.0 - 2.0 * rsw);
         }
 
-        f[i][0] += delx * fpair;
-        f[i][1] += dely * fpair;
-        f[i][2] += delz * fpair;
+        fxtmp += delx * fpair;
+        fytmp += dely * fpair;
+        fztmp += delz * fpair;
         if (newton_pair || j < nlocal) {
           f[j][0] -= delx * fpair;
           f[j][1] -= dely * fpair;
@@ -297,6 +303,9 @@ void PairLJImprovedCut::compute_inner()
         }
       }
     }
+    f[i][0] += fxtmp;
+    f[i][1] += fytmp;
+    f[i][2] += fztmp;
   }
 }
 
@@ -314,6 +323,7 @@ void PairLJImprovedCut::compute_middle()
   double pow_rx_n_x, pow_rx_gamma;
   double filj1, filj2, filj3, filj4, filj5, filj6, forceilj;
   double ilj1, ilj2;
+  double fxtmp, fytmp, fztmp;
 
   double **x = atom->x;
   double **f = atom->f;
@@ -349,6 +359,7 @@ void PairLJImprovedCut::compute_middle()
     itype = type[i];
     jlist = firstneigh[i];
     jnum = numneigh[i];
+    fxtmp = fytmp = fztmp = 0.0;
 
     for (jj = 0; jj < jnum; jj++) {
       j = jlist[jj];
@@ -397,9 +408,9 @@ void PairLJImprovedCut::compute_middle()
           fpair *= 1.0 + rsw * rsw * (2.0 * rsw - 3.0);
         }
 
-        f[i][0] += delx * fpair;
-        f[i][1] += dely * fpair;
-        f[i][2] += delz * fpair;
+        fxtmp += delx * fpair;
+        fytmp += dely * fpair;
+        fztmp += delz * fpair;
         if (newton_pair || j < nlocal) {
           f[j][0] -= delx * fpair;
           f[j][1] -= dely * fpair;
@@ -407,6 +418,9 @@ void PairLJImprovedCut::compute_middle()
         }
       }
     }
+    f[i][0] += fxtmp;
+    f[i][1] += fytmp;
+    f[i][2] += fztmp;
   }
 }
 
@@ -424,6 +438,8 @@ void PairLJImprovedCut::compute_outer(int eflag, int vflag)
   double pow_rx_n_x, pow_rx_gamma;
   double filj1, filj2, filj3, filj4, filj5, filj6, forceilj;
   double ilj1, ilj2;
+  double fxtmp, fytmp, fztmp;
+
   evdwl = 0.0;
   ev_init(eflag, vflag);
 
@@ -456,6 +472,7 @@ void PairLJImprovedCut::compute_outer(int eflag, int vflag)
     itype = type[i];
     jlist = firstneigh[i];
     jnum = numneigh[i];
+    fxtmp = fytmp = fztmp = 0.0;
 
     for (jj = 0; jj < jnum; jj++) {
       j = jlist[jj];
@@ -502,9 +519,9 @@ void PairLJImprovedCut::compute_outer(int eflag, int vflag)
             fpair *= rsw * rsw * (3.0 - 2.0 * rsw);
           }
 
-          f[i][0] += delx * fpair;
-          f[i][1] += dely * fpair;
-          f[i][2] += delz * fpair;
+          fxtmp += delx * fpair;
+          fytmp += dely * fpair;
+          fztmp += delz * fpair;
           if (newton_pair || j < nlocal) {
             f[j][0] -= delx * fpair;
             f[j][1] -= dely * fpair;
@@ -562,6 +579,9 @@ void PairLJImprovedCut::compute_outer(int eflag, int vflag)
         if (evflag) ev_tally(i, j, nlocal, newton_pair, evdwl, 0.0, fpair, delx, dely, delz);
       }
     }
+    f[i][0] += fxtmp;
+    f[i][1] += fytmp;
+    f[i][2] += fztmp;
   }
 }
 
