@@ -1,7 +1,7 @@
 .. index:: pair_style lj/improved/cut
 
 pair_style lj/improved/cut command
-=============================
+==================================
 
 Syntax
 """"""
@@ -36,13 +36,9 @@ Lennard-Jones (ILJ) potential according to :ref:`(Pirani) <Pirani>`:
    n_x = \alpha*x^2 + \beta   \\
    \gamma \equiv m  \\
 
-  V(x) = \varepsilon \cdot \left( \frac{\gamma}{
-  n_x - \gamma}  \left(\frac{1}{
-  x} \right)^{n_x}  -  \frac{n_x}{
-  n_x - \gamma}  \left(\frac{1}{
-  x} \right)^{
-  \gamma} \right)
-      \qquad r < r_c
+  V(x) = \varepsilon \cdot \left( \frac{\gamma}{ n_x - \gamma}  \left(\frac{1}{x} \right)^{n_x}
+          -  \frac{n_x}{n_x - \gamma}  \left(\frac{1}{x} \right)^{\gamma} \right) \qquad r < r_c
+
 :math:`r_c` is the cutoff.
 
 
@@ -137,7 +133,7 @@ Related commands
 """"""""""""""""
 
 * :doc:`pair_coeff <pair_coeff>`
-* :doc:`pair_style lj/cut <pair_lj_cut>`
+* :doc:`pair_style lj/cut <pair_lj>`
 
 Default
 """""""
@@ -148,6 +144,5 @@ none
 
 .. _Pirani:
 
-**(Pirani)** F. Pirani, S. Brizi, L. Roncaratti, P. Casavecchia,
-D. Cappelletti and F. Vecchiocattivi,
-Phys. Chem. Chem. Phys., 2008, 10, 5489–5503.
+**(Pirani)** F. Pirani, S. Brizi, L. Roncaratti, P. Casavecchia, D. Cappelletti and F. Vecchiocattivi,
+Phys. Chem. Chem. Phys., 2008, 10, 5489-5503.
