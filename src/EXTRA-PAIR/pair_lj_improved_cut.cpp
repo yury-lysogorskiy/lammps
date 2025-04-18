@@ -531,6 +531,12 @@ void PairLJImprovedCut::compute_outer(int eflag, int vflag)
 
         if (eflag) {
 
+
+          r = sqrt(rsq);
+
+          rx = r / rm[itype][jtype];
+          n_x = alpha[itype][jtype] * rx * rx + beta[itype][jtype];
+
           ilj1 = epsilon[itype][jtype] * gamma[itype][jtype] * pow(1 / rx, n_x) /
               (n_x - gamma[itype][jtype]);
           ilj2 = -epsilon[itype][jtype] * n_x * pow(1 / rx, gamma[itype][jtype]) /
