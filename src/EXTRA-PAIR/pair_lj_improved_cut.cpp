@@ -24,6 +24,7 @@
 #include "error.h"
 #include "force.h"
 #include "math_const.h"
+#include "math_special.h"
 #include "memory.h"
 #include "neigh_list.h"
 #include "neighbor.h"
@@ -35,19 +36,21 @@
 
 using namespace LAMMPS_NS;
 using namespace MathConst;
+using MathSpecial::square;
 
 /* ---------------------------------------------------------------------- */
 
-PairLJImprovedCut::PairLJImprovedCut(LAMMPS *lmp) : Pair(lmp) {
-  respa_enable = 1;
+PairLJImprovedCut::PairLJImprovedCut(LAMMPS *lmp) : Pair(lmp)
+{
+  respa_enable = 0;
   born_matrix_enable = 0;
   writedata = 1;
 }
 /* ---------------------------------------------------------------------- */
 
-PairLJImprovedCut::~PairLJImprovedCut() {
-  if (copymode)
-    return;
+PairLJImprovedCut::~PairLJImprovedCut()
+{
+  if (copymode) return;
 
   if (allocated) {
     memory->destroy(setflag);
@@ -66,14 +69,14 @@ PairLJImprovedCut::~PairLJImprovedCut() {
    allocate all arrays
 ------------------------------------------------------------------------- */
 
-void PairLJImprovedCut::allocate() {
+void PairLJImprovedCut::allocate()
+{
   allocated = 1;
   int n = atom->ntypes + 1;
 
   memory->create(setflag, n, n, "pair:setflag");
   for (int i = 1; i < n; i++)
-    for (int j = i; j < n; j++)
-      setflag[i][j] = 0;
+    for (int j = i; j < n; j++) setflag[i][j] = 0;
 
   memory->create(cutsq, n, n, "pair:cutsq");
 
@@ -90,13 +93,14 @@ void PairLJImprovedCut::allocate() {
 
 void PairLJImprovedCut::compute(int eflag, int vflag)
 
- {
+{
   int i, j, ii, jj, inum, jnum, itype, jtype;
   double xtmp, ytmp, ztmp, delx, dely, delz, evdwl, fpair;
   double rsq, forcelj, factor_lj;
   int *ilist, *jlist, *numneigh, **firstneigh;
 
   double r, rx, n_x;
+  double pow_rx_n_x, pow_rx_gamma;
   double filj1, filj2, filj3, filj4, filj5, filj6, forceilj;
   double ilj1, ilj2;
 
@@ -143,33 +147,28 @@ void PairLJImprovedCut::compute(int eflag, int vflag)
 
         rx = r / rm[itype][jtype];
         n_x = alpha[itype][jtype] * rx * rx + beta[itype][jtype];
+        pow_rx_n_x = pow(1.0 / rx, n_x);
+        pow_rx_gamma = pow(1.0 / rx, gamma[itype][jtype]);
 
-        filj1 = -2.0 * alpha[itype][jtype] * gamma[itype][jtype] * rx *
-                pow(1 / rx, n_x) /
-                (pow(n_x - gamma[itype][jtype], 2.0) * rm[itype][jtype]);
+        filj1 = -2.0 * alpha[itype][jtype] * gamma[itype][jtype] * rx * pow_rx_n_x /
+            (square(n_x - gamma[itype][jtype]) * rm[itype][jtype]);
 
-        filj2 = +2.0 * alpha[itype][jtype] * rx * n_x *
-                pow(1 / rx, gamma[itype][jtype]) /
-                (pow(n_x - gamma[itype][jtype], 2.0) * rm[itype][jtype]);
+        filj2 = +2.0 * alpha[itype][jtype] * rx * n_x * pow_rx_gamma /
+            (square(n_x - gamma[itype][jtype]) * rm[itype][jtype]);
 
-        filj3 = -2.0 * alpha[itype][jtype] * rx *
-                pow(1 / rx, gamma[itype][jtype]) /
-                (rm[itype][jtype] * (n_x - gamma[itype][jtype]));
+        filj3 = -2.0 * alpha[itype][jtype] * rx * pow_rx_gamma /
+            (rm[itype][jtype] * (n_x - gamma[itype][jtype]));
 
-        filj4 = +2.0 * alpha[itype][jtype] * gamma[itype][jtype] *
-                (rx / rm[itype][jtype]) * log(1 / rx) * pow(1 / rx, n_x) /
-                (n_x - gamma[itype][jtype]);
+        filj4 = +2.0 * alpha[itype][jtype] * gamma[itype][jtype] * (rx / rm[itype][jtype]) *
+            log(1 / rx) * pow_rx_n_x / (n_x - gamma[itype][jtype]);
 
-        filj5 = -1.0 * gamma[itype][jtype] * n_x * pow(1 / rx, n_x) /
-                (r * (n_x - gamma[itype][jtype]));
+        filj5 = -1.0 * gamma[itype][jtype] * n_x * pow_rx_n_x / (r * (n_x - gamma[itype][jtype]));
 
-        filj6 = +1.0 * gamma[itype][jtype] * n_x *
-                pow(1 / rx, gamma[itype][jtype]) /
-                (r * (n_x - gamma[itype][jtype]));
+        filj6 = +1.0 * gamma[itype][jtype] * n_x * pow_rx_gamma / (r * (n_x - gamma[itype][jtype]));
 
-        forceilj = -epsilon[itype][jtype] * (filj1 + filj2 + filj3 + filj4 +
-                                             filj5 + filj6); // F = -dV/dr
-        fpair = factor_lj * forceilj / r; // F_x = -x/r * dV/dr (chain rule)
+        // F = -dV/dr
+        forceilj = -epsilon[itype][jtype] * (filj1 + filj2 + filj3 + filj4 + filj5 + filj6);
+        fpair = factor_lj * forceilj / r;    // F_x = -x/r * dV/dr (chain rule)
 
         f[i][0] += delx * fpair;
         f[i][1] += dely * fpair;
@@ -181,37 +180,36 @@ void PairLJImprovedCut::compute(int eflag, int vflag)
         }
 
         if (eflag) {
-          ilj1 = epsilon[itype][jtype] * gamma[itype][jtype] *
-                 pow(1 / rx, n_x) / (n_x - gamma[itype][jtype]);
-          ilj2 = -epsilon[itype][jtype] * n_x *
-                 pow(1 / rx, gamma[itype][jtype]) / (n_x - gamma[itype][jtype]);
+          ilj1 = epsilon[itype][jtype] * gamma[itype][jtype] * pow(1 / rx, n_x) /
+              (n_x - gamma[itype][jtype]);
+          ilj2 = -epsilon[itype][jtype] * n_x * pow(1 / rx, gamma[itype][jtype]) /
+              (n_x - gamma[itype][jtype]);
 
           evdwl = ilj1 + ilj2 - offset[itype][jtype];
           evdwl *= factor_lj;
         }
 
-        if (evflag)
-          ev_tally(i, j, nlocal, newton_pair, evdwl, 0.0, fpair, delx, dely,
-                   delz);
+        if (evflag) ev_tally(i, j, nlocal, newton_pair, evdwl, 0.0, fpair, delx, dely, delz);
       }
     }
   }
 
-  if (vflag_fdotr)
-    virial_fdotr_compute();
+  if (vflag_fdotr) virial_fdotr_compute();
 }
 
 /* ---------------------------------------------------------------------- */
 
 /* ---------------------------------------------------------------------- */
 
-void PairLJImprovedCut::compute_inner() {
+void PairLJImprovedCut::compute_inner()
+{
   int i, j, ii, jj, inum, jnum, itype, jtype;
   double xtmp, ytmp, ztmp, delx, dely, delz, fpair;
   double rsq, r2inv, r6inv, forcelj, factor_lj, rsw;
   int *ilist, *jlist, *numneigh, **firstneigh;
 
   double r, rx, n_x;
+  double pow_rx_n_x, pow_rx_gamma;
   double filj1, filj2, filj3, filj4, filj5, filj6, forceilj;
   double ilj1, ilj2;
 
@@ -260,34 +258,28 @@ void PairLJImprovedCut::compute_inner() {
 
         rx = r / rm[itype][jtype];
         n_x = alpha[itype][jtype] * rx * rx + beta[itype][jtype];
-        // x = r/rm
+        pow_rx_n_x = pow(1.0 / rx, n_x);
+        pow_rx_gamma = pow(1.0 / rx, gamma[itype][jtype]);
 
-        filj1 = -2.0 * alpha[itype][jtype] * gamma[itype][jtype] * rx *
-                pow(1 / rx, n_x) /
-                (pow(n_x - gamma[itype][jtype], 2.0) * rm[itype][jtype]);
+        filj1 = -2.0 * alpha[itype][jtype] * gamma[itype][jtype] * rx * pow_rx_n_x /
+            (square(n_x - gamma[itype][jtype]) * rm[itype][jtype]);
 
-        filj2 = +2.0 * alpha[itype][jtype] * rx * n_x *
-                pow(1 / rx, gamma[itype][jtype]) /
-                (pow(n_x - gamma[itype][jtype], 2.0) * rm[itype][jtype]);
+        filj2 = +2.0 * alpha[itype][jtype] * rx * n_x * pow_rx_gamma /
+            (square(n_x - gamma[itype][jtype]) * rm[itype][jtype]);
 
-        filj3 = -2.0 * alpha[itype][jtype] * rx *
-                pow(1 / rx, gamma[itype][jtype]) /
-                (rm[itype][jtype] * (n_x - gamma[itype][jtype]));
+        filj3 = -2.0 * alpha[itype][jtype] * rx * pow_rx_gamma /
+            (rm[itype][jtype] * (n_x - gamma[itype][jtype]));
 
-        filj4 = +2.0 * alpha[itype][jtype] * gamma[itype][jtype] *
-                (rx / rm[itype][jtype]) * log(1 / rx) * pow(1 / rx, n_x) /
-                (n_x - gamma[itype][jtype]);
+        filj4 = +2.0 * alpha[itype][jtype] * gamma[itype][jtype] * (rx / rm[itype][jtype]) *
+            log(1 / rx) * pow_rx_n_x / (n_x - gamma[itype][jtype]);
 
-        filj5 = -1.0 * gamma[itype][jtype] * n_x * pow(1 / rx, n_x) /
-                (r * (n_x - gamma[itype][jtype]));
+        filj5 = -1.0 * gamma[itype][jtype] * n_x * pow_rx_n_x / (r * (n_x - gamma[itype][jtype]));
 
-        filj6 = +1.0 * gamma[itype][jtype] * n_x *
-                pow(1 / rx, gamma[itype][jtype]) /
-                (r * (n_x - gamma[itype][jtype]));
+        filj6 = +1.0 * gamma[itype][jtype] * n_x * pow_rx_gamma / (r * (n_x - gamma[itype][jtype]));
 
-        forceilj = -epsilon[itype][jtype] * (filj1 + filj2 + filj3 + filj4 +
-                                             filj5 + filj6); // F = -dV/dr
-        fpair = factor_lj * forceilj / r; // F_x = -x/r * dV/dr (chain rule)
+        // F = -dV/dr
+        forceilj = -epsilon[itype][jtype] * (filj1 + filj2 + filj3 + filj4 + filj5 + filj6);
+        fpair = factor_lj * forceilj / r;    // F_x = -x/r * dV/dr (chain rule)
 
         if (rsq > cut_out_on_sq) {
           rsw = (sqrt(rsq) - cut_out_on) / cut_out_diff;
@@ -311,13 +303,14 @@ void PairLJImprovedCut::compute_inner() {
 
 void PairLJImprovedCut::compute_middle()
 
- {
+{
   int i, j, ii, jj, inum, jnum, itype, jtype;
   double xtmp, ytmp, ztmp, delx, dely, delz, fpair;
   double rsq, r2inv, r6inv, forcelj, factor_lj, rsw;
   int *ilist, *jlist, *numneigh, **firstneigh;
 
   double r, rx, n_x;
+  double pow_rx_n_x, pow_rx_gamma;
   double filj1, filj2, filj3, filj4, filj5, filj6, forceilj;
   double ilj1, ilj2;
 
@@ -371,33 +364,27 @@ void PairLJImprovedCut::compute_middle()
 
         rx = r / rm[itype][jtype];
         n_x = alpha[itype][jtype] * rx * rx + beta[itype][jtype];
-        // x = r/rm
+        pow_rx_n_x = pow(1.0 / rx, n_x);
+        pow_rx_gamma = pow(1.0 / rx, gamma[itype][jtype]);
 
-        filj1 = -2.0 * alpha[itype][jtype] * gamma[itype][jtype] * rx *
-                pow(1 / rx, n_x) /
-                (pow(n_x - gamma[itype][jtype], 2.0) * rm[itype][jtype]);
+        filj1 = -2.0 * alpha[itype][jtype] * gamma[itype][jtype] * rx * pow_rx_n_x /
+            (square(n_x - gamma[itype][jtype]) * rm[itype][jtype]);
 
-        filj2 = +2.0 * alpha[itype][jtype] * rx * n_x *
-                pow(1 / rx, gamma[itype][jtype]) /
-                (pow(n_x - gamma[itype][jtype], 2.0) * rm[itype][jtype]);
+        filj2 = +2.0 * alpha[itype][jtype] * rx * n_x * pow_rx_gamma /
+            (square(n_x - gamma[itype][jtype]) * rm[itype][jtype]);
 
-        filj3 = -2.0 * alpha[itype][jtype] * rx *
-                pow(1 / rx, gamma[itype][jtype]) /
-                (rm[itype][jtype] * (n_x - gamma[itype][jtype]));
+        filj3 = -2.0 * alpha[itype][jtype] * rx * pow_rx_gamma /
+            (rm[itype][jtype] * (n_x - gamma[itype][jtype]));
 
-        filj4 = +2.0 * alpha[itype][jtype] * gamma[itype][jtype] *
-                (rx / rm[itype][jtype]) * log(1 / rx) * pow(1 / rx, n_x) /
-                (n_x - gamma[itype][jtype]);
+        filj4 = +2.0 * alpha[itype][jtype] * gamma[itype][jtype] * (rx / rm[itype][jtype]) *
+            log(1 / rx) * pow_rx_n_x / (n_x - gamma[itype][jtype]);
 
-        filj5 = -1.0 * gamma[itype][jtype] * n_x * pow(1 / rx, n_x) /
-                (r * (n_x - gamma[itype][jtype]));
+        filj5 = -1.0 * gamma[itype][jtype] * n_x * pow_rx_n_x / (r * (n_x - gamma[itype][jtype]));
 
-        filj6 = +1.0 * gamma[itype][jtype] * n_x *
-                pow(1 / rx, gamma[itype][jtype]) /
-                (r * (n_x - gamma[itype][jtype]));
+        filj6 = +1.0 * gamma[itype][jtype] * n_x * pow_rx_gamma / (r * (n_x - gamma[itype][jtype]));
 
-        forceilj = -epsilon[itype][jtype] * (filj1 + filj2 + filj3 + filj4 +
-                                             filj5 + filj6); // F = -dV/dr
+        // F = -dV/dr
+        forceilj = -epsilon[itype][jtype] * (filj1 + filj2 + filj3 + filj4 + filj5 + filj6);
         fpair = factor_lj * forceilj / r;
         if (rsq < cut_in_on_sq) {
           rsw = (sqrt(rsq) - cut_in_off) / cut_in_diff;
@@ -425,13 +412,14 @@ void PairLJImprovedCut::compute_middle()
 
 void PairLJImprovedCut::compute_outer(int eflag, int vflag)
 
- {
+{
   int i, j, ii, jj, inum, jnum, itype, jtype;
   double xtmp, ytmp, ztmp, delx, dely, delz, evdwl, fpair;
   double rsq, r2inv, r6inv, forcelj, factor_lj, rsw;
   int *ilist, *jlist, *numneigh, **firstneigh;
 
   double r, rx, n_x;
+  double pow_rx_n_x, pow_rx_gamma;
   double filj1, filj2, filj3, filj4, filj5, filj6, forceilj;
   double ilj1, ilj2;
   evdwl = 0.0;
@@ -484,39 +472,28 @@ void PairLJImprovedCut::compute_outer(int eflag, int vflag)
 
           rx = r / rm[itype][jtype];
           n_x = alpha[itype][jtype] * rx * rx + beta[itype][jtype];
-          // x = r/rm
+          pow_rx_n_x = pow(1.0 / rx, n_x);
+          pow_rx_gamma = pow(1.0 / rx, gamma[itype][jtype]);
 
-          filj1 = -2.0 * alpha[itype][jtype] * gamma[itype][jtype] * rx *
-                  pow(1 / rx, n_x) /
-                  (pow(n_x - gamma[itype][jtype], 2.0) * rm[itype][jtype]);
+          filj1 = -2.0 * alpha[itype][jtype] * gamma[itype][jtype] * rx * pow_rx_n_x /
+              (square(n_x - gamma[itype][jtype]) * rm[itype][jtype]);
 
-          filj2 = +2.0 * alpha[itype][jtype] * rx * n_x *
-                  pow(1 / rx, gamma[itype][jtype]) /
-                  (pow(n_x - gamma[itype][jtype], 2.0) * rm[itype][jtype]);
+          filj2 = +2.0 * alpha[itype][jtype] * rx * n_x * pow_rx_gamma /
+              (square(n_x - gamma[itype][jtype]) * rm[itype][jtype]);
 
-          filj3 = -
+          filj3 = -2.0 * alpha[itype][jtype] * rx * pow_rx_gamma /
+              (rm[itype][jtype] * (n_x - gamma[itype][jtype]));
 
-2.0 * alpha[itype][jtype] * rx *
-                  pow(1 / rx, gamma[itype][jtype]) /
-                  (rm[itype][jtype] * (n_x - gamma[itype][jtype]));
+          filj4 = +2.0 * alpha[itype][jtype] * gamma[itype][jtype] * (rx / rm[itype][jtype]) *
+              log(1 / rx) * pow_rx_n_x / (n_x - gamma[itype][jtype]);
 
-          filj4 = +
+          filj5 = -1.0 * gamma[itype][jtype] * n_x * pow_rx_n_x / (r * (n_x - gamma[itype][jtype]));
 
-2.0 * alpha[itype][jtype] * gamma[itype][jtype] *
-                  (rx / rm[itype][jtype]) * log(1 / rx) * pow(1 / rx, n_x) /
-                  (n_x - gamma[itype][jtype]);
+          filj6 =
+              +1.0 * gamma[itype][jtype] * n_x * pow_rx_gamma / (r * (n_x - gamma[itype][jtype]));
 
-          filj5 = -1.0 * gamma[itype][jtype] * n_x * pow(1 / rx, n_x) /
-                  (r * (n_x - gamma[itype][jtype]));
-
-          filj6 = +1.0 * gamma[itype][jtype] * n_x *
-                  pow(1 / rx, gamma[itype][jtype]) /
-                  (r * (n_x - gamma[itype][jtype]));
-
-          forceilj = -epsilon[itype][jtype]
-
- * (filj1 + filj2 + filj3 + filj4 +
-                                               filj5 + filj6); // F = -dV/dr
+          // F = -dV/dr
+          forceilj = -epsilon[itype][jtype] * (filj1 + filj2 + filj3 + filj4 + filj5 + filj6);
           fpair = factor_lj * forceilj / r;
           if (rsq < cut_in_on_sq) {
             rsw = (sqrt(rsq) - cut_in_off) / cut_in_diff;
@@ -535,10 +512,10 @@ void PairLJImprovedCut::compute_outer(int eflag, int vflag)
 
         if (eflag) {
 
-          ilj1 = epsilon[itype][jtype] * gamma[itype][jtype] *
-                 pow(1 / rx, n_x) / (n_x - gamma[itype][jtype]);
-          ilj2 = -epsilon[itype][jtype] * n_x *
-                 pow(1 / rx, gamma[itype][jtype]) / (n_x - gamma[itype][jtype]);
+          ilj1 = epsilon[itype][jtype] * gamma[itype][jtype] * pow(1 / rx, n_x) /
+              (n_x - gamma[itype][jtype]);
+          ilj2 = -epsilon[itype][jtype] * n_x * pow(1 / rx, gamma[itype][jtype]) /
+              (n_x - gamma[itype][jtype]);
 
           evdwl = ilj1 + ilj2 - offset[itype][jtype];
           evdwl *= factor_lj;
@@ -551,48 +528,36 @@ void PairLJImprovedCut::compute_outer(int eflag, int vflag)
 
             rx = r / rm[itype][jtype];
             n_x = alpha[itype][jtype] * rx * rx + beta[itype][jtype];
-            // x = r/rm
+            pow_rx_n_x = pow(1.0 / rx, n_x);
+            pow_rx_gamma = pow(1.0 / rx, gamma[itype][jtype]);
 
-            filj1 = -2.0 * alpha[itype][jtype] * gamma[itype][jtype] * rx *
-                    pow(1 / rx, n_x) /
-                    (pow(n_x - gamma[itype][jtype], 2.0) * rm[itype][jtype]);
+            filj1 = -2.0 * alpha[itype][jtype] * gamma[itype][jtype] * rx * pow_rx_n_x /
+                (square(n_x - gamma[itype][jtype]) * rm[itype][jtype]);
 
-            filj2 = +2.0 * alpha[itype][jtype] * rx * n_x *
-                    pow(1 / rx, gamma[itype][jtype]) /
-                    (pow(n_x - gamma[itype][jtype], 2.0) * rm[itype][jtype]);
+            filj2 = +2.0 * alpha[itype][jtype] * rx * n_x * pow_rx_gamma /
+                (square(n_x - gamma[itype][jtype]) * rm[itype][jtype]);
 
-            filj3 = -2.0 * alpha[itype][jtype] * rx *
-                    pow(1 / rx, gamma[itype][jtype]) /
-                    (rm[itype][jtype] * (n_x - gamma[itype][jtype]));
+            filj3 = -2.0 * alpha[itype][jtype] * rx * pow_rx_gamma /
+                (rm[itype][jtype] * (n_x - gamma[itype][jtype]));
 
-            filj4 = +2.0 * alpha[itype][jtype] * gamma[itype][jtype] *
-                    (rx / rm[itype][jtype]) * log(1 / rx) * pow(1 / rx, n_x) /
-                    (n_x - gamma[itype][jtype]);
+            filj4 = +2.0 * alpha[itype][jtype] * gamma[itype][jtype] * (rx / rm[itype][jtype]) *
+                log(1 / rx) * pow_rx_n_x / (n_x - gamma[itype][jtype]);
 
-            filj5 = -
+            filj5 =
+                -1.0 * gamma[itype][jtype] * n_x * pow_rx_n_x / (r * (n_x - gamma[itype][jtype]));
 
-1.0 * gamma[itype][jtype] * n_x * pow(1 / rx, n_x) /
-                    (r * (n_x - gamma[itype][jtype]));
+            filj6 =
+                +1.0 * gamma[itype][jtype] * n_x * pow_rx_gamma / (r * (n_x - gamma[itype][jtype]));
 
-            filj6 = +
-
-1.0 * gamma[itype][jtype] * n_x *
-                    pow(1 / rx, gamma[itype][jtype]) /
-                    (r * (n_x - gamma[itype][jtype]));
-
-
-
-forceilj = -epsilon[itype][jtype] * (filj1 + filj2 + filj3 + filj4 +
-                                                 filj5 + filj6); // F = -dV/dr
+            // F = -dV/dr
+            forceilj = -epsilon[itype][jtype] * (filj1 + filj2 + filj3 + filj4 + filj5 + filj6);
             fpair = factor_lj * forceilj / r;
 
           } else if (rsq < cut_in_on_sq)
             fpair = factor_lj * forceilj / r;
         }
 
-        if (evflag)
-          ev_tally(i, j, nlocal, newton_pair, evdwl, 0.0, fpair, delx, dely,
-                   delz);
+        if (evflag) ev_tally(i, j, nlocal, newton_pair, evdwl, 0.0, fpair, delx, dely, delz);
       }
     }
   }
@@ -602,11 +567,10 @@ forceilj = -epsilon[itype][jtype] * (filj1 + filj2 + filj3 + filj4 +
    global settings
 ------------------------------------------------------------------------- */
 
-void PairLJImprovedCut::settings(int narg, char **arg) {
+void PairLJImprovedCut::settings(int narg, char **arg)
+{
   if (narg != 1)
-    error->all(
-        FLERR,
-        "Pair style ilj/cut must have exactly one argument: cutoff distance");
+    error->all(FLERR, "Pair style ilj/cut must have exactly one argument: cutoff distance");
 
   cut_global = utils::numeric(FLERR, arg[0], false, lmp);
 
@@ -616,8 +580,7 @@ void PairLJImprovedCut::settings(int narg, char **arg) {
     int i, j;
     for (i = 1; i <= atom->ntypes; i++)
       for (j = i; j <= atom->ntypes; j++)
-        if (setflag[i][j])
-          cut[i][j] = cut_global;
+        if (setflag[i][j]) cut[i][j] = cut_global;
   }
 }
 
@@ -629,11 +592,10 @@ void PairLJImprovedCut::settings(int narg, char **arg) {
 7 or 8 coefficients: 5 for the ILJ, 2 for the pair, 1 for the cutoff (optional)
 
 */
-void PairLJImprovedCut::coeff(int narg, char **arg) {
-  if (narg < 7 || narg > 8)
-    error->all(FLERR, "Incorrect args for pair coefficients");
-  if (!allocated)
-    allocate();
+void PairLJImprovedCut::coeff(int narg, char **arg)
+{
+  if (narg < 7 || narg > 8) error->all(FLERR, "Incorrect args for pair coefficients");
+  if (!allocated) allocate();
 
   int ilo, ihi, jlo, jhi;
   utils::bounds(FLERR, arg[0], 1, atom->ntypes, ilo, ihi, error);
@@ -646,8 +608,7 @@ void PairLJImprovedCut::coeff(int narg, char **arg) {
   double epsilon_one = utils::numeric(FLERR, arg[6], false, lmp);
 
   double cut_one = cut_global;
-  if (narg == 8)
-    cut_one = utils::numeric(FLERR, arg[7], false, lmp);
+  if (narg == 8) cut_one = utils::numeric(FLERR, arg[7], false, lmp);
 
   if (rm_one <= 0.0 || epsilon_one < 0.0 || gamma_one <= 0.0)
     error->all(FLERR, "Illegal ILJ coefficients");
@@ -679,26 +640,23 @@ void PairLJImprovedCut::coeff(int narg, char **arg) {
     }
   }
 
-  if (count == 0)
-    error->all(FLERR, "Incorrect args for pair coefficients");
+  if (count == 0) error->all(FLERR, "Incorrect args for pair coefficients");
 }
 
 /* ----------------------------------------------------------------------
    init specific to this pair style
 ------------------------------------------------------------------------- */
 
-void PairLJImprovedCut::init_style() {
+void PairLJImprovedCut::init_style()
+{
   // request regular or rRESPA neighbor list
 
   int list_style = NeighConst::REQ_DEFAULT;
 
-  if (update->whichflag == 1 &&
-      utils::strmatch(update->integrate_style, "^respa")) {
+  if (update->whichflag == 1 && utils::strmatch(update->integrate_style, "^respa")) {
     auto respa = dynamic_cast<Respa *>(update->integrate);
-    if (respa->level_inner >= 0)
-      list_style = NeighConst::REQ_RESPA_INOUT;
-    if (respa->level_middle >= 0)
-      list_style = NeighConst::REQ_RESPA_ALL;
+    if (respa->level_inner >= 0) list_style = NeighConst::REQ_RESPA_INOUT;
+    if (respa->level_middle >= 0) list_style = NeighConst::REQ_RESPA_ALL;
   }
   neighbor->add_request(this, list_style);
 
@@ -715,16 +673,16 @@ void PairLJImprovedCut::init_style() {
    init for one type pair i,j and corresponding j,i
 ------------------------------------------------------------------------- */
 
-double PairLJImprovedCut::init_one(int i, int j) {
-  if (setflag[i][j] == 0)
-    error->all(FLERR, "All pair coeffs are not set");
+double PairLJImprovedCut::init_one(int i, int j)
+{
+  if (setflag[i][j] == 0) error->all(FLERR, "All pair coeffs are not set");
 
   if (offset_flag && (cut[i][j] > 0.0)) {
     double r = cut[i][j] / rm[i][j];
     double nx = alpha[i][j] * r * r + beta[i][j];
-    offset[i][j] =
-        epsilon[i][j] * ((gamma[i][j] / (nx - gamma[i][j])) * pow(1 / r, nx) -
-                         (nx / (nx - gamma[i][j])) * pow(1 / r, gamma[i][j]));
+    offset[i][j] = epsilon[i][j] *
+        ((gamma[i][j] / (nx - gamma[i][j])) * pow(1 / r, nx) -
+         (nx / (nx - gamma[i][j])) * pow(1 / r, gamma[i][j]));
   } else
     offset[i][j] = 0.0;
 
@@ -747,7 +705,8 @@ double PairLJImprovedCut::init_one(int i, int j) {
    proc 0 writes to restart file
 ------------------------------------------------------------------------- */
 
-void PairLJImprovedCut::write_restart(FILE *fp) {
+void PairLJImprovedCut::write_restart(FILE *fp)
+{
   write_restart_settings(fp);
 
   int i, j;
@@ -769,7 +728,8 @@ void PairLJImprovedCut::write_restart(FILE *fp) {
    proc 0 writes to restart file
 ------------------------------------------------------------------------- */
 
-void PairLJImprovedCut::write_restart_settings(FILE *fp) {
+void PairLJImprovedCut::write_restart_settings(FILE *fp)
+{
   fwrite(&cut_global, sizeof(double), 1, fp);
   fwrite(&offset_flag, sizeof(int), 1, fp);
   fwrite(&mix_flag, sizeof(int), 1, fp);
@@ -779,7 +739,8 @@ void PairLJImprovedCut::write_restart_settings(FILE *fp) {
    proc 0 reads from restart file, bcasts
 ------------------------------------------------------------------------- */
 
-void PairLJImprovedCut::read_restart(FILE *fp) {
+void PairLJImprovedCut::read_restart(FILE *fp)
+{
   read_restart_settings(fp);
   allocate();
 
@@ -787,24 +748,16 @@ void PairLJImprovedCut::read_restart(FILE *fp) {
   int me = comm->me;
   for (i = 1; i <= atom->ntypes; i++)
     for (j = i; j <= atom->ntypes; j++) {
-      if (me == 0)
-        utils::sfread(FLERR, &setflag[i][j], sizeof(int), 1, fp, nullptr,
-                      error);
+      if (me == 0) utils::sfread(FLERR, &setflag[i][j], sizeof(int), 1, fp, nullptr, error);
       MPI_Bcast(&setflag[i][j], 1, MPI_INT, 0, world);
       if (setflag[i][j]) {
         if (me == 0) {
-          utils::sfread(FLERR, &alpha[i][j], sizeof(double), 1, fp, nullptr,
-                        error);
-          utils::sfread(FLERR, &beta[i][j], sizeof(double), 1, fp, nullptr,
-                        error);
-          utils::sfread(FLERR, &gamma[i][j], sizeof(double), 1, fp, nullptr,
-                        error);
-          utils::sfread(FLERR, &rm[i][j], sizeof(double), 1, fp, nullptr,
-                        error);
-          utils::sfread(FLERR, &epsilon[i][j], sizeof(double), 1, fp, nullptr,
-                        error);
-          utils::sfread(FLERR, &cut[i][j], sizeof(double), 1, fp, nullptr,
-                        error);
+          utils::sfread(FLERR, &alpha[i][j], sizeof(double), 1, fp, nullptr, error);
+          utils::sfread(FLERR, &beta[i][j], sizeof(double), 1, fp, nullptr, error);
+          utils::sfread(FLERR, &gamma[i][j], sizeof(double), 1, fp, nullptr, error);
+          utils::sfread(FLERR, &rm[i][j], sizeof(double), 1, fp, nullptr, error);
+          utils::sfread(FLERR, &epsilon[i][j], sizeof(double), 1, fp, nullptr, error);
+          utils::sfread(FLERR, &cut[i][j], sizeof(double), 1, fp, nullptr, error);
         }
         MPI_Bcast(&alpha[i][j], 1, MPI_DOUBLE, 0, world);
         MPI_Bcast(&beta[i][j], 1, MPI_DOUBLE, 0, world);
@@ -820,7 +773,8 @@ void PairLJImprovedCut::read_restart(FILE *fp) {
    proc 0 reads from restart file, bcasts
 ------------------------------------------------------------------------- */
 
-void PairLJImprovedCut::read_restart_settings(FILE *fp) {
+void PairLJImprovedCut::read_restart_settings(FILE *fp)
+{
   int me = comm->me;
   if (me == 0) {
     utils::sfread(FLERR, &cut_global, sizeof(double), 1, fp, nullptr, error);
@@ -836,74 +790,70 @@ void PairLJImprovedCut::read_restart_settings(FILE *fp) {
    proc 0 writes to data file
 ------------------------------------------------------------------------- */
 
-void PairLJImprovedCut::write_data(FILE *fp) {
+void PairLJImprovedCut::write_data(FILE *fp)
+{
   for (int i = 1; i <= atom->ntypes; i++)
-    fprintf(fp, "%d %g %g %g %g %g\n", i, alpha[i][i], beta[i][i], gamma[i][i],
-            rm[i][i], epsilon[i][i]);
+    fprintf(fp, "%d %g %g %g %g %g\n", i, alpha[i][i], beta[i][i], gamma[i][i], rm[i][i],
+            epsilon[i][i]);
 }
 
 /* ----------------------------------------------------------------------
    proc 0 writes all pairs to data file
 ------------------------------------------------------------------------- */
 
-void PairLJImprovedCut::write_data_all(FILE *fp) {
+void PairLJImprovedCut::write_data_all(FILE *fp)
+{
   for (int i = 1; i <= atom->ntypes; i++)
     for (int j = i; j <= atom->ntypes; j++)
-      fprintf(fp, "%d %d %g %g %g %g %g %g\n", i, j, alpha[i][j], beta[i][j],
-              gamma[i][j], rm[i][j], epsilon[i][j], cut[i][j]);
+      fprintf(fp, "%d %d %g %g %g %g %g %g\n", i, j, alpha[i][j], beta[i][j], gamma[i][j], rm[i][j],
+              epsilon[i][j], cut[i][j]);
 }
 
 /* ---------------------------------------------------------------------- */
 
-double PairLJImprovedCut::single(int /*i*/, int /*j*/, int itype, int jtype,
-                          double rsq, double /*factor_coul*/, double factor_lj,
-                          double &fforce) {
+double PairLJImprovedCut::single(int /*i*/, int /*j*/, int itype, int jtype, double rsq,
+                                 double /*factor_coul*/, double factor_lj, double &fforce)
+{
   double r, rx, n_x, filj1, filj2, filj3, filj4, filj5, filj6, forceilj;
   double ilj1, ilj2;
 
   r = sqrt(rsq);
   rx = r / rm[itype][jtype];
   n_x = alpha[itype][jtype] * rx * rx + beta[itype][jtype];
-  filj1 = -2.0 * alpha[itype][jtype] * gamma[itype][jtype] * rx *
-          pow(1 / rx, n_x) /
-          (pow(n_x - gamma[itype][jtype], 2.0) * rm[itype][jtype]);
+  filj1 = -2.0 * alpha[itype][jtype] * gamma[itype][jtype] * rx * pow(1 / rx, n_x) /
+      (pow(n_x - gamma[itype][jtype], 2.0) * rm[itype][jtype]);
 
-  filj2 = +2.0 * alpha[itype][jtype] * rx * n_x *
-          pow(1 / rx, gamma[itype][jtype]) /
-          (pow(n_x - gamma[itype][jtype], 2.0) * rm[itype][jtype]);
+  filj2 = +2.0 * alpha[itype][jtype] * rx * n_x * pow(1 / rx, gamma[itype][jtype]) /
+      (pow(n_x - gamma[itype][jtype], 2.0) * rm[itype][jtype]);
 
   filj3 = -2.0 * alpha[itype][jtype] * rx * pow(1 / rx, gamma[itype][jtype]) /
-          (rm[itype][jtype] * (n_x - gamma[itype][jtype]));
+      (rm[itype][jtype] * (n_x - gamma[itype][jtype]));
 
-  filj4 = +2.0 * alpha[itype][jtype] * gamma[itype][jtype] *
-          (rx / rm[itype][jtype]) * log(1 / rx) * pow(1 / rx, n_x) /
-          (n_x - gamma[itype][jtype]);
+  filj4 = +2.0 * alpha[itype][jtype] * gamma[itype][jtype] * (rx / rm[itype][jtype]) * log(1 / rx) *
+      pow(1 / rx, n_x) / (n_x - gamma[itype][jtype]);
 
-  filj5 = -1.0 * gamma[itype][jtype] * n_x * pow(1 / rx, n_x) /
-          (r * (n_x - gamma[itype][jtype]));
+  filj5 = -1.0 * gamma[itype][jtype] * n_x * pow(1 / rx, n_x) / (r * (n_x - gamma[itype][jtype]));
 
   filj6 = +1.0 * gamma[itype][jtype] * n_x * pow(1 / rx, gamma[itype][jtype]) /
-          (r * (n_x - gamma[itype][jtype]));
+      (r * (n_x - gamma[itype][jtype]));
 
-  forceilj =
-      -epsilon[itype][jtype] * (filj1 + filj2 + filj3 + filj4 + filj5 + filj6);
+  forceilj = -epsilon[itype][jtype] * (filj1 + filj2 + filj3 + filj4 + filj5 + filj6);
 
   fforce = factor_lj * forceilj / r;
 
-  ilj1 = epsilon[itype][jtype] * gamma[itype][jtype] * pow(1 / rx, n_x) /
-         (n_x - gamma[itype][jtype]);
-  ilj2 = -epsilon[itype][jtype] * n_x * pow(1 / rx, gamma[itype][jtype]) /
-         (n_x - gamma[itype][jtype]);
+  ilj1 =
+      epsilon[itype][jtype] * gamma[itype][jtype] * pow(1 / rx, n_x) / (n_x - gamma[itype][jtype]);
+  ilj2 =
+      -epsilon[itype][jtype] * n_x * pow(1 / rx, gamma[itype][jtype]) / (n_x - gamma[itype][jtype]);
   return factor_lj * (ilj1 + ilj2 - offset[itype][jtype]);
 }
 
 /* ---------------------------------------------------------------------- */
 
-void *PairLJImprovedCut::extract(const char *str, int &dim) {
+void *PairLJImprovedCut::extract(const char *str, int &dim)
+{
   dim = 2;
-  if (strcmp(str, "alpha") == 0)
-    return (void *)alpha;
-  if (strcmp(str, "beta") == 0)
-    return (void *)beta;
+  if (strcmp(str, "alpha") == 0) return (void *) alpha;
+  if (strcmp(str, "beta") == 0) return (void *) beta;
   return nullptr;
 }
