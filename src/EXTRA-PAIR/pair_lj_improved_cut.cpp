@@ -42,7 +42,7 @@ using MathSpecial::square;
 
 PairLJImprovedCut::PairLJImprovedCut(LAMMPS *lmp) : Pair(lmp)
 {
-  respa_enable = 0;
+  respa_enable = 1;
   born_matrix_enable = 0;
   writedata = 1;
 }
@@ -254,6 +254,7 @@ void PairLJImprovedCut::compute_inner()
       rsq = delx * delx + dely * dely + delz * delz;
 
       if (rsq < cut_out_off_sq) {
+        jtype = type[j];
         r = sqrt(rsq);
 
         rx = r / rm[itype][jtype];
@@ -360,6 +361,7 @@ void PairLJImprovedCut::compute_middle()
       rsq = delx * delx + dely * dely + delz * delz;
 
       if (rsq < cut_out_off_sq && rsq > cut_in_off_sq) {
+        jtype = type[j];
         r = sqrt(rsq);
 
         rx = r / rm[itype][jtype];
