@@ -32,6 +32,7 @@ Syntax
          frac = size of sampling window (must be between 0.5 and 1.0)
        *atomic/energy* yes/no
          yes = use the atomic energy method to calculate energy changes
+         no = use the default method to calculate energy changes
 
 Examples
 """"""""
@@ -134,7 +135,7 @@ uses the default method, see discussion below in Restrictions section.
 A value of *yes* uses the atomic energy method,
 if the method has been implemented for the LAMMPS energy model,
 otherwise LAMMPS will exit with an error message.
-So for this has only been implemented for EAM type potentials.
+So far this has only been implemented for EAM type potentials.
 
 ------------
 
