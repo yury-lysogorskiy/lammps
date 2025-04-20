@@ -91,7 +91,7 @@ Pair::Pair(LAMMPS *lmp) :
   centroidstressflag = CENTROID_SAME;
 
   atomic_energy_enable = 0;
-  
+
   // pair_modify settings
 
   compute_flag = 1;

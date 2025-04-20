@@ -351,7 +351,7 @@ double PairEAM::compute_atomic_energy(int i, NeighList *neighborList)
   double* coeff;
   double Ei = 0.0;
   double rhoi = 0.0;
-  
+
   double xi = atom->x[i][0];
   double yi = atom->x[i][1];
   double zi = atom->x[i][2];
@@ -382,7 +382,7 @@ double PairEAM::compute_atomic_energy(int i, NeighList *neighborList)
 
     // sum pair energy ij
     // divide by 2 to avoid double counting energy
-    
+
     coeff = z2r_spline[type2z2r[jtype][itype]][m];
     double z2 = ((coeff[3]*p + coeff[4])*p + coeff[5])*p + coeff[6];
     Ei += 0.5*z2 / r;
@@ -393,7 +393,7 @@ double PairEAM::compute_atomic_energy(int i, NeighList *neighborList)
   }
 
   // compute the change in embedding energy of atom i.
-    
+
   p = rhoi * rdrho + 1.0;
   m = static_cast<int>(p);
   m = MAX(1, MIN(m, nrho - 1));

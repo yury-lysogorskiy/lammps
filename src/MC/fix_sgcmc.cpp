@@ -195,12 +195,12 @@ FixSemiGrandCanonicalMC::FixSemiGrandCanonicalMC(LAMMPS *_lmp, int narg, char **
 
       if (comm->nprocs != 1)
         error->all(FLERR, "Cannot use serial mode Monte Carlo in a parallel simulation.");
-      
+
     } else if (strcmp(arg[iarg],"atomic/energy") == 0) {
       if (iarg+2 > narg) utils::missing_cmd_args(FLERR, fmt::format("fix {} atomic/energy", style), error);
       atomicenergyflag = utils::logical(FLERR,arg[iarg+1],false,lmp);
       iarg += 2;
-      
+
     } else {
       error->all(FLERR, "Unknown fix sgcmc keyword: {}", arg[iarg]);
     }
@@ -274,7 +274,7 @@ void FixSemiGrandCanonicalMC::init()
       compute_pe = modify->get_compute_by_id("thermo_pe");
     }
   }
-  
+
   interactionRadius = force->pair->cutforce;
   if (comm->me == 0) utils::logmesg(lmp, "  SGC - Interaction radius: {}\n", interactionRadius);
 
@@ -285,7 +285,6 @@ void FixSemiGrandCanonicalMC::init()
     neighbor->add_request(this, NeighConst::REQ_FULL | NeighConst::REQ_GHOST);
   else
     neighbor->add_request(this, NeighConst::REQ_FULL);
-    
 
   // Count local number of atoms from each species.
   const int *type = atom->type;
@@ -403,7 +402,7 @@ void FixSemiGrandCanonicalMC::doMC()
         deltaN[newSpecies] = +1;
 
         // Compute the energy difference that swapping this atom would cost or gain.
-        
+
         // Atomic energy method:
         if(atomicenergyflag) {
           deltaE = computeEnergyChangeEatom(selectedAtom, oldSpecies, newSpecies);
@@ -416,7 +415,7 @@ void FixSemiGrandCanonicalMC::doMC()
             deltaE = computeEnergyChangeGeneric(selectedAtom, oldSpecies, newSpecies);
           }
         }
-        
+
         // Perform inner MC acceptance test.
         double dm = 0.0;
         if (serialMode && kappa != 0.0) {
@@ -1037,9 +1036,9 @@ double FixSemiGrandCanonicalMC::computeEnergyChangeEatom(int flipAtom, int oldSp
   // Calculate old atomic energy of selected atom
 
   Eold = force->pair->compute_atomic_energy(flipAtom, neighborList);
-  
+
   // calculate the old per-atom energy of neighbors
-  
+
   int* jlist = neighborList->firstneigh[flipAtom];
   int jnum = neighborList->numneigh[flipAtom];
 
@@ -1053,14 +1052,14 @@ double FixSemiGrandCanonicalMC::computeEnergyChangeEatom(int flipAtom, int oldSp
   atom->type[flipAtom] = newSpecies;
 
   Enew = force->pair->compute_atomic_energy(flipAtom, neighborList);
-  
+
   // calculate the new per-atom energy of neighbors
-  
+
   for(int jj = 0; jj < jnum; jj++) {
     int j = jlist[jj];
     Enew += force->pair->compute_atomic_energy(j, neighborList);
   }
-  
+
   atom->type[flipAtom] = oldSpecies;
 
   deltaE = Enew - Eold;
@@ -1071,8 +1070,8 @@ double FixSemiGrandCanonicalMC::computeEnergyChangeEatom(int flipAtom, int oldSp
 }
 
 /*********************************************************************
- * 
- * 
+ * Flips the type of one atom.
+ * This routine is for the per-atom energy case.
  *********************************************************************/
 
 void FixSemiGrandCanonicalMC::flipAtomEatom(int flipAtom, int oldSpecies, int newSpecies)
