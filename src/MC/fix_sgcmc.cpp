@@ -163,7 +163,6 @@ FixSemiGrandCanonicalMC::FixSemiGrandCanonicalMC(LAMMPS *_lmp, int narg, char **
       if (iarg + 1 + atom->ntypes > narg)
         utils::missing_cmd_args(FLERR, "fix sgcmc variance", error);
       iarg++;
-      //      printf("variance iarg = %d narg = %d\n", iarg, narg);
 
       kappa = utils::numeric(FLERR, arg[iarg], false, lmp);
       if (kappa < 0) error->all(FLERR, "Variance constraint parameter must not be negative.");
@@ -185,7 +184,6 @@ FixSemiGrandCanonicalMC::FixSemiGrandCanonicalMC(LAMMPS *_lmp, int narg, char **
           utils::logmesg(lmp, "  SGC - Target concentration of species {}: {}\n", i,
                          targetConcentration[i]);
       }
-      //      printf("variance iarg = %d narg = %d\n", iarg, narg);
     } else if (strcmp(arg[iarg], "serial") == 0) {
       // Switch off second rejection.
       serialMode = true;
@@ -1032,7 +1030,6 @@ double FixSemiGrandCanonicalMC::computeEnergyChangeEatom(int flipAtom, int oldSp
 {
   double Eold, Enew, deltaE;
 
-  //  printf("In computeEnergyChangeEatom()\n");
   // Calculate old atomic energy of selected atom
 
   Eold = force->pair->compute_atomic_energy(flipAtom, neighborList);
@@ -1063,8 +1060,6 @@ double FixSemiGrandCanonicalMC::computeEnergyChangeEatom(int flipAtom, int oldSp
   atom->type[flipAtom] = oldSpecies;
 
   deltaE = Enew - Eold;
-
-  //  printf("In computeEnergyChangeEatom() deltaE = %g\n", deltaE);
 
   return deltaE;
 }
