@@ -24,7 +24,6 @@
 #include "comm.h"
 #include "error.h"
 #include "force.h"
-#include "math_const.h"
 #include "math_special.h"
 #include "memory.h"
 #include "neigh_list.h"
@@ -36,7 +35,6 @@
 #include <cstring>
 
 using namespace LAMMPS_NS;
-using namespace MathConst;
 using MathSpecial::square;
 
 /* ---------------------------------------------------------------------- */
@@ -883,5 +881,8 @@ void *PairLJPirani::extract(const char *str, int &dim)
   dim = 2;
   if (strcmp(str, "alpha") == 0) return (void *) alpha;
   if (strcmp(str, "beta") == 0) return (void *) beta;
+  if (strcmp(str, "gamma") == 0) return (void *) gamma;
+  if (strcmp(str, "rm") == 0) return (void *) rm;
+  if (strcmp(str, "epsilon") == 0) return (void *) epsilon;
   return nullptr;
 }
