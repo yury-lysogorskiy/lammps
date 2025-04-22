@@ -532,7 +532,6 @@ void PairLJPirani::compute_outer(int eflag, int vflag)
 
         if (eflag) {
 
-
           r = sqrt(rsq);
 
           rx = r / rm[itype][jtype];
@@ -841,7 +840,7 @@ void PairLJPirani::write_data_all(FILE *fp)
 /* ---------------------------------------------------------------------- */
 
 double PairLJPirani::single(int /*i*/, int /*j*/, int itype, int jtype, double rsq,
-                                 double /*factor_coul*/, double factor_lj, double &fforce)
+                            double /*factor_coul*/, double factor_lj, double &fforce)
 {
   double r, rx, n_x, filj1, filj2, filj3, filj4, filj5, filj6, forceilj;
   double ilj1, ilj2;

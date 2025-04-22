@@ -17,44 +17,44 @@ PairStyle(lj/pirani,PairLJPirani);
 // clang-format on
 #else
 
-#ifndef LMP_PAIR_LJ_PIRANI
-#define LMP_PAIR_LJ_PIRANI
+#ifndef LMP_PAIR_LJ_PIRANI_H
+#define LMP_PAIR_LJ_PIRANI_H
 
 #include "pair.h"
 
 namespace LAMMPS_NS {
 
-  class PairLJPirani : public Pair {
-   public:
-    PairLJPirani(class LAMMPS *);
-    virtual  ~PairLJPirani() override;
-    void compute(int, int) override;
-    void settings(int, char **) override;
-    void coeff(int, char **) override;
-    void init_style() override;
-    double init_one(int, int) override;
-    void write_restart(FILE *) override;
-    void read_restart(FILE *) override;
-    void write_restart_settings(FILE *) override;
-    void read_restart_settings(FILE *) override;
-    void write_data(FILE *) override;
-    void write_data_all(FILE *) override;
-    double single(int, int, int, int, double, double, double, double &) override;
-    void *extract(const char *, int &) override;
-    void compute_inner() override;
-    void compute_middle() override;
-    void compute_outer(int, int) override;
+class PairLJPirani : public Pair {
+ public:
+  PairLJPirani(class LAMMPS *);
+  virtual ~PairLJPirani() override;
+  void compute(int, int) override;
+  void settings(int, char **) override;
+  void coeff(int, char **) override;
+  void init_style() override;
+  double init_one(int, int) override;
+  void write_restart(FILE *) override;
+  void read_restart(FILE *) override;
+  void write_restart_settings(FILE *) override;
+  void read_restart_settings(FILE *) override;
+  void write_data(FILE *) override;
+  void write_data_all(FILE *) override;
+  double single(int, int, int, int, double, double, double, double &) override;
+  void *extract(const char *, int &) override;
+  void compute_inner() override;
+  void compute_middle() override;
+  void compute_outer(int, int) override;
 
-   protected:
-    double cut_global;
-    double **cut;
-    double **alpha,**beta,**gamma,**rm,**epsilon;
-    double **offset;
-    double *cut_respa;
-    virtual void allocate();
-  };
+ protected:
+  double cut_global;
+  double **cut;
+  double **alpha, **beta, **gamma, **rm, **epsilon;
+  double **offset;
+  double *cut_respa;
+  virtual void allocate();
+};
 
-  }    // namespace LAMMPS_NS
+}    // namespace LAMMPS_NS
 
-  #endif
-  #endif
+#endif
+#endif
