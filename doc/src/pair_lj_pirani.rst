@@ -46,37 +46,37 @@ Lennard-Jones (ILJ) potential according to :ref:`(Pirani) <Pirani>`:
 
 
 An additional parameter, :math:`\alpha`, has been introduced in order
-to be able to recover the traditional Lennard-Jones (LJ) 12-6 with an adequate
+to be able to recover the traditional Lennard-Jones (LJ) 12-6 with a specific
 choice of parameters. With :math:`R_m \equiv r_0 = \sigma \cdot 2^{1 / 6}`,
 :math:`\alpha = 0`, :math:`\beta = 12` and :math:`\gamma = 6`
 it is straightforward to prove that LJ 12-6 is obtained.
 
 
-This potential provides some advantages with respect to the LJ
-potential and can be really useful for molecular dynamics simulations,
-as one can see from :ref:`(Pirani) <Pirani>`.
+This potential provides some advantages with respect to the standard LJ
+potential, as explained in :ref:`(Pirani) <Pirani>`.
 It can be used for neutral-neutral (:math:`\gamma = 6`),
 ion-neutral (:math:`\gamma = 4`) or ion-ion systems (:math:`\gamma = 1`).
-It removes most of the issues at short- and long-range of the LJ model.
+These settings remove issues at short- and long-range for these systems when
+a standard LJ model is used.
 
 
-It is possible to verify that using (:math:`\alpha= 4`), (:math:`\beta= 6`)
-and (:math:`\gamma = 6`), at the equilibrium distance,
-the first and second derivatives of ILJ coincide with those of LJ 12-6
-( and the reduced force constant amounts to the typical 72).
-In this case, LJ provides a long-range coefficient with a factor of 2 compared
-with the ILJ. Also, the short-range interaction is overestimated by LJ.
+It is possible to verify that using :math:`\alpha= 4`, :math:`\beta= 6`
+and :math:`\gamma = 6`, at the equilibrium distance, the first and second
+derivatives of ILJ match those of LJ 12-6. In this case, the standard LJ
+energy is two times stronger than ILJ at long distances. Also, strength
+of the short-range interaction is overestimated by LJ.
 The ILJ potential solves both problems.
 
 
-The analysis of a diverse amount of systems verified that (:math:`\alpha= 4`)
-works very well. In some special cases (e.g. those involving very small
-multiple charged ions) this factor may take a slightly different value.
-The parameter (:math:`\beta`) codifies the hardness (polarizability) of the
-interacting partners, and for neutral-neutral systems it ranges from 6 to 11.
-Moreover, the modulation of (:math:`\beta`) permits to indirectly consider the
-role of further interaction components (such as the charge transfer in the
-perturbative limit) and mitigates the effect of some uncertainty in the data.
+As discussed in :ref:`(Pirani) <Pirani>`, analyses of a
+variety of systems showed that :math:`\alpha= 4` generally works very well.
+In some special cases (e.g. those involving very small multiple charged ions)
+this factor may take a slightly different value. The parameter :math:`\beta`
+codifies the hardness (polarizability) of the interacting partners, and for
+neutral-neutral systems it ranges from 6 to 11. Moreover, the modulation of
+:math:`\beta` can model additional interaction effects, such as charge
+transfer in the perturbative limit, and can mitigate the effect of some
+uncertainty in the data used to build up the potential function.
 
 
 The following coefficients must be defined for each pair of atoms
