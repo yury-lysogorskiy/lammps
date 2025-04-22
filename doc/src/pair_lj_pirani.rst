@@ -1,6 +1,6 @@
-.. index:: pair_style lj/improved/cut
+.. index:: pair_style lj/pirani
 
-pair_style lj/improved/cut command
+pair_style lj/pirani command
 ==================================
 
 Syntax
@@ -8,9 +8,9 @@ Syntax
 
 .. code-block:: LAMMPS
 
-   pair_style lj/improved/cut cutoff
+   pair_style lj/pirani cutoff
 
-* lj/improved/cut = name of the pair style
+* lj/pirani = name of the pair style
 * cutoff = global cutoff (distance units)
 
 Examples
@@ -18,7 +18,7 @@ Examples
 
 .. code-block:: LAMMPS
 
-   pair_style lj/improved/cut 10.0
+   pair_style lj/pirani 10.0
    pair_coeff 1 1 4.0 7.0 6.0 3.5 0.0045
 
 Description
@@ -26,7 +26,7 @@ Description
 
 .. versionadded:: TBD
 
-Pair style *lj/improved/cut* computes pairwise interactions from an Improved
+Pair style *lj/pirani* computes pairwise interactions from an Improved
 Lennard-Jones (ILJ) potential according to :ref:`(Pirani) <Pirani>`:
 
 
