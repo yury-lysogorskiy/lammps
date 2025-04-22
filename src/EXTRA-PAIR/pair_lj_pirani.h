@@ -13,21 +13,21 @@
 
 #ifdef PAIR_CLASS
 // clang-format off
-PairStyle(lj/improved/cut,PairLJImprovedCut);
+PairStyle(lj/pirani,PairLJPirani);
 // clang-format on
 #else
 
-#ifndef LMP_PAIR_LJ_IMPROVED_CUT_H
-#define LMP_PAIR_LJ_IMPROVED_CUT_H
+#ifndef LMP_PAIR_LJ_PIRANI
+#define LMP_PAIR_LJ_PIRANI
 
 #include "pair.h"
 
 namespace LAMMPS_NS {
 
-  class PairLJImprovedCut : public Pair {
+  class PairLJPirani : public Pair {
    public:
-    PairLJImprovedCut(class LAMMPS *);
-    virtual  ~PairLJImprovedCut() override;
+    PairLJPirani(class LAMMPS *);
+    virtual  ~PairLJPirani() override;
     void compute(int, int) override;
     void settings(int, char **) override;
     void coeff(int, char **) override;
