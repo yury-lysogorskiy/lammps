@@ -174,12 +174,12 @@ OPT.
    * :doc:`lj/expand/sphere (o) <pair_lj_expand_sphere>`
    * :doc:`lj/gromacs (gko) <pair_gromacs>`
    * :doc:`lj/gromacs/coul/gromacs (ko) <pair_gromacs>`
-   * :doc:`lj/improved/cut <pair_lj_improved_cut>`
    * :doc:`lj/long/coul/long (iot) <pair_lj_long>`
    * :doc:`lj/long/coul/long/dielectric <pair_dielectric>`
    * :doc:`lj/long/dipole/long <pair_dipole>`
    * :doc:`lj/long/tip4p/long (o) <pair_lj_long>`
    * :doc:`lj/mdf <pair_mdf>`
+   * :doc:`lj/pirani <pair_lj_pirani>`
    * :doc:`lj/relres (o) <pair_lj_relres>`
    * :doc:`lj/spica (gko) <pair_spica>`
    * :doc:`lj/spica/coul/long (gko) <pair_spica>`
