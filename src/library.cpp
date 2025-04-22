@@ -24,6 +24,7 @@
 #include "atom.h"
 #include "atom_vec.h"
 #include "comm.h"
+#include "command.h"
 #include "compute.h"
 #include "domain.h"
 #include "dump.h"
@@ -6115,6 +6116,53 @@ int lammps_find_compute_neighlist(void *handle, const char *id, int reqid) {
   END_CAPTURE
 
   return -1;
+}
+
+/* ---------------------------------------------------------------------- */
+
+// helper Command class for a single neighbor list build
+
+class NeighProxy : protected Command
+{
+ public:
+  NeighProxy(class LAMMPS *lmp) : Command(lmp), neigh_idx(-1) {};
+
+  void command(int, char **) override {
+    fprintf(stderr, "called NeighProxy::command()\n");
+  }
+  int get_index() const { return neigh_idx; }
+ protected:
+  int neigh_idx;
+};
+
+/** Build a single neighbor list in between runs and return its index
+ *
+ * A neighbor list request is created and the neighbor list built from a
+ * proxy command. The request ID is typically 0, but will be
+ * > 0 in case a compute has multiple neighbor list requests.
+ *
+ * \param handle   pointer to a previously created LAMMPS instance cast to ``void *``.
+ * \param id       Identifier of neighbor list request
+ * \param flags    Neighbor list flags
+ * \param cutoff   Custom neighbor list cutoff if > 0, use default cutoff if < 0
+ * \return         return neighbor list index if valid, otherwise -1 */
+
+int lammps_request_single_neighlist(void *handle, const char *id, int flags, double cutoff) {
+  auto lmp = (LAMMPS *)handle;
+  int idx = -1;
+  if (!lmp || !lmp->error || !lmp->neighbor) {
+    lammps_last_global_errormessage = fmt::format("ERROR: {}(): Invalid LAMMPS handle\n", FNERR);
+    return -1;
+  }
+
+  BEGIN_CAPTURE
+  {
+    NeighProxy proxy(lmp);
+    proxy.command(0, nullptr);
+    idx = proxy.get_index();
+  }
+  END_CAPTURE
+  return idx;
 }
 
 /* ---------------------------------------------------------------------- */

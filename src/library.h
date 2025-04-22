@@ -235,6 +235,7 @@ int lammps_create_atoms(void *handle, int n, const int64_t *id, const int *type,
 int lammps_find_pair_neighlist(void *handle, const char *style, int exact, int nsub, int request);
 int lammps_find_fix_neighlist(void *handle, const char *id, int request);
 int lammps_find_compute_neighlist(void *handle, const char *id, int request);
+int lammps_request_single_neighlist(void *handle, const char *id, int request, int flags, double cutoff);
 int lammps_neighlist_num_elements(void *handle, int idx);
 void lammps_neighlist_element_neighbors(void *handle, int idx, int element, int *iatom,
                                         int *numneigh, int **neighbors);
