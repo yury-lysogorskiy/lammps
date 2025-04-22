@@ -116,7 +116,7 @@ void SearchAndFill(struct FrcFieldItem *item)
   /* Read lines until keyword is found */
 
   if (fseek(FrcF,file_pos,SEEK_SET) < 0) {
-    fprintf(stderr, "Resetting file stream failed: ", strerror(errno));
+    fprintf(stderr, "Resetting file stream failed: %s\n", strerror(errno));
     exit(2);
   }
   strcpy(line,"empty");
@@ -212,7 +212,7 @@ void SearchAndFill(struct FrcFieldItem *item)
         item->data[replace].ver = version;
         item->data[replace].ref = reference;
         for (i=0; i < item->number_of_members; i++) {
-          strncpy(item->data[replace].ff_types[i],atom_types[i],5);
+          memcpy(item->data[replace].ff_types[i],atom_types[i],5);
         }
         for (i=0; i < item->number_of_parameters; i++) {
           item->data[replace].ff_param[i] = parameters[i];
@@ -230,7 +230,7 @@ void SearchAndFill(struct FrcFieldItem *item)
       item->data[ctr].ver = version;
       item->data[ctr].ref = reference;
       for (i=0; i < item->number_of_members; i++) {
-        strncpy(item->data[ctr].ff_types[i],atom_types[i],5);
+        memcpy(item->data[ctr].ff_types[i],atom_types[i],5);
       }
       for (i=0; i < item->number_of_parameters; i++) {
         item->data[ctr].ff_param[i] = parameters[i];

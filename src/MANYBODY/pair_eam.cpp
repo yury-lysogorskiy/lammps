@@ -33,8 +33,6 @@
 
 using namespace LAMMPS_NS;
 
-#define MAXLINE 1024
-
 /* ---------------------------------------------------------------------- */
 
 PairEAM::PairEAM(LAMMPS *lmp) : Pair(lmp)
@@ -150,6 +148,8 @@ void PairEAM::compute(int eflag, int vflag)
   evdwl = 0.0;
   ev_init(eflag,vflag);
 
+  int beyond_rhomax = 0;
+
   // grow energy and fp arrays if necessary
   // need to be atom->nmax in length
 
@@ -239,7 +239,10 @@ void PairEAM::compute(int eflag, int vflag)
     fp[i] = (coeff[0]*p + coeff[1])*p + coeff[2];
     if (eflag) {
       phi = ((coeff[3]*p + coeff[4])*p + coeff[5])*p + coeff[6];
-      if (rho[i] > rhomax) phi += fp[i] * (rho[i]-rhomax);
+      if (rho[i] > rhomax) {
+        phi += fp[i] * (rho[i]-rhomax);
+        beyond_rhomax = 1;
+      }
       phi *= scale[type[i]][type[i]];
       if (eflag_global) eng_vdwl += phi;
       if (eflag_atom) eatom[i] += phi;
@@ -324,6 +327,16 @@ void PairEAM::compute(int eflag, int vflag)
     }
   }
 
+  if (eflag && (!exceeded_rhomax)) {
+    MPI_Allreduce(&beyond_rhomax, &exceeded_rhomax, 1, MPI_INT, MPI_SUM, world);
+    if (exceeded_rhomax) {
+      if (comm->me == 0)
+        error->warning(FLERR,
+                       "A per-atom density exceeded rhomax of EAM potential table - "
+                       "a linear extrapolation to the energy was made");
+    }
+  }
+
   if (vflag_fdotr) virial_fdotr_compute();
 }
 
@@ -371,7 +384,7 @@ void PairEAM::coeff(int narg, char **arg)
 {
   if (!allocated) allocate();
 
-  if (narg != 3) error->all(FLERR,"Incorrect args for pair coefficients");
+  if (narg != 3) error->all(FLERR,"Incorrect args for pair coefficients" + utils::errorurl(21));
 
   // parse pair of atom types
 
@@ -410,7 +423,7 @@ void PairEAM::coeff(int narg, char **arg)
     }
   }
 
-  if (count == 0) error->all(FLERR,"Incorrect args for pair coefficients");
+  if (count == 0) error->all(FLERR,"Incorrect args for pair coefficients" + utils::errorurl(21));
 }
 
 /* ----------------------------------------------------------------------
@@ -426,6 +439,8 @@ void PairEAM::init_style()
 
   neighbor->add_request(this);
   embedstep = -1;
+
+  exceeded_rhomax = 0;
 }
 
 /* ----------------------------------------------------------------------

@@ -19,10 +19,10 @@ Syntax
           * N = prepare data for output every this many timesteps
           * attributes = zero or more of the below attributes may be appended
 
-            *id1, id2* = IDs of 2 atoms in the bond
+            *id1, id2* = IDs of two atoms in the bond
             *time* = the timestep the bond broke
-            *x, y, z* = the center of mass position of the 2 atoms when the bond broke (distance units)
-            *x/ref, y/ref, z/ref* = the initial center of mass position of the 2 atoms (distance units)
+            *x, y, z* = the center of mass position of the two atoms when the bond broke (distance units)
+            *x/ref, y/ref, z/ref* = the initial center of mass position of the two atoms (distance units)
 
        *overlay/pair* value = *yes* or *no*
           bonded particles will still interact with pair forces
@@ -132,8 +132,8 @@ or :doc:`read_restart <read_restart>` commands:
 * :math:`k_b`           (force*distance/radians units)
 * :math:`f_{r,c}`       (force units)
 * :math:`f_{s,c}`       (force units)
-* :math:`\tau_{b,c}`    (force*distance units)
 * :math:`\tau_{t,c}`    (force*distance units)
+* :math:`\tau_{b,c}`    (force*distance units)
 * :math:`\gamma_n`      (force/velocity units)
 * :math:`\gamma_s`      (force/velocity units)
 * :math:`\gamma_r`      (force*distance/velocity units)
@@ -147,15 +147,18 @@ By default, pair forces are not calculated between bonded particles.
 Pair forces can alternatively be overlaid on top of bond forces by setting
 the *overlay/pair* keyword to *yes*. These settings require specific
 :doc:`special_bonds <special_bonds>` settings described in the
-restrictions.  Further details can be found in the :doc:`how to
-<Howto_bpm>` page on BPMs.
+restrictions.  Further details can be found in the :doc:`how to <Howto_bpm>`
+page on BPMs.
 
 .. versionadded:: 28Mar2023
 
 If the *break* keyword is set to *no*, LAMMPS assumes bonds should not break
 during a simulation run. This will prevent some unnecessary calculation.
-However, if a bond reaches a damage criterion greater than one,
-it will trigger an error.
+The recommended bond communication distance no longer depends on bond failure
+coefficients (which are ignored) but instead corresponds to the typical heuristic
+maximum strain used by typical non-bpm bond styles. Similar behavior to *break no*
+can also be attained by setting arbitrarily high values for all four failure
+coefficients. One cannot use *break no* with *smooth yes*.
 
 If the *store/local* keyword is used, an internal fix will track bonds that
 break during the simulation. Whenever a bond breaks, data is processed

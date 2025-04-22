@@ -16,12 +16,13 @@
 
 #include "pointers.h"
 #include <map>
+#include <mutex>
 
 namespace LAMMPS_NS {
 
 class Thermo : protected Pointers {
-  friend class MinCG;    // accesses compute_pe
-
+  friend class MinCG;      // accesses compute_pe
+  friend class DumpExtXYZ; // accesses compute_temp, compute_press, compute_pe
  public:
   char *style;
   int normflag;    // 0 if do not normalize by atoms, 1 if normalize
@@ -43,6 +44,8 @@ class Thermo : protected Pointers {
   int evaluate_keyword(const std::string &, double *);
 
   // for accessing cached thermo and related data
+  void lock_cache();
+  void unlock_cache();
   const int *get_line() const { return &nline; }
   const char *get_image_fname() const { return image_fname.c_str(); }
 
@@ -54,9 +57,14 @@ class Thermo : protected Pointers {
   void set_line(int _nline) { nline = _nline; }
   void set_image_fname(const std::string &fname) { image_fname = fname; }
 
+ protected:
+  class Compute *temperature, *pressure, *pe;
+
  private:
   int nfield, nfield_initial;
   int *vtype;
+  int triclinic_general;    // set by thermo_modify
+
   std::string line;
   std::vector<std::string> keyword, format, format_column_user, keyword_user;
   std::string format_line_user, format_float_user, format_int_user, format_bigint_user;
@@ -80,7 +88,11 @@ class Thermo : protected Pointers {
   int nline;
   std::string image_fname;
 
+  // mutex for locking the cache
+  std::mutex *cache_mutex;
+
   // data used by routines that compute single values
+
   int ivalue;          // integer value to print
   double dvalue;       // double value to print
   bigint bivalue;      // big integer value to print
@@ -93,8 +105,9 @@ class Thermo : protected Pointers {
   // index = where they are in computes list
   // id = ID of Compute objects
   // Compute * = ptrs to the Compute objects
+
   int index_temp, index_press_scalar, index_press_vector, index_pe;
-  class Compute *temperature, *pressure, *pe;
+  double press_tensor[3][3];
 
   int ncompute;                // # of Compute objects called by thermo
   char **id_compute;           // their IDs
@@ -171,6 +184,7 @@ class Thermo : protected Pointers {
 
   void compute_vol();
   void compute_density();
+
   void compute_lx();
   void compute_ly();
   void compute_lz();
@@ -186,14 +200,26 @@ class Thermo : protected Pointers {
   void compute_xz();
   void compute_yz();
 
+  void compute_avecx();
+  void compute_avecy();
+  void compute_avecz();
+  void compute_bvecx();
+  void compute_bvecy();
+  void compute_bvecz();
+  void compute_cvecx();
+  void compute_cvecy();
+  void compute_cvecz();
+
   void compute_xlat();
   void compute_ylat();
   void compute_zlat();
 
-  void compute_bonds();
-  void compute_angles();
-  void compute_dihedrals();
-  void compute_impropers();
+  void compute_cella();
+  void compute_cellb();
+  void compute_cellc();
+  void compute_cellalpha();
+  void compute_cellbeta();
+  void compute_cellgamma();
 
   void compute_pxx();
   void compute_pyy();
@@ -202,18 +228,23 @@ class Thermo : protected Pointers {
   void compute_pyz();
   void compute_pxz();
 
+  void compute_pxx_triclinic_general();
+  void compute_pyy_triclinic_general();
+  void compute_pzz_triclinic_general();
+  void compute_pxy_triclinic_general();
+  void compute_pxz_triclinic_general();
+  void compute_pyz_triclinic_general();
+
+  void compute_bonds();
+  void compute_angles();
+  void compute_dihedrals();
+  void compute_impropers();
+
   void compute_fmax();
   void compute_fnorm();
 
   void compute_nbuild();
   void compute_ndanger();
-
-  void compute_cella();
-  void compute_cellb();
-  void compute_cellc();
-  void compute_cellalpha();
-  void compute_cellbeta();
-  void compute_cellgamma();
 };
 
 }    // namespace LAMMPS_NS

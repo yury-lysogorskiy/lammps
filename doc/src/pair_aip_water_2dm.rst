@@ -22,13 +22,24 @@ Examples
 .. code-block:: LAMMPS
 
    pair_style  hybrid/overlay aip/water/2dm 16.0 1
-   pair_coeff  * * aip/water/2dm  COH.aip.water.2dm C Ow Hw
+   pair_coeff  * * aip/water/2dm  CBNOH.aip.water.2dm C Ow Hw
 
    pair_style  hybrid/overlay aip/water/2dm 16.0 lj/cut/tip4p/long 2 3 1 1 0.1546 10 8.5
-   pair_coeff  2 2   lj/cut/tip4p/long    8.0313e-3  3.1589  # O-O
-   pair_coeff  2 3   lj/cut/tip4p/long    0.0        0.0     # O-H
-   pair_coeff  3 3   lj/cut/tip4p/long    0.0        0.0     # H-H
-   pair_coeff  * *   aip/water/2dm        COH.aip.water.2dm    C Ow Hw
+   pair_coeff  2 2   lj/cut/tip4p/long    8.0313e-3  3.1589      # O-O
+   pair_coeff  2 3   lj/cut/tip4p/long    0.0        0.0         # O-H
+   pair_coeff  3 3   lj/cut/tip4p/long    0.0        0.0         # H-H
+   pair_coeff  * *   aip/water/2dm        CBNOH.aip.water.2dm    C Ow Hw
+
+   pair_style  hybrid/overlay aip/water/2dm 16.0 lj/cut/tip4p/long 3 4 1 1 0.1546 10 8.5 coul/shield 16.0 1
+   pair_coeff  1*2 1*2   none
+   pair_coeff  3 3   lj/cut/tip4p/long    8.0313e-3  3.1589      # O-O
+   pair_coeff  3 4   lj/cut/tip4p/long    0.0        0.0         # O-H
+   pair_coeff  4 4   lj/cut/tip4p/long    0.0        0.0         # H-H
+   pair_coeff  * *   aip/water/2dm        CBNOH.aip.water.2dm  B N Ow Hw
+   pair_coeff  1 3   coul/shield          1.333
+   pair_coeff  1 4   coul/shield          1.333
+   pair_coeff  2 3   coul/shield          1.333
+   pair_coeff  2 4   coul/shield          1.333
 
 Description
 """""""""""
@@ -37,19 +48,19 @@ Description
 
 The *aip/water/2dm* style computes the anisotropic interfacial potential
 (AIP) potential for interfaces of water with two-dimensional (2D)
-materials as described in :ref:`(Feng) <Feng>`.
+materials as described in :ref:`(Feng1) <Feng1>` and :ref:`(Feng2) <Feng2>`.
 
 .. math::
 
    E  = & \frac{1}{2} \sum_i \sum_{j \neq i} V_{ij} \\
-   V_{ij}  = & {\rm Tap}(r_{ij})\left \{ e^{-\alpha (r_{ij}/\beta -1)}
+   V_{ij}  = & \mathrm{Tap}(r_{ij})\left \{ e^{-\alpha (r_{ij}/\beta -1)}
                 \left [ \epsilon + f(\rho_{ij}) + f(\rho_{ji})\right ] -
                  \frac{1}{1+e^{-d\left [ \left ( r_{ij}/\left (s_R \cdot r^{eff} \right ) \right )-1 \right ]}}
                  \cdot \frac{C_6}{r^6_{ij}} \right \}\\
-   \rho_{ij}^2 = & r_{ij}^2 - ({\bf r}_{ij} \cdot {\bf n}_i)^2 \\
-   \rho_{ji}^2  = & r_{ij}^2 - ({\bf r}_{ij} \cdot {\bf n}_j)^2 \\
+   \rho_{ij}^2 = & r_{ij}^2 - (\mathbf{r}_{ij} \cdot \mathbf{n}_i)^2 \\
+   \rho_{ji}^2  = & r_{ij}^2 - (\mathbf{r}_{ij} \cdot \mathbf{n}_j)^2 \\
    f(\rho)  = &  C e^{ -( \rho / \delta )^2 } \\
-   {\rm Tap}(r_{ij})  = & 20\left ( \frac{r_{ij}}{R_{cut}} \right )^7 -
+   \mathrm{Tap}(r_{ij})  = & 20\left ( \frac{r_{ij}}{R_{cut}} \right )^7 -
                            70\left ( \frac{r_{ij}}{R_{cut}} \right )^6 +
                            84\left ( \frac{r_{ij}}{R_{cut}} \right )^5 -
                            35\left ( \frac{r_{ij}}{R_{cut}} \right )^4 + 1
@@ -62,12 +73,12 @@ larger than :math:`r_c` :doc:`pair_style ilp_graphene_hbn
 .. note::
 
    This pair style uses the atomic normal vector definition from
-   :ref:`(Feng) <Feng>`), where the atomic normal vectors of the
+   :ref:`(Feng1) <Feng1>`), where the atomic normal vectors of the
    hydrogen atoms are assumed to lie along the corresponding
    oxygen-hydrogen bonds and the normal vector of the central oxygen
    atom is defined as their average.
 
-The provided parameter file, ``COH.aip.water.2dm``, is intended for use
+The provided parameter file, ``CBNOH.aip.water.2dm``, is intended for use
 with *metal* :doc:`units <units>`, with energies in meV.  Two additional
 parameters, *S*, and *rcut* are included in the parameter file. *S* is
 designed to facilitate scaling of energies; *rcut* is the cutoff for an
@@ -77,7 +88,7 @@ the calculation of the normals for all atom pairs.
 .. note::
 
    The parameters presented in the provided parameter file,
-   ``COH.aip.water.2dm``, are fitted with the taper function enabled by
+   ``CBNOH.aip.water.2dm``, are fitted with the taper function enabled by
    setting the cutoff equal to 16.0 Angstrom.  Using a different cutoff
    or taper function setting should be carefully checked as they can
    lead to significant errors.  These parameters provide a good
@@ -134,7 +145,7 @@ if LAMMPS was built with that package.  See the :doc:`Build package
 This pair style requires the newton setting to be *on* for pair
 interactions.
 
-The ``COH.aip.water.2dm`` potential file provided with LAMMPS is
+The ``CBNOH.aip.water.2dm`` potential file provided with LAMMPS is
 parameterized for *metal* units.  You can use this pair style with any
 LAMMPS units, but you would need to create your own potential file with
 parameters in the appropriate units, if your simulation does not use
@@ -162,6 +173,10 @@ tap_flag = 1
 
 ----------
 
-.. _Feng:
+.. _Feng1:
 
-**(Feng)** Z. Feng and W. Ouyang et al., J. Phys. Chem. C. 127, 8704-8713 (2023).
+**(Feng1)** Z. Feng, ..., and W. Ouyang, J. Phys. Chem. C. 127(18), 8704-8713 (2023).
+
+.. _Feng2:
+
+**(Feng2)** Z. Feng, ..., and W. Ouyang, Langmuir 39(50), 18198-18207 (2023).

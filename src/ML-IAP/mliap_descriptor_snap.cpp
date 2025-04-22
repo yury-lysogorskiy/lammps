@@ -31,8 +31,7 @@
 
 using namespace LAMMPS_NS;
 
-#define MAXLINE 1024
-#define MAXWORD 3
+static constexpr int MAXLINE = 1024;
 
 /* ---------------------------------------------------------------------- */
 
@@ -364,8 +363,10 @@ void MLIAPDescriptorSNAP::read_paramfile(char *paramfilename)
   int sinnerflag = 0;
   int dinnerflag = 0;
 
-  for (int i = 0; i < nelements; i++) delete[] elements[i];
-  delete[] elements;
+  if (elements) {
+    for (int i = 0; i < nelements; i++) delete[] elements[i];
+    delete[] elements;
+  }
   memory->destroy(radelem);
   memory->destroy(wjelem);
   memory->destroy(cutsq);
@@ -380,7 +381,8 @@ void MLIAPDescriptorSNAP::read_paramfile(char *paramfilename)
                  utils::getsyserror());
   }
 
-  char line[MAXLINE], *ptr;
+  char line[MAXLINE] = {'\0'};
+  char *ptr;
   int eof = 0;
   int n;
 
@@ -422,6 +424,7 @@ void MLIAPDescriptorSNAP::read_paramfile(char *paramfilename)
         for (int ielem = 0; ielem < nelements; ielem++)
           elements[ielem] = utils::strdup(words.next());
         elementsflag = 1;
+        allocated_elements = 1;
       } else if (keywd == "radelems") {
         for (int ielem = 0; ielem < nelements; ielem++)
           radelem[ielem] = utils::numeric(FLERR, words.next(), false, lmp);

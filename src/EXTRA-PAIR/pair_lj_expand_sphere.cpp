@@ -20,8 +20,6 @@
 #include "math_special.h"
 #include "memory.h"
 #include "neigh_list.h"
-#include "neighbor.h"
-#include "update.h"
 
 #include <cmath>
 #include <cstring>
@@ -201,7 +199,7 @@ void PairLJExpandSphere::settings(int narg, char **arg)
 
 void PairLJExpandSphere::coeff(int narg, char **arg)
 {
-  if (narg < 4 || narg > 5) error->all(FLERR, "Incorrect args for pair coefficients");
+  if (narg < 4 || narg > 5) error->all(FLERR, "Incorrect args for pair coefficients" + utils::errorurl(21));
   if (!allocated) allocate();
 
   int ilo, ihi, jlo, jhi;
@@ -224,7 +222,7 @@ void PairLJExpandSphere::coeff(int narg, char **arg)
     }
   }
 
-  if (count == 0) error->all(FLERR, "Incorrect args for pair coefficients");
+  if (count == 0) error->all(FLERR, "Incorrect args for pair coefficients" + utils::errorurl(21));
 }
 
 /* ----------------------------------------------------------------------

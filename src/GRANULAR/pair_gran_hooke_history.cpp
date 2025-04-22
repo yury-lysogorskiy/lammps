@@ -407,7 +407,7 @@ void PairGranHookeHistory::settings(int narg, char **arg)
 
 void PairGranHookeHistory::coeff(int narg, char **arg)
 {
-  if (narg > 2) error->all(FLERR, "Incorrect args for pair coefficients");
+  if (narg > 2) error->all(FLERR, "Incorrect args for pair coefficients" + utils::errorurl(21));
   if (!allocated) allocate();
 
   int ilo, ihi, jlo, jhi;
@@ -422,7 +422,7 @@ void PairGranHookeHistory::coeff(int narg, char **arg)
     }
   }
 
-  if (count == 0) error->all(FLERR, "Incorrect args for pair coefficients");
+  if (count == 0) error->all(FLERR, "Incorrect args for pair coefficients" + utils::errorurl(21));
 }
 
 /* ----------------------------------------------------------------------
@@ -435,10 +435,10 @@ void PairGranHookeHistory::init_style()
 
   // error and warning checks
 
-  if (!atom->radius_flag || !atom->rmass_flag)
-    error->all(FLERR, "Pair granular requires atom attributes radius, rmass");
+  if (!atom->radius_flag || !atom->rmass_flag || !atom->omega_flag)
+    error->all(FLERR, "Pair gran/h* requires atom attributes radius, rmass, omega");
   if (comm->ghost_velocity == 0)
-    error->all(FLERR, "Pair granular requires ghost atoms store velocity");
+    error->all(FLERR, "Pair gran/h* requires ghost atoms store velocity");
 
   // need a granular neighbor list
 

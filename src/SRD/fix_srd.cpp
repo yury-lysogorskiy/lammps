@@ -52,13 +52,13 @@ enum { BIG_MOVE, SRD_MOVE, SRD_ROTATE };
 enum { CUBIC_ERROR, CUBIC_WARN };
 enum { SHIFT_NO, SHIFT_YES, SHIFT_POSSIBLE };
 
-#define EINERTIA 0.2    // moment of inertia prefactor for ellipsoid
+static constexpr double EINERTIA = 0.2;    // moment of inertia prefactor for ellipsoid
 
-#define ATOMPERBIN 30
-#define BIG 1.0e20
-#define VBINSIZE 5
-#define TOLERANCE 0.00001
-#define MAXITER 20
+static constexpr int ATOMPERBIN = 30;
+static constexpr double BIG = 1.0e20;
+static constexpr int VBINSIZE = 5;
+static constexpr double TOLERANCE = 0.00001;
+static constexpr int MAXITER = 20;
 
 static const char cite_fix_srd[] =
     "fix srd command: doi:10.1063/1.3419070\n\n"
@@ -3956,7 +3956,7 @@ void FixSRD::print_collision(int i, int j, int ibounce, double t_remain, double 
   double **v = atom->v;
 
   if (type != WALL) {
-    fmt::print("COLLISION between SRD {} and BIG {}\n", atom->tag[i], atom->tag[j]);
+    utils::print("COLLISION between SRD {} and BIG {}\n", atom->tag[i], atom->tag[j]);
     printf("  bounce # = %d\n", ibounce + 1);
     printf("  local indices: %d %d\n", i, j);
     printf("  timestep = %g\n", dt);
@@ -3997,7 +3997,7 @@ void FixSRD::print_collision(int i, int j, int ibounce, double t_remain, double 
   } else {
     int dim = wallwhich[j] / 2;
 
-    fmt::print("COLLISION between SRD {} and WALL {}\n", atom->tag[i], j);
+    utils::print("COLLISION between SRD {} and WALL {}\n", atom->tag[i], j);
     printf("  bounce # = %d\n", ibounce + 1);
     printf("  local indices: %d %d\n", i, j);
     printf("  timestep = %g\n", dt);

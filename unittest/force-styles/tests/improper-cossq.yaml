@@ -2,7 +2,7 @@
 lammps_version: 17 Feb 2022
 date_generated: Fri Mar 18 22:18:02 2022
 epsilon: 2.5e-13
-skip_tests:
+skip_tests: numdiff
 prerequisites: ! |
   atom full
   improper cossq
@@ -13,7 +13,9 @@ improper_style: cossq
 improper_coeff: ! |
   1  75.0 120.2
   2  45.0  59.5
-extract: ! ""
+extract: ! |
+  k 1
+  chi0 1
 natoms: 29
 init_energy: 47.901206451962224
 init_stress: ! |-

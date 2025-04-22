@@ -34,8 +34,6 @@
 
 using namespace LAMMPS_NS;
 
-#define MAXLINE 1024
-
 static const char cite_pair_local_density[] =
   "pair_style local/density command: doi:10.1063/1.4958629, doi:10.1021/acs.jpcb.7b12446\n\n"
   "@Article{Sanyal16,\n"
@@ -384,12 +382,12 @@ void PairLocalDensity::coeff(int narg, char **arg)
   int i, j;
   if (!allocated) allocate();
 
-  if (narg != 3) error->all(FLERR,"Incorrect args for pair coefficients");
+  if (narg != 3) error->all(FLERR,"Incorrect args for pair coefficients" + utils::errorurl(21));
 
   // ensure I,J args are * *
 
   if (strcmp(arg[0],"*") != 0 || strcmp(arg[1],"*") != 0)
-    error->all(FLERR,"Incorrect args for pair coefficients");
+    error->all(FLERR,"Incorrect args for pair coefficients" + utils::errorurl(21));
 
   // parse LD file
 
@@ -411,7 +409,7 @@ void PairLocalDensity::coeff(int narg, char **arg)
         count++;
       }
     }
-  if (count == 0) error->all(FLERR,"Incorrect args for pair coefficients");
+  if (count == 0) error->all(FLERR,"Incorrect args for pair coefficients" + utils::errorurl(21));
 }
 
 /* ----------------------------------------------------------------------

@@ -11,6 +11,10 @@
    See the README file in the top-level LAMMPS directory.
 ------------------------------------------------------------------------- */
 
+/* ----------------------------------------------------------------------
+   Contributing author: Joel Clemmer (SNL)
+------------------------------------------------------------------------- */
+
 #include "fix_nve_bpm_sphere.h"
 
 #include "atom.h"
@@ -28,7 +32,7 @@ using namespace MathExtra;
 
 FixNVEBPMSphere::FixNVEBPMSphere(LAMMPS *_lmp, int narg, char **arg) : FixNVE(_lmp, narg, arg)
 {
-  if (narg < 3) error->all(FLERR, "Illegal fix nve/bpm/sphere command");
+  if (narg < 3) utils::missing_cmd_args(FLERR, "fix nve/bpm/sphere", error);
 
   time_integrate = 1;
 
@@ -45,14 +49,14 @@ FixNVEBPMSphere::FixNVEBPMSphere(LAMMPS *_lmp, int narg, char **arg) : FixNVE(_l
         error->all(FLERR, "Fix nve/bpm/sphere disc requires 2d simulation");
       iarg++;
     } else
-      error->all(FLERR, "Illegal fix nve/bpm/sphere command");
+      error->all(FLERR, "Illegal fix nve/bpm/sphere keyword {}", arg[iarg]);
   }
 
   inv_inertia = 1.0 / inertia;
 
   // error checks
 
-  if (!atom->quat_flag || !atom->sphere_flag)
+  if (!atom->quat_flag || !atom->radius_flag || !atom->omega_flag)
     error->all(FLERR, "Fix nve/bpm/sphere requires atom style bpm/sphere");
 }
 

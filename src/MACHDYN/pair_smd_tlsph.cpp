@@ -34,6 +34,7 @@
 #include "fix.h"
 #include "force.h"
 #include "group.h"
+#include "info.h"
 #include "memory.h"
 #include "modify.h"
 #include "neighbor.h"
@@ -51,11 +52,9 @@ using namespace Eigen;
 using namespace LAMMPS_NS;
 using namespace SMD_Math;
 
-#define JAUMANN false
-#define DETF_MIN 0.2 // maximum compression deformation allow
-#define DETF_MAX 2.0 // maximum tension deformation allowed
-#define TLSPH_DEBUG 0
-#define PLASTIC_STRAIN_AVERAGE_WINDOW 100.0
+static constexpr bool JAUMANN = false;
+static constexpr double DETF_MIN = 0.2; // maximum compression deformation allow
+static constexpr double DETF_MAX = 2.0; // maximum tension deformation allowed
 
 /* ---------------------------------------------------------------------- */
 
@@ -1555,10 +1554,11 @@ double PairTlsph::init_one(int i, int j) {
     allocate();
 
   if (setflag[i][j] == 0)
-    error->all(FLERR, "All pair coeffs are not set");
+    error->all(FLERR, Error::NOLASTLINE,
+               "All pair coeffs are not set. Status:\n" + Info::get_pair_coeff_status(lmp));
 
   if (force->newton == 1)
-    error->all(FLERR, "Pair style tlsph requires newton off");
+    error->all(FLERR, Error::NOLASTLINE, "Pair style tlsph requires newton off");
 
 // cutoff = sum of max I,J radii for
 // dynamic/dynamic & dynamic/frozen interactions, but not frozen/frozen

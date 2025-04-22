@@ -21,13 +21,15 @@
 #include "comm.h"
 #include "error.h"
 #include "force.h"
+#include "info.h"
 #include "memory.h"
 #include "neigh_list.h"
-#include "update.h"
 
 #include "Lepton.h"
 #include "lepton_utils.h"
+
 #include <cmath>
+#include <exception>
 #include <map>
 
 using namespace LAMMPS_NS;
@@ -105,11 +107,17 @@ template <int EVFLAG, int EFLAG, int NEWTON_PAIR> void PairLepton::eval()
 
   std::vector<Lepton::CompiledExpression> pairforce;
   std::vector<Lepton::CompiledExpression> pairpot;
+  std::vector<bool> has_ref;
   try {
     for (const auto &expr : expressions) {
       auto parsed = Lepton::Parser::parse(LeptonUtils::substitute(expr, lmp), functions);
       pairforce.emplace_back(parsed.differentiate("r").createCompiledExpression());
-      pairforce.back().getVariableReference("r");
+      has_ref.push_back(true);
+      try {
+        pairforce.back().getVariableReference("r");
+      } catch (Lepton::Exception &) {
+        has_ref.back() = false;
+      }
       if (EFLAG) pairpot.emplace_back(parsed.createCompiledExpression());
     }
   } catch (std::exception &e) {
@@ -142,8 +150,7 @@ template <int EVFLAG, int EFLAG, int NEWTON_PAIR> void PairLepton::eval()
       if (rsq < cutsq[itype][jtype]) {
         const double r = sqrt(rsq);
         const int idx = type2expression[itype][jtype];
-        double &r_for = pairforce[idx].getVariableReference("r");
-        r_for = r;
+        if (has_ref[idx]) pairforce[idx].getVariableReference("r") = r;
         const double fpair = -pairforce[idx].evaluate() / r * factor_lj;
 
         fxtmp += delx * fpair;
@@ -157,7 +164,11 @@ template <int EVFLAG, int EFLAG, int NEWTON_PAIR> void PairLepton::eval()
 
         double evdwl = 0.0;
         if (EFLAG) {
-          pairpot[idx].getVariableReference("r") = r;
+          try {
+            pairpot[idx].getVariableReference("r") = r;
+          } catch (Lepton::Exception &) {
+            ;    // ignore -> constant potential
+          }
           evdwl = pairpot[idx].evaluate() - offset[itype][jtype];
           evdwl *= factor_lj;
         }
@@ -206,7 +217,8 @@ void PairLepton::settings(int narg, char **arg)
 
 void PairLepton::coeff(int narg, char **arg)
 {
-  if (narg < 3 || narg > 4) error->all(FLERR, "Incorrect number of args for pair coefficients");
+  if (narg < 3 || narg > 4)
+    error->all(FLERR, "Incorrect number of args for pair coefficients" + utils::errorurl(21));
   if (!allocated) allocate();
 
   int ilo, ihi, jlo, jhi;
@@ -229,8 +241,12 @@ void PairLepton::coeff(int narg, char **arg)
     auto parsed = Lepton::Parser::parse(LeptonUtils::substitute(exp_one, lmp), functions);
     auto pairforce = parsed.differentiate("r").createCompiledExpression();
     auto pairpot = parsed.createCompiledExpression();
-    pairpot.getVariableReference("r") = 1.0;
-    pairforce.getVariableReference("r") = 1.0;
+    try {
+      pairpot.getVariableReference("r") = 1.0;
+      pairforce.getVariableReference("r") = 1.0;
+    } catch (Lepton::Exception &) {
+      ;    // ignore -> constant potential or force
+    }
     pairpot.evaluate();
     pairforce.evaluate();
   } catch (std::exception &e) {
@@ -256,21 +272,27 @@ void PairLepton::coeff(int narg, char **arg)
     }
   }
 
-  if (count == 0) error->all(FLERR, "Incorrect args for pair coefficients");
+  if (count == 0) error->all(FLERR, "Incorrect args for pair coefficients" + utils::errorurl(21));
 }
 
 /* ---------------------------------------------------------------------- */
 
 double PairLepton::init_one(int i, int j)
 {
-  if (setflag[i][j] == 0) error->all(FLERR, "All pair coeffs are not set");
+  if (setflag[i][j] == 0)
+    error->all(FLERR, Error::NOLASTLINE,
+               "All pair coeffs are not set. Status:\n" + Info::get_pair_coeff_status(lmp));
 
   offset[i][j] = 0.0;
   if (offset_flag) {
     try {
       auto expr = LeptonUtils::substitute(expressions[type2expression[i][j]], lmp);
       auto pairpot = Lepton::Parser::parse(expr, functions).createCompiledExpression();
-      pairpot.getVariableReference("r") = cut[i][j];
+      try {
+        pairpot.getVariableReference("r") = cut[i][j];
+      } catch (Lepton::Exception &) {
+        ;    // ignore -> constant potential
+      }
       offset[i][j] = pairpot.evaluate();
     } catch (std::exception &) {
     }
@@ -429,9 +451,12 @@ double PairLepton::single(int /* i */, int /* j */, int itype, int jtype, double
   auto pairforce = parsed.differentiate("r").createCompiledExpression();
 
   const double r = sqrt(rsq);
-  pairpot.getVariableReference("r") = r;
-  pairforce.getVariableReference("r") = r;
-
+  try {
+    pairpot.getVariableReference("r") = r;
+    pairforce.getVariableReference("r") = r;
+  } catch (Lepton::Exception &) {
+    ;    // ignore -> constant potential or force
+  }
   fforce = -pairforce.evaluate() / r * factor_lj;
   return (pairpot.evaluate() - offset[itype][jtype]) * factor_lj;
 }

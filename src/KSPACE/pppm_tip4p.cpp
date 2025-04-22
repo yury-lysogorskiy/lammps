@@ -29,15 +29,8 @@
 using namespace LAMMPS_NS;
 using namespace MathConst;
 
-#define OFFSET 16384
-
-#ifdef FFT_SINGLE
-#define ZEROF 0.0f
-#define ONEF  1.0f
-#else
-#define ZEROF 0.0
-#define ONEF  1.0
-#endif
+static constexpr FFT_SCALAR ZEROF = 0.0;
+static constexpr int OFFSET = 16384;
 
 /* ---------------------------------------------------------------------- */
 
@@ -75,7 +68,7 @@ void PPPMTIP4P::particle_map()
   int nlocal = atom->nlocal;
 
   if (!std::isfinite(boxlo[0]) || !std::isfinite(boxlo[1]) || !std::isfinite(boxlo[2]))
-    error->one(FLERR,"Non-numeric box dimensions - simulation unstable");
+    error->one(FLERR,"Non-numeric box dimensions - simulation unstable" + utils::errorurl(6));
 
   int flag = 0;
   for (int i = 0; i < nlocal; i++) {
@@ -105,7 +98,7 @@ void PPPMTIP4P::particle_map()
 
   int flag_all;
   MPI_Allreduce(&flag,&flag_all,1,MPI_INT,MPI_SUM,world);
-  if (flag_all) error->all(FLERR,"Out of range atoms - cannot compute PPPM");
+  if (flag_all) error->all(FLERR, Error::NOLASTLINE, "Out of range atoms - cannot compute PPPM" + utils::errorurl(4));
 }
 
 /* ----------------------------------------------------------------------
@@ -483,7 +476,7 @@ void PPPMTIP4P::fieldforce_peratom()
   Fix handling of TIP4P dipole compared to PPPMDisp::slabcorr
 ------------------------------------------------------------------------- */
 
-#define SMALL 0.00001
+static constexpr double SMALL = 0.00001;
 
 void PPPMTIP4P::slabcorr()
 {

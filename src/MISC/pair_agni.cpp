@@ -21,8 +21,9 @@
 #include "atom.h"
 #include "citeme.h"
 #include "comm.h"
-#include "force.h"
 #include "error.h"
+#include "force.h"
+#include "info.h"
 #include "math_const.h"
 #include "math_special.h"
 #include "memory.h"
@@ -46,9 +47,6 @@ static const char cite_pair_agni[] =
   " pages     = {20715--20722},\n"
   " year      = {2019},\n"
   "}\n\n";
-
-#define MAXLINE 10240
-#define MAXWORD 40
 
 /* ---------------------------------------------------------------------- */
 
@@ -257,7 +255,9 @@ void PairAGNI::init_style()
 
 double PairAGNI::init_one(int i, int j)
 {
-  if (setflag[i][j] == 0) error->all(FLERR,"All pair coeffs are not set");
+  if (setflag[i][j] == 0)
+    error->all(FLERR, Error::NOLASTLINE,
+               "All pair coeffs are not set. Status\n" + Info::get_pair_coeff_status(lmp));
 
   return cutmax;
 }

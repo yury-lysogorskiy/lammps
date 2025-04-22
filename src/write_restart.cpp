@@ -59,7 +59,7 @@ WriteRestart::WriteRestart(LAMMPS *lmp) : Command(lmp)
 void WriteRestart::command(int narg, char **arg)
 {
   if (domain->box_exist == 0)
-    error->all(FLERR,"Write_restart command before simulation box is defined");
+    error->all(FLERR,"Write_restart command before simulation box is defined" + utils::errorurl(33));
   if (narg < 1) utils::missing_cmd_args(FLERR, "write_restart", error);
 
   // if filename contains a "*", replace with current timestep
@@ -448,6 +448,10 @@ void WriteRestart::header()
   write_double(XZ,domain->xz);
   write_double(YZ,domain->yz);
 
+  write_int(TRICLINIC_GENERAL,domain->triclinic_general);
+  if (domain->triclinic_general)
+    write_double_vec(ROTATE_G2R,9,&domain->rotate_g2r[0][0]);
+
   write_double_vec(SPECIAL_LJ,3,&force->special_lj[1]);
   write_double_vec(SPECIAL_COUL,3,&force->special_coul[1]);
 
@@ -545,7 +549,7 @@ void WriteRestart::force_fields()
    all procs call this method, only proc 0 writes to file
 ------------------------------------------------------------------------- */
 
-void WriteRestart::file_layout(int send_size)
+void WriteRestart::file_layout(int /*send_size*/)
 {
   if (me == 0) write_int(MULTIPROC,multiproc);
 

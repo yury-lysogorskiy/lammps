@@ -21,20 +21,14 @@
 #include "atom_kokkos.h"
 #include "comm.h"
 #include "error.h"
-#include "memory.h"
 #include "mliap_data_kokkos.h"
 #include "mliap_so3_kokkos.h"
 #include "pair_mliap.h"
-#include "tokenizer.h"
-
-#include <cstring>
 
 using namespace LAMMPS_NS;
 
-#define MAXLINE 1024
-#define MAXWORD 3
-
 /* ---------------------------------------------------------------------- */
+
 template <class DeviceType>
 MLIAPDescriptorSO3Kokkos<DeviceType>::MLIAPDescriptorSO3Kokkos(LAMMPS *lmp, char *paramfilename)
  // TODO: why take self as param, shouldn't be needed
@@ -42,6 +36,14 @@ MLIAPDescriptorSO3Kokkos<DeviceType>::MLIAPDescriptorSO3Kokkos(LAMMPS *lmp, char
 {
   // TODO: the MLIAP_SO3 object likely needs a kokkos-ified version
   so3ptr_kokkos = new MLIAP_SO3Kokkos<DeviceType>(lmp, rcutfac, lmax, nmax, alpha);
+}
+
+/* ---------------------------------------------------------------------- */
+
+template <class DeviceType>
+MLIAPDescriptorSO3Kokkos<DeviceType>::~MLIAPDescriptorSO3Kokkos()
+{
+  delete so3ptr_kokkos;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -82,7 +84,7 @@ void MLIAPDescriptorSO3Kokkos<DeviceType>::compute_forces(class MLIAPData *data_
   Kokkos::View<double[6], DeviceType> virial("virial");
   data->k_pairmliap->k_vatom.template modify<LMPHostType>();
   data->k_pairmliap->k_vatom.template sync<DeviceType>();
-  Kokkos::parallel_for(data->nlistatoms, KOKKOS_LAMBDA(int ii) {
+  Kokkos::parallel_for(Kokkos::RangePolicy<DeviceType>(0,data->nlistatoms), KOKKOS_LAMBDA(int ii) {
     double fij[3];
     const int i = d_iatoms(ii);
 
@@ -194,7 +196,7 @@ void MLIAPDescriptorSO3Kokkos<DeviceType>::compute_force_gradients(class MLIAPDa
 
   auto yoffset = data->yoffset, zoffset = data->zoffset, gamma_nnz = data->gamma_nnz;
 
-  Kokkos::parallel_for (data->nlistatoms, KOKKOS_LAMBDA (int ii) {
+  Kokkos::parallel_for (Kokkos::RangePolicy<DeviceType>(0,data->nlistatoms), KOKKOS_LAMBDA (int ii) {
     const int i = d_iatoms(ii);
 
     // ensure rij, inside, wj, and rcutij are of size jnum

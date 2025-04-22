@@ -16,6 +16,7 @@
 #include "atom.h"
 #include "comm.h"
 #include "error.h"
+#include "ewald_const.h"
 #include "force.h"
 #include "kspace.h"
 #include "math_const.h"
@@ -29,15 +30,8 @@
 #include <cstring>
 
 using namespace LAMMPS_NS;
+using namespace EwaldConst;
 using namespace MathConst;
-
-static constexpr double EWALD_F = 1.12837917;
-static constexpr double EWALD_P = 0.3275911;
-static constexpr double A1 = 0.254829592;
-static constexpr double A2 = -0.284496736;
-static constexpr double A3 = 1.421413741;
-static constexpr double A4 = -1.453152027;
-static constexpr double A5 = 1.061405429;
 
 /* ---------------------------------------------------------------------- */
 
@@ -631,7 +625,7 @@ void PairLJClass2CoulLong::settings(int narg, char **arg)
 
 void PairLJClass2CoulLong::coeff(int narg, char **arg)
 {
-  if (narg < 4 || narg > 5) error->all(FLERR, "Incorrect args for pair coefficients");
+  if (narg < 4 || narg > 5) error->all(FLERR, "Incorrect args for pair coefficients" + utils::errorurl(21));
 
   if (!allocated) allocate();
 
@@ -656,7 +650,7 @@ void PairLJClass2CoulLong::coeff(int narg, char **arg)
     }
   }
 
-  if (count == 0) error->all(FLERR, "Incorrect args for pair coefficients");
+  if (count == 0) error->all(FLERR, "Incorrect args for pair coefficients" + utils::errorurl(21));
 }
 
 /* ----------------------------------------------------------------------

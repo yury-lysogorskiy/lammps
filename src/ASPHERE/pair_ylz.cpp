@@ -12,7 +12,7 @@
 ------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------
-   Contributing author: Hongyan Yuan (SUSTech)
+   Contributing authors: Hongyan Yuan (SUSTech), Zhaoyan Huang(SUSTech)
 ------------------------------------------------------------------------- */
 
 #include "pair_ylz.h"
@@ -32,7 +32,7 @@
 #include <cmath>
 
 using namespace LAMMPS_NS;
-using MathConst::MY_4PI;
+using MathConst::MY_PI;
 using MathConst::MY_PI2;
 using MathConst::MY_TWOBYSIXTH;
 
@@ -239,7 +239,7 @@ void PairYLZ::settings(int narg, char **arg)
 
 void PairYLZ::coeff(int narg, char **arg)
 {
-  if (narg < 8 || narg > 8) error->all(FLERR, "Incorrect args for pair coefficients");
+  if (narg < 8 || narg > 8) error->all(FLERR, "Incorrect args for pair coefficients" + utils::errorurl(21));
   if (!allocated) allocate();
 
   int ilo, ihi, jlo, jhi;
@@ -268,7 +268,7 @@ void PairYLZ::coeff(int narg, char **arg)
     }
   }
 
-  if (count == 0) error->all(FLERR, "Incorrect args for pair coefficients");
+  if (count == 0) error->all(FLERR, "Incorrect args for pair coefficients" + utils::errorurl(21));
 }
 
 /* ----------------------------------------------------------------------
@@ -300,6 +300,7 @@ double PairYLZ::init_one(int i, int j)
   zeta[j][i] = zeta[i][j];
   mu[j][i] = mu[i][j];
   beta[j][i] = beta[i][j];
+  cut[j][i] = cut[i][j];
 
   return cut[i][j];
 }
@@ -409,7 +410,7 @@ void PairYLZ::write_data_all(FILE *fp)
 {
   for (int i = 1; i <= atom->ntypes; i++)
     for (int j = i; j <= atom->ntypes; j++)
-      fprintf(fp, "%d %d %g %g %g %g %g %g\n", i, j, epsilon[i][i], sigma[i][i], cut[i][j],
+      fprintf(fp, "%d %d %g %g %g %g %g %g\n", i, j, epsilon[i][j], sigma[i][j], cut[i][j],
               zeta[i][j], mu[i][j], beta[i][j]);
 }
 
@@ -486,7 +487,7 @@ double PairYLZ::ylz_analytic(const int i, const int j, double a1[3][3], double a
 
     uA = -energy_well * t1 * cos_t;
     U = uA * phi;
-    dUdr = MY_4PI / (rcut - rmin) * (t1) *sin(t) * phi * energy_well;
+    dUdr = MY_PI * zt / (rcut - rmin) * (t1) *sin(t) * phi * energy_well;
     dUdphi = uA;
   }
 

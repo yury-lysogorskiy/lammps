@@ -30,8 +30,7 @@
 
 using namespace LAMMPS_NS;
 
-#define MAXLINE 1024
-#define MAXWORD 3
+static constexpr int MAXLINE = 1024;
 
 /* ---------------------------------------------------------------------- */
 
@@ -74,8 +73,10 @@ void MLIAPDescriptorSO3::read_paramfile(char *paramfilename)
   rfac0 = 0.99363;
   rmin0 = 0.0;
 
-  for (int i = 0; i < nelements; i++) delete[] elements[i];
-  delete[] elements;
+  if (elements) {
+    for (int i = 0; i < nelements; i++) delete[] elements[i];
+    delete[] elements;
+  }
   memory->destroy(radelem);
   memory->destroy(wjelem);
   memory->destroy(cutsq);
@@ -90,7 +91,8 @@ void MLIAPDescriptorSO3::read_paramfile(char *paramfilename)
                  utils::getsyserror());
   }
 
-  char line[MAXLINE], *ptr;
+  char line[MAXLINE] = {'\0'};
+  char *ptr;
   int eof = 0;
   int n, nwords;
 
@@ -138,6 +140,7 @@ void MLIAPDescriptorSO3::read_paramfile(char *paramfilename)
         }
 
         elementsflag = 1;
+        allocated_elements = 1;
       } else if (skeywd == "radelems") {
         for (int ielem = 0; ielem < nelements; ielem++) {
           radelem[ielem] = utils::numeric(FLERR, skeyval, false, lmp);

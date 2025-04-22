@@ -40,8 +40,8 @@
 using namespace LAMMPS_NS;
 using namespace FixConst;
 
-#define DELTAFLIP 0.1
-#define TILTMAX 1.5
+static constexpr double DELTAFLIP = 0.1;
+static constexpr double TILTMAX = 1.5;
 
 enum{NOBIAS,BIAS};
 enum{NONE,XYZ,XY,YZ,XZ};
@@ -516,7 +516,7 @@ FixTGNHDrude::FixTGNHDrude(LAMMPS *lmp, int narg, char **arg) :
 
   // find fix drude
 
-  auto fdrude = modify->get_fix_by_style("^drude");
+  auto fdrude = modify->get_fix_by_style("^drude$");
   if (fdrude.size() < 1) error->all(FLERR, "Fix {} requires fix drude", style);
   fix_drude = dynamic_cast<FixDrude *>(fdrude[0]);
   if (!fix_drude) error->all(FLERR, "Fix {} requires fix drude", style);
@@ -600,14 +600,23 @@ void FixTGNHDrude::init()
   // set temperature and pressure ptrs
 
   temperature = modify->get_compute_by_id(id_temp);
-  if (!temperature) error->all(FLERR,"Temperature ID for fix {} does not exist", style);
-
-  if (temperature->tempbias) which = BIAS;
-  else which = NOBIAS;
+  if (!temperature)  {
+    error->all(FLERR,"Temperature compute ID {} for fix {} does not exist", id_temp, style);
+  } else {
+    if (temperature->tempflag == 0)
+      error->all(FLERR, "Compute ID {} for fix {} does not compute a temperature", id_temp, style);
+    if (temperature->tempbias) which = BIAS;
+    else which = NOBIAS;
+  }
 
   if (pstat_flag) {
     pressure = modify->get_compute_by_id(id_press);
-    if (!pressure) error->all(FLERR,"Pressure ID for fix {} does not exist", id_press);
+    if (!pressure) {
+      error->all(FLERR,"Pressure compute ID {} for fix {} does not exist", id_press, style);
+    } else {
+      if (pressure->pressflag == 0)
+        error->all(FLERR,"Compute ID {} for fix {} does not compute pressure", id_press, style);
+    }
   }
 
   // set timesteps and frequencies
@@ -1054,7 +1063,7 @@ void FixTGNHDrude::couple()
   }
 
   if (!std::isfinite(p_current[0]) || !std::isfinite(p_current[1]) || !std::isfinite(p_current[2]))
-    error->all(FLERR,"Non-numeric pressure - simulation unstable");
+    error->all(FLERR,"Non-numeric pressure - simulation unstable" + utils::errorurl(6));
 
   // switch order from xy-xz-yz to Voigt
 
@@ -1064,7 +1073,7 @@ void FixTGNHDrude::couple()
     p_current[5] = tensor[3];
 
     if (!std::isfinite(p_current[3]) || !std::isfinite(p_current[4]) || !std::isfinite(p_current[5]))
-      error->all(FLERR,"Non-numeric pressure - simulation unstable");
+      error->all(FLERR,"Non-numeric pressure - simulation unstable" + utils::errorurl(6));
   }
 }
 
@@ -1076,7 +1085,6 @@ void FixTGNHDrude::couple()
 
 void FixTGNHDrude::remap()
 {
-  int i;
   double oldlo,oldhi;
   double expfac;
 

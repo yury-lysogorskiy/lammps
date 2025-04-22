@@ -18,6 +18,8 @@ LINK ?= $(CXX)
 LDFLAGS ?=
 override LDFLAGS += -lpthread
 
+KOKKOS_USE_DEPRECATED_MAKEFILES=1
+
 include $(KOKKOS_PATH)/Makefile.kokkos
 
 KOKKOS_CXXFLAGS += -I$(GTEST_PATH) -I${KOKKOS_PATH}/algorithms/unit_tests -I${KOKKOS_PATH}/core/unit_test/category_files
@@ -27,13 +29,13 @@ TARGETS =
 
 tmp := $(foreach device, $(KOKKOS_DEVICELIST), \
   $(if $(filter Test$(device).cpp, $(shell ls Test$(device).cpp 2>/dev/null)),,\
-     $(shell echo "\#include <Test"${device}"_Category.hpp>" > Test$(device).cpp); \
-     $(shell echo "\#include <TestRandom.hpp>" >> Test$(device).cpp); \
-     $(shell echo "\#include <TestSort.hpp>" >> Test$(device).cpp); \
-     $(shell echo "\#include <TestBinSortA.hpp>" >> Test$(device).cpp); \
-     $(shell echo "\#include <TestBinSortB.hpp>" >> Test$(device).cpp); \
-     $(shell echo "\#include <TestNestedSort.hpp>" >> Test$(device).cpp); \
-     $(shell echo "\#include <TestSortCustomComp.hpp>" >> Test$(device).cpp); \
+     $(shell echo "$(H)include <Test"${device}"_Category.hpp>" > Test$(device).cpp); \
+     $(shell echo "$(H)include <TestRandom.hpp>" >> Test$(device).cpp); \
+     $(shell echo "$(H)include <TestSort.hpp>" >> Test$(device).cpp); \
+     $(shell echo "$(H)include <TestBinSortA.hpp>" >> Test$(device).cpp); \
+     $(shell echo "$(H)include <TestBinSortB.hpp>" >> Test$(device).cpp); \
+     $(shell echo "$(H)include <TestNestedSort.hpp>" >> Test$(device).cpp); \
+     $(shell echo "$(H)include <TestSortCustomComp.hpp>" >> Test$(device).cpp); \
    ) \
 )
 

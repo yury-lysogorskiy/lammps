@@ -2,7 +2,12 @@ LAMMPS-GUI TODO list:
 
 # Short term goals (v1.x)
 
-- implement indenting regions for (nested) loops?
+- add a "Colors" menu to the image viewer to adjust color settings for the
+  current image (unlike the defaults in the perferences) including assigning
+  colors to individual atom types.
+- Support color by property (e.g. scan computes or fixes with per-atom data), define colormaps etc.
+- Add a "Diameters" dialog where diamaters can by specified by atom type
+
 - implement data file manager GUI with the following features:
    - import coordinates and topology via VMD molfile plugins
    - import coordinates and topology from intermol
@@ -20,6 +25,7 @@ LAMMPS-GUI TODO list:
    - call to LAMMPS to create geometries from lattices (with/without molecule files) and STL files
    - call to LAMMPS to generate visualizations of geometries
    - edit force field parameters, e.g. apply charmm
+   - edit / manage labelmap
 
 # Long term ideas (v2.x)
 - rewrite entire application to build the App and its layout manually

@@ -35,7 +35,7 @@
 using namespace LAMMPS_NS;
 using namespace voro;
 
-#define FACESDELTA 10000
+static constexpr int FACESDELTA = 10000;
 
 /* ---------------------------------------------------------------------- */
 
@@ -55,16 +55,10 @@ ComputeVoronoi::ComputeVoronoi(LAMMPS *lmp, int narg, char **arg) :
   surface = VOROSURF_NONE;
   maxedge = 0;
   fthresh = ethresh = 0.0;
-  radstr = nullptr;
   onlyGroup = false;
   occupation = false;
 
-  con_mono = nullptr;
-  con_poly = nullptr;
-  tags = nullptr;
   oldmaxtag = 0;
-  occvec = sendocc = lroot = lnext = nullptr;
-  faces = nullptr;
 
   int iarg = 3;
   while (iarg<narg) {
@@ -79,6 +73,7 @@ ComputeVoronoi::ComputeVoronoi(LAMMPS *lmp, int narg, char **arg) :
     else if (strcmp(arg[iarg], "radius") == 0) {
       if (iarg + 2 > narg || strstr(arg[iarg+1],"v_") != arg[iarg+1] )
         error->all(FLERR,"Illegal compute voronoi/atom command");
+      delete[] radstr;
       radstr = utils::strdup(&arg[iarg+1][2]);
       iarg += 2;
     }
@@ -126,6 +121,7 @@ ComputeVoronoi::ComputeVoronoi(LAMMPS *lmp, int narg, char **arg) :
 
   if (maxedge > 0) {
     vector_flag = 1;
+    extvector = 0;
     size_vector = maxedge+1;
     memory->create(edge,maxedge+1,"voronoi/atom:edge");
     memory->create(sendvector,maxedge+1,"voronoi/atom:sendvector");

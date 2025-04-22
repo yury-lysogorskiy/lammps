@@ -19,6 +19,7 @@
 #include "error.h"
 #include "fix.h"
 #include "force.h"
+#include "info.h"
 #include "math_special.h"
 #include "memory.h"
 #include "modify.h"
@@ -31,13 +32,13 @@
 using namespace LAMMPS_NS;
 using namespace MathSpecial;
 
-#define MAXLINE 1024
-#define DELTA 4
+static constexpr int MAXLINE = 1024;
+static constexpr int DELTA = 4;
 
 #ifdef DBL_EPSILON
-  #define MY_EPSILON (10.0*DBL_EPSILON)
+static constexpr double MY_EPSILON = 10.0*DBL_EPSILON;
 #else
-  #define MY_EPSILON (10.0*2.220446049250313e-16)
+static constexpr double MY_EPSILON = 10.0*2.220446049250313e-16;
 #endif
 
 #define oneFluidApproxParameter (-1)
@@ -578,7 +579,7 @@ void PairExp6rx::settings(int narg, char **arg)
 
 void PairExp6rx::coeff(int narg, char **arg)
 {
-  if (narg < 6 || narg > 9) error->all(FLERR,"Incorrect args for pair coefficients");
+  if (narg < 6 || narg > 9) error->all(FLERR,"Incorrect args for pair coefficients" + utils::errorurl(21));
 
   bool rx_flag = false;
   for (int i = 0; i < modify->nfix; i++)
@@ -602,7 +603,7 @@ void PairExp6rx::coeff(int narg, char **arg)
     if (strcmp(site1,&atom->dvname[ispecies][0]) == 0) break;
   }
   if (ispecies == nspecies && strcmp(site1,"1fluid") != 0)
-    error->all(FLERR,"Site1 name not recognized in pair coefficients");
+    error->all(FLERR,"Site1 name not recognized in pair coefficients" + utils::errorurl(21));
 
   site2 = utils::strdup(arg[4]);
 
@@ -610,7 +611,7 @@ void PairExp6rx::coeff(int narg, char **arg)
     if (strcmp(site2,&atom->dvname[ispecies][0]) == 0) break;
   }
   if (ispecies == nspecies && strcmp(site2,"1fluid") != 0)
-    error->all(FLERR,"Site2 name not recognized in pair coefficients");
+    error->all(FLERR,"Site2 name not recognized in pair coefficients" + utils::errorurl(21));
 
   {
     // Set isite1 and isite2 parameters based on site1 and site2 strings.
@@ -623,7 +624,7 @@ void PairExp6rx::coeff(int narg, char **arg)
           if (strcmp(site1, &atom->dvname[isp][0]) == 0) break;
 
         if (isp == nspecies)
-          error->all(FLERR,"Site1 name not recognized in pair coefficients");
+          error->all(FLERR,"Site1 name not recognized in pair coefficients" + utils::errorurl(21));
         else
           isite1 = isp;
       }
@@ -636,7 +637,7 @@ void PairExp6rx::coeff(int narg, char **arg)
         if (strcmp(site2, &atom->dvname[isp][0]) == 0) break;
 
         if (isp == nspecies)
-          error->all(FLERR,"Site2 name not recognized in pair coefficients");
+          error->all(FLERR,"Site2 name not recognized in pair coefficients" + utils::errorurl(21));
         else
           isite2 = isp;
       }
@@ -667,14 +668,14 @@ void PairExp6rx::coeff(int narg, char **arg)
     memory->create(coeffEps,6,"pair:coeffEps");
     memory->create(coeffRm,6,"pair:coeffRm");
     read_file2(arg[6]);
-    if (narg > 8) error->all(FLERR,"Incorrect args for pair coefficients");
+    if (narg > 8) error->all(FLERR,"Incorrect args for pair coefficients" + utils::errorurl(21));
     if (narg == 8) cut_one = utils::numeric(FLERR,arg[7],false,lmp);
   } else if (strcmp(arg[5],"none") == 0) {
     scalingFlag = NONE;
-    if (narg > 7) error->all(FLERR,"Incorrect args for pair coefficients");
+    if (narg > 7) error->all(FLERR,"Incorrect args for pair coefficients" + utils::errorurl(21));
     if (narg == 7) cut_one = utils::numeric(FLERR,arg[6],false,lmp);
   } else {
-    error->all(FLERR,"Incorrect args for pair coefficients");
+    error->all(FLERR,"Incorrect args for pair coefficients" + utils::errorurl(21));
   }
 
   int count = 0;
@@ -686,7 +687,7 @@ void PairExp6rx::coeff(int narg, char **arg)
     }
   }
 
-  if (count == 0) error->all(FLERR,"Incorrect args for pair coefficients");
+  if (count == 0) error->all(FLERR,"Incorrect args for pair coefficients" + utils::errorurl(21));
 }
 
 /* ----------------------------------------------------------------------
@@ -695,7 +696,9 @@ void PairExp6rx::coeff(int narg, char **arg)
 
 double PairExp6rx::init_one(int i, int j)
 {
-  if (setflag[i][j] == 0) error->all(FLERR,"All pair coeffs are not set");
+  if (setflag[i][j] == 0)
+    error->all(FLERR, Error::NOLASTLINE,
+               "All pair coeffs are not set. Status:\n" + Info::get_pair_coeff_status(lmp));
 
   return cut[i][j];
 }
@@ -728,7 +731,8 @@ void PairExp6rx::read_file(char *file)
   // one set of params can span multiple lines
 
   int n,nwords,ispecies;
-  char line[MAXLINE],*ptr;
+  char line[MAXLINE] = {'\0'};
+  char *ptr;
   int eof = 0;
 
   while (true) {
@@ -835,7 +839,8 @@ void PairExp6rx::read_file2(char *file)
 
   // one set of params can span multiple lines
   int n,nwords;
-  char line[MAXLINE],*ptr;
+  char line[MAXLINE] = {'\0'};
+  char *ptr;
   int eof = 0;
 
   while (true) {
@@ -887,15 +892,15 @@ void PairExp6rx::read_file2(char *file)
 
     if (strcmp(words[0],"alpha") == 0) {
       for (int ii=1; ii<params_per_line; ii++)
-        coeffAlpha[ii-1] = atof(words[ii]);
+        coeffAlpha[ii-1] = std::stod(words[ii]);
     }
     if (strcmp(words[0],"epsilon") == 0) {
       for (int ii=1; ii<params_per_line; ii++)
-        coeffEps[ii-1] = atof(words[ii]);
+        coeffEps[ii-1] = std::stod(words[ii]);
     }
     if (strcmp(words[0],"rm") == 0) {
       for (int ii=1; ii<params_per_line; ii++)
-        coeffRm[ii-1] = atof(words[ii]);
+        coeffRm[ii-1] = std::stod(words[ii]);
     }
   }
 

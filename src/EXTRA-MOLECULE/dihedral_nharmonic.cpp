@@ -30,8 +30,8 @@
 
 using namespace LAMMPS_NS;
 
-#define TOLERANCE 0.05
-#define SMALL     0.001
+static constexpr double TOLERANCE = 0.05;
+static constexpr double SMALL =     0.001;
 
 /* ---------------------------------------------------------------------- */
 
@@ -257,11 +257,11 @@ void DihedralNHarmonic::allocate()
 
 void DihedralNHarmonic::coeff(int narg, char **arg)
 {
-  if (narg < 3) error->all(FLERR,"Incorrect args for dihedral coefficients");
+  if (narg < 3) error->all(FLERR,"Incorrect args for dihedral coefficients" + utils::errorurl(21));
 
   int n = utils::inumeric(FLERR,arg[1],false,lmp);
   if (narg != n + 2)
-    error->all(FLERR,"Incorrect args for dihedral coefficients");
+    error->all(FLERR,"Incorrect args for dihedral coefficients" + utils::errorurl(21));
 
   if (!allocated) allocate();
 
@@ -280,7 +280,7 @@ void DihedralNHarmonic::coeff(int narg, char **arg)
     count++;
   }
 
-  if (count == 0) error->all(FLERR,"Incorrect args for dihedral coefficients");
+  if (count == 0) error->all(FLERR,"Incorrect args for dihedral coefficients" + utils::errorurl(21));
 }
 
 /* ----------------------------------------------------------------------

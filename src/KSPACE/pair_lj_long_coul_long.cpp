@@ -23,6 +23,7 @@
 #include "atom.h"
 #include "comm.h"
 #include "error.h"
+#include "ewald_const.h"
 #include "force.h"
 #include "kspace.h"
 #include "math_extra.h"
@@ -37,14 +38,7 @@
 
 using namespace LAMMPS_NS;
 using namespace MathExtra;
-
-#define EWALD_F   1.12837917
-#define EWALD_P   0.3275911
-#define A1        0.254829592
-#define A2       -0.284496736
-#define A3        1.421413741
-#define A4       -1.453152027
-#define A5        1.061405429
+using namespace EwaldConst;
 
 /* ---------------------------------------------------------------------- */
 
@@ -193,7 +187,7 @@ void *PairLJLongCoulLong::extract(const char *id, int &dim)
 
 void PairLJLongCoulLong::coeff(int narg, char **arg)
 {
-  if (narg < 4 || narg > 5) error->all(FLERR,"Incorrect args for pair coefficients");
+  if (narg < 4 || narg > 5) error->all(FLERR,"Incorrect args for pair coefficients" + utils::errorurl(21));
   if (!allocated) allocate();
 
   int ilo,ihi,jlo,jhi;
@@ -217,7 +211,7 @@ void PairLJLongCoulLong::coeff(int narg, char **arg)
     }
   }
 
-  if (count == 0) error->all(FLERR,"Incorrect args for pair coefficients");
+  if (count == 0) error->all(FLERR,"Incorrect args for pair coefficients" + utils::errorurl(21));
 }
 
 /* ----------------------------------------------------------------------
@@ -416,7 +410,7 @@ void PairLJLongCoulLong::read_restart_settings(FILE *fp)
 void PairLJLongCoulLong::write_data(FILE *fp)
 {
   for (int i = 1; i <= atom->ntypes; i++)
-    fmt::print(fp,"{} {} {}\n",i,epsilon_read[i][i],sigma_read[i][i]);
+    utils::print(fp,"{} {} {}\n",i,epsilon_read[i][i],sigma_read[i][i]);
 }
 
 /* ----------------------------------------------------------------------
@@ -429,10 +423,10 @@ void PairLJLongCoulLong::write_data_all(FILE *fp)
   for (int i = 1; i <= atom->ntypes; i++) {
     for (int j = i; j <= atom->ntypes; j++) {
       if (ewald_order & (1<<6)) {
-        fmt::print(fp,"{} {} {} {}\n",i,j,
+        utils::print(fp,"{} {} {} {}\n",i,j,
                    epsilon[i][j],sigma[i][j]);
       } else {
-        fmt::print(fp,"{} {} {} {} {}\n",i,j,
+        utils::print(fp,"{} {} {} {} {}\n",i,j,
                    epsilon[i][j],sigma[i][j],cut_lj[i][j]);
       }
     }

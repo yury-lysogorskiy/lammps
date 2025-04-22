@@ -27,6 +27,7 @@
 #include "comm.h"
 #include "error.h"
 #include "force.h"
+#include "info.h"
 #include "memory.h"
 #include "neigh_list.h"
 #include "neighbor.h"
@@ -39,11 +40,9 @@
 
 using namespace LAMMPS_NS;
 
-#define MAXLINE 1024
-#define DELTA 4
-
-#define GRIDDENSITY 8000
-#define GRIDSTART 0.1
+static constexpr int DELTA = 4;
+static constexpr int GRIDDENSITY = 8000;
+static constexpr double GRIDSTART = 0.1;
 
 // max number of interaction per atom for f(Z) environment potential
 
@@ -742,7 +741,8 @@ void PairEDIP::coeff(int narg, char **arg)
 
 void PairEDIP::init_style()
 {
-  if (force->newton_pair == 0) error->all(FLERR, "Pair style edip requires newton pair on");
+  if (force->newton_pair == 0)
+    error->all(FLERR, Error::NOLASTLINE, "Pair style edip requires newton pair on");
 
   // need a full neighbor list
 
@@ -755,7 +755,9 @@ void PairEDIP::init_style()
 
 double PairEDIP::init_one(int i, int j)
 {
-  if (setflag[i][j] == 0) error->all(FLERR, "All pair coeffs are not set");
+  if (setflag[i][j] == 0)
+    error->all(FLERR, Error::NOLASTLINE,
+               "All pair coeffs are not set. Status:\n" + Info::get_pair_coeff_status(lmp));
 
   return cutmax;
 }

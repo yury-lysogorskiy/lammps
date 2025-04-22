@@ -47,8 +47,8 @@ static const char cite_dihedral_tablecut[] =
 
 /* ---------------------------------------------------------------------- */
 
-#define TOLERANCE 0.05
-#define SMALL     0.0000001
+static constexpr double TOLERANCE = 0.05;
+static constexpr double SMALL =     0.0000001;
 
 // ------------------------------------------------------------------------
 // The following auxiliary functions were left out of the
@@ -451,7 +451,7 @@ void DihedralTableCut::allocate()
 
 void DihedralTableCut::coeff(int narg, char **arg)
 {
-  if (narg != 7) error->all(FLERR,"Incorrect args for dihedral coefficients");
+  if (narg != 7) error->all(FLERR,"Incorrect args for dihedral coefficients" + utils::errorurl(21));
   if (!allocated) allocate();
 
   int ilo,ihi;
@@ -628,5 +628,5 @@ void DihedralTableCut::coeff(int narg, char **arg)
   }
   ntables++;
 
-  if (count == 0) error->all(FLERR,"Incorrect args for dihedral coefficients");
+  if (count == 0) error->all(FLERR,"Incorrect args for dihedral coefficients" + utils::errorurl(21));
 }

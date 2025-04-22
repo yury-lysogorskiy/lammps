@@ -11,7 +11,7 @@
   Please cite the related publication:
   H. M. Aktulga, J. C. Fogarty, S. A. Pandit, A. Y. Grama,
   "Parallel Reactive Molecular Dynamics: Numerical Methods and
-  Algorithmic Techniques", Parallel Computing, in press.
+  Algorithmic Techniques", Parallel Computing, 38 (4-5), 245-259.
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License as
@@ -31,6 +31,9 @@
 #include <cstring>
 
 #include "error.h"
+#include "utils.h"
+
+using LAMMPS_NS::utils::errorurl;
 
 namespace ReaxFF {
 
@@ -94,9 +97,9 @@ namespace ReaxFF {
         else comp = bonds->num_intrs;
 
         if (End_Index(i, bonds) > comp)
-          system->error_ptr->one(FLERR, fmt::format("step {}: bondchk failed: "
-                                                    "i={} end(i)={} str(i+1)={}\n",
-                                                    step,i,End_Index(i,bonds),comp));
+          system->error_ptr->one(FLERR, fmt::format("step {}: bondchk failed: i={} end(i)={} "
+                                                    "str(i+1)={}{}", step, i ,End_Index(i,bonds),
+                                                    comp, errorurl(18)));
       }
     }
 
@@ -116,9 +119,9 @@ namespace ReaxFF {
           else comp = hbonds->num_intrs;
 
           if (End_Index(Hindex, hbonds) > comp)
-            system->error_ptr->one(FLERR, fmt::format("step {}: hbondchk failed: "
-                                                      "H={} end(H)={} str(H+1)={}\n",
-                                                      step, Hindex,End_Index(Hindex,hbonds),comp));
+            system->error_ptr->one(FLERR, fmt::format("step {}: hbondchk failed: H={} end(H)={} "
+                                                      "str(H+1)={}{}", step, Hindex,
+                                                      End_Index(Hindex,hbonds),comp,errorurl(18)));
         }
       }
     }

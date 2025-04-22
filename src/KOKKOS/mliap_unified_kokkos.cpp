@@ -107,17 +107,14 @@ void MLIAPDummyDescriptorKokkos<DeviceType>::init()
   double cut;
   cutmax = 0.0;
   memory->create(cutsq, nelements, nelements, "mliap/descriptor/dummy:cutsq");
-  memory->create(cutghost, nelements, nelements, "mliap/descriptor/dummy:cutghost");
   for (int ielem = 0; ielem < nelements; ielem++) {
     // rcutfac set from python, is global cutoff for all elements
     cut = 2.0 * radelem[ielem] * rcutfac;
     if (cut > cutmax) cutmax = cut;
     cutsq[ielem][ielem] = cut * cut;
-    cutghost[ielem][ielem] = cut * cut;
     for (int jelem = ielem + 1; jelem < nelements; jelem++) {
       cut = (radelem[ielem] + radelem[jelem]) * rcutfac;
       cutsq[ielem][jelem] = cutsq[jelem][ielem] = cut * cut;
-      cutghost[ielem][jelem] = cutghost[jelem][ielem] = cut * cut;
     }
   }
 }
@@ -272,11 +269,11 @@ void LAMMPS_NS::update_pair_energy(MLIAPDataKokkosDevice *data, double *eij)
   auto d_eatoms = data->eatoms;
   auto d_pair_i= data->pair_i;
   const auto nlocal = data->nlocal;
-  Kokkos::parallel_for(nlocal, KOKKOS_LAMBDA(int ii){
+  Kokkos::parallel_for(nlocal, KOKKOS_LAMBDA(int ii) {
     d_eatoms[ii] = 0;
   });
 
-  Kokkos::parallel_reduce(data->npairs, KOKKOS_LAMBDA(int ii, double &local_sum){
+  Kokkos::parallel_reduce(data->npairs, KOKKOS_LAMBDA(int ii, double &local_sum) {
     int i = d_pair_i[ii];
     double e = 0.5 * eij[ii];
 
@@ -294,7 +291,6 @@ void LAMMPS_NS::update_pair_energy(MLIAPDataKokkosDevice *data, double *eij)
 
 void LAMMPS_NS::update_pair_forces(MLIAPDataKokkosDevice *data, double *fij)
 {
-  const auto nlocal = data->nlocal;
   auto *f = data->f;
   auto pair_i = data->pair_i;
   auto j_atoms = data->jatoms;
@@ -315,7 +311,6 @@ void LAMMPS_NS::update_pair_forces(MLIAPDataKokkosDevice *data, double *fij)
     int i = pair_i[ii];
     int j = j_atoms[ii];
     // must not count any contribution where i is not a local atom
-    if (i < nlocal) {
       Kokkos::atomic_add(&f[i*3+0], fij[ii3+0]);
       Kokkos::atomic_add(&f[i*3+1], fij[ii3+1]);
       Kokkos::atomic_add(&f[i*3+2], fij[ii3+2]);
@@ -352,7 +347,6 @@ void LAMMPS_NS::update_pair_forces(MLIAPDataKokkosDevice *data, double *fij)
           Kokkos::atomic_add(&d_vatom(j,3), 0.5*v[3]);
           Kokkos::atomic_add(&d_vatom(j,4), 0.5*v[4]);
           Kokkos::atomic_add(&d_vatom(j,5), 0.5*v[5]);
-        }
       }
     }
   });
@@ -380,13 +374,11 @@ void LAMMPS_NS::update_atom_energy(MLIAPDataKokkosDevice *data, double *ei)
   auto d_eatoms = data->eatoms;
   const auto nlocal = data->nlocal;
 
-  Kokkos::parallel_reduce(nlocal, KOKKOS_LAMBDA(int i, double &local_sum){
+  Kokkos::parallel_reduce(nlocal, KOKKOS_LAMBDA(int i, double &local_sum) {
     double e = ei[i];
-    // must not count any contribution where i is not a local atom
-    if (i < nlocal) {
-      d_eatoms[i] = e;
-      local_sum += e;
-    }
+
+    d_eatoms[i] = e;
+    local_sum += e;
   },*data->energy);
 }
 

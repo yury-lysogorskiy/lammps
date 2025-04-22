@@ -46,6 +46,7 @@
 
 #include <cmath>
 #include <cstring>
+#include <exception>
 
 using namespace LAMMPS_NS;
 
@@ -381,7 +382,7 @@ void PairMEAMSpline::coeff(int narg, char **arg)
   int i,j,n;
 
   if (narg != 3 + atom->ntypes)
-    error->all(FLERR,"Incorrect args for pair coefficients");
+    error->all(FLERR,"Incorrect args for pair coefficients" + utils::errorurl(21));
 
   // read potential file: also sets the number of elements.
   read_file(arg[2]);
@@ -427,7 +428,7 @@ void PairMEAMSpline::coeff(int narg, char **arg)
         setflag[i][j] = 1;
         count++;
       }
-  if (count == 0) error->all(FLERR,"Incorrect args for pair coefficients");
+  if (count == 0) error->all(FLERR,"Incorrect args for pair coefficients" + utils::errorurl(21));
 
   // check that each element is mapped to exactly one atom type
 
@@ -439,8 +440,6 @@ void PairMEAMSpline::coeff(int narg, char **arg)
       error->all(FLERR,"Pair style meam/spline requires one atom type per element");
   }
 }
-
-#define MAXLINE 1024
 
 void PairMEAMSpline::read_file(const char* filename)
 {

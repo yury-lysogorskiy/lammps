@@ -27,6 +27,7 @@
 #include "comm.h"
 #include "error.h"
 #include "force.h"
+#include "info.h"
 #include "math_const.h"
 #include "memory.h"
 #include "neigh_list.h"
@@ -39,18 +40,16 @@
 using namespace LAMMPS_NS;
 using MathConst::MY_PI;
 
-#define MAXLINE 1024
-#define DELTA 4
-
-#define GRIDSTART 0.1
-#define GRIDDENSITY_FCUTOFF 5000
-#define GRIDDENSITY_EXP 12000
-#define GRIDDENSITY_GTETA 12000
-#define GRIDDENSITY_BIJ 7500
+static constexpr int DELTA = 4;
+static constexpr double GRIDSTART = 0.1;
+static constexpr int GRIDDENSITY_FCUTOFF = 5000;
+static constexpr int GRIDDENSITY_EXP = 12000;
+static constexpr int GRIDDENSITY_GTETA = 12000;
+static constexpr int GRIDDENSITY_BIJ = 7500;
 
 // max number of interaction per atom for environment potential
 
-#define leadingDimensionInteractionList 64
+static constexpr int leadingDimensionInteractionList = 64;
 
 /* ---------------------------------------------------------------------- */
 
@@ -752,7 +751,9 @@ void PairTersoffTable::init_style()
 
 double PairTersoffTable::init_one(int i, int j)
 {
-  if (setflag[i][j] == 0) error->all(FLERR,"All pair coeffs are not set");
+  if (setflag[i][j] == 0)
+    error->all(FLERR, Error::NOLASTLINE,
+               "All pair coeffs are not set. Status\n" + Info::get_pair_coeff_status(lmp));
 
   return cutmax;
 }
