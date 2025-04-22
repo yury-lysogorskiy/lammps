@@ -1,7 +1,10 @@
 .. index:: pair_style lj/pirani
+.. index:: pair_style lj/pirani/omp
 
 pair_style lj/pirani command
-==================================
+============================
+
+Accelerator Variants: *lj/pirani/omp*
 
 Syntax
 """"""
@@ -90,6 +93,10 @@ commands:
 * cutoff (distance units)
 
 The last coefficient is optional. If not specified, the global cutoff is used.
+
+----------
+
+.. include:: accel_styles.rst
 
 ----------
 
