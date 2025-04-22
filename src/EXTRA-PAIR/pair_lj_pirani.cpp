@@ -15,9 +15,10 @@
    Contributing author: Mateo Rodríguez (mateorsuarez@gmail.com) (IFF-CSIC)
    Work done at the Molecular Interactions Group (INTERMOL) of the
    Fundamental Physics Institute (http://intermol.iff.csic.es/).
+   Optimization of the code: Axel Kohlmeyer (Temple U)
 ------------------------------------------------------------------------- */
 
-#include "pair_lj_improved_cut.h"
+#include "pair_lj_pirani.h"
 
 #include "atom.h"
 #include "comm.h"
@@ -40,7 +41,7 @@ using MathSpecial::square;
 
 /* ---------------------------------------------------------------------- */
 
-PairLJImprovedCut::PairLJImprovedCut(LAMMPS *lmp) : Pair(lmp)
+PairLJPirani::PairLJPirani(LAMMPS *lmp) : Pair(lmp)
 {
   respa_enable = 1;
   born_matrix_enable = 0;
@@ -48,7 +49,7 @@ PairLJImprovedCut::PairLJImprovedCut(LAMMPS *lmp) : Pair(lmp)
 }
 /* ---------------------------------------------------------------------- */
 
-PairLJImprovedCut::~PairLJImprovedCut()
+PairLJPirani::~PairLJPirani()
 {
   if (copymode) return;
 
@@ -69,7 +70,7 @@ PairLJImprovedCut::~PairLJImprovedCut()
    allocate all arrays
 ------------------------------------------------------------------------- */
 
-void PairLJImprovedCut::allocate()
+void PairLJPirani::allocate()
 {
   allocated = 1;
   int n = atom->ntypes + 1;
@@ -91,7 +92,7 @@ void PairLJImprovedCut::allocate()
 
 /* ---------------------------------------------------------------------- */
 
-void PairLJImprovedCut::compute(int eflag, int vflag)
+void PairLJPirani::compute(int eflag, int vflag)
 
 {
   int i, j, ii, jj, inum, jnum, itype, jtype;
@@ -205,7 +206,7 @@ void PairLJImprovedCut::compute(int eflag, int vflag)
 
 /* ---------------------------------------------------------------------- */
 
-void PairLJImprovedCut::compute_inner()
+void PairLJPirani::compute_inner()
 {
   int i, j, ii, jj, inum, jnum, itype, jtype;
   double xtmp, ytmp, ztmp, delx, dely, delz, fpair;
@@ -311,7 +312,7 @@ void PairLJImprovedCut::compute_inner()
 
 /* ---------------------------------------------------------------------- */
 
-void PairLJImprovedCut::compute_middle()
+void PairLJPirani::compute_middle()
 
 {
   int i, j, ii, jj, inum, jnum, itype, jtype;
@@ -426,7 +427,7 @@ void PairLJImprovedCut::compute_middle()
 
 /* ---------------------------------------------------------------------- */
 
-void PairLJImprovedCut::compute_outer(int eflag, int vflag)
+void PairLJPirani::compute_outer(int eflag, int vflag)
 
 {
   int i, j, ii, jj, inum, jnum, itype, jtype;
@@ -595,7 +596,7 @@ void PairLJImprovedCut::compute_outer(int eflag, int vflag)
    global settings
 ------------------------------------------------------------------------- */
 
-void PairLJImprovedCut::settings(int narg, char **arg)
+void PairLJPirani::settings(int narg, char **arg)
 {
   if (narg != 1)
     error->all(FLERR, "Pair style ilj/cut must have exactly one argument: cutoff distance");
@@ -620,7 +621,7 @@ void PairLJImprovedCut::settings(int narg, char **arg)
 7 or 8 coefficients: 5 for the ILJ, 2 for the pair, 1 for the cutoff (optional)
 
 */
-void PairLJImprovedCut::coeff(int narg, char **arg)
+void PairLJPirani::coeff(int narg, char **arg)
 {
   if (narg < 7 || narg > 8) error->all(FLERR, "Incorrect args for pair coefficients");
   if (!allocated) allocate();
@@ -675,7 +676,7 @@ void PairLJImprovedCut::coeff(int narg, char **arg)
    init specific to this pair style
 ------------------------------------------------------------------------- */
 
-void PairLJImprovedCut::init_style()
+void PairLJPirani::init_style()
 {
   // request regular or rRESPA neighbor list
 
@@ -701,7 +702,7 @@ void PairLJImprovedCut::init_style()
    init for one type pair i,j and corresponding j,i
 ------------------------------------------------------------------------- */
 
-double PairLJImprovedCut::init_one(int i, int j)
+double PairLJPirani::init_one(int i, int j)
 {
   if (setflag[i][j] == 0) error->all(FLERR, "All pair coeffs are not set");
 
@@ -733,7 +734,7 @@ double PairLJImprovedCut::init_one(int i, int j)
    proc 0 writes to restart file
 ------------------------------------------------------------------------- */
 
-void PairLJImprovedCut::write_restart(FILE *fp)
+void PairLJPirani::write_restart(FILE *fp)
 {
   write_restart_settings(fp);
 
@@ -756,7 +757,7 @@ void PairLJImprovedCut::write_restart(FILE *fp)
    proc 0 writes to restart file
 ------------------------------------------------------------------------- */
 
-void PairLJImprovedCut::write_restart_settings(FILE *fp)
+void PairLJPirani::write_restart_settings(FILE *fp)
 {
   fwrite(&cut_global, sizeof(double), 1, fp);
   fwrite(&offset_flag, sizeof(int), 1, fp);
@@ -767,7 +768,7 @@ void PairLJImprovedCut::write_restart_settings(FILE *fp)
    proc 0 reads from restart file, bcasts
 ------------------------------------------------------------------------- */
 
-void PairLJImprovedCut::read_restart(FILE *fp)
+void PairLJPirani::read_restart(FILE *fp)
 {
   read_restart_settings(fp);
   allocate();
@@ -801,7 +802,7 @@ void PairLJImprovedCut::read_restart(FILE *fp)
    proc 0 reads from restart file, bcasts
 ------------------------------------------------------------------------- */
 
-void PairLJImprovedCut::read_restart_settings(FILE *fp)
+void PairLJPirani::read_restart_settings(FILE *fp)
 {
   int me = comm->me;
   if (me == 0) {
@@ -818,7 +819,7 @@ void PairLJImprovedCut::read_restart_settings(FILE *fp)
    proc 0 writes to data file
 ------------------------------------------------------------------------- */
 
-void PairLJImprovedCut::write_data(FILE *fp)
+void PairLJPirani::write_data(FILE *fp)
 {
   for (int i = 1; i <= atom->ntypes; i++)
     fprintf(fp, "%d %g %g %g %g %g\n", i, alpha[i][i], beta[i][i], gamma[i][i], rm[i][i],
@@ -829,7 +830,7 @@ void PairLJImprovedCut::write_data(FILE *fp)
    proc 0 writes all pairs to data file
 ------------------------------------------------------------------------- */
 
-void PairLJImprovedCut::write_data_all(FILE *fp)
+void PairLJPirani::write_data_all(FILE *fp)
 {
   for (int i = 1; i <= atom->ntypes; i++)
     for (int j = i; j <= atom->ntypes; j++)
@@ -839,7 +840,7 @@ void PairLJImprovedCut::write_data_all(FILE *fp)
 
 /* ---------------------------------------------------------------------- */
 
-double PairLJImprovedCut::single(int /*i*/, int /*j*/, int itype, int jtype, double rsq,
+double PairLJPirani::single(int /*i*/, int /*j*/, int itype, int jtype, double rsq,
                                  double /*factor_coul*/, double factor_lj, double &fforce)
 {
   double r, rx, n_x, filj1, filj2, filj3, filj4, filj5, filj6, forceilj;
@@ -878,7 +879,7 @@ double PairLJImprovedCut::single(int /*i*/, int /*j*/, int itype, int jtype, dou
 
 /* ---------------------------------------------------------------------- */
 
-void *PairLJImprovedCut::extract(const char *str, int &dim)
+void *PairLJPirani::extract(const char *str, int &dim)
 {
   dim = 2;
   if (strcmp(str, "alpha") == 0) return (void *) alpha;
