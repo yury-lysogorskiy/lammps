@@ -6,12 +6,12 @@ epsilon: 5e-14
 skip_tests:
 prerequisites: ! |
   atom full
-  pair lj/improved/cut
+  pair lj/pirani
 pre_commands: ! ""
 post_commands: ! |
   pair_modify shift yes
 input_file: in.fourmol
-pair_style: lj/improved/cut 8.0
+pair_style: lj/pirani 8.0
 pair_coeff: ! |
   1 1  1.0 12.0 6.0 2.5 0.02
   1 2  1.5 9.0 6.0 1.75 0.01
