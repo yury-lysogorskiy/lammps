@@ -6199,9 +6199,9 @@ int lammps_request_single_neighlist(void *handle, const char *id, int flags, dou
   {
     NeighProxy proxy(lmp);
     std::vector<std::string> args = {id, std::to_string(flags), std::to_string(cutoff)};
-    std::vector<const char*> c_args;
+    std::vector<char *> c_args;
     std::transform(args.begin(), args.end(), std::back_inserter(c_args),
-                   [](const std::string& s) { return s.c_str(); });
+                   [](const std::string& s) { return (char *)s.c_str(); });
     proxy.command(static_cast<int>(c_args.size()), c_args.data());
     idx = proxy.get_index();
   }
