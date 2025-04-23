@@ -43,6 +43,7 @@
 #include "molecule.h"
 #include "neigh_list.h"
 #include "neighbor.h"
+#include "neigh_request.h"
 #include "output.h"
 #include "pair.h"
 #if defined(LMP_PLUGIN)
@@ -6122,18 +6123,57 @@ int lammps_find_compute_neighlist(void *handle, const char *id, int reqid) {
 
 // helper Command class for a single neighbor list build
 
-class NeighProxy : protected Command
-{
+namespace LAMMPS_NS {
+  class NeighProxy : protected Command
+  {
  public:
   NeighProxy(class LAMMPS *lmp) : Command(lmp), neigh_idx(-1) {};
 
-  void command(int, char **) override {
-    fprintf(stderr, "called NeighProxy::command()\n");
-  }
+  void command(int, char **) override;
   int get_index() const { return neigh_idx; }
  protected:
   int neigh_idx;
 };
+}
+
+void NeighProxy::command(int narg, char **arg)
+{
+  neigh_idx = -1;
+  if (narg != 3) return;
+  auto *req = neighbor->add_request(this, arg[0]);
+  int flags = atoi(arg[1]);
+  double cutoff = atof(arg[2]);
+  req->apply_flags(flags);
+  if (cutoff > 0.0) req->set_cutoff(cutoff);
+  lmp->init();
+
+  // setup domain, communication and neighboring
+  // acquire ghosts and build standard neighbor lists
+
+  if (domain->triclinic) domain->x2lamda(atom->nlocal);
+  domain->pbc();
+  domain->reset_box();
+  comm->setup();
+  if (neighbor->style) neighbor->setup_bins();
+  comm->exchange();
+  comm->borders();
+  if (domain->triclinic) domain->lamda2x(atom->nlocal + atom->nghost);
+  neighbor->build(1);
+
+  // build neighbor list this command needs based on earlier request
+
+  auto list = neighbor->find_list(this);
+  neighbor->build_one(list);
+
+  // find neigh list
+  for (int i = 0; i < neighbor->nlist; i++) {
+    NeighList *list = neighbor->lists[i];
+    if (this == list->requestor) {
+      neigh_idx = i;
+      break;
+    }
+  }
+}
 
 /** Build a single neighbor list in between runs and return its index
  *
@@ -6158,8 +6198,15 @@ int lammps_request_single_neighlist(void *handle, const char *id, int flags, dou
   BEGIN_CAPTURE
   {
     NeighProxy proxy(lmp);
-    proxy.command(0, nullptr);
+    char *args[3];
+    args[0] = utils::strdup(id);
+    args[1] = utils::strdup(std::to_string(flags));
+    args[2] = utils::strdup(std::to_string(cutoff));
+    proxy.command(3, args);
     idx = proxy.get_index();
+    delete[] args[0];
+    delete[] args[1];
+    delete[] args[2];
   }
   END_CAPTURE
   return idx;
