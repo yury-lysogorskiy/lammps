@@ -6198,15 +6198,12 @@ int lammps_request_single_neighlist(void *handle, const char *id, int flags, dou
   BEGIN_CAPTURE
   {
     NeighProxy proxy(lmp);
-    char *args[3];
-    args[0] = utils::strdup(id);
-    args[1] = utils::strdup(std::to_string(flags));
-    args[2] = utils::strdup(std::to_string(cutoff));
-    proxy.command(3, args);
+    std::vector<std::string> args = {id, std::to_string(flags), std::to_string(cutoff)};
+    std::vector<const char*> c_args;
+    std::transform(args.begin(), args.end(), std::back_inserter(c_args),
+                   [](const std::string& s) { return s.c_str(); });
+    proxy.command(static_cast<int>(c_args.size()), c_args.data());
     idx = proxy.get_index();
-    delete[] args[0];
-    delete[] args[1];
-    delete[] args[2];
   }
   END_CAPTURE
   return idx;
