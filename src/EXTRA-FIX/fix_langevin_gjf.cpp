@@ -41,7 +41,6 @@ using namespace FixConst;
 enum { NOBIAS, BIAS };
 enum { CONSTANT, EQUAL, ATOM };
 
-
 static const char cite_langevin_gjf[] =
   "Langevin GJ methods: doi:10.1080/00268976.2019.1662506\n\n"
   "@Article{gronbech-jensen_complete_2020,\n"
@@ -52,7 +51,7 @@ static const char cite_langevin_gjf[] =
 	"doi = {10.1080/00268976.2019.1662506},\n"	
 	"journal = {Molecular Physics},\n"
 	"author = {Grønbech-Jensen, Niels},\n"
-	"year = {2020},\n"
+	"year = {2020}\n"
   "}\n\n";
 
 static const char cite_langevin_gjf_7[] =
@@ -63,7 +62,6 @@ static const char cite_langevin_gjf_7[] =
   "number = {18},\n"
   "url = {https://doi.org/10.1063/5.0066008},\n"
   "doi = {10.1063/5.0066008},\n"
-  "urldate = {2021-11-14},\n"
   "journal = {J. Chem. Phys.},\n"
   "author = {Finkelstein, Joshua and Cheng, Chungho and Fiorin, Giacomo and Seibold, Benjamin and Grønbech-Jensen, Niels},\n"
   "year = {2021},\n"
@@ -78,11 +76,23 @@ static const char cite_langevin_gjf_8[] =
   "number = {10},\n"
   "url = {https://doi.org/10.1007/s10955-024-03345-1},\n"
   "doi = {10.1007/s10955-024-03345-1},\n"
-  "urldate = {2024-10-22},\n"
   "journal = {J. Stat. Phys.},\n"
   "author = {Gronbech-Jensen, Niels},\n"
   "year = {2024},\n"
   "pages = {137}\n"
+  "}\n\n";
+
+static const char cite_langevin_gjf_vhalf[] =
+  "Langevin GJ-I vhalf method: doi:10.1080/00268976.2019.1570369\n\n"
+  "@Article{jensen_accurate_2019,\n"
+	"title = {Accurate configurational and kinetic statistics in discrete-time Langevin systems},\n"
+	"volume = {117},\n"
+	"url = {https://www.tandfonline.com/doi/full/10.1080/00268976.2019.1570369},\n"
+	"doi = {10.1080/00268976.2019.1570369},\n"
+	"number = {18},\n"
+	"journal = {Molecular Physics},\n"
+	"author = {Jensen, Lucas Frese Grønbech and Grønbech-Jensen, Niels},\n"
+	"year = {2019}\n"
   "}\n\n";
   
 
@@ -155,6 +165,7 @@ FixLangevinGJF::FixLangevinGJF(LAMMPS *lmp, int narg, char **arg) :
     } else
       error->all(FLERR, "Illegal fix langevin/gjf command");
   }
+  if (GJmethod == 1 && osflag == 0) if (lmp->citeme) lmp->citeme->add(cite_langevin_gjf_vhalf);
 
   // set temperature = nullptr, user can override via fix_modify if wants bias
   id_temp = nullptr;
@@ -235,6 +246,11 @@ void FixLangevinGJF::init()
   if (utils::strmatch(update->integrate_style, "^respa")) {
     error->all(FLERR, "Fix langevin/gjf and run style respa are not compatible");
   }
+
+  if (temperature && temperature->tempbias)
+    tbiasflag = BIAS;
+  else
+    tbiasflag = NOBIAS;
 
   // Complete set of thermostats is given in Gronbech-Jensen, Molecular Physics, 118 (2020)
   switch (GJmethod) {
@@ -320,58 +336,95 @@ void FixLangevinGJF::initial_integrate(int /* vflag */)
   }
 
   compute_target();
+  if (tbiasflag) temperature->compute_scalar();
 
-  for (int i = 0; i < nlocal; i++) {
-    if (mask[i] & groupbit) {
-
-      if (tstyle == ATOM) tsqrt = sqrt(tforce[i]);
-      if (rmass) {
+  if (rmass) {
+    for (int i = 0; i < nlocal; i++) {
+      if (mask[i] & groupbit) {
+        if (tstyle == ATOM) tsqrt = sqrt(tforce[i]);
         m = rmass[i];
         beta = tsqrt * sqrt(2.0*dt*m*boltz/t_period/mvv2e) / ftm2v;
-      } else {
+
+        fran[0] = beta*random->gaussian();
+        fran[1] = beta*random->gaussian();
+        fran[2] = beta*random->gaussian();
+
+        // First integration delivers Eq. 24a and 24b:
+        dtfm = dtf / m;
+        v[i][0] += csq * dtfm * f[i][0];
+        v[i][1] += csq * dtfm * f[i][1];
+        v[i][2] += csq * dtfm * f[i][2];
+        x[i][0] += 0.5 * csq * dt * v[i][0];
+        x[i][1] += 0.5 * csq * dt * v[i][1];
+        x[i][2] += 0.5 * csq * dt * v[i][2];
+
+        if (tbiasflag) temperature->remove_bias(i, v[i]);
+
+        // Calculate Eq. 24c:
+        lv[i][0] = c1sqrt*v[i][0] + ftm2v * (c3sqrt / (2.0 * m)) * fran[0];
+        lv[i][1] = c1sqrt*v[i][1] + ftm2v * (c3sqrt / (2.0 * m)) * fran[1];
+        lv[i][2] = c1sqrt*v[i][2] + ftm2v * (c3sqrt / (2.0 * m)) * fran[2];
+
+        // Calculate Eq. 24d
+        v[i][0] = (gjfc2 / c1sqrt) * lv[i][0] + ftm2v * csq * (0.5 / m) * fran[0];
+        v[i][1] = (gjfc2 / c1sqrt) * lv[i][1] + ftm2v * csq * (0.5 / m) * fran[1];
+        v[i][2] = (gjfc2 / c1sqrt) * lv[i][2] + ftm2v * csq * (0.5 / m) * fran[2];
+
+        if (tbiasflag) temperature->restore_bias(i, v[i]);
+        if (tbiasflag) temperature->restore_bias(i, lv[i]);
+
+        // Calculate Eq. 24e. Final integrator then calculates Eq. 24f after force update.
+        x[i][0] += 0.5 * csq * dt * v[i][0];
+        x[i][1] += 0.5 * csq * dt * v[i][1];
+        x[i][2] += 0.5 * csq * dt * v[i][2];
+      }
+    }
+  } else {
+    for (int i = 0; i < nlocal; i++) {
+      if (mask[i] & groupbit) {
+        if (tstyle == ATOM) tsqrt = sqrt(tforce[i]);
         m = mass[type[i]];
         beta = tsqrt * sqrt(2.0*dt*m*boltz/t_period/mvv2e) / ftm2v;
+
+        fran[0] = beta*random->gaussian();
+        fran[1] = beta*random->gaussian();
+        fran[2] = beta*random->gaussian();
+
+        // First integration delivers Eq. 24a and 24b:
+        dtfm = dtf / m;
+        v[i][0] += csq * dtfm * f[i][0];
+        v[i][1] += csq * dtfm * f[i][1];
+        v[i][2] += csq * dtfm * f[i][2];
+        x[i][0] += 0.5 * csq * dt * v[i][0];
+        x[i][1] += 0.5 * csq * dt * v[i][1];
+        x[i][2] += 0.5 * csq * dt * v[i][2];
+
+        if (tbiasflag) temperature->remove_bias(i, v[i]);
+
+        // Calculate Eq. 24c:
+        lv[i][0] = c1sqrt*v[i][0] + ftm2v * (c3sqrt / (2.0 * m)) * fran[0];
+        lv[i][1] = c1sqrt*v[i][1] + ftm2v * (c3sqrt / (2.0 * m)) * fran[1];
+        lv[i][2] = c1sqrt*v[i][2] + ftm2v * (c3sqrt / (2.0 * m)) * fran[2];
+
+        // Calculate Eq. 24d
+        v[i][0] = (gjfc2 / c1sqrt) * lv[i][0] + ftm2v * csq * (0.5 / m) * fran[0];
+        v[i][1] = (gjfc2 / c1sqrt) * lv[i][1] + ftm2v * csq * (0.5 / m) * fran[1];
+        v[i][2] = (gjfc2 / c1sqrt) * lv[i][2] + ftm2v * csq * (0.5 / m) * fran[2];
+
+        if (tbiasflag) temperature->restore_bias(i, v[i]);
+        if (tbiasflag) temperature->restore_bias(i, lv[i]);
+
+        // Calculate Eq. 24e. Final integrator then calculates Eq. 24f after force update.
+        x[i][0] += 0.5 * csq * dt * v[i][0];
+        x[i][1] += 0.5 * csq * dt * v[i][1];
+        x[i][2] += 0.5 * csq * dt * v[i][2];
       }
-
-      fran[0] = beta*random->gaussian();
-      fran[1] = beta*random->gaussian();
-      fran[2] = beta*random->gaussian();
-
-      // First integration delivers Eq. 24a and 24b:
-      dtfm = dtf / m;
-      v[i][0] += csq * dtfm * f[i][0];
-      v[i][1] += csq * dtfm * f[i][1];
-      v[i][2] += csq * dtfm * f[i][2];
-      x[i][0] += 0.5 * csq * dt * v[i][0];
-      x[i][1] += 0.5 * csq * dt * v[i][1];
-      x[i][2] += 0.5 * csq * dt * v[i][2];
-
-      // Calculate Eq. 24c:
-      lv[i][0] = c1sqrt*v[i][0] + ftm2v * (c3sqrt / (2.0 * m)) * fran[0];
-      lv[i][1] = c1sqrt*v[i][1] + ftm2v * (c3sqrt / (2.0 * m)) * fran[1];
-      lv[i][2] = c1sqrt*v[i][2] + ftm2v * (c3sqrt / (2.0 * m)) * fran[2];
-
-      // Calculate Eq. 24d
-      v[i][0] = (gjfc2 / c1sqrt) * lv[i][0] + ftm2v * csq * (0.5 / m) * fran[0];
-      v[i][1] = (gjfc2 / c1sqrt) * lv[i][1] + ftm2v * csq * (0.5 / m) * fran[1];
-      v[i][2] = (gjfc2 / c1sqrt) * lv[i][2] + ftm2v * csq * (0.5 / m) * fran[2];
-
-      // Calculate Eq. 24e. Final integrator then calculates Eq. 24f after force update.
-      x[i][0] += 0.5 * csq * dt * v[i][0];
-      x[i][1] += 0.5 * csq * dt * v[i][1];
-      x[i][2] += 0.5 * csq * dt * v[i][2];
     }
   }
 }
 
 void FixLangevinGJF::final_integrate()
 {
-  double dtfm;
-  double dt = update->dt;
-  double ftm2v = force->ftm2v;
-  double dtf = 0.5 * dt * ftm2v;
-  double csq = sqrt(gjfc3 / gjfc1);
-
   double **v = atom->v;
   double **f = atom->f;
   double *rmass = atom->rmass;
@@ -380,6 +433,10 @@ void FixLangevinGJF::final_integrate()
   int *mask = atom->mask;
   int nlocal = atom->nlocal;
   if (igroup == atom->firstgroup) nlocal = atom->nfirst;
+
+  double dtfm;
+  double dtf = 0.5 * update->dt * force->ftm2v;
+  double csq = sqrt(gjfc3 / gjfc1);
 
   // Calculate Eq. 24f.
   if (rmass) {

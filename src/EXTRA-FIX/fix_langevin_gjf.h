@@ -44,7 +44,7 @@ class FixLangevinGJF : public Fix {
   int unpack_exchange(int, double *) override;
 
  protected:
-  int osflag, GJmethod, maxatom, lv_allocated;
+  int osflag, tbiasflag, GJmethod, maxatom, lv_allocated;
   double t_start, t_stop, t_period, t_target, tsqrt;
   double gjfc1, gjfc2, gjfc3;
   int tstyle, tvar;

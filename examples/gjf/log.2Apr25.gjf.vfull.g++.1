@@ -1,4 +1,4 @@
-LAMMPS (2 Apr 2025 - Development - 09d3ac0a1b-modified)
+LAMMPS (2 Apr 2025 - Development - e4c3b0c05e-modified)
 OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:99)
   using 1 OpenMP thread(s) per MPI task
 # GJ thermostat
@@ -55,7 +55,6 @@ compute myPE all pe
 
 fix lang all langevin/gjf 10 10 1 26488 vel vfull method 1
 
-thermo 2000
 run 5000
 
 CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
@@ -72,7 +71,7 @@ url = {https://www.tandfonline.com/doi/full/10.1080/00268976.2019.1662506},
 doi = {10.1080/00268976.2019.1662506},
 journal = {Molecular Physics},
 author = {Grønbech-Jensen, Niels},
-year = {2020},
+year = {2020}
 }
 
 CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
@@ -93,24 +92,22 @@ Neighbor list info ...
 Per MPI rank memory allocation (min/avg/max) = 6.481 | 6.481 | 6.481 Mbytes
    Step          Temp          E_pair         E_mol          TotEng         Press     
          0   10            -56.207652      0             -55.092137      33.341103    
-      2000   8.5329244     -55.06102       0             -54.10916       343.01505    
-      4000   7.8165794     -55.128803      0             -54.256851      322.07344    
       5000   8.4535562     -55.150518      0             -54.207511      318.20862    
-Loop time of 2.26625 on 1 procs for 5000 steps with 864 atoms
+Loop time of 2.32365 on 1 procs for 5000 steps with 864 atoms
 
-Performance: 19062.331 ns/day, 0.001 hours/ns, 2206.288 timesteps/s, 1.906 Matom-step/s
-100.0% CPU use with 1 MPI tasks x 1 OpenMP threads
+Performance: 18591.401 ns/day, 0.001 hours/ns, 2151.782 timesteps/s, 1.859 Matom-step/s
+99.9% CPU use with 1 MPI tasks x 1 OpenMP threads
 
 MPI task timing breakdown:
 Section |  min time  |  avg time  |  max time  |%varavg| %total
 ---------------------------------------------------------------
-Pair    | 1.2907     | 1.2907     | 1.2907     |   0.0 | 56.95
-Bond    | 0.00032498 | 0.00032498 | 0.00032498 |   0.0 |  0.01
-Neigh   | 0.28343    | 0.28343    | 0.28343    |   0.0 | 12.51
-Comm    | 0.055491   | 0.055491   | 0.055491   |   0.0 |  2.45
-Output  | 8.5614e-05 | 8.5614e-05 | 8.5614e-05 |   0.0 |  0.00
-Modify  | 0.61129    | 0.61129    | 0.61129    |   0.0 | 26.97
-Other   |            | 0.02497    |            |       |  1.10
+Pair    | 1.3067     | 1.3067     | 1.3067     |   0.0 | 56.23
+Bond    | 0.00027472 | 0.00027472 | 0.00027472 |   0.0 |  0.01
+Neigh   | 0.28218    | 0.28218    | 0.28218    |   0.0 | 12.14
+Comm    | 0.057388   | 0.057388   | 0.057388   |   0.0 |  2.47
+Output  | 5.6019e-05 | 5.6019e-05 | 5.6019e-05 |   0.0 |  0.00
+Modify  | 0.65159    | 0.65159    | 0.65159    |   0.0 | 28.04
+Other   |            | 0.02549    |            |       |  1.10
 
 Nlocal:            864 ave         864 max         864 min
 Histogram: 1 0 0 0 0 0 0 0 0 0
@@ -125,8 +122,9 @@ Ave special neighs/atom = 0
 Neighbor list builds = 258
 Dangerous builds = 0
 
-fix energies all ave/time 1 20000 20000 c_myKE c_myPE file ave.out
+fix energies all ave/time 1 20000 20000 c_myKE c_myPE #file ave.out
 
+thermo 2000
 run 35000
 Generated 0 of 0 mixed pair_coeff terms from geometric mixing rule
 Per MPI rank memory allocation (min/avg/max) = 6.481 | 6.481 | 6.481 Mbytes
@@ -150,21 +148,21 @@ Per MPI rank memory allocation (min/avg/max) = 6.481 | 6.481 | 6.481 Mbytes
      36000   8.3048574     -55.079475      0             -54.153056      338.04291    
      38000   8.8708544     -55.108991      0             -54.119434      330.70097    
      40000   8.4012779     -55.080817      0             -54.143642      338.54326    
-Loop time of 19.3814 on 1 procs for 35000 steps with 864 atoms
+Loop time of 19.3834 on 1 procs for 35000 steps with 864 atoms
 
-Performance: 15602.554 ns/day, 0.002 hours/ns, 1805.851 timesteps/s, 1.560 Matom-step/s
-100.0% CPU use with 1 MPI tasks x 1 OpenMP threads
+Performance: 15601.000 ns/day, 0.002 hours/ns, 1805.671 timesteps/s, 1.560 Matom-step/s
+99.9% CPU use with 1 MPI tasks x 1 OpenMP threads
 
 MPI task timing breakdown:
 Section |  min time  |  avg time  |  max time  |%varavg| %total
 ---------------------------------------------------------------
-Pair    | 12.065     | 12.065     | 12.065     |   0.0 | 62.25
-Bond    | 0.0021494  | 0.0021494  | 0.0021494  |   0.0 |  0.01
-Neigh   | 2.3755     | 2.3755     | 2.3755     |   0.0 | 12.26
-Comm    | 0.40916    | 0.40916    | 0.40916    |   0.0 |  2.11
-Output  | 0.0004907  | 0.0004907  | 0.0004907  |   0.0 |  0.00
-Modify  | 4.3528     | 4.3528     | 4.3528     |   0.0 | 22.46
-Other   |            | 0.1765     |            |       |  0.91
+Pair    | 11.828     | 11.828     | 11.828     |   0.0 | 61.02
+Bond    | 0.0024424  | 0.0024424  | 0.0024424  |   0.0 |  0.01
+Neigh   | 2.3519     | 2.3519     | 2.3519     |   0.0 | 12.13
+Comm    | 0.42251    | 0.42251    | 0.42251    |   0.0 |  2.18
+Output  | 0.00056686 | 0.00056686 | 0.00056686 |   0.0 |  0.00
+Modify  | 4.5987     | 4.5987     | 4.5987     |   0.0 | 23.73
+Other   |            | 0.1793     |            |       |  0.93
 
 Nlocal:            864 ave         864 max         864 min
 Histogram: 1 0 0 0 0 0 0 0 0 0

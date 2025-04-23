@@ -17,9 +17,9 @@ compute myPE all pe
 
 fix lang all langevin/gjf 10 10 1 26488 vel vfull method 1
 
-thermo 2000
 run 5000
 
-fix energies all ave/time 1 20000 20000 c_myKE c_myPE file ave.out
+fix energies all ave/time 1 20000 20000 c_myKE c_myPE #file ave.out
 
+thermo 2000
 run 35000
