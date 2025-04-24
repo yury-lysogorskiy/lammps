@@ -269,7 +269,7 @@ void Timer::modify_params(int narg, char **arg)
 #if defined(FMT_STATIC_THOUSANDS_SEPARATOR)
       char outstr[200];
       struct tm *tv = gmtime(&((time_t) _timeout));
-      strftime(outstr, 200, "%02d:%M:%S", tv)
+      strftime(outstr, 200, "%02d:%M:%S", tv);
       timeout = outstr;
 #else
       std::tm tv = fmt::gmtime((std::time_t) _timeout);
