@@ -70,9 +70,12 @@ the hardness of the repulsive wall.
 
 This force field can be used for neutral-neutral (:math:`\gamma = 6`),
 ion-neutral (:math:`\gamma = 4`) or ion-ion systems (:math:`\gamma = 1`).
-Notice that this implementation does not include possible electrostatic
-interactions which should be eventually added by means of a hybrid style
-(e.g. :doc:`pair_style hybrid/overlay <pair_hybrid_overlay>` or variants).
+Notice that this implementation does not include explicit electrostatic
+interactions. If these are desired, this pair style should be used along
+with a Coulomb pair style :doc:`pair_style coul/cut <pair_coul_cut>` and
+optional long-range Coulombics, which can be done using the pair style
+hybrid :doc:`pair_style hybrid <pair_hybrid>` and kspace
+style :doc:`kspace_style <kspace_style>` commands.
 
 
 As discussed in :ref:`(Pirani) <Pirani>`, analyses of a
