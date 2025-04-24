@@ -39,8 +39,6 @@ using namespace LAMMPS_NS;
 using namespace RHEO_NS;
 using namespace MathExtra;
 
-static constexpr double EPSILON = 1e-1;
-
 /* ---------------------------------------------------------------------- */
 
 ComputeRHEOInterface::ComputeRHEOInterface(LAMMPS *lmp, int narg, char **arg) :
@@ -211,7 +209,8 @@ void ComputeRHEOInterface::compute_peratom()
     if (status[i] & PHASECHECK) {
       if (normwf[i] != 0.0) {
         // Stores rho for solid particles 1+Pw in Adami Adams 2012
-        rho[i] = MAX(EPSILON, fix_pressure->calc_rho(rho[i] / normwf[i], i));
+        //   cap out at a tenth of equilibrium
+        rho[i] = MAX(0.1 * rho0[type[i]], fix_pressure->calc_rho(rho[i] / normwf[i], i));
       } else {
         rho[i] = rho0[type[i]];
       }
