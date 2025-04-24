@@ -37,7 +37,6 @@ Examples
 Description
 """""""""""
 
-.. versionadded:: 19Nov2024
 
 This fix implements the QEqR method for charge equilibration, which
 differs from the QEq charge equilibration method :ref:`(Rappe and
@@ -45,6 +44,7 @@ Goddard) <Rappe4>` only in how external electric fields are accounted
 for.  This fix therefore raises a warning when used without :doc:`fix
 efield <fix_efield>` since :doc:`fix qeq/reaxff <fix_qeq_reaxff>` should
 be used without an external electric field.  Charges are computed with
+.. versionadded:: 2Apr2025
 the QEqR method by minimizing the electrostatic energy of the system in
 the same way as the QEq method but where the absolute electronegativity,
 :math:`\chi_i`, of each atom in the QEq method is replaced with an
