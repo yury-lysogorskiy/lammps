@@ -64,7 +64,7 @@ depth.
 
 This potential provides some advantages with respect to the standard LJ
 potential, as explained in :ref:`(Pirani) <Pirani>`: it provides a more
-realistic description of the long range behaviour and an attenuation of
+realistic description of the long range behavior and an attenuation of
 the hardness of the repulsive wall.
 
 This force field can be used for neutral-neutral (:math:`\gamma = 6`),
