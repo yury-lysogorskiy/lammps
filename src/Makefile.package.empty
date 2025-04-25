@@ -7,6 +7,6 @@ PKG_LIB =
 PKG_CPP_DEPENDS = 
 PKG_LINK_DEPENDS = 
 
-PKG_SYSINC = -I ../../third_party
+PKG_SYSINC = -I../../third_party
 PKG_SYSLIB = 
 PKG_SYSPATH = 
