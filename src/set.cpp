@@ -395,7 +395,7 @@ void Set::process_args(int caller_flag, int narg, char **arg)
 
     // unrecognized keyword
 
-    } else error->all(FLERR,"Unrecognized set or fix set comand keyword {}",arg[iarg]);
+    } else error->all(FLERR,"Unrecognized set or fix set command keyword {}",arg[iarg]);
   }
 
   // varflag = 1 if any action uses a per-atom variable
@@ -2228,7 +2228,7 @@ void Set::process_spin_atom(int &iarg, int narg, char **arg, Action *action)
   else {
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
     if (action->dvalue1 <= 0.0)
-      error->all(FLERR,"Invalid spin magnitude {} in set command");
+      error->all(FLERR,"Invalid spin magnitude {} in set {} command", action->dvalue1, arg[iarg]);
   }
 
   if (utils::strmatch(arg[iarg+2],"^v_")) varparse(arg[iarg+2],2,action);

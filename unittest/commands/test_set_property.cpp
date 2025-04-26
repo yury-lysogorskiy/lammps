@@ -92,7 +92,7 @@ TEST_F(SetTest, NoBoxNoAtoms)
     TEST_FAILURE(".*ERROR: Illegal set command: need at least four.*", command("set type 1 x"););
     TEST_FAILURE(".*ERROR: Unknown set or fix set command style: xxx.*",
                  command("set xxx 1 x 0.0"););
-    TEST_FAILURE(".*ERROR: Unrecognized set or fix set keyword yyy.*",
+    TEST_FAILURE(".*ERROR: Unrecognized set or fix set command keyword yyy.*",
                  command("set type 1 yyy 0.0"););
 
     TEST_FAILURE(".*ERROR: Cannot set attribute spin/atom for atom style atomic.*",
