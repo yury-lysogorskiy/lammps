@@ -1776,7 +1776,7 @@ void Set::process_mol(int &iarg, int narg, char **arg, Action *action)
 void Set::invoke_mol(Action *action)
 {
   int nlocal = atom->nlocal;
-  int *molecule = atom->molecule;
+  tagint *molecule = atom->molecule;
 
   int varflag = action->varflag;
   tagint molID;
