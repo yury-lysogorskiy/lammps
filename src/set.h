@@ -27,8 +27,8 @@ namespace LAMMPS_NS {
 class Set : public Command {
  public:
   Set(class LAMMPS *lmp);
-  ~Set();
-  
+  ~Set() override;
+
   void command(int, char **) override;
 
   void process_args(int, int, char **);
