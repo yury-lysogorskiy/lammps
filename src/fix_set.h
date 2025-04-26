@@ -32,7 +32,7 @@ class FixSet : public Fix {
   void end_of_step() override;
 
  private:
-  class Set2 *set;
+  class Set *set;
 };
 
 }    // namespace LAMMPS_NS

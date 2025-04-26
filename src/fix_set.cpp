@@ -33,7 +33,7 @@ FixSet::FixSet(LAMMPS *lmp, int narg, char **arg) : Fix(lmp, narg, arg)
 
   // create instance of Set class
 
-  set = new Set2(lmp);
+  set = new Set(lmp);
 
   // pass remaining args to Set class
   // only keywords which use per-atom variables are currently allowed
