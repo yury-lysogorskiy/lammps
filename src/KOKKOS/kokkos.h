@@ -55,6 +55,8 @@ class KokkosLMP : protected Pointers {
   int newtonflag;
   int allow_overlap;
   double binsize;
+  int threads_per_atom;
+  int threads_per_atom_set;
 
   static int is_finalized;
   static int init_ngpus;

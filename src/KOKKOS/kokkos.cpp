@@ -78,6 +78,9 @@ KokkosLMP::KokkosLMP(LAMMPS *lmp, int narg, char **arg) : Pointers(lmp)
   int device = 0;
   nthreads = 1;
 
+  threads_per_atom = 1;
+  threads_per_atom_set = 0;
+
   int iarg = 0;
   while (iarg < narg) {
     if (strcmp(arg[iarg],"d") == 0 || strcmp(arg[iarg],"device") == 0) {
@@ -538,6 +541,11 @@ void KokkosLMP::accelerator(int narg, char **arg)
     } else if (strcmp(arg[iarg],"neigh/transpose") == 0) {
       if (iarg+2 > narg) error->all(FLERR,"Illegal package kokkos command");
       neigh_transpose = utils::logical(FLERR,arg[iarg+1],false,lmp);
+      iarg += 2;
+    } else if (strcmp(arg[iarg],"threads/per/atom") == 0) {
+      if (iarg+2 > narg) error->all(FLERR,"Illegal package kokkos command");
+      threads_per_atom = utils::inumeric(FLERR, arg[iarg+1], false, lmp);
+      threads_per_atom_set = 1;
       iarg += 2;
     } else error->all(FLERR,"Illegal package kokkos command");
   }
