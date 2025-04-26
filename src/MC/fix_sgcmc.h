@@ -91,7 +91,7 @@ class FixSemiGrandCanonicalMC : public Fix {
   void flipAtomGeneric(int flipAtom, int oldSpecies, int newSpecies);
 
   // Flips the type of one atom.
-  // This routne is for the atomic energy method
+  // This routine is for the atomic energy method
   void flipAtomEatom(int flipAtom, int oldSpecies, int newSpecies);
 
   // Transfers the locally changed electron densities and atom types to the neighbors.
