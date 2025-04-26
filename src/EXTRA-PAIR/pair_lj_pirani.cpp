@@ -39,7 +39,7 @@ using MathSpecial::square;
 
 /* ---------------------------------------------------------------------- */
 
-PairLJPirani::PairLJPirani(LAMMPS *lmp) : Pair(lmp)
+PairLJPirani::PairLJPirani(LAMMPS *lmp) : Pair(lmp), cut_respa(nullptr)
 {
   respa_enable = 1;
   born_matrix_enable = 0;
