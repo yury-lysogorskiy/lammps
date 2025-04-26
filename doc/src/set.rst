@@ -534,7 +534,7 @@ using SPH in LAMMPS.
 
 .. note::
 
-   Noote that the SPH PDF guide file has not been updated for many
+   Note that the SPH PDF guide file has not been updated for many
    years and thus does not reflect the current *syntax* of the SPH
    package commands. For that, please refer to the LAMMPS manual.
 
