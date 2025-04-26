@@ -58,13 +58,10 @@ enum{ANGLE,ANGMOM,BOND,CC,CHARGE,DENSITY,DIAMETER,DIHEDRAL,DIPOLE,
 
 /* ---------------------------------------------------------------------- */
 
-Set::Set(class LAMMPS *lmp) : Command(lmp)
+Set::Set(class LAMMPS *lmp) :
+    Command(lmp), id(nullptr), region(nullptr), actions(nullptr), invoke_choice(nullptr),
+    vec1(nullptr), vec2(nullptr), vec3(nullptr), vec4(nullptr), select(nullptr)
 {
-  actions = nullptr;
-  invoke_choice = nullptr;
-  
-  select = nullptr;
-  vec1 = vec2 = vec3 = vec4 = nullptr;
   maxselect = maxvariable = 0;
 }
 
@@ -83,24 +80,24 @@ Set::~Set()
 }
 
 /* ---------------------------------------------------------------------- */
-
+// clang-format on
 void Set::command(int narg, char **arg)
 {
   if (domain->box_exist == 0)
-    error->all(FLERR, Error::NOLASTLINE, "Set command before simulation box is defined"
-               + utils::errorurl(0));
+    error->all(FLERR, Error::NOLASTLINE,
+               "Set command before simulation box is defined" + utils::errorurl(0));
   if (atom->natoms == 0)
     error->all(FLERR, Error::NOLASTLINE, "Set command on system without atoms");
   if (narg < 4) error->all(FLERR, 1, "Illegal set command: need at least four arguments");
 
-  process_args(SETCOMMAND,narg,arg);
-  
-  if (comm->me == 0) utils::logmesg(lmp,"Setting atom values ...\n");
+  process_args(SETCOMMAND, narg, arg);
+
+  if (comm->me == 0) utils::logmesg(lmp, "Setting atom values ...\n");
 
   // select which atoms to act on
-  
+
   selection(atom->nlocal);
-  
+
   // loop over list of actions to reset atom attributes
 
   invoke_actions();
@@ -108,23 +105,26 @@ void Set::command(int narg, char **arg)
   // print stats for each action
   // for CC option, include species index
 
-  bigint bcount,allcount;
+  bigint bcount, allcount;
 
   for (int i = 0; i < naction; i++) {
     Action *action = &actions[i];
     int iarg = action->argindex;
-    
-    if (action->count_action < 0) bcount = action->count_select;
-    else bcount = action->count_action;
-    MPI_Allreduce(&bcount,&allcount,1,MPI_LMP_BIGINT,MPI_SUM,world);
-    
+
+    if (action->count_action < 0) {
+      bcount = action->count_select;
+    } else {
+      bcount = action->count_action;
+    }
+    MPI_Allreduce(&bcount, &allcount, 1, MPI_LMP_BIGINT, MPI_SUM, world);
+
     if (comm->me == 0) {
-      if (strcmp(arg[iarg],"cc") == 0)
-        utils::logmesg(lmp,"  {} settings made for {} index {}\n",
-                       allcount,arg[iarg],arg[iarg+1]);
-      else
-        utils::logmesg(lmp,"  {} settings made for {}\n",
-                       allcount,arg[iarg]);
+      if (strcmp(arg[iarg], "cc") == 0) {
+        utils::logmesg(lmp, "  {} settings made for {} index {}\n", allcount, arg[iarg],
+                       arg[iarg + 1]);
+      } else {
+        utils::logmesg(lmp, "  {} settings made for {}\n", allcount, arg[iarg]);
+      }
     }
   }
 }
@@ -2224,7 +2224,8 @@ void Set::process_spin_atom(int &iarg, int narg, char **arg, Action *action)
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else {
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-    if (action->dvalue1 <= 0.0) error->all(FLERR,"Invalid spin magnitude in set command");
+    if (action->dvalue1 <= 0.0)
+      error->all(FLERR,"Invalid spin magnitude {} in set command");
   }
   
   if (utils::strmatch(arg[iarg+2],"^v_")) varparse(arg[iarg+2],2,action);
