@@ -2974,7 +2974,7 @@ CONTAINS
     ELSE
         Ccutoff = 1.0_c_double
     END IF
-  
+
     Cid = f2c_string(id)
     idx = lammps_request_single_neighlist(self%handle, Cid, Cflags, Ccutoff)
     IF (idx < 0) THEN
