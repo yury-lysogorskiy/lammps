@@ -65,9 +65,9 @@ int FixSet::setmask()
 void FixSet::end_of_step()
 {
   // select which atoms to act on
-  
+
   set->selection(atom->nlocal);
-  
+
   // loop over list of actions to reset atom attributes
 
   set->invoke_actions();

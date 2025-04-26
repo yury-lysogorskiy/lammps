@@ -22,7 +22,7 @@ Syntax
        for style = *region*, ID = a region ID
 
 * one or more keyword/value pairs may be appended
-  
+
 * keyword = *angle* or *angmom* or *bond* or *cc* or *charge* or
   *density* or *density/disc* or *diameter* or *dihedral* or *dipole*
   or *dipole/random* or *dpd/theta* or *edpd/cv* or *edpd/temp* or
@@ -589,7 +589,7 @@ a density, e.g. via the :doc:`read_data <read_data>` command.
 .. versionchanged:: 28Mar2023
 
    Support for type labels was added for setting atom types
-   
+
 Keyword *type* sets the atom type for all selected atoms.  A specified
 value can be either a numeric atom type or an atom type label. When
 using a numeric type, the specified value must be from 1 to ntypes,

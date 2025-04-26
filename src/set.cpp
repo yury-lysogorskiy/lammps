@@ -187,7 +187,7 @@ void Set::process_args(int caller_flag, int narg, char **arg)
   while (iarg < narg) {
 
     // grow list of actions if needed
-    
+
     if (naction == maxaction) {
       maxaction += DELTA;
       actions = (Action *) memory->srealloc(actions,maxaction*sizeof(Action),"set:actions");
@@ -199,7 +199,7 @@ void Set::process_args(int caller_flag, int narg, char **arg)
     action->argindex = iarg;
     action->varflag = 0;
     action->varflag1 = action->varflag2 = action->varflag3 = action->varflag4 = 0;
-    
+
     if (strcmp(arg[iarg],"angle") == 0) {
       action->keyword = ANGLE;
       process_angle(iarg,narg,arg,action);
@@ -388,13 +388,13 @@ void Set::process_args(int caller_flag, int narg, char **arg)
       action->keyword = Z;
       process_z(iarg,narg,arg,action);
       invoke_choice[naction++] = &Set::invoke_z;
-      
+
     } else if (utils::strmatch(arg[iarg],"^[id]2?_")) {
       process_custom(iarg,narg,arg,action);
       invoke_choice[naction++] = &Set::invoke_custom;
 
     // unrecognized keyword
-      
+
     } else error->all(FLERR,"Unrecognized set or fix set comand keyword {}",arg[iarg]);
   }
 
@@ -411,10 +411,10 @@ void Set::process_args(int caller_flag, int narg, char **arg)
     if (action->varflag3) varflag3 = 1;
     if (action->varflag4) varflag4 = 1;
   }
-  
+
   // error if any action of fix set command does not use a per-atom variable
   // b/c fix set is then effectivly a no-op
-  
+
   if (caller == FIXSET) {
     for (int i = 0; i < naction; i++) {
       action = &actions[i];
@@ -426,7 +426,7 @@ void Set::process_args(int caller_flag, int narg, char **arg)
 
   // warn if a keyword sets properties for atoms in rigid bodies
   // assume no conflict for properties not in this list of cases
-  
+
   for (int i = 0; i < naction; i++) {
     switch (actions[i].keyword) {
     case X:
@@ -452,7 +452,7 @@ void Set::process_args(int caller_flag, int narg, char **arg)
 
   // in future, could return index to next arg to process
   // i.e. if fix set command appends its own options
-  
+
   // return iarg;
 }
 
@@ -465,7 +465,7 @@ void Set::selection(int n)
 {
   // reallocate select vector if needed
   // this method could be called many times by fix set command
-  
+
   if (n > maxselect) {
     memory->destroy(select);
     memory->create(select,n,"set:select");
@@ -519,7 +519,7 @@ void Set::selection(int n)
 void Set::invoke_actions()
 {
   // reallocate per-atom variable storage if needed
-  
+
   if (varflag && atom->nlocal > maxvariable) {
     maxvariable = atom->nlocal;
     if (varflag1) {
@@ -541,7 +541,7 @@ void Set::invoke_actions()
   }
 
   // loop over actions
-  
+
   for (int i = 0; i < naction; i++) {
 
     Action *action = &actions[i];
@@ -550,9 +550,9 @@ void Set::invoke_actions()
     // if stays -1, count_select is used by caller
     // if overwritten by an invoke method, count_action is used
     // only a handful of invoke methods tally their own count
-    
+
     count_action = -1;
-    
+
     // evaluate atom-style variable(s) if necessary
 
     if (action->varflag) {
@@ -571,7 +571,7 @@ void Set::invoke_actions()
     }
 
     // invoke the action to reset per-atom or per-topology values
-    
+
     (this->*invoke_choice[i])(action);
 
     action->count_select = count_select;
@@ -620,8 +620,8 @@ void Set::setrandom(int keyword, Action *action)
   double **x = atom->x;
 
   // seed is always set to ivalue1 in process() methods
-  
-  int seed = action->ivalue1;       
+
+  int seed = action->ivalue1;
 
   auto ranpark = new RanPark(lmp,1);
   auto ranmars = new RanMars(lmp,seed + comm->me);
@@ -633,7 +633,7 @@ void Set::setrandom(int keyword, Action *action)
     double fraction = action->dvalue1;
     int newtype = action->ivalue2;
     int count = 0;
-    
+
     for (i = 0; i < nlocal; i++)
       if (select[i]) {
         ranpark->reset(seed,x[i]);
@@ -641,7 +641,7 @@ void Set::setrandom(int keyword, Action *action)
         atom->type[i] = newtype;
         count++;
       }
-    
+
     count_action = count;
 
   // set exact count of atom types to newtype
@@ -680,7 +680,7 @@ void Set::setrandom(int keyword, Action *action)
 
     int count = 0;
     int eligible = 0;
-    
+
     for (i = 0; i < nlocal; i++) {
       if (!select[i]) continue;
       if (flag[eligible]) {
@@ -689,9 +689,9 @@ void Set::setrandom(int keyword, Action *action)
       }
       eligible++;
     }
-    
+
     count_action = count;
-    
+
     // clean up
 
     memory->destroy(flag);
@@ -744,7 +744,7 @@ void Set::setrandom(int keyword, Action *action)
     int nlocal = atom->nlocal;
     double dlen = action->dvalue1;
     double sp_sq,scale;
-    
+
     if (domain->dimension == 3) {
       for (i = 0; i < nlocal; i++)
         if (select[i]) {
@@ -785,7 +785,7 @@ void Set::setrandom(int keyword, Action *action)
     int nlocal = atom->nlocal;
     int quat_flag = atom->quat_flag;
     double *quat_one;
-    
+
     if (domain->dimension == 3) {
       double s,t1,t2,theta1,theta2;
       for (i = 0; i < nlocal; i++)
@@ -887,7 +887,7 @@ void Set::topology(int keyword, Action *action)
   selection(atom->nlocal + atom->nghost);
 
   int count = 0;
-  
+
   // for BOND, each of 2 atoms must be in group
 
   if (keyword == BOND) {
@@ -895,7 +895,7 @@ void Set::topology(int keyword, Action *action)
     int **bond_type = atom->bond_type;
     tagint **bond_atom = atom->bond_atom;
     int nlocal = atom->nlocal;
-    
+
     int itype = action->ivalue1;
     for (int i = 0; i < nlocal; i++)
       for (m = 0; m < num_bond[i]; m++) {
@@ -910,14 +910,14 @@ void Set::topology(int keyword, Action *action)
 
   // for ANGLE, each of 3 atoms must be in group
 
-  if (keyword == ANGLE) { 
+  if (keyword == ANGLE) {
     int *num_angle = atom->num_angle;
     int **angle_type = atom->angle_type;
     tagint **angle_atom1 = atom->angle_atom1;
     tagint **angle_atom2 = atom->angle_atom2;
     tagint **angle_atom3 = atom->angle_atom3;
     int nlocal = atom->nlocal;
-    
+
     int itype = action->ivalue1;
     for (int i = 0; i < nlocal; i++)
       for (m = 0; m < num_angle[i]; m++) {
@@ -943,7 +943,7 @@ void Set::topology(int keyword, Action *action)
     tagint **dihedral_atom3 = atom->dihedral_atom3;
     tagint **dihedral_atom4 = atom->dihedral_atom4;
     int nlocal = atom->nlocal;
-    
+
     int itype = action->ivalue1;
     for (int i = 0; i < nlocal; i++)
       for (m = 0; m < num_dihedral[i]; m++) {
@@ -970,7 +970,7 @@ void Set::topology(int keyword, Action *action)
     tagint **improper_atom3 = atom->improper_atom3;
     tagint **improper_atom4 = atom->improper_atom4;
     int nlocal = atom->nlocal;
-    
+
     int itype = action->ivalue1;
     for (int i = 0; i < nlocal; i++)
       for (m = 0; m < num_improper[i]; m++) {
@@ -1025,14 +1025,14 @@ void Set::process_angmom(int &iarg, int narg, char **arg, Action *action)
   if (!atom->angmom_flag)
     error->all(FLERR,"Cannot set attribute {} for atom style {}", arg[iarg], atom->get_style());
   if (iarg+4 > narg) utils::missing_cmd_args(FLERR, "set angmom", error);
-  
+
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
   if (utils::strmatch(arg[iarg+2],"^v_")) varparse(arg[iarg+2],2,action);
   else action->dvalue2 = utils::numeric(FLERR,arg[iarg+2],false,lmp);
   if (utils::strmatch(arg[iarg+3],"^v_")) varparse(arg[iarg+3],3,action);
   else action->dvalue3 = utils::numeric(FLERR,arg[iarg+3],false,lmp);
-  
+
   iarg += 4;
 }
 
@@ -1046,16 +1046,16 @@ void Set::invoke_angmom(Action *action)
   if (!action->varflag1) xvalue = action->dvalue1;
   if (!action->varflag2) yvalue = action->dvalue2;
   if (!action->varflag3) zvalue = action->dvalue3;
-  
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
-    
+
     if (varflag) {
       if (action->varflag1) xvalue = vec1[i];
       if (action->varflag1) yvalue = vec2[i];
       if (action->varflag1) zvalue = vec3[i];
     }
-    
+
     angmom[i][0] = xvalue;
     angmom[i][1] = yvalue;
     angmom[i][2] = zvalue;
@@ -1075,7 +1075,7 @@ void Set::process_bond(int &iarg, int narg, char **arg, Action *action)
   delete[] typestr;
   if (action->ivalue1 <= 0 || action->ivalue1 > atom->nbondtypes)
     error->all(FLERR,"Invalid bond type in set command");
-  
+
   iarg += 2;
 }
 
@@ -1111,7 +1111,7 @@ void Set::invoke_cc(Action *action)
 
   int cc_index = action->ivalue1 - 1;
   // NOTE: need to check if cc_index exceeds cc array allocation
-  
+
   int varflag = action->varflag;
   double ccvalue;
   if (!action->varflag1) ccvalue = action->dvalue1;
@@ -1123,7 +1123,7 @@ void Set::invoke_cc(Action *action)
       ccvalue = vec1[i];
       if (ccvalue < 0.0) error->all(FLERR,"Invalid cc value in set command");
     }
-    
+
     cc[i][cc_index] = ccvalue;
   }
 }
@@ -1148,7 +1148,7 @@ void Set::invoke_charge(Action *action)
   double *q = atom->q;
   double *q_scaled = atom->q_scaled;
   double *epsilon = atom->epsilon;
-  
+
   int varflag = action->varflag;
   double qvalue;
   if (!action->varflag1) qvalue = action->dvalue1;
@@ -1178,13 +1178,13 @@ void Set::process_density(int &iarg, int narg, char **arg, Action *action)
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
     if (action->dvalue1 <= 0.0) error->all(FLERR,"Invalid density in set command");
   }
-  
+
   action->ivalue1 = 0;
   if (strcmp(arg[iarg],"density/disc") == 0) {
     action->ivalue1 = 1;
     if (domain->dimension != 2) error->all(FLERR,"Set density/disc requires 2d simulation");
   }
-  
+
   iarg += 2;
 }
 
@@ -1210,7 +1210,7 @@ void Set::invoke_density(Action *action)
   double density;
   if (!action->varflag1) density = action->dvalue1;
   int discflag = action->ivalue1;
-  
+
   // set rmass via density
   // if radius > 0.0, treat as sphere or disc
   // if shape > 0.0, treat as ellipsoid (or ellipse, when uncomment below)
@@ -1225,11 +1225,11 @@ void Set::invoke_density(Action *action)
       density = vec1[i];
       if (density <= 0.0) error->one(FLERR,"Invalid density in set command");
     }
-    
+
     if (radius_flag && radius[i] > 0.0)
       if (discflag) rmass[i] = MY_PI*radius[i]*radius[i] * density;
       else rmass[i] = 4.0*MY_PI/3.0 * radius[i]*radius[i]*radius[i] * density;
-    
+
     else if (ellipsoid_flag && ellipsoid[i] >= 0) {
       double *shape = avec_ellipsoid->bonus[ellipsoid[i]].shape;
       // could enable 2d ellipse (versus 3d ellipsoid) when time integration
@@ -1238,11 +1238,11 @@ void Set::invoke_density(Action *action)
       // atom->rmass[i] = MY_PI*shape[0]*shape[1] * dvalue;
       // else
       rmass[i] = 4.0*MY_PI/3.0 * shape[0]*shape[1]*shape[2] * density;
-      
+
     } else if (line_flag && line[i] >= 0) {
       double length = avec_line->bonus[line[i]].length;
       rmass[i] = length * density;
-      
+
     } else if (tri_flag && tri[i] >= 0) {
       double *c1 = avec_tri->bonus[tri[i]].c1;
       double *c2 = avec_tri->bonus[tri[i]].c2;
@@ -1254,7 +1254,7 @@ void Set::invoke_density(Action *action)
       MathExtra::cross3(c2mc1,c3mc1,norm);
       double area = 0.5 * MathExtra::len3(norm);
       rmass[i] = area * density;
-      
+
     } else rmass[i] = density;
   }
 }
@@ -1272,7 +1272,7 @@ void Set::process_diameter(int &iarg, int narg, char **arg, Action *action)
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
     if (action->dvalue1 < 0.0) error->one(FLERR,"Invalid diameter in set command");
   }
-  
+
   iarg += 2;
 }
 
@@ -1280,7 +1280,7 @@ void Set::invoke_diameter(Action *action)
 {
   int nlocal = atom->nlocal;
   double *radius = atom->radius;
-  
+
   int varflag = action->varflag;
   double diam;
   if (!action->varflag1) diam = action->dvalue1;
@@ -1292,7 +1292,7 @@ void Set::invoke_diameter(Action *action)
       diam = vec1[i];
       if (diam < 0.0) error->one(FLERR,"Invalid diameter in set command");
     }
-    
+
     radius[i] = 0.5 * diam;
   }
 }
@@ -1310,7 +1310,7 @@ void Set::process_dihedral(int &iarg, int narg, char **arg, Action *action)
   delete[] typestr;
   if (action->ivalue1 <= 0 || action->ivalue1 > atom->ndihedraltypes)
     error->all(FLERR,"Invalid dihedral type in set command");
-  
+
   iarg += 2;
 }
 
@@ -1333,7 +1333,7 @@ void Set::process_dipole(int &iarg, int narg, char **arg, Action *action)
   else action->dvalue2 = utils::numeric(FLERR,arg[iarg+2],false,lmp);
   if (utils::strmatch(arg[iarg+3],"^v_")) varparse(arg[iarg+3],3,action);
   else action->dvalue3 = utils::numeric(FLERR,arg[iarg+3],false,lmp);
-  
+
   iarg += 4;
 }
 
@@ -1347,7 +1347,7 @@ void Set::invoke_dipole(Action *action)
   if (!action->varflag1) xvalue = action->dvalue1;
   if (!action->varflag2) yvalue = action->dvalue2;
   if (!action->varflag3) zvalue = action->dvalue3;
-  
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
 
@@ -1356,7 +1356,7 @@ void Set::invoke_dipole(Action *action)
       if (action->varflag1) yvalue = vec2[i];
       if (action->varflag1) zvalue = vec3[i];
     }
-    
+
     mu[i][0] = xvalue;
     mu[i][1] = yvalue;
     mu[i][2] = zvalue;
@@ -1371,14 +1371,14 @@ void Set::process_dipole_random(int &iarg, int narg, char **arg, Action *action)
   if (!atom->mu_flag)
     error->all(FLERR,"Cannot set attribute {} for atom style {}", arg[iarg], atom->get_style());
   if (iarg+3 > narg) utils::missing_cmd_args(FLERR, "set dipole/random", error);
-    
+
   action->ivalue1 = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
   action->dvalue1 = utils::numeric(FLERR,arg[iarg+2],false,lmp);
   if (action->ivalue1 <= 0)
     error->all(FLERR,"Invalid random number seed in set command");
   if (action->dvalue1 <= 0.0)
     error->all(FLERR,"Invalid dipole length in set command");
-  
+
   iarg += 3;
 }
 
@@ -1394,14 +1394,14 @@ void Set::process_dpd_theta(int &iarg, int narg, char **arg, Action *action)
   if (!atom->dpd_flag)
     error->all(FLERR,"Cannot set attribute {} for atom style {}", arg[iarg], atom->get_style());
   if (iarg+2 > narg) utils::missing_cmd_args(FLERR, "set dpd/theta", error);
-  
+
   if (strcmp(arg[iarg+1],"NULL") == 0) action->dvalue1 = -1.0;
   else if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else {
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
     if (action->dvalue1 < 0.0) error->all(FLERR,"Invalid dpd/theta value in set command");
   }
-  
+
   iarg += 2;
 }
 
@@ -1413,7 +1413,7 @@ void Set::invoke_dpd_theta(Action *action)
   double *mass = atom->mass;
   double *rmass = atom->rmass;
   double *dpdTheta = atom->dpdTheta;
-  
+
   double tfactor = force->mvv2e / (domain->dimension * force->boltz);
   double onemass;
   double vx,vy,vz;
@@ -1431,7 +1431,7 @@ void Set::invoke_dpd_theta(Action *action)
     }
 
     // if theta is negative, NULL was used, set dpdTheta to KE of particle
-    
+
     if (theta >= 0.0) dpdTheta[i] = theta;
     else {
       if (rmass) onemass = rmass[i];
@@ -1457,7 +1457,7 @@ void Set::process_edpd_cv(int &iarg, int narg, char **arg, Action *action)
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
     if (action->dvalue1 < 0.0) error->all(FLERR,"Invalid edpd/cv value in set command");
   }
-  
+
   iarg += 2;
 }
 
@@ -1465,7 +1465,7 @@ void Set::invoke_edpd_cv(Action *action)
 {
   int nlocal = atom->nlocal;
   double *edpd_cv = atom->edpd_cv;
-  
+
   int varflag = action->varflag;
   double cv;
   if (!action->varflag1) cv = action->dvalue1;
@@ -1532,7 +1532,7 @@ void Set::process_epsilon(int &iarg, int narg, char **arg, Action *action)
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
     if (action->dvalue1 <= 0.0) error->all(FLERR,"Invalid epsilon in set command");
   }
-  
+
   iarg += 2;
 }
 
@@ -1557,7 +1557,7 @@ void Set::invoke_epsilon(Action *action)
       eps = vec1[i];
       if (eps <= 0.0) error->one(FLERR,"Invalid epsilon in set command");
     }
-    
+
     epsilon[i] = eps;
     q_scaled[i] = q[i] / eps;
   }
@@ -1568,7 +1568,7 @@ void Set::invoke_epsilon(Action *action)
 void Set::process_image(int &iarg, int narg, char **arg, Action *action)
 {
   if (iarg+4 > narg) utils::missing_cmd_args(FLERR, "set image", error);
-  
+
   if (strcmp(arg[iarg+1],"NULL") == 0) action->ivalue4 = 0;
   else {
     action->ivalue4 = 1;
@@ -1582,7 +1582,7 @@ void Set::process_image(int &iarg, int narg, char **arg, Action *action)
         error->all(FLERR,"Cannot set non-zero image flag for non-periodic dimension");
     }
   }
-  
+
   if (strcmp(arg[iarg+2],"NULL") == 0) action->ivalue5 = 0;
   else {
     action->ivalue5 = 1;
@@ -1596,7 +1596,7 @@ void Set::process_image(int &iarg, int narg, char **arg, Action *action)
         error->all(FLERR,"Cannot set non-zero image flag for non-periodic dimension");
     }
   }
-  
+
   if (strcmp(arg[iarg+1],"NULL") == 0) action->ivalue6 = 0;
   else {
     action->ivalue6 = 1;
@@ -1610,7 +1610,7 @@ void Set::process_image(int &iarg, int narg, char **arg, Action *action)
         error->all(FLERR,"Cannot set non-zero image flag for non-periodic dimension");
     }
   }
-  
+
   iarg += 4;
 }
 
@@ -1623,7 +1623,7 @@ void Set::invoke_image(Action *action)
   int ximageflag = action->ivalue4;
   int yimageflag = action->ivalue5;
   int zimageflag = action->ivalue6;
-  
+
   int varflag = action->varflag;
   int ximage,yimage,zimage;
   if (!action->varflag1) ximage = action->ivalue1;
@@ -1640,7 +1640,7 @@ void Set::invoke_image(Action *action)
       if (action->varflag2) yimage = static_cast<int> (vec2[i]);
       if (action->varflag3) zimage = static_cast<int> (vec3[i]);
     }
-    
+
     xbox = (image[i] & IMGMASK) - IMGMAX;
     ybox = (image[i] >> IMGBITS & IMGMASK) - IMGMAX;
     zbox = (image[i] >> IMG2BITS) - IMGMAX;
@@ -1666,7 +1666,7 @@ void Set::process_improper(int &iarg, int narg, char **arg, Action *action)
   delete[] typestr;
   if (action->ivalue1 <= 0 || action->ivalue1 > atom->nimpropertypes)
     error->all(FLERR,"Invalid value in set command");
-  
+
   iarg += 2;
 }
 
@@ -1688,7 +1688,7 @@ void Set::process_length(int &iarg, int narg, char **arg, Action *action)
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
     if (action->dvalue1 < 0.0) error->one(FLERR,"Invalid length in set command");
   }
-  
+
   iarg += 2;
 }
 
@@ -1731,7 +1731,7 @@ void Set::process_mass(int &iarg, int narg, char **arg, Action *action)
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
     if (action->dvalue1 <= 0.0) error->one(FLERR,"Invalid mass in set command");
   }
-  
+
   iarg += 2;
 }
 
@@ -1751,7 +1751,7 @@ void Set::invoke_mass(Action *action)
       mass_one = vec1[i];
       if (mass_one < 0.0) error->one(FLERR,"Invalid mass in set command");
     }
-    
+
     rmass[i] = mass_one;
   }
 }
@@ -1769,10 +1769,10 @@ void Set::process_mol(int &iarg, int narg, char **arg, Action *action)
     action->tvalue1 = utils::tnumeric(FLERR,arg[iarg+1],false,lmp);
     if (action->tvalue1 < 0) error->one(FLERR,"Invalid molecule ID in set command");
   }
-  
+
   iarg += 2;
 }
- 
+
 void Set::invoke_mol(Action *action)
 {
   int nlocal = atom->nlocal;
@@ -1781,7 +1781,7 @@ void Set::invoke_mol(Action *action)
   int varflag = action->varflag;
   tagint molID;
   if (!action->varflag1) molID = action->tvalue1;
-  
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
 
@@ -1789,7 +1789,7 @@ void Set::invoke_mol(Action *action)
       molID = vec1[i];
       if (molID < 0) error->one(FLERR,"Invalid molecule ID in set command");
     }
-    
+
     molecule[i] = molID;
   }
 }
@@ -1808,7 +1808,7 @@ void Set::process_omega(int &iarg, int narg, char **arg, Action *action)
   else action->dvalue2 = utils::numeric(FLERR,arg[iarg+2],false,lmp);
   if (utils::strmatch(arg[iarg+3],"^v_")) varparse(arg[iarg+3],3,action);
   else action->dvalue3 = utils::numeric(FLERR,arg[iarg+3],false,lmp);
-  
+
   iarg += 4;
 }
 
@@ -1863,7 +1863,7 @@ void Set::process_quat(int &iarg, int narg, char **arg, Action *action)
   else action->dvalue3 = utils::numeric(FLERR,arg[iarg+3],false,lmp);
   if (utils::strmatch(arg[iarg+4],"^v_")) varparse(arg[iarg+4],4,action);
   else action->dvalue4 = utils::numeric(FLERR,arg[iarg+4],false,lmp);
-  
+
   iarg += 5;
 }
 
@@ -1875,7 +1875,7 @@ void Set::invoke_quat(Action *action)
   int *body = atom->body;
   double **quat = atom->quat;
   int quat_flag = atom->quat_flag;
-  
+
   auto avec_ellipsoid = dynamic_cast<AtomVecEllipsoid *>(atom->style_match("ellipsoid"));
   auto avec_tri = dynamic_cast<AtomVecTri *>(atom->style_match("tri"));
   auto avec_body = dynamic_cast<AtomVecBody *>(atom->style_match("body"));
@@ -1883,7 +1883,7 @@ void Set::invoke_quat(Action *action)
   int dimension = domain->dimension;
   double radians,sintheta;
   double *quat_one;
-  
+
   int varflag = action->varflag;
   double xvalue,yvalue,zvalue,theta;
   if (!action->varflag1) xvalue = action->dvalue1;
@@ -1934,7 +1934,7 @@ void Set::process_quat_random(int &iarg, int narg, char **arg, Action *action)
 
   action->ivalue1 = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
   if (action->ivalue1 <= 0) error->all(FLERR,"Invalid random number seed in set command");
-  
+
   iarg += 2;
 }
 
@@ -1967,7 +1967,7 @@ void Set::invoke_radius_election(Action *action)
 {
   int nlocal = atom->nlocal;
   double *eradius = atom->eradius;
-      
+
   int varflag = action->varflag;
   double radius;
   if (!action->varflag1) radius = action->dvalue1;
@@ -2036,10 +2036,10 @@ void Set::invoke_shape(Action *action)
     if (xvalue > 0.0 || yvalue > 0.0 || zvalue > 0.0)
       if (xvalue == 0.0 || yvalue == 0.0 || zvalue == 0.0)
         error->one(FLERR,"Invalid shape in set command");
-    
+
     avec_ellipsoid->set_shape(i,0.5*xvalue,0.5*yvalue,0.5*zvalue);
   }
-  
+
   // update global ellipsoid count
 
   bigint nlocal_bonus = avec_ellipsoid->nlocal_bonus;
@@ -2072,7 +2072,7 @@ void Set::invoke_smd_contact_radius(Action *action)
   double radius;
   if (!action->varflag1) radius = action->dvalue1;
 
-  
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
 
@@ -2098,7 +2098,7 @@ void Set::process_smd_mass_density(int &iarg, int narg, char **arg, Action *acti
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
     if (action->dvalue1 <= 0.0) error->one(FLERR,"Invalid smd/mass/density in set command");
   }
-  
+
   iarg += 2;
 }
 
@@ -2107,11 +2107,11 @@ void Set::invoke_smd_mass_density(Action *action)
   int nlocal = atom->nlocal;
   double *rmass = atom->rmass;
   double *vfrac = atom->vfrac;
-  
+
   int varflag = action->varflag;
   double density;
   if (!action->varflag1) density = action->dvalue1;
-  
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
 
@@ -2119,7 +2119,7 @@ void Set::invoke_smd_mass_density(Action *action)
       density = vec1[i];
       if (density < 0.0) error->one(FLERR,"Invalid smd/mass/density in set command");
     }
-    
+
     rmass[i] = vfrac[i] * density;
   }
 }
@@ -2134,7 +2134,7 @@ void Set::process_sph_cv(int &iarg, int narg, char **arg, Action *action)
 
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-  
+
   iarg += 2;
 }
 
@@ -2142,11 +2142,11 @@ void Set::invoke_sph_cv(Action *action)
 {
   int nlocal = atom->nlocal;
   double *cv = atom->cv;
-  
+
   int varflag = action->varflag;
   double sph_cv;
   if (!action->varflag1) sph_cv = action->dvalue1;
-  
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
     if (varflag) sph_cv = vec1[i];
@@ -2164,7 +2164,7 @@ void Set::process_sph_e(int &iarg, int narg, char **arg, Action *action)
 
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-  
+
   iarg += 2;
 }
 
@@ -2172,11 +2172,11 @@ void Set::invoke_sph_e(Action *action)
 {
   int nlocal = atom->nlocal;
   double *esph = atom->esph;
-  
+
   int varflag = action->varflag;
   double sph_e;
   if (!action->varflag1) sph_e = action->dvalue1;
-  
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
     if (varflag) sph_e = vec1[i];
@@ -2206,7 +2206,7 @@ void Set::invoke_sph_rho(Action *action)
   int varflag = action->varflag;
   double sph_rho;
   if (!action->varflag1) sph_rho = action->dvalue1;
-  
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
     if (varflag) sph_rho = vec1[i];
@@ -2230,14 +2230,14 @@ void Set::process_spin_atom(int &iarg, int narg, char **arg, Action *action)
     if (action->dvalue1 <= 0.0)
       error->all(FLERR,"Invalid spin magnitude {} in set command");
   }
-  
+
   if (utils::strmatch(arg[iarg+2],"^v_")) varparse(arg[iarg+2],2,action);
   else action->dvalue2 = utils::numeric(FLERR,arg[iarg+2],false,lmp);
   if (utils::strmatch(arg[iarg+3],"^v_")) varparse(arg[iarg+3],3,action);
   else action->dvalue3 = utils::numeric(FLERR,arg[iarg+3],false,lmp);
   if (utils::strmatch(arg[iarg+4],"^v_")) varparse(arg[iarg+4],4,action);
   else action->dvalue4 = utils::numeric(FLERR,arg[iarg+4],false,lmp);
-  
+
   iarg += 5;
 }
 
@@ -2319,7 +2319,7 @@ void Set::process_spin_electron(int &iarg, int narg, char **arg, Action *action)
     if (action->ivalue1 < -1 || action->ivalue1 > 3)
       error->one(FLERR,"Invalid electron spin {} in set command", action->ivalue1);
   }
-  
+
   iarg += 2;
 }
 
@@ -2327,11 +2327,11 @@ void Set::invoke_spin_electron(Action *action)
 {
   int nlocal = atom->nlocal;
   int *spin = atom->spin;
-  
+
   int varflag = action->varflag;
   int ispin;
   if (!action->varflag1) ispin = action->ivalue1;
-  
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
 
@@ -2340,7 +2340,7 @@ void Set::invoke_spin_electron(Action *action)
       if (ispin < -1 || ispin > 3)
         error->one(FLERR,"Invalid electron spin in set command");
     }
-    
+
     atom->spin[i] = ispin;
   }
 }
@@ -2366,7 +2366,7 @@ void Set::invoke_temperature(Action *action)
 {
   int nlocal = atom->nlocal;
   double *temperature = atom->temperature;
-  
+
   int varflag = action->varflag;
   double temp;
   if (!action->varflag1) temp = action->dvalue1;
@@ -2378,7 +2378,7 @@ void Set::invoke_temperature(Action *action)
       temp = vec1[i];
       if (temp < 0.0) error->one(FLERR,"Invalid temperature in set command");
     }
-    
+
     temperature[i] = temp;
   }
 }
@@ -2393,7 +2393,7 @@ void Set::process_theta(int &iarg, int narg, char **arg, Action *action)
 
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else action->dvalue1 = DEG2RAD * utils::numeric(FLERR,arg[iarg+1],false,lmp);
-  
+
   iarg += 2;
 }
 
@@ -2407,7 +2407,7 @@ void Set::invoke_theta(Action *action)
   int varflag = action->varflag;
   double theta;
   if (!action->varflag1) theta = action->dvalue1;
-  
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
     if (line[i] < 0) error->one(FLERR,"Cannot set theta for atom which is not a line");
@@ -2423,10 +2423,10 @@ void Set::process_theta_random(int &iarg, int narg, char **arg, Action *action)
   if (!atom->line_flag)
     error->all(FLERR,"Cannot set attribute {} for atom style {}", arg[iarg], atom->get_style());
   if (iarg+2 > narg) utils::missing_cmd_args(FLERR, "set theta/random", error);
-  
+
   action->ivalue1 = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
   if (action->ivalue1 <= 0) error->all(FLERR,"Invalid random number seed in set command");
-  
+
   iarg += 2;
 }
 
@@ -2442,13 +2442,13 @@ void Set::process_tri(int &iarg, int narg, char **arg, Action *action)
   if (!atom->tri_flag)
     error->all(FLERR,"Cannot set attribute {} for atom style {}", arg[iarg], atom->get_style());
   if (iarg+2 > narg) utils::missing_cmd_args(FLERR, "set tri", error);
-  
+
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else {
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
     if (action->dvalue1 < 0.0) error->one(FLERR,"Invalid tri size in set command");
   }
-  
+
   iarg += 2;
 }
 
@@ -2456,13 +2456,13 @@ void Set::invoke_tri(Action *action)
 {
   int nlocal = atom->nlocal;
   int *tri = atom->tri;
-  
+
   auto avec_tri = dynamic_cast<AtomVecTri *>(atom->style_match("tri"));
 
   int varflag = action->varflag;
   double trisize;
   if (!action->varflag1) trisize = action->dvalue1;
-  
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
 #if 0
@@ -2474,7 +2474,7 @@ void Set::invoke_tri(Action *action)
       trisize = vec1[i];
       if (trisize < 0.0) error->one(FLERR,"Invalid tri size in set command");
     }
-    
+
     avec_tri->set_equilateral(i,trisize);
   }
 
@@ -2489,7 +2489,7 @@ void Set::invoke_tri(Action *action)
 void Set::process_type(int &iarg, int narg, char **arg, Action *action)
 {
   if (iarg+2 > narg) utils::missing_cmd_args(FLERR, "set type", error);
-  
+
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else {
     char *typestr = utils::expand_type(FLERR,arg[iarg+1],Atom::ATOM,lmp);
@@ -2498,7 +2498,7 @@ void Set::process_type(int &iarg, int narg, char **arg, Action *action)
     if (action->ivalue1 <= 0 || action->ivalue1 > atom->ntypes)
       error->one(FLERR,"Invalid atom type in set command");
   }
-  
+
   iarg += 2;
 }
 
@@ -2510,16 +2510,16 @@ void Set::invoke_type(Action *action)
   int varflag = action->varflag;
   int itype;
   if (!action->varflag1) itype = action->ivalue1;
-  
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
-    
+
     if (action->varflag) {
       itype = static_cast<int> (vec1[i]);
       if (itype <= 0 || itype > atom->ntypes)
         error->one(FLERR,"Invalid atom type in set command");
     }
-    
+
     type[i] = itype;
   }
 }
@@ -2531,7 +2531,7 @@ void Set::process_type_fraction(int &iarg, int narg, char **arg, Action *action)
   if (iarg+4 > narg) utils::missing_cmd_args(FLERR, "set type/fraction", error);
 
   // random seed must be ivalue1 for use in setrandom()
-  
+
   char *typestr = utils::expand_type(FLERR,arg[iarg+1],Atom::ATOM,lmp);
   action->ivalue2 = utils::inumeric(FLERR,typestr?typestr:arg[iarg+1],false,lmp);
   delete[] typestr;
@@ -2541,11 +2541,11 @@ void Set::process_type_fraction(int &iarg, int narg, char **arg, Action *action)
   action->dvalue1 = utils::numeric(FLERR,arg[iarg+2],false,lmp);
   if (action->dvalue1 < 0.0 || action->dvalue1 > 1.0)
     error->all(FLERR,"Invalid fraction in set command");
-  
+
   action->ivalue1 = utils::inumeric(FLERR,arg[iarg+3],false,lmp);
   if (action->ivalue1 <= 0)
     error->all(FLERR,"Invalid random number seed in set command");
-  
+
   iarg += 4;
 }
 
@@ -2567,15 +2567,15 @@ void Set::process_type_ratio(int &iarg, int narg, char **arg, Action *action)
   delete[] typestr;
   if (action->ivalue2 <= 0 || action->ivalue2 > atom->ntypes)
     error->all(FLERR,"Invalid atom type in set command");
-  
+
   action->dvalue1 = utils::numeric(FLERR,arg[iarg+2],false,lmp);
   if (action->dvalue1 < 0.0 || action->dvalue1 > 1.0)
     error->all(FLERR,"Invalid fraction in set command");
-  
+
   action->ivalue1 = utils::inumeric(FLERR,arg[iarg+3],false,lmp);
   if (action->ivalue1 <= 0)
     error->all(FLERR,"Invalid random number seed in set command");
-  
+
   iarg += 4;
 }
 
@@ -2597,7 +2597,7 @@ void Set::process_type_subset(int &iarg, int narg, char **arg, Action *action)
   delete[] typestr;
   if (action->ivalue2 <= 0 || action->ivalue2 > atom->ntypes)
     error->all(FLERR,"Invalid atom type in set command");
-  
+
   action->bvalue1 = utils::bnumeric(FLERR,arg[iarg+2],false,lmp);
   if (action->bvalue1 < 0)
     error->all(FLERR,"Invalid subset size in set command");
@@ -2605,7 +2605,7 @@ void Set::process_type_subset(int &iarg, int narg, char **arg, Action *action)
   action->ivalue1 = utils::inumeric(FLERR,arg[iarg+3],false,lmp);
   if (action->ivalue1 <= 0)
     error->all(FLERR,"Invalid random number seed in set command");
-  
+
   iarg += 4;
 }
 
@@ -2627,7 +2627,7 @@ void Set::process_volume(int &iarg, int narg, char **arg, Action *action)
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
     if (action->dvalue1 <= 0.0) error->all(FLERR,"Invalid volume in set command");
   }
-  
+
   iarg += 2;
 }
 
@@ -2635,19 +2635,19 @@ void Set::invoke_volume(Action *action)
 {
   int nlocal = atom->nlocal;
   double *vfrac = atom->vfrac;
-  
+
   int varflag = action->varflag;
   double vol;
   if (!action->varflag1) vol = action->dvalue1;
-  
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
-    
+
     if (varflag) {
       vol = vec1[i];
       if (vol < 0.0) error->one(FLERR,"Invalid volume in set command");
     }
-    
+
     vfrac[i] = vol;
   }
 }
@@ -2660,7 +2660,7 @@ void Set::process_vx(int &iarg, int narg, char **arg, Action *action)
 
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-  
+
   iarg += 2;
 }
 
@@ -2668,7 +2668,7 @@ void Set::invoke_vx(Action *action)
 {
   int nlocal = atom->nlocal;
   double **v = atom->v;
-  
+
   int varflag = action->varflag;
   double vx;
   if (!action->varflag1) vx = action->dvalue1;
@@ -2688,7 +2688,7 @@ void Set::process_vy(int &iarg, int narg, char **arg, Action *action)
 
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-  
+
   iarg += 2;
 }
 
@@ -2696,11 +2696,11 @@ void Set::invoke_vy(Action *action)
 {
   int nlocal = atom->nlocal;
   double **v = atom->v;
-  
+
   int varflag = action->varflag;
   double vy;
   if (!action->varflag1) vy = action->dvalue1;
-  
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
     if (varflag) vy = vec1[i];
@@ -2716,7 +2716,7 @@ void Set::process_vz(int &iarg, int narg, char **arg, Action *action)
 
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-  
+
   iarg += 2;
 }
 
@@ -2724,11 +2724,11 @@ void Set::invoke_vz(Action *action)
 {
   int nlocal = atom->nlocal;
   double **v = atom->v;
-  
+
   int varflag = action->varflag;
   double vz;
   if (!action->varflag1) vz = action->dvalue1;
-  
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
     if (varflag) vz = vec1[i];
@@ -2744,7 +2744,7 @@ void Set::process_x(int &iarg, int narg, char **arg, Action *action)
 
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-  
+
   iarg += 2;
 }
 
@@ -2752,11 +2752,11 @@ void Set::invoke_x(Action *action)
 {
   int nlocal = atom->nlocal;
   double **x = atom->x;
-  
+
   int varflag = action->varflag;
   double coord;
   if (!action->varflag1) coord = action->dvalue1;
-  
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
     if (varflag) coord = vec1[i];
@@ -2772,7 +2772,7 @@ void Set::process_y(int &iarg, int narg, char **arg, Action *action)
 
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-  
+
   iarg += 2;
 }
 
@@ -2780,11 +2780,11 @@ void Set::invoke_y(Action *action)
 {
   int nlocal = atom->nlocal;
   double **x = atom->x;
-  
+
   int varflag = action->varflag;
   double coord;
   if (!action->varflag1) coord = action->dvalue1;
-  
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
     if (varflag) coord = vec1[i];
@@ -2800,7 +2800,7 @@ void Set::process_z(int &iarg, int narg, char **arg, Action *action)
 
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-  
+
   iarg += 2;
 }
 
@@ -2808,11 +2808,11 @@ void Set::invoke_z(Action *action)
 {
   int nlocal = atom->nlocal;
   double **x = atom->x;
-  
+
   int varflag = action->varflag;
   double coord;
   if (!action->varflag1) coord = action->dvalue1;
-  
+
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
     if (varflag) coord = vec1[i];
@@ -2840,7 +2840,7 @@ void Set::process_custom(int &iarg, int narg, char **arg, Action *action)
     if (flag != 0) error->all(FLERR,"Set command custom property {} is not integer",pname);
     if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
     else action->ivalue1 = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
-    
+
     if (argi.get_dim() == 0) {
       if (cols > 0)
         error->all(FLERR,"Set command custom integer property {} is not a vector",pname);
@@ -2861,7 +2861,7 @@ void Set::process_custom(int &iarg, int narg, char **arg, Action *action)
     if (flag != 1) error->all(FLERR,"Custom property {} is not floating-point",argi.get_name());
     if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
     else action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-    
+
     if (argi.get_dim() == 0) {
       if (cols > 0)
         error->all(FLERR,"Set command custom double property {} is not a vector",pname);
@@ -2882,7 +2882,7 @@ void Set::process_custom(int &iarg, int narg, char **arg, Action *action)
     error->all(FLERR,"Illegal set command");
     break;
   }
-      
+
   iarg += 2;
 }
 
@@ -2891,10 +2891,10 @@ void Set::invoke_custom(Action *action)
   int nlocal = atom->nlocal;
   int ivalue;
   double dvalue;
-  
+
   int varflag = action->varflag;
   int index_custom = action->ivalue2;
-  
+
   if (action->keyword == IVEC) {
     if (!varflag) ivalue = action->ivalue1;
     int *ivector = atom->ivector[index_custom];
@@ -2903,7 +2903,7 @@ void Set::invoke_custom(Action *action)
       if (varflag) ivalue = static_cast<int> (vec1[i]);
       ivector[i] = ivalue;
     }
-    
+
   } else if (action->keyword == DVEC) {
     if (!varflag) dvalue = action->dvalue1;
     double *dvector = atom->dvector[index_custom];
@@ -2912,7 +2912,7 @@ void Set::invoke_custom(Action *action)
       if (varflag) dvalue = vec1[i];
       dvector[i] = dvalue;
     }
-    
+
   } else if (action->keyword == IARRAY) {
     if (!varflag) ivalue = action->ivalue1;
     int **iarray = atom->iarray[index_custom];
@@ -2922,7 +2922,7 @@ void Set::invoke_custom(Action *action)
       if (varflag) ivalue = static_cast<int> (vec1[i]);
       iarray[i][icol_custom] = ivalue;
     }
-    
+
   } else if (action->keyword == DARRAY) {
     if (!varflag) dvalue = action->dvalue1;
     double **darray = atom->darray[index_custom];
