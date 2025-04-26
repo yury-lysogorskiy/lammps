@@ -35,56 +35,56 @@ class Set : public Command {
   void selection(int);
   void invoke_actions();
 
- private: 
-  int caller;           // SETCOMMAND or FIXSET
+ private:
+  int caller;    // SETCOMMAND or FIXSET
 
   // params for atom selection
 
   int style;
   char *id;
-  int nlo,nhi;
-  bigint nlobig,nhibig;
+  int nlo, nhi;
+  bigint nlobig, nhibig;
   int groupbit;
   class Region *region;
 
   // one Action = one keyword/value pair
-  
+
   struct Action {
     int keyword;
     int argindex;
-    int count_select,count_action;
+    int count_select, count_action;
     int varflag;
     int varflag1, varflag2, varflag3, varflag4;
     int ivar1, ivar2, ivar3, ivar4;
     int ivalue1, ivalue2, ivalue3, ivalue4, ivalue5, ivalue6;
     tagint tvalue1;
     bigint bvalue1;
-    double dvalue1,dvalue2,dvalue3,dvalue4;
+    double dvalue1, dvalue2, dvalue3, dvalue4;
   };
-  
-  int naction,maxaction;
+
+  int naction, maxaction;
   Action *actions;
 
   typedef void (Set::*FnPtrPack)(Action *);
   FnPtrPack *invoke_choice;    // list of ptrs to invoke functions
 
-  double *vec1, *vec2, *vec3, *vec4;        // storage for evaluated peratom variables
-  int varflag;                              // 1 if any action uses a per-atom variable
-  int varflag1,varflag2,varflag3,varflag4;  // 1 if any action uses this variable
-  int maxvariable;                          // size of peratom variable vectors
-  
-  int *select;              // flag for selected atoms
-  int maxselect;            // size of select vector
-  
-  int count_select;         // count of selected atoms on this proc
-  int count_action;         // count of actions on this proc, only if different than selected
-  
+  double *vec1, *vec2, *vec3, *vec4;             // storage for evaluated peratom variables
+  int varflag;                                   // 1 if any action uses a per-atom variable
+  int varflag1, varflag2, varflag3, varflag4;    // 1 if any action uses this variable
+  int maxvariable;                               // size of peratom variable vectors
+
+  int *select;      // flag for selected atoms
+  int maxselect;    // size of select vector
+
+  int count_select;    // count of selected atoms on this proc
+  int count_action;    // count of actions on this proc, only if different than selected
+
   // private functions
-  
+
   void varparse(const char *, int, Action *);
   void setrandom(int, Action *);
   void topology(int, Action *);
- 
+
   // customize by adding a process method
 
   void process_angle(int &, int, char **, Action *);
@@ -194,4 +194,3 @@ class Set : public Command {
 
 #endif
 #endif
-
