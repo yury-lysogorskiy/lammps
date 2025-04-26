@@ -15,7 +15,7 @@
 
 #include "atom.h"
 #include "error.h"
-#include "set2.h"
+#include "set.h"
 
 using namespace LAMMPS_NS;
 using namespace FixConst;
