@@ -80,7 +80,7 @@ Set::~Set()
 }
 
 /* ---------------------------------------------------------------------- */
-// clang-format on
+
 void Set::command(int narg, char **arg)
 {
   if (domain->box_exist == 0)
@@ -136,53 +136,53 @@ void Set::command(int narg, char **arg)
 void Set::process_args(int caller_flag, int narg, char **arg)
 {
   caller = caller_flag;
-  
+
   // style and ID info
 
   id = utils::strdup(arg[1]);
 
-  if (strcmp(arg[0],"atom") == 0) {
+  if (strcmp(arg[0], "atom") == 0) {
     style = ATOM_SELECT;
-    if (atom->tag_enable == 0)
-      error->all(FLERR,"Cannot use set atom with no atom IDs defined");
-    utils::bounds(FLERR,id,1,MAXTAGINT,nlobig,nhibig,error);
+    if (atom->tag_enable == 0) error->all(FLERR, "Cannot use set atom with no atom IDs defined");
+    utils::bounds(FLERR, id, 1, MAXTAGINT, nlobig, nhibig, error);
 
-  } else if (strcmp(arg[0],"mol") == 0) {
+  } else if (strcmp(arg[0], "mol") == 0) {
     style = MOL_SELECT;
     if (atom->molecule_flag == 0)
-      error->all(FLERR,"Cannot use set mol with no molecule IDs defined");
-    utils::bounds(FLERR,id,1,MAXTAGINT,nlobig,nhibig,error);
-    
-  } else if (strcmp(arg[0],"type") == 0) {
+      error->all(FLERR, "Cannot use set mol with no molecule IDs defined");
+    utils::bounds(FLERR, id, 1, MAXTAGINT, nlobig, nhibig, error);
+
+  } else if (strcmp(arg[0], "type") == 0) {
     style = TYPE_SELECT;
-    if (char *typestr = utils::expand_type(FLERR,id,Atom::ATOM,lmp)) {
-      delete [] id;
+    if (char *typestr = utils::expand_type(FLERR, id, Atom::ATOM, lmp)) {
+      delete[] id;
       id = typestr;
     }
-    utils::bounds(FLERR,id,1,atom->ntypes,nlo,nhi,error);
+    utils::bounds(FLERR, id, 1, atom->ntypes, nlo, nhi, error);
 
-  } else if (strcmp(arg[0],"group") == 0) {
+  } else if (strcmp(arg[0], "group") == 0) {
     style = GROUP_SELECT;
     int igroup = group->find(id);
-    if (igroup == -1) error->all(FLERR,"Could not find set group ID {}", id);
+    if (igroup == -1) error->all(FLERR, "Could not find set group ID {}", id);
     groupbit = group->bitmask[igroup];
 
-  } else if (strcmp(arg[0],"region") == 0) {
+  } else if (strcmp(arg[0], "region") == 0) {
     style = REGION_SELECT;
     region = domain->get_region_by_id(id);
-    if (!region) error->all(FLERR,"Set region {} does not exist", id);
+    if (!region) error->all(FLERR, "Set region {} does not exist", id);
 
-  } else error->all(FLERR,"Unknown set or fix set command style: {}", arg[0]);
+  } else
+    error->all(FLERR, "Unknown set or fix set command style: {}", arg[0]);
 
-  delete [] id;
-  
+  delete[] id;
+
   // loop over remaining keyword/value pairs to create list of actions
   // one action = keyword/value pair
 
   naction = maxaction = 0;
   actions = nullptr;
   Action *action;
-  
+
   int iarg = 2;
   while (iarg < narg) {
 
@@ -1815,7 +1815,7 @@ void Set::process_omega(int &iarg, int narg, char **arg, Action *action)
 void Set::invoke_omega(Action *action)
 {
   int nlocal = atom->nlocal;
-  double **omega = atom->angmom;
+  double **omega = atom->omega;
 
   int varflag = action->varflag;
   double xvalue,yvalue,zvalue;
@@ -1948,15 +1948,18 @@ void Set::invoke_quat_random(Action *action)
 void Set::process_radius_election(int &iarg, int narg, char **arg, Action *action)
 {
   if (!atom->eradius_flag)
-    error->all(FLERR,"Cannot set attribute {} for atom style {}", arg[iarg], atom->get_style());
-  if (iarg+2 > narg) utils::missing_cmd_args(FLERR, "set radius/electron", error);
-    
-  if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
+    error->all(FLERR, "Cannot set attribute {} for atom style {}", arg[iarg], atom->get_style());
+  if (iarg + 2 > narg) utils::missing_cmd_args(FLERR, "set radius/electron", error);
+
+  if (utils::strmatch(arg[iarg + 1], "^v_"))
+    varparse(arg[iarg + 1], 1, action);
   else {
-    action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-    if (action->dvalue1 < 0.0) error->one(FLERR,"Invalid electron radius in set command");
+    action->dvalue1 = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
+    if (action->dvalue1 < 0.0)
+      error->one(FLERR, iarg + 1, "Invalid electron radius {} in set radius/electron command",
+                 action->dvalue1);
   }
-  
+
   iarg += 2;
 }
 
@@ -2278,24 +2281,28 @@ void Set::invoke_spin_atom(Action *action)
 
 void Set::process_spin_atom_random(int &iarg, int narg, char **arg, Action *action)
 {
-  if ((strcmp(arg[iarg],"spin/random") == 0) && (comm->me == 0))
-    error->warning(FLERR, "Set attribute spin/random is deprecated -- use spin/atom/random instead");
+  if ((strcmp(arg[iarg], "spin/random") == 0) && (comm->me == 0))
+    error->warning(FLERR,
+                   "Set attribute spin/random is deprecated -- use spin/atom/random instead");
   if (!atom->sp_flag)
-    error->all(FLERR,"Cannot set attribute {} for atom style {}", arg[iarg], atom->get_style());
-  if (iarg+3 > narg) utils::missing_cmd_args(FLERR, "set spin/atom/random", error);
+    error->all(FLERR, "Cannot set attribute {} for atom style {}", arg[iarg], atom->get_style());
+  if (iarg + 3 > narg) utils::missing_cmd_args(FLERR, "set spin/atom/random", error);
 
-  action->ivalue1 = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
-  action->dvalue1 = utils::numeric(FLERR,arg[iarg+2],false,lmp);
-  
-  if (action->ivalue1 <= 0) error->all(FLERR,"Invalid random number seed in set command");
-  if (action->dvalue1 <= 0.0) error->all(FLERR,"Invalid spin magnitude in set command");
-  
+  action->ivalue1 = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
+  action->dvalue1 = utils::numeric(FLERR, arg[iarg + 2], false, lmp);
+
+  if (action->ivalue1 <= 0)
+    error->all(FLERR, iarg + 1, "Invalid random number seed {} in set {} command", action->ivalue1,
+               arg[iarg]);
+  if (action->dvalue1 <= 0.0)
+    error->all(FLERR, iarg + 2, "Invalid spin magnitude {} in set {} command", action->dvalue1,
+               arg[iarg]);
   iarg += 3;
 }
 
 void Set::invoke_spin_atom_random(Action *action)
 {
-  setrandom(SPIN_ATOM_RANDOM,action);
+  setrandom(SPIN_ATOM_RANDOM, action);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -2310,7 +2317,7 @@ void Set::process_spin_electron(int &iarg, int narg, char **arg, Action *action)
   else {
     action->ivalue1 = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
     if (action->ivalue1 < -1 || action->ivalue1 > 3)
-      error->one(FLERR,"Invalid electron spin in set command");
+      error->one(FLERR,"Invalid electron spin {} in set command", action->ivalue1);
   }
   
   iarg += 2;
@@ -2458,7 +2465,10 @@ void Set::invoke_tri(Action *action)
   
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
+#if 0
+    // AK: this seems wrong. Isn't the set command supposed *make* this a triangle?
     if (tri[i] < 0) error->one(FLERR,"Cannot set tri for atom which is not a triangle");
+#endif
 
     if (varflag) {
       trisize = vec1[i];
