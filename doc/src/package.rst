@@ -117,6 +117,8 @@ Syntax
         *pair/only* = *off* or *on*
           *off* = use device acceleration (e.g. GPU) for all available styles in the KOKKOS package (default)
           *on*  = use device acceleration only for pair styles (and host acceleration for others)
+        *threads/per/atom* args = Ntpa
+          Ntpa = # of threads per atom for multiple GPU threads over the neighbor list per atom
     *omp* args = Nthreads keyword value ...
       Nthreads = # of OpenMP threads to associate with each MPI process
       zero or more keyword/value pairs may be appended
@@ -607,6 +609,15 @@ other force computations on the host CPU.  The *comm* flags, along with the
 *sort* and *atom/map* keywords will also automatically be changed to *no*\ .
 This can result in better performance for certain configurations and
 system sizes.
+
+The *threads/per/atom* keyword sets the number of GPU vector lanes per atom
+used to perform force calculations.  This keyword is only applicable
+when *neigh/thread* is set to *on*.   For large cutoffs or with a small number
+of particles per GPU, increasing the value can improve performance. 
+The number of lanes per atom must be a power of 2 and currently cannot be
+greater than the SIMD width for the GPU / accelerator.  In the case
+it exceeds the SIMD width, it will automatically be decreased to meet
+the restriction.
 
 ----------
 
