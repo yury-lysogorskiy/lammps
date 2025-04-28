@@ -32,8 +32,15 @@ protected:
     void highlightBlock(const QString &text) override;
 
 private:
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+    QRegExp isWarning;
+    QRegExp isURL;
+#else
     QRegularExpression isWarning;
+    QRegularExpression isURL;
+#endif
     QTextCharFormat formatWarning;
+    QTextCharFormat formatURL;
     QLabel *summary;
     QTextDocument *document;
     int nwarnings, nlines;

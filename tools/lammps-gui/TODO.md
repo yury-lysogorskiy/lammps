@@ -2,6 +2,7 @@ LAMMPS-GUI TODO list:
 
 # Short term goals (v1.x)
 
+- open highlighted errorURL in web browser when clicking on it in the logfile viewer.
 - add a "Colors" menu to the image viewer to adjust color settings for the
   current image (unlike the defaults in the perferences) including assigning
   colors to individual atom types.
