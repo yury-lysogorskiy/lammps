@@ -23,7 +23,8 @@
 // workaround for Qt-5.12
 #if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
 namespace QColorConstants {
-const QColor Red = QColor::fromRgb(0xff, 0x00, 0x00);
+const QColor Red  = QColor::fromRgb(0xff, 0x00, 0x00);
+const QColor Blue = QColor::fromRgb(0x00, 0x00, 0xff);
 } // namespace QColorConstants
 #endif
 
