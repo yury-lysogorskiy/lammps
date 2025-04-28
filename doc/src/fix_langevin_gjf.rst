@@ -42,26 +42,26 @@ Description
 
 Apply a Langevin thermostat as described in :ref:`(Gronbech-Jensen-2020) <Gronbech-Jensen-2020>`
 to a group of atoms which models an interaction with a background
-implicit solvent. As described in the papers cited below, the GJ methods 
-provide exact diffusion, drift, and Boltzmann sampling for linear systems for 
-any time step within the stability limit. The purpose of this set of methods 
-is therefore to significantly improve statistical accuracy at longer time steps 
+implicit solvent. As described in the papers cited below, the GJ methods
+provide exact diffusion, drift, and Boltzmann sampling for linear systems for
+any time step within the stability limit. The purpose of this set of methods
+is therefore to significantly improve statistical accuracy at longer time steps
 compared to other thermostats.
 
 The current implementation provides the user with the option to output
-the velocity in one of two forms: *vfull* or *vhalf*. The option *vhalf* 
+the velocity in one of two forms: *vfull* or *vhalf*. The option *vhalf*
 outputs the 2GJ half-step velocity given in :ref:`Gronbech Jensen/Gronbech-Jensen
 <Gronbech-Jensen-2019>`; for linear systems, this velocity is shown to not
-have any statistical errors for any stable time step. The option *vfull* 
+have any statistical errors for any stable time step. The option *vfull*
 outputs the on-site velocity given in :ref:`Gronbech-Jensen/Farago
 <Gronbech-Jensen-Farago>`; this velocity is shown to be systematically lower
 than the target temperature by a small amount, which grows
-quadratically with the timestep. An overview of statistically correct Boltzmann 
-and Maxwell-Boltzmann sampling of true on-site and true half-step velocities is 
+quadratically with the timestep. An overview of statistically correct Boltzmann
+and Maxwell-Boltzmann sampling of true on-site and true half-step velocities is
 given in :ref:`Gronbech-Jensen-2020 <Gronbech-Jensen-2020>`.
 
 This fix allows the use of several GJ methods as listed in :ref:`Gronbech-Jensen-2020 <Gronbech-Jensen-2020>`.
-The GJ-VII method is described in :ref:`Finkelstein <Finkelstein>` and GJ-VIII 
+The GJ-VII method is described in :ref:`Finkelstein <Finkelstein>` and GJ-VIII
 is described in :ref:`Gronbech-Jensen-2024 <Gronbech-Jensen-2024>`.
 The implementation follows the splitting form provided in Eqs. (24) and (25)
 in :ref:`Gronbech-Jensen-2024 <Gronbech-Jensen-2024>`, including the application
@@ -147,8 +147,8 @@ Because the state of the random number generator is not saved in restart files,
 this means you cannot do "exact" restarts with this fix, where the simulation
 continues on the same as if no restart had taken place.  However, in a
 statistical sense, a restarted simulation should produce the same behavior.
-additionally, the GJ methods implement noise exclusively within each time step
-(unlike the BBK thermostat of the fix-langevin). The restart is done with 
+Additionally, the GJ methods implement noise exclusively within each time step
+(unlike the BBK thermostat of the fix-langevin). The restart is done with
 either vfull or vhalf velocity output for as long as the choice of vfull/vhalf
 is the same for the simulation as it is in the restart file.
 
@@ -167,7 +167,7 @@ This fix is not invoked during :doc:`energy minimization <minimize>`.
 Restrictions
 """"""""""""
 
-This fix is not compatible with run_style respa. It is not compatible with 
+This fix is not compatible with run_style respa. It is not compatible with
 accelerated packages such as KOKKOS.
 
 Related commands

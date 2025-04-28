@@ -44,14 +44,14 @@ enum { CONSTANT, EQUAL, ATOM };
 static const char cite_langevin_gjf[] =
   "Langevin GJ methods: doi:10.1080/00268976.2019.1662506\n\n"
   "@Article{gronbech-jensen_complete_2020,\n"
-	"title = {Complete set of stochastic Verlet-type thermostats for correct Langevin simulations},\n"
-	"volume = {118},\n"
+        "title = {Complete set of stochastic Verlet-type thermostats for correct Langevin simulations},\n"
+        "volume = {118},\n"
   "number = {8},\n"
-	"url = {https://www.tandfonline.com/doi/full/10.1080/00268976.2019.1662506},\n"
-	"doi = {10.1080/00268976.2019.1662506},\n"	
-	"journal = {Molecular Physics},\n"
-	"author = {Grønbech-Jensen, Niels},\n"
-	"year = {2020}\n"
+        "url = {https://www.tandfonline.com/doi/full/10.1080/00268976.2019.1662506},\n"
+        "doi = {10.1080/00268976.2019.1662506},\n"
+        "journal = {Molecular Physics},\n"
+        "author = {Grønbech-Jensen, Niels},\n"
+        "year = {2020}\n"
   "}\n\n";
 
 static const char cite_langevin_gjf_7[] =
@@ -85,14 +85,14 @@ static const char cite_langevin_gjf_8[] =
 static const char cite_langevin_gjf_vhalf[] =
   "Langevin GJ-I vhalf method: doi:10.1080/00268976.2019.1570369\n\n"
   "@Article{jensen_accurate_2019,\n"
-	"title = {Accurate configurational and kinetic statistics in discrete-time Langevin systems},\n"
-	"volume = {117},\n"
-	"url = {https://www.tandfonline.com/doi/full/10.1080/00268976.2019.1570369},\n"
-	"doi = {10.1080/00268976.2019.1570369},\n"
-	"number = {18},\n"
-	"journal = {Molecular Physics},\n"
-	"author = {Jensen, Lucas Frese Grønbech and Grønbech-Jensen, Niels},\n"
-	"year = {2019}\n"
+        "title = {Accurate configurational and kinetic statistics in discrete-time Langevin systems},\n"
+        "volume = {117},\n"
+        "url = {https://www.tandfonline.com/doi/full/10.1080/00268976.2019.1570369},\n"
+        "doi = {10.1080/00268976.2019.1570369},\n"
+        "number = {18},\n"
+        "journal = {Molecular Physics},\n"
+        "author = {Jensen, Lucas Frese Grønbech and Grønbech-Jensen, Niels},\n"
+        "year = {2019}\n"
   "}\n\n";
 
 static const char cite_langevin_gjf_vfull[] =
