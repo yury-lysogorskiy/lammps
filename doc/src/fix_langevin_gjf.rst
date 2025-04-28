@@ -26,6 +26,7 @@ Syntax
          *vhalf* = use half-step velocity
        *method* value = *1-8*
          *1-8* = choose one of the many GJ formulations
+         *7*   = requires input of additional scalar between 0 and 1
 
 Examples
 """"""""
@@ -34,32 +35,34 @@ Examples
 
    fix 3 boundary langevin/gjf 10.0 10.0 1.0 699483
    fix 1 all langevin/gjf 10.0 100.0 100.0 48279 vel vfull method 4
+   fix 2 all langevin/gjf 10.0 10.0 1.0 26488 method 7 0.95
 
 Description
 """""""""""
 
-Apply a Langevin thermostat as described in :ref:`(Gronbech-Jensen-2024) <Gronbech-Jensen-2024>`
+Apply a Langevin thermostat as described in :ref:`(Gronbech-Jensen-2020) <Gronbech-Jensen-2020>`
 to a group of atoms which models an interaction with a background
-implicit solvent. As described in the papers cited below, the purpose of this method is to
-enable longer timesteps to be used (up to the numerical stability
-limit of the integrator), while still producing the correct Boltzmann
-distribution of atom positions.
+implicit solvent. As described in the papers cited below, the GJ methods 
+provide exact diffusion, drift, and Boltzmann sampling for linear systems for 
+any time step within the stability limit. The purpose of this set of methods 
+is therefore to significantly improve statistical accuracy at longer time steps 
+compared to other thermostats.
 
 The current implementation provides the user with the option to output
-the velocity in one of two forms: *vfull* or *vhalf*. The option *vfull* outputs the
-on-site velocity given in :ref:`Gronbech-Jensen/Farago
+the velocity in one of two forms: *vfull* or *vhalf*. The option *vhalf* 
+outputs the 2GJ half-step velocity given in :ref:`Gronbech Jensen/Gronbech-Jensen
+<Gronbech-Jensen-2019>`; for linear systems, this velocity is shown to not
+have any statistical errors for any stable time step. The option *vfull* 
+outputs the on-site velocity given in :ref:`Gronbech-Jensen/Farago
 <Gronbech-Jensen-Farago>`; this velocity is shown to be systematically lower
 than the target temperature by a small amount, which grows
-quadratically with the timestep.  The option *vhalf* outputs the
-2GJ half-step velocity given in :ref:`Gronbech Jensen/Gronbech-Jensen
-<Gronbech-Jensen-2019>`; for linear systems, this velocity is shown to not
-have any statistical errors for any stable time step.  An overview of
-statistically correct Boltzmann and Maxwell-Boltzmann sampling of true
-on-site and true half-step velocities is given in
-:ref:`Gronbech-Jensen-2020 <Gronbech-Jensen-2020>`.
+quadratically with the timestep. An overview of statistically correct Boltzmann 
+and Maxwell-Boltzmann sampling of true on-site and true half-step velocities is 
+given in :ref:`Gronbech-Jensen-2020 <Gronbech-Jensen-2020>`.
 
-This fix allows the use of any of the GJ methods as listed in :ref:`Gronbech-Jensen-2020 <Gronbech-Jensen-2020>`.
-The GJ-VII method is described in :ref:`Finkelstein <Finkelstein>`.
+This fix allows the use of several GJ methods as listed in :ref:`Gronbech-Jensen-2020 <Gronbech-Jensen-2020>`.
+The GJ-VII method is described in :ref:`Finkelstein <Finkelstein>` and GJ-VIII 
+is described in :ref:`Gronbech-Jensen-2024 <Gronbech-Jensen-2024>`.
 The implementation follows the splitting form provided in Eqs. (24) and (25)
 in :ref:`Gronbech-Jensen-2024 <Gronbech-Jensen-2024>`, including the application
 of Gaussian noise values, per the description in
@@ -129,12 +132,10 @@ different numbers of processors.
 
 The keyword/value option pairs are used in the following ways.
 
-The keyword *vel* determine which velocity is used to determine
+The keyword *vel* determines which velocity is used to determine
 quantities of interest in the simulation.
 
 The keyword *method* selects one of the eight GJ-methods implemented in LAMMPS.
-
-*Insert brief explanation for each method*
 
 ----------
 
@@ -146,9 +147,10 @@ Because the state of the random number generator is not saved in restart files,
 this means you cannot do "exact" restarts with this fix, where the simulation
 continues on the same as if no restart had taken place.  However, in a
 statistical sense, a restarted simulation should produce the same behavior.
-The "exact" restart is done with either vfull or vhalf velocity output for as
-long as the choice of vfull/vhalf is the same for the simulation as it is in
-the restart file.
+additionally, the GJ methods implement noise exclusively within each time step
+(unlike the BBK thermostat of the fix-langevin). The restart is done with 
+either vfull or vhalf velocity output for as long as the choice of vfull/vhalf
+is the same for the simulation as it is in the restart file.
 
 The :doc:`fix_modify <fix_modify>` *temp* option is supported by this
 fix.  You can use it to assign a temperature :doc:`compute <compute>`
@@ -165,7 +167,8 @@ This fix is not invoked during :doc:`energy minimization <minimize>`.
 Restrictions
 """"""""""""
 
-This fix is not compatible with run_style respa.
+This fix is not compatible with run_style respa. It is not compatible with 
+accelerated packages such as KOKKOS.
 
 Related commands
 """"""""""""""""
@@ -179,26 +182,25 @@ The option defaults are vel = vhalf, method = 1.
 
 ----------
 
-.. _Gronbech-Jensen-2024:
+.. _Gronbech-Jensen-2020:
 
-**(Gronbech-Jensen-2024)** Gronbech-Jensen, J. Stat. Phys. 191, 137 (2024).
-
-.. _Gronbech-Jensen-Farago:
-
-**(Gronbech-Jensen/Farago)** Gronbech-Jensen and Farago, Mol Phys, 111, 983
-(2013).
+**(Gronbech-Jensen-2020)** Gronbech-Jensen, Mol Phys 118, e1662506 (2020).
 
 .. _Gronbech-Jensen-2019:
 
 **(Gronbech Jensen/Gronbech-Jensen)** Gronbech Jensen and Gronbech-Jensen, Mol Phys, 117, 2511 (2019)
 
-.. _Gronbech-Jensen-2020:
+.. _Gronbech-Jensen-Farago:
 
-**(Gronbech-Jensen-2020)** Gronbech-Jensen, Mol Phys 118, e1662506 (2020).
+**(Gronbech-Jensen/Farago)** Gronbech-Jensen and Farago, Mol Phys, 111, 983 (2013).
 
 .. _Finkelstein:
 
 **(Finkelstein)** Finkelstein, Cheng, Florin, Seibold, Gronbech-Jensen, J. Chem. Phys., 155, 18 (2021)
+
+.. _Gronbech-Jensen-2024:
+
+**(Gronbech-Jensen-2024)** Gronbech-Jensen, J. Stat. Phys. 191, 137 (2024).
 
 .. _Gronbech-Jensen-2023:
 

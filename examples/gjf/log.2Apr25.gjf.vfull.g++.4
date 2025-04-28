@@ -1,4 +1,4 @@
-LAMMPS (2 Apr 2025 - Development - e4c3b0c05e-modified)
+LAMMPS (2 Apr 2025 - Development - 648cd3f0c6-modified)
 OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:99)
   using 1 OpenMP thread(s) per MPI task
 # GJ thermostat
@@ -74,6 +74,20 @@ author = {Grønbech-Jensen, Niels},
 year = {2020}
 }
 
+- Langevin GJ-I vfull method: doi:10.1080/00268976.2012.760055
+
+@Article{gronbech-jensen_simple_2013,
+title = {A simple and effective Verlet-type algorithm for simulating Langevin dynamics},
+volume = {111},
+url = {http://www.tandfonline.com/doi/abs/10.1080/00268976.2012.760055},
+doi = {10.1080/00268976.2012.760055},
+pages = {983-991},
+number = {8},
+journal = {Molecular Physics},
+author = {Grønbech-Jensen, Niels and Farago, Oded},
+year = {2013}
+}
+
 CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
 
 Generated 0 of 0 mixed pair_coeff terms from geometric mixing rule
@@ -93,21 +107,21 @@ Per MPI rank memory allocation (min/avg/max) = 6.427 | 6.427 | 6.427 Mbytes
    Step          Temp          E_pair         E_mol          TotEng         Press     
          0   10            -56.207652      0             -55.092137      33.341103    
       5000   7.946377      -55.076514      0             -54.190084      337.31999    
-Loop time of 2.0791 on 4 procs for 5000 steps with 864 atoms
+Loop time of 2.10015 on 4 procs for 5000 steps with 864 atoms
 
-Performance: 20778.210 ns/day, 0.001 hours/ns, 2404.885 timesteps/s, 2.078 Matom-step/s
-64.9% CPU use with 4 MPI tasks x 1 OpenMP threads
+Performance: 20570.001 ns/day, 0.001 hours/ns, 2380.787 timesteps/s, 2.057 Matom-step/s
+64.0% CPU use with 4 MPI tasks x 1 OpenMP threads
 
 MPI task timing breakdown:
 Section |  min time  |  avg time  |  max time  |%varavg| %total
 ---------------------------------------------------------------
-Pair    | 0.52985    | 0.53809    | 0.54586    |   0.8 | 25.88
-Bond    | 0.00054599 | 0.00057676 | 0.00061668 |   0.0 |  0.03
-Neigh   | 0.10872    | 0.10965    | 0.11044    |   0.2 |  5.27
-Comm    | 0.95581    | 0.96284    | 0.97025    |   0.5 | 46.31
-Output  | 0.00027472 | 0.00028374 | 0.00029435 |   0.0 |  0.01
-Modify  | 0.25077    | 0.25198    | 0.2529     |   0.2 | 12.12
-Other   |            | 0.2157     |            |       | 10.37
+Pair    | 0.54244    | 0.54516    | 0.54794    |   0.3 | 25.96
+Bond    | 0.00056978 | 0.00065706 | 0.00071013 |   0.0 |  0.03
+Neigh   | 0.10885    | 0.11       | 0.11178    |   0.4 |  5.24
+Comm    | 0.96848    | 0.97341    | 0.97775    |   0.3 | 46.35
+Output  | 0.00028754 | 0.00029437 | 0.00030094 |   0.0 |  0.01
+Modify  | 0.25125    | 0.25293    | 0.25477    |   0.3 | 12.04
+Other   |            | 0.2177     |            |       | 10.37
 
 Nlocal:            216 ave         216 max         216 min
 Histogram: 4 0 0 0 0 0 0 0 0 0
@@ -148,21 +162,21 @@ Per MPI rank memory allocation (min/avg/max) = 6.428 | 6.428 | 6.428 Mbytes
      36000   8.0936615     -55.152202      0             -54.249342      316.20169    
      38000   7.999652      -55.048407      0             -54.156034      345.07945    
      40000   8.6699753     -55.087634      0             -54.120485      337.23709    
-Loop time of 17.5212 on 4 procs for 35000 steps with 864 atoms
+Loop time of 17.6531 on 4 procs for 35000 steps with 864 atoms
 
-Performance: 17259.111 ns/day, 0.001 hours/ns, 1997.582 timesteps/s, 1.726 Matom-step/s
-63.6% CPU use with 4 MPI tasks x 1 OpenMP threads
+Performance: 17130.136 ns/day, 0.001 hours/ns, 1982.655 timesteps/s, 1.713 Matom-step/s
+63.9% CPU use with 4 MPI tasks x 1 OpenMP threads
 
 MPI task timing breakdown:
 Section |  min time  |  avg time  |  max time  |%varavg| %total
 ---------------------------------------------------------------
-Pair    | 4.9924     | 5.0801     | 5.1446     |   2.4 | 28.99
-Bond    | 0.0041975  | 0.0044234  | 0.0046863  |   0.3 |  0.03
-Neigh   | 0.85805    | 0.86369    | 0.87021    |   0.5 |  4.93
-Comm    | 6.7339     | 6.8008     | 6.8891     |   2.1 | 38.81
-Output  | 0.0044786  | 0.0046306  | 0.0050572  |   0.4 |  0.03
-Modify  | 3.2849     | 3.2919     | 3.2981     |   0.3 | 18.79
-Other   |            | 1.476      |            |       |  8.42
+Pair    | 5.0485     | 5.078      | 5.11       |   1.0 | 28.77
+Bond    | 0.0038244  | 0.0043855  | 0.0047706  |   0.6 |  0.02
+Neigh   | 0.8487     | 0.86408    | 0.87685    |   1.1 |  4.89
+Comm    | 6.8368     | 6.8833     | 6.9317     |   1.4 | 38.99
+Output  | 0.004493   | 0.0045296  | 0.0045945  |   0.1 |  0.03
+Modify  | 3.3123     | 3.3253     | 3.3366     |   0.5 | 18.84
+Other   |            | 1.494      |            |       |  8.46
 
 Nlocal:            216 ave         222 max         210 min
 Histogram: 2 0 0 0 0 0 0 0 0 2

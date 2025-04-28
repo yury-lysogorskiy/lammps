@@ -94,7 +94,20 @@ static const char cite_langevin_gjf_vhalf[] =
 	"author = {Jensen, Lucas Frese Grønbech and Grønbech-Jensen, Niels},\n"
 	"year = {2019}\n"
   "}\n\n";
-  
+
+static const char cite_langevin_gjf_vfull[] =
+  "Langevin GJ-I vfull method: doi:10.1080/00268976.2012.760055\n\n"
+  "@Article{gronbech-jensen_simple_2013,\n"
+  "title = {A simple and effective Verlet-type algorithm for simulating Langevin dynamics},\n"
+  "volume = {111},\n"
+  "url = {http://www.tandfonline.com/doi/abs/10.1080/00268976.2012.760055},\n"
+  "doi = {10.1080/00268976.2012.760055},\n"
+  "pages = {983-991},\n"
+  "number = {8},\n"
+  "journal = {Molecular Physics},\n"
+  "author = {Grønbech-Jensen, Niels and Farago, Oded},\n"
+  "year = {2013}\n"
+  "}\n\n";
 
 /* ---------------------------------------------------------------------- */
 
@@ -166,6 +179,7 @@ FixLangevinGJF::FixLangevinGJF(LAMMPS *lmp, int narg, char **arg) :
       error->all(FLERR, "Illegal fix langevin/gjf command");
   }
   if (GJmethod == 1 && osflag == 0) if (lmp->citeme) lmp->citeme->add(cite_langevin_gjf_vhalf);
+  if (GJmethod == 1 && osflag == 1) if (lmp->citeme) lmp->citeme->add(cite_langevin_gjf_vfull);
 
   // set temperature = nullptr, user can override via fix_modify if wants bias
   id_temp = nullptr;
