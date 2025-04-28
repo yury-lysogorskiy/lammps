@@ -613,7 +613,7 @@ system sizes.
 The *threads/per/atom* keyword sets the number of GPU vector lanes per atom
 used to perform force calculations.  This keyword is only applicable
 when *neigh/thread* is set to *on*.   For large cutoffs or with a small number
-of particles per GPU, increasing the value can improve performance. 
+of particles per GPU, increasing the value can improve performance.
 The number of lanes per atom must be a power of 2 and currently cannot be
 greater than the SIMD width for the GPU / accelerator.  In the case
 it exceeds the SIMD width, it will automatically be decreased to meet
