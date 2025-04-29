@@ -56,7 +56,7 @@ Examples
 Description
 """""""""""
 
-Apply a Langevin thermostat as described in :ref:`(Schneider) <Schneider1>`
+Apply a Langevin thermostat as described in :ref:`(Bruenger) <Bruenger1>`
 to a group of atoms which models an interaction with a background
 implicit solvent.  Used with :doc:`fix nve <fix_nve>`, this command
 performs Brownian dynamics (BD), since the total force on each atom
@@ -331,13 +331,15 @@ types, tally = no, zero = no, gjf = no.
 
 ----------
 
+.. _Bruenger1:
+
+**(Bruenger)** Bruenger, Brooks, and Karplus, Chem. Phys. Lett. 105, 495 (1982).
+[Previously attributed to Schneider and Stoll, Phys. Rev. B 17, 1302 (1978).
+Implementation remains unchanged.]
+
 .. _Dunweg1:
 
 **(Dunweg)** Dunweg and Paul, Int J of Modern Physics C, 2, 817-27 (1991).
-
-.. _Schneider1:
-
-**(Schneider)** Schneider and Stoll, Phys Rev B, 17, 1302 (1978).
 
 .. _Gronbech-Jensen:
 
