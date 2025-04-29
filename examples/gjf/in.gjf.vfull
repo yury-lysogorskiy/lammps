@@ -15,7 +15,7 @@ timestep 0.1
 compute myKE all ke
 compute myPE all pe
 
-fix lang all langevin/gjf 10 10 1 26488 vel vfull method 1
+fix lang all gjf 10 10 1 26488 vel vfull method 1
 
 run 5000
 

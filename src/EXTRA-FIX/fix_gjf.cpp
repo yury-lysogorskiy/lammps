@@ -15,7 +15,7 @@
    Contributing authors: Tim Linke & Niels Gronbech-Jensen (UC Davis)
 ------------------------------------------------------------------------- */
 
-#include "fix_langevin_gjf.h"
+#include "fix_gjf.h"
 
 #include "atom.h"
 #include "citeme.h"
@@ -41,8 +41,8 @@ using namespace FixConst;
 enum { NOBIAS, BIAS };
 enum { CONSTANT, EQUAL, ATOM };
 
-static const char cite_langevin_gjf[] =
-  "Langevin GJ methods: doi:10.1080/00268976.2019.1662506\n\n"
+static const char cite_gjf[] =
+  "GJ methods: doi:10.1080/00268976.2019.1662506\n\n"
   "@Article{gronbech-jensen_complete_2020,\n"
         "title = {Complete set of stochastic Verlet-type thermostats for correct Langevin simulations},\n"
         "volume = {118},\n"
@@ -54,8 +54,8 @@ static const char cite_langevin_gjf[] =
         "year = {2020}\n"
   "}\n\n";
 
-static const char cite_langevin_gjf_7[] =
-  "Langevin GJ-VII method: doi:10.1063/5.0066008\n\n"
+static const char cite_gjf_7[] =
+  "GJ-VII method: doi:10.1063/5.0066008\n\n"
   "@Article{finkelstein_2021,\n"
   "title = {Bringing discrete-time Langevin splitting methods into agreement with thermodynamics},\n"
   "volume = {155},\n"
@@ -68,8 +68,8 @@ static const char cite_langevin_gjf_7[] =
   "pages = {184104}\n"
   "}\n\n";
 
-static const char cite_langevin_gjf_8[] =
-  "Langevin GJ-VIII method: doi:10.1007/s10955-024-03345-1\n\n"
+static const char cite_gjf_8[] =
+  "GJ-VIII method: doi:10.1007/s10955-024-03345-1\n\n"
   "@Article{gronbech_jensen_2024,\n"
   "title = {On the Definition of Velocity in Discrete-Time, Stochastic Langevin Simulations},\n"
   "volume = {191},\n"
@@ -82,8 +82,8 @@ static const char cite_langevin_gjf_8[] =
   "pages = {137}\n"
   "}\n\n";
 
-static const char cite_langevin_gjf_vhalf[] =
-  "Langevin GJ-I vhalf method: doi:10.1080/00268976.2019.1570369\n\n"
+static const char cite_gjf_vhalf[] =
+  "GJ-I vhalf method: doi:10.1080/00268976.2019.1570369\n\n"
   "@Article{jensen_accurate_2019,\n"
         "title = {Accurate configurational and kinetic statistics in discrete-time Langevin systems},\n"
         "volume = {117},\n"
@@ -95,8 +95,8 @@ static const char cite_langevin_gjf_vhalf[] =
         "year = {2019}\n"
   "}\n\n";
 
-static const char cite_langevin_gjf_vfull[] =
-  "Langevin GJ-I vfull method: doi:10.1080/00268976.2012.760055\n\n"
+static const char cite_gjf_vfull[] =
+  "GJ-I vfull method: doi:10.1080/00268976.2012.760055\n\n"
   "@Article{gronbech-jensen_simple_2013,\n"
   "title = {A simple and effective Verlet-type algorithm for simulating Langevin dynamics},\n"
   "volume = {111},\n"
@@ -111,11 +111,11 @@ static const char cite_langevin_gjf_vfull[] =
 
 /* ---------------------------------------------------------------------- */
 
-FixLangevinGJF::FixLangevinGJF(LAMMPS *lmp, int narg, char **arg) :
+FixGJF::FixGJF(LAMMPS *lmp, int narg, char **arg) :
     Fix(lmp, narg, arg), tstr(nullptr), tforce(nullptr), lv(nullptr), id_temp(nullptr), random(nullptr)
 {
-  if (lmp->citeme) lmp->citeme->add(cite_langevin_gjf);
-  if (narg < 7) error->all(FLERR, "Illegal fix langevin/gjf command");
+  if (lmp->citeme) lmp->citeme->add(cite_gjf);
+  if (narg < 7) error->all(FLERR, "Illegal fix gjf command");
 
   time_integrate = 1;
   global_freq = 1;
@@ -133,8 +133,8 @@ FixLangevinGJF::FixLangevinGJF(LAMMPS *lmp, int narg, char **arg) :
   t_period = utils::numeric(FLERR, arg[5], false, lmp);
   seed = utils::inumeric(FLERR, arg[6], false, lmp);
 
-  if (t_period <= 0.0) error->all(FLERR, "Fix langevin/gjf period must be > 0.0");
-  if (seed <= 0) error->all(FLERR, "Illegal fix langevin/gjf command");
+  if (t_period <= 0.0) error->all(FLERR, "Fix gjf period must be > 0.0");
+  if (seed <= 0) error->all(FLERR, "Illegal fix gjf command");
 
   // initialize Marsaglia RNG with processor-unique seed
   random = new RanMars(lmp, seed + comm->me);
@@ -152,34 +152,34 @@ FixLangevinGJF::FixLangevinGJF(LAMMPS *lmp, int narg, char **arg) :
   int iarg = 7;
   while (iarg < narg) {
     if (strcmp(arg[iarg], "vel") == 0) {
-      if (iarg + 2 > narg) error->all(FLERR, "Illegal fix langevin/gjf command");
+      if (iarg + 2 > narg) error->all(FLERR, "Illegal fix gjf command");
       if (strcmp(arg[iarg + 1], "vfull") == 0) {
         osflag = 1;
       } else if (strcmp(arg[iarg + 1], "vhalf") == 0) {
         osflag = 0;
       } else
-        error->all(FLERR, "Illegal fix langevin/gjf command");
+        error->all(FLERR, "Illegal fix gjf command");
       iarg += 2;
     } else if (strcmp(arg[iarg], "method") == 0) {
       GJmethod = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
       if (GJmethod == 7) {
-        if (iarg + 3 > narg) error->all(FLERR, "Illegal fix langevin/gjf command for GJ-VII");
+        if (iarg + 3 > narg) error->all(FLERR, "Illegal fix gjf command for GJ-VII");
         gjfc2 = utils::numeric(FLERR, arg[iarg + 2], false, lmp);
         if (gjfc2 < 0 || gjfc2 > 1) error->all(FLERR, "Choice of c2 in GJ-VII must be 0≤c2≤1");
         iarg += 3;
-        if (lmp->citeme) lmp->citeme->add(cite_langevin_gjf_7);
+        if (lmp->citeme) lmp->citeme->add(cite_gjf_7);
       }
       else {
-        if (iarg + 2 > narg) error->all(FLERR, "Illegal fix langevin/gjf command");
-        if (GJmethod < 0 || GJmethod > GJmethods) error->all(FLERR, "Invalid GJ method choice in langevin/gjf command");
-        if (GJmethod == 8) if (lmp->citeme) lmp->citeme->add(cite_langevin_gjf_8);
+        if (iarg + 2 > narg) error->all(FLERR, "Illegal fix gjf command");
+        if (GJmethod < 0 || GJmethod > GJmethods) error->all(FLERR, "Invalid GJ method choice in gjf command");
+        if (GJmethod == 8) if (lmp->citeme) lmp->citeme->add(cite_gjf_8);
         iarg += 2;
       }
     } else
-      error->all(FLERR, "Illegal fix langevin/gjf command");
+      error->all(FLERR, "Illegal fix gjf command");
   }
-  if (GJmethod == 1 && osflag == 0) if (lmp->citeme) lmp->citeme->add(cite_langevin_gjf_vhalf);
-  if (GJmethod == 1 && osflag == 1) if (lmp->citeme) lmp->citeme->add(cite_langevin_gjf_vfull);
+  if (GJmethod == 1 && osflag == 0) if (lmp->citeme) lmp->citeme->add(cite_gjf_vhalf);
+  if (GJmethod == 1 && osflag == 1) if (lmp->citeme) lmp->citeme->add(cite_gjf_vfull);
 
   // set temperature = nullptr, user can override via fix_modify if wants bias
   id_temp = nullptr;
@@ -193,7 +193,7 @@ FixLangevinGJF::FixLangevinGJF(LAMMPS *lmp, int narg, char **arg) :
   // no need to set peratom_flag, b/c data is for internal use only
 
 
-  FixLangevinGJF::grow_arrays(atom->nmax);
+  FixGJF::grow_arrays(atom->nmax);
   atom->add_callback(Atom::GROW);
 
   // initialize lv to onsite velocity
@@ -207,7 +207,7 @@ FixLangevinGJF::FixLangevinGJF(LAMMPS *lmp, int narg, char **arg) :
 
 /* ---------------------------------------------------------------------- */
 
-FixLangevinGJF::~FixLangevinGJF()
+FixGJF::~FixGJF()
 {
   if (copymode) return;
 
@@ -222,7 +222,7 @@ FixLangevinGJF::~FixLangevinGJF()
 
 /* ---------------------------------------------------------------------- */
 
-int FixLangevinGJF::setmask()
+int FixGJF::setmask()
 {
   int mask = 0;
   mask |= INITIAL_INTEGRATE;
@@ -233,7 +233,7 @@ int FixLangevinGJF::setmask()
 
 /* ---------------------------------------------------------------------- */
 
-void FixLangevinGJF::init()
+void FixGJF::init()
 {
   if (id_temp) {
     temperature = modify->get_compute_by_id(id_temp);
@@ -248,17 +248,17 @@ void FixLangevinGJF::init()
 
   if (tstr) {
     tvar = input->variable->find(tstr);
-    if (tvar < 0) error->all(FLERR, "Variable name {} for fix langevin/gjf does not exist", tstr);
+    if (tvar < 0) error->all(FLERR, "Variable name {} for fix gjf does not exist", tstr);
     if (input->variable->equalstyle(tvar))
       tstyle = EQUAL;
     else if (input->variable->atomstyle(tvar))
       tstyle = ATOM;
     else
-      error->all(FLERR, "Variable {} for fix langevin/gjf is invalid style", tstr);
+      error->all(FLERR, "Variable {} for fix gjf is invalid style", tstr);
   }
 
   if (utils::strmatch(update->integrate_style, "^respa")) {
-    error->all(FLERR, "Fix langevin/gjf and run style respa are not compatible");
+    error->all(FLERR, "Fix gjf and run style respa are not compatible");
   }
 
   if (temperature && temperature->tempbias)
@@ -296,7 +296,7 @@ void FixLangevinGJF::init()
       gjfc2 = 0.0;
       break;
     default:
-      error->all(FLERR, "Fix langevin/gjf method not found");
+      error->all(FLERR, "Fix gjf method not found");
       break;
   }
   gjfc1 = (1.0 + gjfc2) / 2.0;
@@ -306,13 +306,13 @@ void FixLangevinGJF::init()
 /* ----------------------------------------------------------------------
   integrate position and velocity according to the GJ methods
   in Grønbech-Jensen, J Stat Phys 191, 137 (2024). The general workflow is
-    1. Langevin GJ Initial Integration
+    1. GJ Initial Integration
     2. Force Update
-    3. Langevin GJ Final Integration
+    3. GJ Final Integration
     4. Velocity Choice in end_of_step()
 ------------------------------------------------------------------------- */
 
-void FixLangevinGJF::initial_integrate(int /* vflag */)
+void FixGJF::initial_integrate(int /* vflag */)
 {
   // This function provides the integration of the GJ formulation 24 a-e
   double **x = atom->x;
@@ -437,7 +437,7 @@ void FixLangevinGJF::initial_integrate(int /* vflag */)
   }
 }
 
-void FixLangevinGJF::final_integrate()
+void FixGJF::final_integrate()
 {
   double **v = atom->v;
   double **f = atom->f;
@@ -479,7 +479,7 @@ void FixLangevinGJF::final_integrate()
    set current t_target and t_sqrt
 ------------------------------------------------------------------------- */
 
-void FixLangevinGJF::compute_target()
+void FixGJF::compute_target()
 {
   int *mask = atom->mask;
   int nlocal = atom->nlocal;
@@ -498,19 +498,19 @@ void FixLangevinGJF::compute_target()
     if (tstyle == EQUAL) {
       t_target = input->variable->compute_equal(tvar);
       if (t_target < 0.0)
-        error->one(FLERR, "Fix langevin/gjf variable returned negative temperature");
+        error->one(FLERR, "Fix gjf variable returned negative temperature");
       tsqrt = sqrt(t_target);
     } else {
       if (atom->nmax > maxatom) {
         maxatom = atom->nmax;
         memory->destroy(tforce);
-        memory->create(tforce,maxatom,"langevin_gjf:tforce");
+        memory->create(tforce,maxatom,"gjf:tforce");
       }
       input->variable->compute_atom(tvar,igroup,tforce,1,0);
       for (int i = 0; i < nlocal; i++)
         if (mask[i] & groupbit)
             if (tforce[i] < 0.0)
-              error->one(FLERR, "Fix langevin/gjf variable returned negative temperature");
+              error->one(FLERR, "Fix gjf variable returned negative temperature");
     }
     modify->addstep_compute(update->ntimestep + 1);
   }
@@ -520,7 +520,7 @@ void FixLangevinGJF::compute_target()
    select velocity for GJ
 ------------------------------------------------------------------------- */
 
-void FixLangevinGJF::end_of_step()
+void FixGJF::end_of_step()
 {
   double **v = atom->v;
   int *mask = atom->mask;
@@ -549,14 +549,14 @@ void FixLangevinGJF::end_of_step()
 // clang-format on
 /* ---------------------------------------------------------------------- */
 
-void FixLangevinGJF::reset_target(double t_new)
+void FixGJF::reset_target(double t_new)
 {
   t_target = t_start = t_stop = t_new;
 }
 
 /* ---------------------------------------------------------------------- */
 
-void FixLangevinGJF::reset_dt()
+void FixGJF::reset_dt()
 {
   // Complete set of thermostats is given in Gronbech-Jensen, Molecular Physics, 118 (2020)
   switch (GJmethod) {
@@ -588,7 +588,7 @@ void FixLangevinGJF::reset_dt()
       gjfc2 = 0.0;
       break;
     default:
-      error->all(FLERR, "Fix langevin/gjf method not found");
+      error->all(FLERR, "Fix gjf method not found");
       break;
   }
   gjfc1 = (1.0 + gjfc2) / 2.0;
@@ -597,7 +597,7 @@ void FixLangevinGJF::reset_dt()
 
 /* ---------------------------------------------------------------------- */
 
-int FixLangevinGJF::modify_param(int narg, char **arg)
+int FixGJF::modify_param(int narg, char **arg)
 {
   if (strcmp(arg[0], "temp") == 0) {
     if (narg < 2) utils::missing_cmd_args(FLERR, "fix_modify", error);
@@ -621,7 +621,7 @@ int FixLangevinGJF::modify_param(int narg, char **arg)
    extract thermostat properties
 ------------------------------------------------------------------------- */
 
-void *FixLangevinGJF::extract(const char *str, int &dim)
+void *FixGJF::extract(const char *str, int &dim)
 {
   dim = 0;
   if (strcmp(str, "t_target") == 0) { return &t_target; }
@@ -632,7 +632,7 @@ void *FixLangevinGJF::extract(const char *str, int &dim)
    memory usage of tally array
 ------------------------------------------------------------------------- */
 
-double FixLangevinGJF::memory_usage()
+double FixGJF::memory_usage()
 {
   double bytes = 0.0;
   bytes += (double) atom->nmax * 3 * sizeof(double);
@@ -644,16 +644,16 @@ double FixLangevinGJF::memory_usage()
    allocate atom-based array for lv
 ------------------------------------------------------------------------- */
 
-void FixLangevinGJF::grow_arrays(int nmax)
+void FixGJF::grow_arrays(int nmax)
 {
-  memory->grow(lv, nmax, 3, "fix_langevin_gjf:lv");
+  memory->grow(lv, nmax, 3, "fix_gjf:lv");
 }
 
 /* ----------------------------------------------------------------------
    copy values within local atom-based array
 ------------------------------------------------------------------------- */
 
-void FixLangevinGJF::copy_arrays(int i, int j, int /*delflag*/)
+void FixGJF::copy_arrays(int i, int j, int /*delflag*/)
 {
   lv[j][0] = lv[i][0];
   lv[j][1] = lv[i][1];
@@ -664,7 +664,7 @@ void FixLangevinGJF::copy_arrays(int i, int j, int /*delflag*/)
    pack values in local atom-based array for exchange with another proc
 ------------------------------------------------------------------------- */
 
-int FixLangevinGJF::pack_exchange(int i, double *buf)
+int FixGJF::pack_exchange(int i, double *buf)
 {
   int n = 0;
   buf[n++] = lv[i][0];
@@ -677,7 +677,7 @@ int FixLangevinGJF::pack_exchange(int i, double *buf)
    unpack values in local atom-based array from exchange with another proc
 ------------------------------------------------------------------------- */
 
-int FixLangevinGJF::unpack_exchange(int nlocal, double *buf)
+int FixGJF::unpack_exchange(int nlocal, double *buf)
 {
   int n = 0;
   lv[nlocal][0] = buf[n++];

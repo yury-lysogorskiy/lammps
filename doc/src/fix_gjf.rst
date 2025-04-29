@@ -1,6 +1,6 @@
-.. index:: fix langevin/gjf
+.. index:: fix gjf
 
-fix langevin/gjf command
+fix gjf command
 ========================
 
 Syntax
@@ -8,10 +8,10 @@ Syntax
 
 .. code-block:: LAMMPS
 
-   fix ID group-ID langevin/gjf Tstart Tstop damp seed keyword values ...
+   fix ID group-ID gjf Tstart Tstop damp seed keyword values ...
 
 * ID, group-ID are documented in :doc:`fix <fix>` command
-* langevin/gjf = style name of this fix command
+* gjf = style name of this fix command
 * Tstart,Tstop = desired temperature at start/end of run (temperature units)
 * Tstart can be a variable (see below)
 * damp = damping parameter (time units)
@@ -33,9 +33,9 @@ Examples
 
 .. code-block:: LAMMPS
 
-   fix 3 boundary langevin/gjf 10.0 10.0 1.0 699483
-   fix 1 all langevin/gjf 10.0 100.0 100.0 48279 vel vfull method 4
-   fix 2 all langevin/gjf 10.0 10.0 1.0 26488 method 7 0.95
+   fix 3 boundary gjf 10.0 10.0 1.0 699483
+   fix 1 all gjf 10.0 100.0 100.0 48279 vel vfull method 4
+   fix 2 all gjf 10.0 10.0 1.0 26488 method 7 0.95
 
 Description
 """""""""""

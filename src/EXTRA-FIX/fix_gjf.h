@@ -13,21 +13,21 @@
 
 #ifdef FIX_CLASS
 // clang-format off
-FixStyle(langevin/gjf,FixLangevinGJF);
+FixStyle(gjf,FixGJF);
 // clang-format on
 #else
 
-#ifndef LMP_FIX_LANGEVINGJF_H
-#define LMP_FIX_LANGEVINGJF_H
+#ifndef LMP_FIX_GJF_H
+#define LMP_FIX_GJF_H
 
 #include "fix.h"
 
 namespace LAMMPS_NS {
 
-class FixLangevinGJF : public Fix {
+class FixGJF : public Fix {
  public:
-  FixLangevinGJF(class LAMMPS *, int, char **);
-  ~FixLangevinGJF() override;
+  FixGJF(class LAMMPS *, int, char **);
+  ~FixGJF() override;
   int setmask() override;
   void init() override;
   void initial_integrate(int) override;

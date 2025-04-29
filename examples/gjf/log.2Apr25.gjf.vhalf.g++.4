@@ -1,4 +1,4 @@
-LAMMPS (2 Apr 2025 - Development - e4c3b0c05e-modified)
+LAMMPS (2 Apr 2025 - Development - d4867ab55e-modified)
 OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:99)
   using 1 OpenMP thread(s) per MPI task
 # GJ thermostat
@@ -53,7 +53,7 @@ timestep 0.1
 compute myKE all ke
 compute myPE all pe
 
-fix lang all langevin/gjf 10 10 1 26488
+fix lang all gjf 10 10 1 26488
 
 run 5000
 
@@ -61,7 +61,7 @@ CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
 
 Your simulation uses code contributions which should be cited:
 
-- Langevin GJ methods: doi:10.1080/00268976.2019.1662506
+- GJ methods: doi:10.1080/00268976.2019.1662506
 
 @Article{gronbech-jensen_complete_2020,
 title = {Complete set of stochastic Verlet-type thermostats for correct Langevin simulations},
@@ -74,7 +74,7 @@ author = {Grønbech-Jensen, Niels},
 year = {2020}
 }
 
-- Langevin GJ-I vhalf method: doi:10.1080/00268976.2019.1570369
+- GJ-I vhalf method: doi:10.1080/00268976.2019.1570369
 
 @Article{jensen_accurate_2019,
 title = {Accurate configurational and kinetic statistics in discrete-time Langevin systems},
@@ -106,21 +106,21 @@ Per MPI rank memory allocation (min/avg/max) = 6.427 | 6.427 | 6.427 Mbytes
    Step          Temp          E_pair         E_mol          TotEng         Press     
          0   10            -56.207652      0             -55.092137      33.341103    
       5000   9.3726166     -55.076514      0             -54.030985      342.43571    
-Loop time of 2.09482 on 4 procs for 5000 steps with 864 atoms
+Loop time of 2.11818 on 4 procs for 5000 steps with 864 atoms
 
-Performance: 20622.269 ns/day, 0.001 hours/ns, 2386.837 timesteps/s, 2.062 Matom-step/s
-64.9% CPU use with 4 MPI tasks x 1 OpenMP threads
+Performance: 20394.822 ns/day, 0.001 hours/ns, 2360.512 timesteps/s, 2.039 Matom-step/s
+63.1% CPU use with 4 MPI tasks x 1 OpenMP threads
 
 MPI task timing breakdown:
 Section |  min time  |  avg time  |  max time  |%varavg| %total
 ---------------------------------------------------------------
-Pair    | 0.5344     | 0.54263    | 0.54877    |   0.8 | 25.90
-Bond    | 0.00049036 | 0.00055513 | 0.00061267 |   0.0 |  0.03
-Neigh   | 0.10741    | 0.10898    | 0.11004    |   0.3 |  5.20
-Comm    | 0.95869    | 0.96388    | 0.96936    |   0.4 | 46.01
-Output  | 0.00025982 | 0.00026553 | 0.00026761 |   0.0 |  0.01
-Modify  | 0.26091    | 0.26108    | 0.26137    |   0.0 | 12.46
-Other   |            | 0.2174     |            |       | 10.38
+Pair    | 0.53987    | 0.54922    | 0.56044    |   1.2 | 25.93
+Bond    | 0.00058281 | 0.00063674 | 0.00075153 |   0.0 |  0.03
+Neigh   | 0.10821    | 0.10912    | 0.11017    |   0.2 |  5.15
+Comm    | 0.96075    | 0.97484    | 0.98645    |   1.1 | 46.02
+Output  | 0.00026318 | 0.00026575 | 0.00027192 |   0.0 |  0.01
+Modify  | 0.26142    | 0.2634     | 0.26465    |   0.2 | 12.44
+Other   |            | 0.2207     |            |       | 10.42
 
 Nlocal:            216 ave         216 max         216 min
 Histogram: 4 0 0 0 0 0 0 0 0 0
@@ -161,21 +161,21 @@ Per MPI rank memory allocation (min/avg/max) = 6.428 | 6.428 | 6.428 Mbytes
      36000   9.6032778     -55.152202      0             -54.080942      321.61646    
      38000   9.8802995     -55.048407      0             -53.946245      351.82506    
      40000   10.372288     -55.087634      0             -53.93059       343.34304    
-Loop time of 17.6294 on 4 procs for 35000 steps with 864 atoms
+Loop time of 17.867 on 4 procs for 35000 steps with 864 atoms
 
-Performance: 17153.172 ns/day, 0.001 hours/ns, 1985.321 timesteps/s, 1.715 Matom-step/s
-63.7% CPU use with 4 MPI tasks x 1 OpenMP threads
+Performance: 16925.013 ns/day, 0.001 hours/ns, 1958.914 timesteps/s, 1.693 Matom-step/s
+65.3% CPU use with 4 MPI tasks x 1 OpenMP threads
 
 MPI task timing breakdown:
 Section |  min time  |  avg time  |  max time  |%varavg| %total
 ---------------------------------------------------------------
-Pair    | 5.0222     | 5.1025     | 5.1759     |   2.5 | 28.94
-Bond    | 0.0040066  | 0.0042899  | 0.0045178  |   0.3 |  0.02
-Neigh   | 0.8511     | 0.85865    | 0.86632    |   0.6 |  4.87
-Comm    | 6.7448     | 6.8089     | 6.8793     |   1.8 | 38.62
-Output  | 0.0043966  | 0.0045518  | 0.0049846  |   0.4 |  0.03
-Modify  | 3.364      | 3.3672     | 3.3717     |   0.2 | 19.10
-Other   |            | 1.483      |            |       |  8.41
+Pair    | 5.0932     | 5.1683     | 5.2256     |   2.5 | 28.93
+Bond    | 0.0044473  | 0.0048347  | 0.0058137  |   0.8 |  0.03
+Neigh   | 0.85262    | 0.8601     | 0.87438    |   0.9 |  4.81
+Comm    | 6.8164     | 6.8981     | 6.9859     |   2.6 | 38.61
+Output  | 0.0046884  | 0.0047093  | 0.0047322  |   0.0 |  0.03
+Modify  | 3.4107     | 3.4186     | 3.4248     |   0.3 | 19.13
+Other   |            | 1.512      |            |       |  8.47
 
 Nlocal:            216 ave         222 max         210 min
 Histogram: 2 0 0 0 0 0 0 0 0 2
@@ -189,4 +189,4 @@ Ave neighs/atom = 20.998843
 Ave special neighs/atom = 0
 Neighbor list builds = 2140
 Dangerous builds = 0
-Total wall time: 0:00:19
+Total wall time: 0:00:21

@@ -22,10 +22,10 @@ can be invoked via the *dpd/tstat* pair style:
 * :doc:`fix temp/berendsen <fix_temp_berendsen>`
 * :doc:`fix temp/csvr <fix_temp_csvr>`
 * :doc:`fix ffl <fix_ffl>`
+* :doc:`fix gjf <fix_gjf>`
 * :doc:`fix gld <fix_gld>`
 * :doc:`fix gle <fix_gle>`
 * :doc:`fix langevin <fix_langevin>`
-* :doc:`fix langevin/gjf <fix_langevin_gjf>`
 * :doc:`fix temp/rescale <fix_temp_rescale>`
 * :doc:`pair_style dpd/tstat <pair_dpd>`
 * :doc:`pair_style dpd/ext/tstat <pair_dpd_ext>`

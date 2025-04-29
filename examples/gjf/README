@@ -36,9 +36,9 @@ KINETIC ENERGY (eV)
 
 Script Commands:
 --
-fix lang all langevin/gjf 10 10 1 26488
+fix lang all gjf 10 10 1 26488
 --
-fix lang all langevin/gjf 10 10 1 26488 vel vfull
+fix lang all gjf 10 10 1 26488 vel vfull
 --
 fix nve all nve
 fix lang all langevin 10 10 1 26488
