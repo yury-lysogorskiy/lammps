@@ -879,6 +879,8 @@
 /fix_gld.h
 /fix_gle.cpp
 /fix_gle.h
+/fix_langevin_gjf.cpp
+/fix_langevin_gjf.h
 /fix_gpu.cpp
 /fix_gpu.h
 /fix_grem.cpp
