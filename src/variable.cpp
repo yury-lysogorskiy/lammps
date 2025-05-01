@@ -81,6 +81,7 @@ enum{DONE,ADD,SUBTRACT,MULTIPLY,DIVIDE,CARAT,MODULO,UNARY,
      RAMP,STAGGER,LOGFREQ,LOGFREQ2,LOGFREQ3,STRIDE,STRIDE2,
      VDISPLACE,SWIGGLE,CWIGGLE,SIGN,GMASK,RMASK,
      GRMASK,IS_ACTIVE,IS_DEFINED,IS_AVAILABLE,IS_FILE,EXTRACT_SETTING,
+     PYFUNCTION,
      VALUE,ATOMARRAY,TYPEARRAY,INTARRAY,BIGINTARRAY,VECTORARRAY};
 
 // customize by adding a special function
@@ -1006,7 +1007,7 @@ char *Variable::pythonstyle(char *name, char *funcname)
 
 /* ----------------------------------------------------------------------
    return 1 if variable is INTERNAL style, 0 if not
-   this is checked before call to set_internal() to assure it can be set
+   this is checked before call to internal_set() to assure it can be set
 ------------------------------------------------------------------------- */
 
 int Variable::internalstyle(int ivar)
@@ -2361,13 +2362,13 @@ double Variable::evaluate(char *str, Tree **tree, int ivar)
         }
 
       // ----------------
-      // math/group/special/labelmap function or atom value/vector or constant or thermo keyword
+      // math/group/region/special/feature function or atom value/vector or constant or thermo keyword
       // ----------------
 
       } else {
 
         // ----------------
-        // math or group or special function
+        // math or group/region or special or feature function
         // ----------------
 
         if (str[i] == '(') {
@@ -3183,6 +3184,20 @@ double Variable::collapse_tree(Tree *tree)
     return tree->value;
   }
 
+  if (tree->type == PYFUNCTION) {
+    int narg = tree->argcount;
+    int *argvars = tree->argvars;
+    double arg;
+    for (int iarg = 0; iarg < narg; iarg++) {
+      if (iarg == 0) arg = collapse_tree(tree->first);
+      else if (iarg == 1) arg = collapse_tree(tree->second);
+      else arg = collapse_tree(tree->extra[iarg-2]);
+      internal_set(argvars[iarg],arg);
+    }
+    tree->value = compute_equal(tree->pyvar);
+    return tree->value;
+  }
+
   // mask functions do not become a single collapsed value
 
   if (tree->type == GMASK) return 0.0;
@@ -3518,8 +3533,20 @@ double Variable::eval_tree(Tree *tree, int i)
   }
 
   if (tree->type == SIGN)
-    return (eval_tree(tree->first,i) >= 0.0) ? 1.0 : -1.0; // sign(eval_tree(tree->first,i));
-
+    return (eval_tree(tree->first,i) >= 0.0) ? 1.0 : -1.0;   // sign(eval_tree(tree->first,i));
+  
+  if (tree->type == PYFUNCTION) {
+    int narg = tree->argcount;
+    for (int iarg = 0; iarg < narg; iarg++) {
+      if (iarg == 0) arg = eval_tree(tree->first,i);
+      else if (iarg == 1) arg = eval_tree(tree->second,i);
+      else arg = eval_tree(tree->extra[iarg-2],i);
+      internal_set(tree->argvars[iarg],arg);
+    }
+    arg = compute_equal(tree->pyvar);
+    return arg;
+  }
+  
   if (tree->type == GMASK) {
     if (atom->mask[i] & tree->ivalue) return 1.0;
     else return 0.0;
@@ -3583,6 +3610,7 @@ void Variable::free_tree(Tree *tree)
     for (int i = 0; i < tree->nextra; i++) free_tree(tree->extra[i]);
     delete[] tree->extra;
   }
+  if (tree->argvars) delete[] tree->argvars;
 
   if (tree->selfalloc) memory->destroy(tree->array);
   delete tree;
@@ -3684,8 +3712,9 @@ tagint Variable::int_between_brackets(char *&ptr, int varallow)
 
 /* ----------------------------------------------------------------------
    process a math function in formula
+   includes a Python function with syntax py_varname(arg1,arg2,...)
    push result onto tree or arg stack
-   word = math function
+   word = math function name
    contents = str between parentheses with comma-separated args
    return 0 if not a match, 1 if successfully processed
    customize by adding a math function:
@@ -3693,7 +3722,8 @@ tagint Variable::int_between_brackets(char *&ptr, int varallow)
      atan2(y,x),random(x,y,z),normal(x,y,z),ceil(),floor(),round(),ternary(),
      ramp(x,y),stagger(x,y),logfreq(x,y,z),logfreq2(x,y,z),
      logfreq3(x,y,z),stride(x,y,z),stride2(x,y,z,a,b,c),vdisplace(x,y),
-     swiggle(x,y,z),cwiggle(x,y,z),sign(x)
+     swiggle(x,y,z),cwiggle(x,y,z),sign(x),
+     py_varname(arg1,arg2,...) (up to MAXFUNCARG)
 ------------------------------------------------------------------------- */
 
 int Variable::math_function(char *word, char *contents, Tree **tree, Tree **treestack,
@@ -3711,7 +3741,8 @@ int Variable::math_function(char *word, char *contents, Tree **tree, Tree **tree
       strcmp(word,"logfreq") != 0 && strcmp(word,"logfreq2") != 0 &&
       strcmp(word,"logfreq3") != 0 && strcmp(word,"stride") != 0 &&
       strcmp(word,"stride2") != 0 && strcmp(word,"vdisplace") != 0 &&
-      strcmp(word,"swiggle") != 0 && strcmp(word,"cwiggle") != 0 && strcmp(word,"sign") != 0)
+      strcmp(word,"swiggle") != 0 && strcmp(word,"cwiggle") != 0 && strcmp(word,"sign") != 0 &&
+      strstr(word,"py_") != word)
     return 0;
 
   // parse contents for comma-separated args
@@ -4106,11 +4137,60 @@ int Variable::math_function(char *word, char *contents, Tree **tree, Tree **tree
       double value = value1 + value2*(1.0-cos(omega*delta*update->dt));
       argstack[nargstack++] = value;
     }
+    
   } else if (strcmp(word,"sign") == 0) {
     if (narg != 1)
       print_var_error(FLERR,"Invalid math function in variable formula",ivar);
     if (tree) newtree->type = SIGN;
     else argstack[nargstack++] = (value1 >= 0.0) ? 1.0 : -1.0; // sign(value1);
+
+  // Python function tied to varname
+  // narg arguments tied to internal variables pyarg1, pyarg2, ... pyargN
+
+  } else if (strstr(word,"py_") == word) {
+
+    // text following py_ = python-style variable name
+    
+    int pyvar = find(&word[3]);
+    if (style[pyvar] != PYTHON)
+      print_var_error(FLERR,"Invalid python function variable name",ivar);
+
+    // check for existence of narg internal variables with names pyarg1 to pyargN
+    // store their indices in jvars
+
+    int *jvars = new int[narg];
+    char *internal_varname;
+    
+    for (int iarg = 0; iarg < narg; iarg++) {
+      internal_varname = utils::strdup(fmt::format("pyarg{}", iarg+1));
+      jvars[iarg] = find(internal_varname);
+      if (jvars[iarg] < 0)
+        print_var_error(FLERR,"Invalid python function arg in variable formula",ivar);
+      if (!internalstyle(jvars[iarg]))
+        print_var_error(FLERR,"Invalid python function arg in variable formula",ivar);
+      delete[] internal_varname;
+    }
+
+    // if tree: store python variable and arg info in tree for later eval
+    // else: one-time eval of python function now
+    
+    if (tree) {
+      newtree->type = PYFUNCTION;
+      newtree->pyvar = pyvar;
+      newtree->argcount = narg;
+      newtree->argvars = new int[narg];
+      for (int iarg = 0; iarg < narg; iarg++)
+        newtree->argvars[iarg] = jvars[iarg];
+    } else {
+      for (int iarg = 0; iarg < narg; iarg++) {
+        if (iarg == 0) internal_set(jvars[iarg],value1);
+        else if (iarg == 1) internal_set(jvars[iarg],value2);
+        else internal_set(jvars[iarg],values[iarg-2]);
+      }
+      argstack[nargstack++] = compute_equal(pyvar);
+    }
+
+    delete[] jvars;
   }
 
   // delete stored args
@@ -4377,7 +4457,7 @@ Region *Variable::region_function(char *id, int ivar)
    customize by adding a special function:
      sum(x),min(x),max(x),ave(x),trap(x),slope(x),
      gmask(x),rmask(x),grmask(x,y),next(x),is_file(x),is_os(x),
-     extract_setting(x),label2type(x,y),is_tpelabel(x,y)
+     extract_setting(x),label2type(x,y),is_typelabel(x,y)
      is_timeout()
 ------------------------------------------------------------------------- */
 

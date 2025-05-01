@@ -123,9 +123,13 @@ class Variable : protected Pointers {
     Tree *first, *second;    // ptrs further down tree for first 2 args
     Tree **extra;            // ptrs further down tree for nextra args
 
+    int pyvar;               // index of Python variable invoked as py_name()
+    int argcount;            // # of args to associated Python function
+    int *argvars;            // indices of internal variables for each arg
+
     Tree() :
         array(nullptr), iarray(nullptr), barray(nullptr), selfalloc(0), ivalue(0), nextra(0),
-        region(nullptr), first(nullptr), second(nullptr), extra(nullptr)
+        region(nullptr), first(nullptr), second(nullptr), extra(nullptr), argvars(nullptr)
     {
     }
   };

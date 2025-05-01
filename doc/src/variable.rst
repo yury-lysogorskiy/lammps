@@ -45,7 +45,8 @@ Syntax
        *universe* args = one or more strings
        *world* args = one string for each partition of processors
 
-       *equal* or *vector* or *atom* args = one formula containing numbers, thermo keywords, math operations, built-in functions, atom values and vectors, compute/fix/variable references
+       *equal* or *vector* or *atom* args = one formula containing numbers, thermo keywords,
+           math operations, built-in functions, atom values and vectors, compute/fix/variable references
          numbers = 0.0, 100, -5.4, 2.8e-4, etc
          constants = PI, version, on, off, true, false, yes, no
          thermo keywords = vol, ke, press, etc from :doc:`thermo_style <thermo_style>`
@@ -67,8 +68,12 @@ Syntax
                            bound(group,dir,region), gyration(group,region), ke(group,reigon),
                            angmom(group,dim,region), torque(group,dim,region),
                            inertia(group,dimdim,region), omega(group,dim,region)
-         special functions = sum(x), min(x), max(x), ave(x), trap(x), slope(x), sort(x), rsort(x), gmask(x), rmask(x), grmask(x,y), next(x), is_file(name), is_os(name), extract_setting(name), label2type(kind,label), is_typelabel(kind,label), is_timeout()
-         feature functions = is_available(category,feature), is_active(category,feature), is_defined(category,id)
+         special functions = sum(x), min(x), max(x), ave(x), trap(x), slope(x), sort(x), rsort(x), \                                  gmask(x), rmask(x), grmask(x,y), next(x), is_file(name), is_os(name),
+                             extract_setting(name), label2type(kind,label),
+                             is_typelabel(kind,label), is_timeout()
+         feature functions = is_available(category,feature), is_active(category,feature),
+                             is_defined(category,id)
+         python function = py_varname(x,y,z,...)
          atom value = id[i], mass[i], type[i], mol[i], x[i], y[i], z[i], vx[i], vy[i], vz[i], fx[i], fy[i], fz[i], q[i]
          atom vector = id, mass, type, mol, radius, q, x, y, z, vx, vy, vz, fx, fy, fz
          custom atom property = i_name, d_name, i_name[i], d_name[i], i2_name[i], d2_name[i], i2_name[i][j], d2_name[i][j]
@@ -127,18 +132,21 @@ command), or used as input to an averaging fix (see the :doc:`fix
 ave/time <fix_ave_time>` command).  Variables of style *vector* store
 a formula which produces a vector of such values which can be used as
 input to various averaging fixes, or elements of which can be part of
-thermodynamic output.  Variables of style *atom* store a formula which
-when evaluated produces one numeric value per atom which can be output
-to a dump file (see the :doc:`dump custom <dump>` command) or used as
-input to an averaging fix (see the :doc:`fix ave/chunk
-<fix_ave_chunk>` and :doc:`fix ave/atom <fix_ave_atom>` commands).
-Variables of style *atomfile* can be used anywhere in an input script
-that atom-style variables are used; they get their per-atom values
-from a file rather than from a formula.  Variables of style *python*
-can be hooked to Python functions using code you provide, so that the
-variable gets its value from the evaluation of the Python code.
-Variables of style *internal* are used by a few commands which set
-their value directly.
+thermodynamic output.
+
+Variables of style *atom* store a formula which when evaluated
+produces one numeric value per atom which can be output to a dump file
+(see the :doc:`dump custom <dump>` command) or used as input to an
+averaging fix (see the :doc:`fix ave/chunk <fix_ave_chunk>` and
+:doc:`fix ave/atom <fix_ave_atom>` commands).  Variables of style
+*atomfile* can be used anywhere in an input script that atom-style
+variables are used; they get their per-atom values from a file rather
+than from a formula.
+
+Variables of style *python* can be hooked to Python functions using
+Python code you provide, so that the variable gets its value from the
+evaluation of the Python code.  Variables of style *internal* are used
+by a few commands which set their value directly.
 
 .. note::
 
@@ -166,15 +174,16 @@ simulation.
 
 .. note::
 
-   When an input script line is encountered that defines a variable
-   of style *equal* or *vector* or *atom* or *python* that contains a
-   formula or Python code, the formula is NOT immediately evaluated.  It
-   will be evaluated every time when the variable is **used** instead.  If
-   you simply want to evaluate a formula in place you can use as
-   so-called. See the section below about "Immediate Evaluation of
-   Variables" for more details on the topic.  This is also true of a
-   *format* style variable since it evaluates another variable when it is
-   invoked.
+   When an input script line is encountered that defines a variable of
+   style *equal* or *vector* or *atom* or *python* that contains a
+   formula or links to Python code, the formula or Python code is NOT
+   immediately evaluated.  Instead, it is evaulated aech time the
+   variable is **used**.  If you simply want to evaluate a formula in
+   place you can use a so-called immediate variable. as described in
+   the preceding note.  Or see the section below about "Immediate
+   Evaluation of Variables" for more details on the topic.  This is
+   also true of a *format* style variable since it evaluates another
+   variable when it is invoked.
 
 Variables of style *equal* and *vector* and *atom* can be used as
 inputs to various other commands which evaluate their formulas as
@@ -183,12 +192,12 @@ this context, variables of style *timer* or *internal* or *python* can
 be used in place of an equal-style variable, with the following two
 caveats.
 
-First, internal-style variables can be used except by commands that
-set the value stored by the internal variable.  When the LAMMPS
-command evaluates the internal-style variable, it will use the value
-set (internally) by another command.  Second, python-style variables
-can be used so long as the associated Python function, as defined by
-the :doc:`python <python>` command, returns a numeric value.  When the
+First, internal-style variables require their values be set by code
+elsewhere in LAMMPS.  When a LAMMPS input script or command evaluates
+an internal-style variable, it must have a current value set
+(internally) via that mechanism.  Second, python-style variables can
+be used so long as the associated Python function, as defined by the
+:doc:`python <python>` command, returns a numeric value.  When the
 LAMMPS command evaluates the python-style variable, the Python
 function will be executed.
 
@@ -439,6 +448,14 @@ python-style variable can be used in place of an equal-style variable
 anywhere in an input script, e.g. as an argument to another command
 that allows for equal-style variables.
 
+A python-style variable can also be used within the formula for an
+equal-style or atom-style formula with the syntax
+py_varname(arg1,arg2,...) as explained below for variable formulas.
+When used in an atom-style formula, it can the variable can be invoked
+once per atom using arguments specific to each atom.  The resulting
+values in the atom-style variable can thus be calculated by Python
+code.
+
 ----------
 
 For the *string* style, a single string is assigned to the variable.
@@ -528,9 +545,9 @@ is a valid (though strange) variable formula:
 
 Specifically, a formula can contain numbers, constants, thermo
 keywords, math operators, math functions, group functions, region
-functions, special functions, feature functions, atom values, atom
-vectors, custom atom properties, compute references, fix references, and references to other
-variables.
+functions, special functions, feature functions, the python function,
+atom values, atom vectors, custom atom properties, compute references,
+fix references, and references to other variables.
 
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | Number                 | 0.2, 100, 1.0e20, -15.4, etc                                                                                                                                                                                                                                                                                                                               |
@@ -541,7 +558,7 @@ variables.
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | Math operators         | (), -x, x+y, x-y, x\*y, x/y, x\^y, x%y, x == y, x != y, x < y, x <= y, x > y, x >= y, x && y, x \|\| y, x \|\^ y, !x                                                                                                                                                                                                                                       |
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Math functions         | sqrt(x), exp(x), ln(x), log(x), abs(x), sign(x), sin(x), cos(x), tan(x), asin(x), acos(x), atan(x), atan2(y,x), random(x,y,z), normal(x,y,z), ceil(x), floor(x), round(x), ternary(x,y,z), ramp(x,y), stagger(x,y), logfreq(x,y,z), logfreq2(x,y,z), logfreq3(x,y,z), stride(x,y,z), stride2(x,y,z,a,b,c), vdisplace(x,y), swiggle(x,y,z), cwiggle(x,y,z)  |
+| Math functions         | sqrt(x), exp(x), ln(x), log(x), abs(x), sign(x), sin(x), cos(x), tan(x), asin(x), acos(x), atan(x), atan2(y,x), random(x,y,z), normal(x,y,z), ceil(x), floor(x), round(x), ternary(x,y,z), ramp(x,y), stagger(x,y), logfreq(x,y,z), logfreq2(x,y,z), logfreq3(x,y,z), stride(x,y,z), stride2(x,y,z,a,b,c), vdisplace(x,y), swiggle(x,y,z), cwiggle(x,y,z) |
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | Group functions        | count(ID), mass(ID), charge(ID), xcm(ID,dim), vcm(ID,dim), fcm(ID,dim), bound(ID,dir), gyration(ID), ke(ID), angmom(ID,dim), torque(ID,dim), inertia(ID,dimdim), omega(ID,dim)                                                                                                                                                                             |
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -550,6 +567,7 @@ variables.
 | Special functions      | sum(x), min(x), max(x), ave(x), trap(x), slope(x), sort(x), rsort(x), gmask(x), rmask(x), grmask(x,y), next(x), is_file(name), is_os(name), extract_setting(name), label2type(kind,label), is_typelabel(kind,label), is_timeout()                                                                                                                          |
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | Feature functions      | is_available(category,feature), is_active(category,feature), is_defined(category,id)                                                                                                                                                                                                                                                                       |
++------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| Python function        | py_varname(x,y,z,...)                                                                                                                                                                                                                                                                                                                                      |
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | Atom values            | id[i], mass[i], type[i], mol[i], x[i], y[i], z[i], vx[i], vy[i], vz[i], fx[i], fy[i], fz[i], q[i]                                                                                                                                                                                                                                                          |
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -1158,6 +1176,23 @@ well as the variable command) can be specified multiple times within
 LAMMPS, each with a unique *id*.  This function checks whether the
 specified *id* exists.  For category *variable", the *id* is the
 variable name.
+
+----------
+
+Python Function
+-----------------
+
+NOTE: this needs work
+explain why use this versus just reference a python variable
+(b/c can pass args)
+(b/c can use it in an atom-style varible)
+
+Math operators are written in the usual way, where the "x" and "y" in
+the examples can themselves be arbitrarily complex formulas, as in the
+examples above.  In this syntax, "x" and "y" can be scalar values or
+per-atom vectors.  For example, "ke/natoms" is the division of two
+scalars, where "vy+vz" is the element-by-element sum of two per-atom
+vectors of y and z velocities.
 
 ----------
 
