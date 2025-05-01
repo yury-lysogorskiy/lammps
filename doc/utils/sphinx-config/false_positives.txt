@@ -3097,6 +3097,7 @@ Pxy
 pxz
 py
 Py
+pyargs
 pydir
 pylammps
 PyLammps
@@ -4043,6 +4044,7 @@ Vanduyfhuys
 varargs
 varavg
 variational
+varname
 Varshalovich
 Varshney
 vashishta
