@@ -81,7 +81,7 @@ enum{DONE,ADD,SUBTRACT,MULTIPLY,DIVIDE,CARAT,MODULO,UNARY,
      RAMP,STAGGER,LOGFREQ,LOGFREQ2,LOGFREQ3,STRIDE,STRIDE2,
      VDISPLACE,SWIGGLE,CWIGGLE,SIGN,GMASK,RMASK,
      GRMASK,IS_ACTIVE,IS_DEFINED,IS_AVAILABLE,IS_FILE,EXTRACT_SETTING,
-     PYFUNCTION,
+     PYWRAPPER,
      VALUE,ATOMARRAY,TYPEARRAY,INTARRAY,BIGINTARRAY,VECTORARRAY};
 
 // customize by adding a special function
@@ -2369,6 +2369,7 @@ double Variable::evaluate(char *str, Tree **tree, int ivar)
 
         // ----------------
         // math or group/region or special or feature function
+        // math_function() includes Python function wrapper
         // ----------------
 
         if (str[i] == '(') {
@@ -3184,7 +3185,7 @@ double Variable::collapse_tree(Tree *tree)
     return tree->value;
   }
 
-  if (tree->type == PYFUNCTION) {
+  if (tree->type == PYWRAPPER) {
     int narg = tree->argcount;
     int *argvars = tree->argvars;
     double arg;
@@ -3535,7 +3536,7 @@ double Variable::eval_tree(Tree *tree, int i)
   if (tree->type == SIGN)
     return (eval_tree(tree->first,i) >= 0.0) ? 1.0 : -1.0;   // sign(eval_tree(tree->first,i));
 
-  if (tree->type == PYFUNCTION) {
+  if (tree->type == PYWRAPPER) {
     int narg = tree->argcount;
     for (int iarg = 0; iarg < narg; iarg++) {
       if (iarg == 0) arg = eval_tree(tree->first,i);
@@ -4172,10 +4173,10 @@ int Variable::math_function(char *word, char *contents, Tree **tree, Tree **tree
     }
 
     // if tree: store python variable and arg info in tree for later eval
-    // else: one-time eval of python function now
+    // else: one-time eval of python-coded function now via python variable
 
     if (tree) {
-      newtree->type = PYFUNCTION;
+      newtree->type = PYWRAPPER;
       newtree->pyvar = pyvar;
       newtree->argcount = narg;
       newtree->argvars = new int[narg];
