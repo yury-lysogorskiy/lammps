@@ -22,6 +22,7 @@
 #include "compute.h"
 #include "error.h"
 #include "input.h"
+#include "math_special.h"
 #include "memory.h"
 #include "modify.h"
 #include "update.h"
@@ -31,6 +32,8 @@
 
 using namespace LAMMPS_NS;
 using namespace FixConst;
+using MathSpecial::square;
+using MathSpecial::cube;
 
 enum { MEAN, STDDEV, VARIANCE, SKEW, KURTOSIS };
 
@@ -552,4 +555,80 @@ void FixAveMoments::append_values()
 
 void FixAveMoments::update_results()
 {
+  const int count = window_filled ? nrepeat : iwindow;
+  // Delay until we can safely do all moments. Avoids branching in the hot loop.
+  if (count<3) return;
+
+  double *result = result_list[iresult];
+
+  // zero out previous values
+
+  for (int i = 0; i < size_vector; i++)
+    result[i] = 0.0;
+
+  const double inv_n = 1.0 / count;
+  const double fk2 = (double)count / (count - 1);
+  const double fk3 = square((double)count) / ((count - 1) * (count - 2));
+  const double np1_nm3 = (count+1.0)/(count-3.0);
+  const double _3_nm1_nm3 = 3.0 * (count-1.0)/(count-3.0);
+
+  // Each value is a series that can be processed individually
+  for (int i = 0; i < nvalues; i++) {
+    const double* series = window_list[i];
+
+    // first pass: mean
+    double mean = 0.0;
+    for (int j = 0; j<count; j++)
+      mean += series[j] * inv_n;
+
+    // second pass: calculate biased sample moments
+    double m2 = 0.0;
+    double m3 = 0.0;
+    double m4 = 0.0;
+    for (int j = 0; j<count; j++) {
+      const double dx = series[j] - mean;
+      double y = square(dx) * inv_n;
+      m2 += y;
+      y *= dx;
+      m3 += y;
+      y *= dx;
+      m4 += y;
+    }
+    // obtain unbiased cumulants as defined by Cramér and
+    // reported i.e. in https://doi.org/10.1111/1467-9884.00122
+    const double k2 = fk2 * m2;
+    const double k3 = fk3 * m3;
+    const double k4 = fk3 * (np1_nm3 * m4 - _3_nm1_nm3 * square(m2));
+    // corrected sample standard deviation
+    const double stddev = sqrt(k2);
+    // adjusted Fisher-Pearson standardized moment coefficient G1
+    const double G1 = k3 / cube(stddev);
+    // adjusted Fisher-Pearson standardized moment coefficient G2 (from unbiased cumulant)
+    const double G2 = k4 / square(k2);
+
+    // map to result array, starting at value interleave offset
+    double* rfirst = &result[i*moments.size()];
+    for (int j = 0; j < moments.size(); j++) {
+      switch(moments[j]) {
+        case MEAN:
+          rfirst[j] = mean;
+          break;
+        case STDDEV:
+          rfirst[j] = stddev;
+          break;
+        case VARIANCE:
+          rfirst[j] = k2;
+          break;
+        case SKEW:
+          rfirst[j] = G1;
+          break;
+        case KURTOSIS:
+          rfirst[j] = G2;
+          break;
+      }
+    }
+  }
+
+  if (++iresult >= nhistory)
+    iresult = 0;
 }
