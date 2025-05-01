@@ -3534,7 +3534,7 @@ double Variable::eval_tree(Tree *tree, int i)
 
   if (tree->type == SIGN)
     return (eval_tree(tree->first,i) >= 0.0) ? 1.0 : -1.0;   // sign(eval_tree(tree->first,i));
-  
+
   if (tree->type == PYFUNCTION) {
     int narg = tree->argcount;
     for (int iarg = 0; iarg < narg; iarg++) {
@@ -3546,7 +3546,7 @@ double Variable::eval_tree(Tree *tree, int i)
     arg = compute_equal(tree->pyvar);
     return arg;
   }
-  
+
   if (tree->type == GMASK) {
     if (atom->mask[i] & tree->ivalue) return 1.0;
     else return 0.0;
@@ -4137,7 +4137,7 @@ int Variable::math_function(char *word, char *contents, Tree **tree, Tree **tree
       double value = value1 + value2*(1.0-cos(omega*delta*update->dt));
       argstack[nargstack++] = value;
     }
-    
+
   } else if (strcmp(word,"sign") == 0) {
     if (narg != 1)
       print_var_error(FLERR,"Invalid math function in variable formula",ivar);
@@ -4150,7 +4150,7 @@ int Variable::math_function(char *word, char *contents, Tree **tree, Tree **tree
   } else if (strstr(word,"py_") == word) {
 
     // text following py_ = python-style variable name
-    
+
     int pyvar = find(&word[3]);
     if (style[pyvar] != PYTHON)
       print_var_error(FLERR,"Invalid python function variable name",ivar);
@@ -4160,7 +4160,7 @@ int Variable::math_function(char *word, char *contents, Tree **tree, Tree **tree
 
     int *jvars = new int[narg];
     char *internal_varname;
-    
+
     for (int iarg = 0; iarg < narg; iarg++) {
       internal_varname = utils::strdup(fmt::format("pyarg{}", iarg+1));
       jvars[iarg] = find(internal_varname);
@@ -4173,7 +4173,7 @@ int Variable::math_function(char *word, char *contents, Tree **tree, Tree **tree
 
     // if tree: store python variable and arg info in tree for later eval
     // else: one-time eval of python function now
-    
+
     if (tree) {
       newtree->type = PYFUNCTION;
       newtree->pyvar = pyvar;

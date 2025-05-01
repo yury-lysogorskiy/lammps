@@ -177,7 +177,7 @@ simulation.
    When an input script line is encountered that defines a variable of
    style *equal* or *vector* or *atom* or *python* that contains a
    formula or links to Python code, the formula or Python code is NOT
-   immediately evaluated.  Instead, it is evaulated aech time the
+   immediately evaluated.  Instead, it is evaluated each time the
    variable is **used**.  If you simply want to evaluate a formula in
    place you can use a so-called immediate variable. as described in
    the preceding note.  Or see the section below about "Immediate
@@ -568,7 +568,7 @@ references, fix references, and references to other variables.
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | Feature functions      | is_available(category,feature), is_active(category,feature), is_defined(category,id)                                                                                                                                                                                                                                                                       |
 +------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-Python function wrappers | py_varname(x,y,z,...)                                                                                                                                                                                                                                                                                                                                      |
+| Python func wrappers   | py_varname(x,y,z,...)                                                                                                                                                                                                                                                                                                                                      |
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | Atom values            | id[i], mass[i], type[i], mol[i], x[i], y[i], z[i], vx[i], vy[i], vz[i], fx[i], fy[i], fz[i], q[i]                                                                                                                                                                                                                                                          |
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -1212,14 +1212,14 @@ input script:
 
    variable        foo python truncate
    python          truncate return v_foo input 1 v_pyarg1 format fi here """
-def truncate(x):
-  return int(x)
-"""
-  variable        pyarg1 internal 0.0
-  variable        xtrunc atom py_foo(x)
-  variable        ytrunc atom py_foo(y)
-  variable        ztrunc atom py_foo(z)
-  dump            1 all custom 100 tmp.dump id x y z v_xtrunc v_ytrunc v_ztrunc
+   def truncate(x):
+    return int(x)
+   """
+   variable        pyarg1 internal 0.0
+   variable        xtrunc atom py_foo(x)
+   variable        ytrunc atom py_foo(y)
+   variable        ztrunc atom py_foo(z)
+   dump            1 all custom 100 tmp.dump id x y z v_xtrunc v_ytrunc v_ztrunc
 
 The first two commands define a python-style variable *foo* and couple
 it to the Python-coded function *truncate()* which takes a single
