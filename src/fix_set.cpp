@@ -37,8 +37,16 @@ FixSet::FixSet(LAMMPS *lmp, int narg, char **arg) : Fix(lmp, narg, arg)
 
   // pass remaining args to Set class
   // only keywords which use per-atom variables are currently allowed
-
+  // NOTE: could also allow when set style = region, since atoms may move in/out of regions
+  
   set->process_args(FIXSET,narg-4,&arg[4]);
+
+  // NOTE: not sure if either of these options for fix set are needed or could be problematic
+  // could add ghost yes keyword/value to trigger
+  //   ghost comm, e.g. if atom types are reset
+  //   this could require an extract() method in Set to query what value(s) to comm
+  // could add reneigh yes keyword/value to trigger
+  //   full reneighbor on next step, e.g. if xyz coords are reset
 }
 
 /* ---------------------------------------------------------------------- */
@@ -59,7 +67,7 @@ int FixSet::setmask()
 
 /* ----------------------------------------------------------------------
    use the Set instance to update per-atom properties
-   NOTE: could return count of updated atoms from Set and use it as a fix output
+   NOTE: could return count of updated atoms from Set for use as fix output
 ---------------------------------------------------------------------- */
 
 void FixSet::end_of_step()

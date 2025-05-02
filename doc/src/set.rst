@@ -200,6 +200,10 @@ their properties reset.  The remaining keywords specify which
 properties to reset and what the new values are.  Some strings like
 *type* or *mol* can be used as a style and/or a keyword.
 
+The :doc:`fix set <fix_set>` command can be used with similar syntax
+to this command to reset atom properties once every *N* steps during a
+simulation using via atom-style variables.
+
 ----------
 
 This section describes how to select which atoms to change
@@ -658,7 +662,7 @@ Related commands
 """"""""""""""""
 
 :doc:`create_box <create_box>`, :doc:`create_atoms <create_atoms>`,
-:doc:`read_data <read_data>`
+:doc:`read_data <read_data>`, :doc:`fix set <fix_set>`
 
 Default
 """""""

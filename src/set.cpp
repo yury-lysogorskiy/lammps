@@ -999,6 +999,8 @@ void Set::topology(int keyword, Action *action)
 // separate two operations so can be called by either set or fix set command
 // ----------------------------------------------------------------------
 
+/* ---------------------------------------------------------------------- */
+
 void Set::process_angle(int &iarg, int narg, char **arg, Action *action)
 {
   if (atom->avec->angles_allow == 0)
