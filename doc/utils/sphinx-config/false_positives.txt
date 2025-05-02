@@ -1320,7 +1320,6 @@ Geocomputing
 georg
 Georg
 Geotechnica
-Gergs
 germain
 Germann
 Germano
@@ -1348,6 +1347,7 @@ Gillan
 Gingold
 Gissinger
 github
+Giusti
 gjf
 gjwagne
 gl
@@ -1914,6 +1914,7 @@ Lachet
 Lackmann
 Ladd
 lagrangian
+Lalli
 lambdai
 LambdaLanczos
 Lambrecht
