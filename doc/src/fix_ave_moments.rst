@@ -109,8 +109,11 @@ time steps that are a multiple of :math:`N_\text{freq}`\ .  The average is over
 a window of up to :math:`N_\text{repeat}` quantities, computed in the preceding
 portion of the simulation every :math:`N_\text{every}` time steps.
 
-The values need not have any special relation: it is valid to have a window
-larger than :math:`N_\text{freq}` as well as the other way around.
+.. note::
+
+    Contrary to some fix ave/* commands, the values of this fix are not restricted by any special relation:
+    it is valid to have a window larger than :math:`N_\text{freq}` as well as the other way around.
+
 For example, if :math:`N_\text{freq}=100` and :math:`N_\text{repeat}=5` (and
 :math:`N_\text{every}=1`), then values from time steps 96, 97, 98, 99, and 100
 will be used. This means some intervening time steps do not contribute to the result.
