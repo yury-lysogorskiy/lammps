@@ -140,8 +140,7 @@ the :doc:`run <run>` command.  This fix is not invoked during
 Restrictions
 """"""""""""
 
-As noted above, 
-
+none
 
 Related commands
 """"""""""""""""
