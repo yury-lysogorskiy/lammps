@@ -38,7 +38,7 @@ FixSet::FixSet(LAMMPS *lmp, int narg, char **arg) : Fix(lmp, narg, arg)
   // pass remaining args to Set class
   // only keywords which use per-atom variables are currently allowed
   // NOTE: could also allow when set style = region, since atoms may move in/out of regions
-  
+
   set->process_args(FIXSET,narg-4,&arg[4]);
 
   // NOTE: not sure if either of these options for fix set are needed or could be problematic

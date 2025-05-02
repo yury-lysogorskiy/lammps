@@ -14,7 +14,7 @@ Syntax
 * set = style name of this fix command
 * Nfreq = reset per-atom properties every this many timesteps
 * set-args = identical to args for the :doc:`set <set>` command
-  
+
 Examples
 """"""""
 
@@ -27,7 +27,7 @@ Description
 """""""""""
 
 Reset one or more properties of one or more atoms once every *Nfreq*
-stepes during a simulation.
+steps during a simulation.
 
 The args following *Nfreq* are identical to those allowed for the
 :doc:`set <set>` command, as in the examples above and below.
@@ -72,7 +72,7 @@ be output every step for *twindow* timesteps.
    #
    # dump command with thresh which enforces twindow
    #
-   dump            1 all custom 1 tmp.dump id x y vx i_dump 
+   dump            1 all custom 1 tmp.dump id x y vx i_dump
    variable        dumpflag atom "i_dump >= 0 && (step-i_dump) < v_twindow"
    dump_modify     1 thresh v_dumpflag == 1
    #
@@ -89,7 +89,7 @@ specific atom ID (104 in this case) was output in the tmp.dump file:
 .. code-block:: LAMMPS
 
    % grep "^104 " tmp.dump
-   
+
 If these commands are used instead of the above, then an atom can
 cross the velocity threshold multiple times, and will be output for
 *twindow* timesteps each time.  However the write_dump command is no
@@ -116,14 +116,14 @@ longer useful.
    #
    # dump command with thresh which enforces twindow
    #
-   dump            1 all custom 1 tmp.dump id x y vx i_dump 
+   dump            1 all custom 1 tmp.dump id x y vx i_dump
    variable        dumpflag atom "i_dump >= 0 && (step-i_dump) < v_twindow"
    dump_modify     1 thresh v_dumpflag == 1
    #
    # run the simulation
    #
    run             1000
-   
+
 ----------
 
 Restart, fix_modify, output, run start/stop, minimize info
