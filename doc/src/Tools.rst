@@ -475,9 +475,13 @@ beginners to start with LAMMPS, it is also the expectation that
 LAMMPS-GUI users will eventually transition to workflows that most
 experienced LAMMPS users employ.
 
-All features have been extensively exposed to keyboard shortcuts, so
-that there is also appeal for experienced LAMMPS users for prototyping
-and testing simulation setups.
+.. image:: JPG/lammps-gui-screen.png
+   :align: center
+   :scale: 50%
+
+Features have been extensively exposed to keyboard shortcuts, so that
+there is also appeal for experienced LAMMPS users for prototyping and
+testing simulation setups.
 
 Features
 ^^^^^^^^
@@ -502,7 +506,7 @@ Here are a few highlights of LAMMPS-GUI
 - Visualization of current state in Image Viewer (via calling :doc:`write_dump image <dump_image>`)
 - Capture of images created via :doc:`dump image <dump_image>` in Slide show window
 - Dialog to set variables, similar to the LAMMPS command-line flag '-v' / '-var'
-- Support for GPU, INTEL, KOKKOS/OpenMP, OPENMAP, and OPT and accelerator packages
+- Support for GPU, INTEL, KOKKOS/OpenMP, OPENMP, and OPT accelerator packages
 
 Parallelization
 ^^^^^^^^^^^^^^^
