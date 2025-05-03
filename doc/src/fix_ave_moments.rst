@@ -89,15 +89,14 @@ and so on.
 For input values from a compute or fix or variable, the bracketed
 index I can be specified using a wildcard asterisk with the index to
 effectively specify multiple values.  This takes the form "\*" or
-"\*n" or "m\*" or "m\*n".  If :math:`N` is the size of the vector (for *mode* =
-scalar) or the number of columns in the array (for *mode* = vector),
+"\*n" or "m\*" or "m\*n".  If :math:`N` is the size of the vector,
 then an asterisk with no numeric values means all indices from 1 to :math:`N`.
 A leading asterisk means all indices from 1 to n (inclusive).  A trailing
 asterisk means all indices from n to :math:`N` (inclusive).  A middle asterisk
 means all indices from m to n (inclusive).
 
 Using a wildcard is the same as if the individual elements of the
-vector or columns of the array had been listed one by one.  For examples, see the
+vector or cells of the array had been listed one by one.  For examples, see the
 description of this capability in :doc:`fix ave/time <fix_ave_time>`.
 
 ----------
