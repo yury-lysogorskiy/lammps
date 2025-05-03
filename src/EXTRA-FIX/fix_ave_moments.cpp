@@ -375,7 +375,7 @@ double FixAveMoments::compute_vector(int i)
 
 double FixAveMoments::compute_array(int i, int j)
 {
-  if (i >= moments.size()) return 0.0;
+  if (i >= size_vector) return 0.0;
   if (j >= nhistory) return 0.0;
   int row = (iresult - 1 - j + nhistory) % nhistory;
   if (row >= nhistory) return 0.0;
