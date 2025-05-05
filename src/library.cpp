@@ -1255,6 +1255,7 @@ be called without a valid LAMMPS object handle (it is ignored).
 * :ref:`Image masks <extract_image_masks>`
 * :ref:`System status <extract_system_status>`
 * :ref:`System sizes <extract_system_sizes>`
+* :ref:`Neigbor list settings <extract_neighbor_settings>`
 * :ref:`Atom style flags <extract_atom_flags>`
 
 .. _extract_integer_sizes:
@@ -1395,6 +1396,31 @@ internally by the :doc:`Fortran interface <Fortran>` and are not likely to be us
    * - nbodies
      - number of atoms that have body data (see :doc:`the Body particle HowTo <Howto_body>`)
 
+.. _extract_neighbor_settings:
+
+**Neigbor list settings**
+
+.. list-table::
+   :header-rows: 1
+   :widths: 17 83
+
+   * - neigh_every
+     - neighbor lists are rebuild every this many steps
+   * - neigh_delay
+     - neighbor lists are rebuild delayed this many steps
+   * - neigh_dist_check
+     - 0 if always rebuild, 1 rebuild after 1/2 skin
+   * - neigh_ago
+     - neighbor lists were rebuilt this many steps ago
+   * - nbondlist
+     - number of entries in bondlist (get list with :ref:`lammps_extract_global() <extract_neighbor_lists>`)
+   * - nanglelist
+     - number of entries in anglelist (get list with :ref:`lammps_extract_global() <extract_neighbor_lists>`)
+   * - ndihedrallist
+     - number of entries in dihedrallist (get list with :ref:`lammps_extract_global() <extract_neighbor_lists>`)
+   * - nimproperlist
+     - number of entries in improperlist (get list with :ref:`lammps_extract_global() <extract_neighbor_lists>`)
+
 .. _extract_atom_flags:
 
 **Atom style flags**
@@ -1484,6 +1510,15 @@ int lammps_extract_setting(void *handle, const char *keyword)
   if (strcmp(keyword,"ntris") == 0) return lmp->atom->ntris;
   if (strcmp(keyword,"nbodies") == 0) return lmp->atom->nbodies;
 
+  if (strcmp(keyword,"neigh_every") == 0) return lmp->neighbor->every;
+  if (strcmp(keyword,"neigh_delay") == 0) return lmp->neighbor->delay;
+  if (strcmp(keyword,"neigh_dist_check") == 0) return lmp->neighbor->dist_check;
+  if (strcmp(keyword,"neigh_ago") == 0) return lmp->neighbor->ago;
+  if (strcmp(keyword,"nbondlist") == 0) return lmp->neighbor->nbondlist;
+  if (strcmp(keyword,"nanglelist") == 0) return lmp->neighbor->nanglelist;
+  if (strcmp(keyword,"ndihedrallist") == 0) return lmp->neighbor->ndihedrallist;
+  if (strcmp(keyword,"nimproperlist") == 0) return lmp->neighbor->nimproperlist;
+
   if (strcmp(keyword,"molecule_flag") == 0) return lmp->atom->molecule_flag;
   if (strcmp(keyword,"q_flag") == 0) return lmp->atom->q_flag;
   if (strcmp(keyword,"mu_flag") == 0) return lmp->atom->mu_flag;
@@ -1566,6 +1601,11 @@ int lammps_extract_global_datatype(void * /*handle*/, const char *name)
   if (strcmp(name,"ntypes") == 0) return LAMMPS_INT;
   if (strcmp(name,"special_lj") == 0) return LAMMPS_DOUBLE;
   if (strcmp(name,"special_coul") == 0) return LAMMPS_DOUBLE;
+
+  if (strcmp(name,"neigh_bondlist") == 0) return LAMMPS_INT_2D;
+  if (strcmp(name,"neigh_anglelist") == 0) return LAMMPS_INT_2D;
+  if (strcmp(name,"neigh_dihedrallist") == 0) return LAMMPS_INT_2D;
+  if (strcmp(name,"neigh_improperlist") == 0) return LAMMPS_INT_2D;
 
   if (strcmp(name,"map_style") == 0) return LAMMPS_INT;
 #if defined(LAMMPS_BIGBIG)
@@ -1651,6 +1691,7 @@ report the "native" data type.  The following tables are provided:
 * :ref:`Timestep settings <extract_timestep_settings>`
 * :ref:`Simulation box settings <extract_box_settings>`
 * :ref:`System property settings <extract_system_settings>`
+* :ref:`Neighbor topology data <extract_neighbor_lists>`
 * :ref:`Git revision and version settings <extract_git_settings>`
 * :ref:`Unit settings <extract_unit_settings>`
 
@@ -1897,6 +1938,37 @@ report the "native" data type.  The following tables are provided:
      - 1
      - string with the current KSpace style.
 
+.. _extract_neighbor_lists:
+
+**Neighbor topology data**
+
+Get length of lists with :ref:`lammps_extract_setting() <extract_neighbor_settings>`.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 12 16 52
+
+   * - Name
+     - Type
+     - Length
+     - Description
+   * - neigh_bondlist
+     - 2d int
+     - nbondlist
+     - list of bonds (atom1, atom2, type)
+   * - neigh_anglelist
+     - 2d int
+     - nanglelist
+     - list of angles (atom1, atom2, atom3, type)
+   * - neigh_dihedrallist
+     - 2d int
+     - ndihedrallist
+     - list of dihedrals (atom1, atom2, atom3, atom4, type)
+   * - neigh_improperlist
+     - 2d int
+     - nimproperlist
+     - list of impropers (atom1, atom2, atom3, atom4, type)
+
 .. _extract_git_settings:
 
 **Git revision and version settings**
@@ -2106,6 +2178,11 @@ void *lammps_extract_global(void *handle, const char *name)
   if (strcmp(name,"special_coul") == 0) return (void *) lmp->force->special_coul;
 
   if (strcmp(name,"q_flag") == 0) return (void *) &lmp->atom->q_flag;
+
+  if (strcmp(name,"neigh_bondlist") == 0) return lmp->neighbor->bondlist;
+  if (strcmp(name,"neigh_anglelist") == 0) return lmp->neighbor->anglelist;
+  if (strcmp(name,"neigh_dihedrallist") == 0) return lmp->neighbor->dihedrallist;
+  if (strcmp(name,"neigh_improperlist") == 0) return lmp->neighbor->improperlist;
 
   if (strcmp(name,"map_style") == 0) return (void *) &lmp->atom->map_style;
   if (strcmp(name,"map_tag_max") == 0) return (void *) &lmp->atom->map_tag_max;
