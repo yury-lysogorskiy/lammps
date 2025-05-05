@@ -1387,6 +1387,16 @@ internally by the :doc:`Fortran interface <Fortran>` and are not likely to be us
      - number of dihedral types
    * - nimpropertypes
      - number of improper types
+   * - bond_per_atom
+     - size of per-atom bond data arrays
+   * - angle_per_atom
+     - size of per-atom angle data arrays
+   * - dihedral_per_atom
+     - size of per-atom dihedral data arrays
+   * - improper_per_atom
+     - size of per-atom improper data arrays
+   * - maxspecial
+     - size of per-atom special data array
    * - nellipsoids
      - number of atoms that have ellipsoid data
    * - nlines
@@ -1505,6 +1515,11 @@ int lammps_extract_setting(void *handle, const char *keyword)
   if (strcmp(keyword,"nangletypes") == 0) return lmp->atom->nangletypes;
   if (strcmp(keyword,"ndihedraltypes") == 0) return lmp->atom->ndihedraltypes;
   if (strcmp(keyword,"nimpropertypes") == 0) return lmp->atom->nimpropertypes;
+  if (strcmp(keyword,"bond_per_atom") == 0) return lmp->atom->bond_per_atom;
+  if (strcmp(keyword,"angle_per_atom") == 0) return lmp->atom->angle_per_atom;
+  if (strcmp(keyword,"dihedral_per_atom") == 0) return lmp->atom->dihedral_per_atom;
+  if (strcmp(keyword,"improper_per_atom") == 0) return lmp->atom->improper_per_atom;
+  if (strcmp(keyword,"maxspecial") == 0) return lmp->atom->maxspecial;
   if (strcmp(keyword,"nellipsoids") == 0) return lmp->atom->nellipsoids;
   if (strcmp(keyword,"nlines") == 0) return lmp->atom->nlines;
   if (strcmp(keyword,"ntris") == 0) return lmp->atom->ntris;
@@ -1841,10 +1856,10 @@ report the "native" data type.  The following tables are provided:
      - Type
      - Length
      - Description
-   * - ntypes
-     - int
+   * - natoms
+     - bigint
      - 1
-     - number of atom types
+     - total number of atoms in the simulation.
    * - nbonds
      - bigint
      - 1
@@ -1861,10 +1876,6 @@ report the "native" data type.  The following tables are provided:
      - bigint
      - 1
      - total number of impropers in the simulation.
-   * - natoms
-     - bigint
-     - 1
-     - total number of atoms in the simulation.
    * - nlocal
      - int
      - 1
@@ -1877,6 +1888,10 @@ report the "native" data type.  The following tables are provided:
      - int
      - 1
      - maximum of nlocal+nghost across all MPI ranks (for per-atom data array size).
+   * - ntypes
+     - int
+     - 1
+     - number of atom types
    * - special_lj
      - double
      - 4
@@ -2166,7 +2181,6 @@ void *lammps_extract_global(void *handle, const char *name)
     return (void *) &lmp->comm->procgrid;
 
   if (strcmp(name,"natoms") == 0) return (void *) &lmp->atom->natoms;
-  if (strcmp(name,"ntypes") == 0) return (void *) &lmp->atom->ntypes;
   if (strcmp(name,"nbonds") == 0) return (void *) &lmp->atom->nbonds;
   if (strcmp(name,"nangles") == 0) return (void *) &lmp->atom->nangles;
   if (strcmp(name,"ndihedrals") == 0) return (void *) &lmp->atom->ndihedrals;
@@ -2174,6 +2188,7 @@ void *lammps_extract_global(void *handle, const char *name)
   if (strcmp(name,"nlocal") == 0) return (void *) &lmp->atom->nlocal;
   if (strcmp(name,"nghost") == 0) return (void *) &lmp->atom->nghost;
   if (strcmp(name,"nmax") == 0) return (void *) &lmp->atom->nmax;
+  if (strcmp(name,"ntypes") == 0) return (void *) &lmp->atom->ntypes;
   if (strcmp(name,"special_lj") == 0) return (void *) lmp->force->special_lj;
   if (strcmp(name,"special_coul") == 0) return (void *) lmp->force->special_coul;
 
