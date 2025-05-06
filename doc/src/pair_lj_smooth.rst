@@ -58,7 +58,7 @@ and here :ref:`(Leoni_2) <Leoni_2>`
    in its values and first derivative.  This can lead to poor energy
    conservation and may require the use of a thermostat.  The energy
    value discontinuity can be eliminated by shifting the potential
-   energy to be zero at the outer cuttoff using the pair_modify shift
+   energy to be zero at the outer cutoff using the pair_modify shift
    option. With or without shifting, you can plot the resulting energy
    and force via the :doc:`pair_write <pair_write>` command to see the effect.
 
