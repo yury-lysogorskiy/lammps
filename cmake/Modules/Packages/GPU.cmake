@@ -484,7 +484,7 @@ RegisterFixStyle(${GPU_SOURCES_DIR}/fix_gpu.h)
 
 get_property(GPU_SOURCES GLOBAL PROPERTY GPU_SOURCES)
 if(BUILD_MPI)
-  target_link_libraries(gpu PRIVATE MPI::MPI_CXX)
+  target_link_libraries(gpu PRIVATE MPI::MPI_C)
 else()
   target_link_libraries(gpu PRIVATE mpi_stubs)
 endif()

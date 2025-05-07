@@ -44,7 +44,7 @@ if(DOWNLOAD_N2P2)
     set(N2P2_PROJECT_OPTIONS "-DN2P2_NO_MPI")
   else()
     # get path to MPI include directory
-    get_target_property(N2P2_MPI_INCLUDE MPI::MPI_CXX INTERFACE_INCLUDE_DIRECTORIES)
+    get_target_property(N2P2_MPI_INCLUDE MPI::MPI_C INTERFACE_INCLUDE_DIRECTORIES)
     foreach (_INCL ${N2P2_MPI_INCLUDE})
       set(N2P2_PROJECT_OPTIONS "${N2P2_PROJECT_OPTIONS} -I${_INCL}")
     endforeach()
@@ -102,9 +102,9 @@ if(DOWNLOAD_N2P2)
   # nnpif library has MPI calls if MPI is enabled, so we must link with MPI libs
   if(BUILD_MPI)
     set_target_properties(LAMMPS::N2P2::LIBNNPIF PROPERTIES
-      INTERFACE_LINK_LIBRARIES MPI::MPI_CXX)
+      INTERFACE_LINK_LIBRARIES MPI::MPI_C)
     if((CMAKE_SYSTEM_NAME STREQUAL Windows) AND CMAKE_CROSSCOMPILING)
-      add_dependencies(LAMMPS::N2P2::LIBNNPIF MPI::MPI_CXX)
+      add_dependencies(LAMMPS::N2P2::LIBNNPIF MPI::MPI_C)
     endif()
   endif()
 

@@ -21,12 +21,12 @@ if(USE_MSMPI)
 
   ExternalProject_get_property(mpi4win_build SOURCE_DIR)
   file(MAKE_DIRECTORY "${SOURCE_DIR}/include")
-  add_library(MPI::MPI_CXX UNKNOWN IMPORTED)
-  set_target_properties(MPI::MPI_CXX PROPERTIES
+  add_library(MPI::MPI_C UNKNOWN IMPORTED)
+  set_target_properties(MPI::MPI_C PROPERTIES
     IMPORTED_LOCATION "${SOURCE_DIR}/lib/libmsmpi.a"
     INTERFACE_INCLUDE_DIRECTORIES "${SOURCE_DIR}/include"
     INTERFACE_COMPILE_DEFINITIONS "MPICH_SKIP_MPICXX")
-  add_dependencies(MPI::MPI_CXX mpi4win_build)
+  add_dependencies(MPI::MPI_C mpi4win_build)
 
   # set variables for status reporting at the end of CMake run
   set(MPI_CXX_INCLUDE_PATH "${SOURCE_DIR}/include")
@@ -60,12 +60,12 @@ else()
 
   ExternalProject_get_property(mpi4win_build SOURCE_DIR)
   file(MAKE_DIRECTORY "${SOURCE_DIR}/include")
-  add_library(MPI::MPI_CXX UNKNOWN IMPORTED)
-  set_target_properties(MPI::MPI_CXX PROPERTIES
+  add_library(MPI::MPI_C UNKNOWN IMPORTED)
+  set_target_properties(MPI::MPI_C PROPERTIES
     IMPORTED_LOCATION "${SOURCE_DIR}/lib/libmpi.a"
     INTERFACE_INCLUDE_DIRECTORIES "${SOURCE_DIR}/include"
     INTERFACE_COMPILE_DEFINITIONS "MPICH_SKIP_MPICXX")
-  add_dependencies(MPI::MPI_CXX mpi4win_build)
+  add_dependencies(MPI::MPI_C mpi4win_build)
 
   # set variables for status reporting at the end of CMake run
   set(MPI_CXX_INCLUDE_PATH "${SOURCE_DIR}/include")

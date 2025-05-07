@@ -129,7 +129,8 @@ endif()
 # MPI configuration
 if(NOT CMAKE_CROSSCOMPILING)
   set(MPI_CXX_SKIP_MPICXX TRUE)
-  find_package(MPI QUIET)
+  enable_language(C)
+  find_package(MPI QUIET COMPONENTS C)
   option(BUILD_MPI "Build MPI version" ${MPI_FOUND})
 else()
   option(BUILD_MPI "Build MPI version" OFF)
@@ -163,12 +164,12 @@ if(BUILD_MPI)
 
       ExternalProject_get_property(mpi4win_build SOURCE_DIR)
       file(MAKE_DIRECTORY "${SOURCE_DIR}/include")
-      add_library(MPI::MPI_CXX UNKNOWN IMPORTED)
-      set_target_properties(MPI::MPI_CXX PROPERTIES
+      add_library(MPI::MPI_C UNKNOWN IMPORTED)
+      set_target_properties(MPI::MPI_C PROPERTIES
         IMPORTED_LOCATION "${SOURCE_DIR}/lib/libmsmpi.a"
         INTERFACE_INCLUDE_DIRECTORIES "${SOURCE_DIR}/include"
         INTERFACE_COMPILE_DEFINITIONS "MPICH_SKIP_MPICXX")
-      add_dependencies(MPI::MPI_CXX mpi4win_build)
+      add_dependencies(MPI::MPI_C mpi4win_build)
 
       # set variables for status reporting at the end of CMake run
       set(MPI_CXX_INCLUDE_PATH "${SOURCE_DIR}/include")
@@ -199,12 +200,12 @@ if(BUILD_MPI)
 
       ExternalProject_get_property(mpi4win_build SOURCE_DIR)
       file(MAKE_DIRECTORY "${SOURCE_DIR}/include")
-      add_library(MPI::MPI_CXX UNKNOWN IMPORTED)
-      set_target_properties(MPI::MPI_CXX PROPERTIES
+      add_library(MPI::MPI_C UNKNOWN IMPORTED)
+      set_target_properties(MPI::MPI_C PROPERTIES
         IMPORTED_LOCATION "${SOURCE_DIR}/lib/libmpi.a"
         INTERFACE_INCLUDE_DIRECTORIES "${SOURCE_DIR}/include"
         INTERFACE_COMPILE_DEFINITIONS "MPICH_SKIP_MPICXX")
-      add_dependencies(MPI::MPI_CXX mpi4win_build)
+      add_dependencies(MPI::MPI_C mpi4win_build)
 
       # set variables for status reporting at the end of CMake run
       set(MPI_CXX_INCLUDE_PATH "${SOURCE_DIR}/include")
@@ -212,13 +213,13 @@ if(BUILD_MPI)
       set(MPI_CXX_LIBRARIES "${SOURCE_DIR}/lib/libmpi.a")
     endif()
   else()
-    find_package(MPI REQUIRED)
+    find_package(MPI REQUIRED COMPONENTS C)
     option(LAMMPS_LONGLONG_TO_LONG "Workaround if your system or MPI version does not recognize 'long long' data types" OFF)
     if(LAMMPS_LONGLONG_TO_LONG)
       target_compile_definitions(lammps INTERFACE -DLAMMPS_LONGLONG_TO_LONG)
     endif()
   endif()
-  target_link_libraries(lammps INTERFACE MPI::MPI_CXX)
+  target_link_libraries(lammps INTERFACE MPI::MPI_C)
 else()
   add_library(mpi_stubs INTERFACE)
   target_include_directories(mpi_stubs INTERFACE $<BUILD_INTERFACE:${LAMMPS_SOURCE_DIR}/STUBS>)
