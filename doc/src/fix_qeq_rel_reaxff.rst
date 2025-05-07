@@ -44,11 +44,11 @@ equilibration, which differs from the QEq charge equilibration method
 :ref:`(Rappe and Goddard) <Rappe4>` only in how external electric fields
 are accounted for. This fix therefore raises a warning when used without
 :doc:`fix efield <fix_efield>` since :doc:`fix qeq/reaxff <fix_qeq_reaxff>`
-should be used without an external electric field.  Charges are computed with
-the QEqR method by minimizing the electrostatic energy of the system in
-the same way as the QEq method but where the absolute electronegativity,
-:math:`\chi_i`, of each atom in the QEq method is replaced with an
-effective electronegativity given by
+should be used when no external electric field is present.  Charges are
+computed with the QEqR method by minimizing the electrostatic energy of
+the system in the same way as the QEq method but where the absolute
+electronegativity, :math:`\chi_i`, of each atom in the QEq method is
+replaced with an effective electronegativity given by
 
 .. math::
    \chi_{\mathrm{r}i} = \chi_i + \frac{\sum_{j=1}^{N} \beta(\phi_i - \phi_j) S_{ij}}
