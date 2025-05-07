@@ -24,8 +24,8 @@ KOKKOS_VERSION_PATCH = 1
 KOKKOS_VERSION = $(shell echo $(KOKKOS_VERSION_MAJOR)*10000+$(KOKKOS_VERSION_MINOR)*100+$(KOKKOS_VERSION_PATCH) | bc)
 
 # Options: Cuda,HIP,SYCL,OpenMPTarget,OpenMP,Threads,Serial
-#KOKKOS_DEVICES ?= "OpenMP"
-KOKKOS_DEVICES ?= "Threads"
+KOKKOS_DEVICES ?= "OpenMP"
+#KOKKOS_DEVICES ?= "Threads"
 # Options:
 # Intel:    KNC,KNL,SNB,HSW,BDW,SKL,SKX,ICL,ICX,SPR
 # NVIDIA:   Kepler,Kepler30,Kepler32,Kepler35,Kepler37,Maxwell,Maxwell50,Maxwell52,Maxwell53,Pascal60,Pascal61,Volta70,Volta72,Turing75,Ampere80,Ampere86,Ada89,Hopper90,Blackwell100,Blackwell120
