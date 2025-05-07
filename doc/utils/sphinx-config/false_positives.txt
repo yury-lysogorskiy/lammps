@@ -389,6 +389,7 @@ Bretonnet
 Briels
 Brien
 Brilliantov
+Brizi
 Broadwell
 Broglie
 brownian
@@ -431,10 +432,12 @@ Camiloni
 Campana
 Cangi
 Cao
+Cappelletti
 Capolungo
 Caro
 cartesian
 Cas
+Casavecchia
 CasP
 Caswell
 Cates
@@ -1194,6 +1197,7 @@ filesystem
 filesystems
 Fily
 Fincham
+Finkelstein
 Fint
 fingerprintconstants
 fingerprintsperelement
@@ -1348,6 +1352,7 @@ Gingold
 Gissinger
 github
 Giusti
+GJ
 gjf
 gjwagne
 gl
@@ -2923,6 +2928,7 @@ perp
 Perram
 persp
 Persp
+perturbative
 peru
 Peskin
 Pettifor
@@ -2961,6 +2967,8 @@ pimdb
 Piola
 pIp
 pipelining
+Pirani
+pirani
 Pisarev
 Pishevar
 Pitera
@@ -3347,6 +3355,7 @@ Rockett
 rocksalt
 Rodrigues
 Rohart
+Roncaratti
 Ronchetti
 Ronevich
 Rosati
@@ -3457,6 +3466,7 @@ sectoring
 sed
 Seddon
 segmental
+Seibold
 Seifert
 Seleson
 sellerio
@@ -4059,6 +4069,7 @@ vdW
 vdwl
 vec
 Vecchio
+Vecchiocattivi
 vectorial
 vectorization
 Vectorization
@@ -4075,9 +4086,11 @@ versa
 Verstraelen
 ves
 vf
+vfull
 vflag
 vflow
 vfrac
+vhalf
 vhi
 vibrational
 Vij

@@ -875,6 +875,8 @@
 /fix_freeze.h
 /fix_gcmc.cpp
 /fix_gcmc.h
+/fix_gjf.cpp
+/fix_gjf.h
 /fix_gld.cpp
 /fix_gld.h
 /fix_gle.cpp
@@ -1801,4 +1803,6 @@
 /pair_smtbq.h
 /pair_vashishta*.cpp
 /pair_vashishta*.h
+/pair_lj_pirani.cpp
+/pair_lj_pirani.h
 
