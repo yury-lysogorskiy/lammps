@@ -1255,7 +1255,7 @@ be called without a valid LAMMPS object handle (it is ignored).
 * :ref:`Image masks <extract_image_masks>`
 * :ref:`System status <extract_system_status>`
 * :ref:`System sizes <extract_system_sizes>`
-* :ref:`Neigbor list settings <extract_neighbor_settings>`
+* :ref:`Neighbor list settings <extract_neighbor_settings>`
 * :ref:`Atom style flags <extract_atom_flags>`
 
 .. _extract_integer_sizes:
@@ -1408,7 +1408,7 @@ internally by the :doc:`Fortran interface <Fortran>` and are not likely to be us
 
 .. _extract_neighbor_settings:
 
-**Neigbor list settings**
+**Neighbor list settings**
 
 .. list-table::
    :header-rows: 1
