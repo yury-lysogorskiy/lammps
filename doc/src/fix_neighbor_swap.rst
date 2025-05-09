@@ -8,7 +8,7 @@ Syntax
 
 .. code-block:: LAMMPS
 
-   fix ID group-ID neighbor/swap N X seed T R0 voro keyword values ...
+   fix ID group-ID neighbor/swap N X seed T R0 voro-ID keyword values ...
 
 * ID, group-ID are documented in :doc:`fix <fix>` command
 * neighbor/swap = style name of this fix command
@@ -18,7 +18,7 @@ Syntax
 * T = scaling temperature of the MC swaps (temperature units)
 * R0 = scaling swap probability of the MC swaps (distance units)
 * voro-ID = valid voronoi compute id (compute voronoi/atom)
-* two or more keyword/value pairs may be appended to args
+* one or more keyword/value pairs may be appended to args
 * keywords *types* and *diff* are mutually exclusive, but one must be specified
 * keyword = *types* or *diff* or *ke* or *region* or *rates*
 
