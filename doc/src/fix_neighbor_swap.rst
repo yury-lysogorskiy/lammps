@@ -189,6 +189,8 @@ Assuming all *J* atoms are equidistant from an atom *I*, *J* atoms of
 type 1 will be 3x more likely to be selected as a swap partner than
 atoms of type 2.  And *J* atoms of type 3 will be 6.5x more likely to
 be selected than atoms of type 2.  If the *rates* keyword is not used,
+all atom types will be treated with the same probability during selection
+of swap attempts.
 
 
 Restart, fix_modify, output, run start/stop, minimize info
@@ -196,8 +198,8 @@ Restart, fix_modify, output, run start/stop, minimize info
 
 This fix writes the state of the fix to :doc:`binary restart files
 <restart>`.  This includes information about the random number generator
-seed, the next timestep for MC exchanges, the number of exchange
-attempts and successes, etc.  See the :doc:`read_restart <read_restart>`
+seed, the next timestep for MC exchanges, and the number of exchange
+attempts and successes.  See the :doc:`read_restart <read_restart>`
 command for info on how to re-specify a fix in an input script that
 reads a restart file, so that the operation of the fix continues in an
 uninterrupted fashion.
