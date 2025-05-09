@@ -17,7 +17,7 @@ Syntax
 * seed = random # seed (positive integer)
 * T = scaling temperature of the MC swaps (temperature units)
 * R0 = scaling swap probability of the MC swaps (distance units)
-* voro = valid voronoi compute id (compute voronoi/atom)
+* voro-ID = valid voronoi compute id (compute voronoi/atom)
 * two or more keyword/value pairs may be appended to args
 * keywords *types* and *diff* are mutually exclusive, but one must be specified
 * keyword = *types* or *diff* or *ke* or *region* or *rates*
@@ -39,9 +39,9 @@ Examples
 .. code-block:: LAMMPS
 
    compute voroN all voronoi/atom neighbors yes
-   fix mc all neighbor/swap 10 160 15238 1000.0 3.0 diff 2 voro voroN
-   fix myFix all neighbor/swap 100 1 12345 298.0 3.0 region my_swap_region types 5 6 voro voroN
-   fix kmc all neighbor/swap 1 100 345 1.0 3.0 diff 3 rates 3 1 6 voro voroN
+   fix mc all neighbor/swap 10 160 15238 1000.0 3.0 voroN diff 2
+   fix myFix all neighbor/swap 100 1 12345 298.0 3.0 voroN region my_swap_region types 5 6
+   fix kmc all neighbor/swap 1 100 345 1.0 3.0 voroN diff 3 rates 3 1 6
 
 Description
 """""""""""
@@ -137,6 +137,17 @@ average nearest-neighbor spacing is appropriate.  Since this is simply
 a proability weighting, the swapping behavior is not very sensitive to
 the exact value of *R0*.
 
+The required *voro-ID* value is the compute-ID of a
+:doc:`compute voronoi/atom <compute_voronoi_atom>` command like
+this:
+
+.. code-block:: LAMMPS
+
+    compute compute-ID group-ID voronoi/atom neighbors yes
+
+It must return per-atom list of valid neighbor IDs as in the
+:doc:`compute voronoi/atom <compute_voronoi_atom>` command.
+
 The keyword *types* takes two or more atom types as its values.  Only
 atoms *I* of the first atom type will be selected.  Only atoms *J* of the
 remaining atom types will be considered as potential swap partners.
@@ -146,14 +157,6 @@ The keyword *diff* take a single atom type as its value.  Only atoms
 remaining atom types will be considered as potential swap partners.
 This includes the atom type specified with the *diff* keyword to
 account for self-diffusive hops between two atoms of the same type.
-
-The keyword *voro* is required.  Its *vID* value is the compute-ID of
-a :doc:`compute voronoi/atom <compute_voronoi_atom>` command like
-this:
-
-.. code-block:: LAMMPS
-
-    compute compute-ID group-ID voronoi/atom neighbors yes
 
 Note that the *neighbors yes* option must be enabled for use with this
 fix. The group-ID should include all the atoms which this fix will
@@ -225,7 +228,7 @@ package <PKG-VORONOI>` be installed, otherwise the fix will not be
 compiled.
 
 The :doc:`compute voronoi/atom <compute_voronoi_atom>` command
-referenced by keyword *voro* must return neighboring atoms as
+referenced by the required voro-ID must return neighboring atoms as
 illustrated in the examples above.
 
 If this fix is used with systems that do not have per-type masses
