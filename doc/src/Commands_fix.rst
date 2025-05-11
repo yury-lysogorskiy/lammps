@@ -64,7 +64,7 @@ OPT.
    * :doc:`electrode/conp (i) <fix_electrode>`
    * :doc:`electrode/conq (i) <fix_electrode>`
    * :doc:`electrode/thermo (i) <fix_electrode>`
-   * :doc:`electron/stopping <fix_electron_stopping>`
+   * :doc:`electron/stopping (k) <fix_electron_stopping>`
    * :doc:`electron/stopping/fit <fix_electron_stopping>`
    * :doc:`enforce2d (k) <fix_enforce2d>`
    * :doc:`eos/cv <fix_eos_cv>`
