@@ -397,6 +397,7 @@ Broglie
 brownian
 brownw
 Broyden
+Bruenger
 Bruskin
 Brusselle
 Bryantsev
