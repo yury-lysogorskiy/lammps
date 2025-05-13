@@ -387,6 +387,19 @@ TEST_F(LibraryProperties, global)
     auto *b_ptr = (int64_t *)lammps_extract_global(lmp, "ntimestep");
     EXPECT_EQ((*b_ptr), 2);
 
+    EXPECT_EQ(lammps_extract_global_datatype(lmp, "eflag_global"), LAMMPS_BIGINT);
+    b_ptr = (bigint *)lammps_extract_global(lmp, "eflag_global");
+    EXPECT_EQ((*b_ptr), 2);
+    EXPECT_EQ(lammps_extract_global_datatype(lmp, "eflag_atom"), LAMMPS_BIGINT);
+    b_ptr = (bigint *)lammps_extract_global(lmp, "eflag_atom");
+    EXPECT_EQ((*b_ptr), 0);
+    EXPECT_EQ(lammps_extract_global_datatype(lmp, "vflag_global"), LAMMPS_BIGINT);
+    b_ptr = (bigint *)lammps_extract_global(lmp, "vflag_global");
+    EXPECT_EQ((*b_ptr), 2);
+    EXPECT_EQ(lammps_extract_global_datatype(lmp, "vflag_atom"), LAMMPS_BIGINT);
+    b_ptr = (bigint *)lammps_extract_global(lmp, "vflag_atom");
+    EXPECT_EQ((*b_ptr), 0);
+
     EXPECT_EQ(lammps_extract_global_datatype(lmp, "dt"), LAMMPS_DOUBLE);
     auto *d_ptr = (double *)lammps_extract_global(lmp, "dt");
     EXPECT_DOUBLE_EQ((*d_ptr), 0.1);
