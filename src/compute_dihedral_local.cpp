@@ -103,7 +103,7 @@ ComputeDihedralLocal::ComputeDihedralLocal(LAMMPS *lmp, int narg, char **arg) :
     if (pstr) {
       pvar = input->variable->find(pstr);
       if (pvar < 0) {
-        input->variable->internal_create(pstr,0.0); 
+        input->variable->internal_create(pstr,0.0);
         pvar = input->variable->find(pstr);
       }
       if (!input->variable->internalstyle(pvar))

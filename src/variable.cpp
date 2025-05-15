@@ -4223,7 +4223,7 @@ int Variable::math_function(char *word, char *contents, Tree **tree, Tree **tree
                    data[ivar][0],names[ivar]);
       }
     }
-      
+
     // if tree: store python variable and arg info in tree for later eval
     // else: one-time eval of python-coded function now via python variable
 

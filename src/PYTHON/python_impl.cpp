@@ -184,7 +184,7 @@ void PythonImpl::command(int narg, char **arg)
     //          one with no return value
     //   it also means there is no need to call Variable::pythonstyle() here
     //     or even define the pythonstyle() method in Variable ?
-    
+
     invoke_function(ifunc, str, nullptr);
     return;
   }
@@ -455,7 +455,7 @@ int PythonImpl::function_match(const char *name, const char *varname, int numeri
 {
   // NOTE to Richard - any reason not to put error messages here instead of in Variable class ?
   //   error messages appear 3x in Variable
-  
+
   int ifunc = find(name);
   if (ifunc < 0) return -1;
   if (pfuncs[ifunc].noutput == 0) return -2;
@@ -481,7 +481,7 @@ int PythonImpl::wrapper_match(const char *name, const char *varname, int narg, i
 {
   // NOTE to Richard - any reason not to put 2 extra error messages here instead of in Variable class ?
   //   only this class knows the name of the missing internal var, so can generate better error message
-  
+
   int ifunc = function_match(name, varname, 1);
   if (ifunc < 0) return ifunc;
 
@@ -494,7 +494,7 @@ int PythonImpl::wrapper_match(const char *name, const char *varname, int narg, i
   //   in Python wrapper functions
   // also set internal_var for use by invoke_function()
   //   so that invoke_function() is as fast as possible for args which are internal-style vars
-  
+
   int j = 0;
   for (int i = 0; i < pfuncs[ifunc].ninput; i++)
     if (pfuncs[ifunc].ivarflag[i] == INTERNALVAR) {
@@ -503,7 +503,7 @@ int PythonImpl::wrapper_match(const char *name, const char *varname, int narg, i
       pfuncs[ifunc].internal_var[i] = ivar;
       argvars[j++] = ivar;
     }
-  
+
   return ifunc;
 }
 
@@ -565,7 +565,7 @@ int PythonImpl::create_entry(char *name, int ninput, int noutput, int length_lon
         char *vname = pfuncs[ifunc].svalue[i];
         int ivar = input->variable->find(vname);
         if (ivar < 0) {   // create internal variable if does not exist
-          input->variable->internal_create(vname,0.0); 
+          input->variable->internal_create(vname,0.0);
           ivar = input->variable->find(vname);
         }
         if (!input->variable->internalstyle(ivar))
@@ -585,7 +585,7 @@ int PythonImpl::create_entry(char *name, int ninput, int noutput, int length_lon
         char *vname = pfuncs[ifunc].svalue[i];
         int ivar = input->variable->find(vname);
         if (ivar < 0) {   // create internal variable if does not exist
-          input->variable->internal_create(vname,0.0); 
+          input->variable->internal_create(vname,0.0);
           ivar = input->variable->find(vname);
         }
         if (!input->variable->internalstyle(ivar))

@@ -155,7 +155,7 @@ ComputeBondLocal::ComputeBondLocal(LAMMPS *lmp, int narg, char **arg) :
     if (dstr) {
       dvar = input->variable->find(dstr);
       if (dvar < 0) {
-        input->variable->internal_create(dstr,0.0); 
+        input->variable->internal_create(dstr,0.0);
         dvar = input->variable->find(dstr);
       }
       if (!input->variable->internalstyle(dvar))
