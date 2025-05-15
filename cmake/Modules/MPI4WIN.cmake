@@ -29,9 +29,9 @@ if(USE_MSMPI)
   add_dependencies(MPI::MPI_C mpi4win_build)
 
   # set variables for status reporting at the end of CMake run
-  set(MPI_CXX_INCLUDE_PATH "${SOURCE_DIR}/include")
-  set(MPI_CXX_COMPILE_DEFINITIONS "MPICH_SKIP_MPICXX")
-  set(MPI_CXX_LIBRARIES "${SOURCE_DIR}/lib/libmsmpi.a")
+  set(MPI_C_INCLUDE_PATH "${SOURCE_DIR}/include")
+  set(MPI_C_COMPILE_DEFINITIONS "MPICH_SKIP_MPICXX")
+  set(MPI_C_LIBRARIES "${SOURCE_DIR}/lib/libmsmpi.a")
 else()
   message(STATUS "Downloading and configuring MPICH2-1.4.1 for Windows cross-compilation")
   set(MPICH2_WIN64_DEVEL_URL "${LAMMPS_THIRDPARTY_URL}/mpich2-win64-devel.tar.gz" CACHE STRING "URL for MPICH2 (win64) tarball")
@@ -68,7 +68,7 @@ else()
   add_dependencies(MPI::MPI_C mpi4win_build)
 
   # set variables for status reporting at the end of CMake run
-  set(MPI_CXX_INCLUDE_PATH "${SOURCE_DIR}/include")
-  set(MPI_CXX_COMPILE_DEFINITIONS "MPICH_SKIP_MPICXX")
-  set(MPI_CXX_LIBRARIES "${SOURCE_DIR}/lib/libmpi.a")
+  set(MPI_C_INCLUDE_PATH "${SOURCE_DIR}/include")
+  set(MPI_C_COMPILE_DEFINITIONS "MPICH_SKIP_MPICXX")
+  set(MPI_C_LIBRARIES "${SOURCE_DIR}/lib/libmpi.a")
 endif()

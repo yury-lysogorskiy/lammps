@@ -25,7 +25,7 @@ if(MSVC)
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 endif()
 
-find_package(MPI QUIET)
+find_package(MPI QUIET COMPONENTS C)
 # do not include the (obsolete) MPI C++ bindings which makes
 # for leaner object files and avoids namespace conflicts
 set(MPI_CXX_SKIP_MPICXX TRUE)
@@ -38,7 +38,7 @@ if(NOT LAMMPS_SOURCE_DIR)
 endif()
 
 add_executable(simpleCC simple.cpp)
-target_link_libraries(simpleCC PRIVATE LAMMPS::lammps MPI::MPI_CXX)
+target_link_libraries(simpleCC PRIVATE LAMMPS::lammps MPI::MPI_C)
 
 add_executable(simpleC simple.c)
 target_link_libraries(simpleC PRIVATE LAMMPS::lammps MPI::MPI_C)

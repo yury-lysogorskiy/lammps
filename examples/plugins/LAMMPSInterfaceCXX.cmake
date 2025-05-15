@@ -34,8 +34,9 @@ endif()
 ################################################################################
 # MPI configuration
 if(NOT CMAKE_CROSSCOMPILING)
+  enable_language(C)
   set(MPI_CXX_SKIP_MPICXX TRUE)
-  find_package(MPI QUIET)
+  find_package(MPI QUIET COMPONENTS C)
   option(BUILD_MPI "Build MPI version" ${MPI_FOUND})
 else()
   option(BUILD_MPI "Build MPI version" OFF)
@@ -69,17 +70,17 @@ if(BUILD_MPI)
 
       ExternalProject_get_property(mpi4win_build SOURCE_DIR)
       file(MAKE_DIRECTORY "${SOURCE_DIR}/include")
-      add_library(MPI::MPI_CXX UNKNOWN IMPORTED)
-      set_target_properties(MPI::MPI_CXX PROPERTIES
+      add_library(MPI::MPI_C UNKNOWN IMPORTED)
+      set_target_properties(MPI::MPI_C PROPERTIES
         IMPORTED_LOCATION "${SOURCE_DIR}/lib/libmsmpi.a"
         INTERFACE_INCLUDE_DIRECTORIES "${SOURCE_DIR}/include"
         INTERFACE_COMPILE_DEFINITIONS "MPICH_SKIP_MPICXX")
-      add_dependencies(MPI::MPI_CXX mpi4win_build)
+      add_dependencies(MPI::MPI_C mpi4win_build)
 
       # set variables for status reporting at the end of CMake run
-      set(MPI_CXX_INCLUDE_PATH "${SOURCE_DIR}/include")
-      set(MPI_CXX_COMPILE_DEFINITIONS "MPICH_SKIP_MPICXX")
-      set(MPI_CXX_LIBRARIES "${SOURCE_DIR}/lib/libmsmpi.a")
+      set(MPI_C_INCLUDE_PATH "${SOURCE_DIR}/include")
+      set(MPI_C_COMPILE_DEFINITIONS "MPICH_SKIP_MPICXX")
+      set(MPI_C_LIBRARIES "${SOURCE_DIR}/lib/libmsmpi.a")
     else()
       # Download and configure custom MPICH files for Windows
       message(STATUS "Downloading and configuring MPICH-1.4.1 for Windows")
@@ -105,17 +106,17 @@ if(BUILD_MPI)
 
       ExternalProject_get_property(mpi4win_build SOURCE_DIR)
       file(MAKE_DIRECTORY "${SOURCE_DIR}/include")
-      add_library(MPI::MPI_CXX UNKNOWN IMPORTED)
-      set_target_properties(MPI::MPI_CXX PROPERTIES
+      add_library(MPI::MPI_C UNKNOWN IMPORTED)
+      set_target_properties(MPI::MPI_C PROPERTIES
         IMPORTED_LOCATION "${SOURCE_DIR}/lib/libmpi.a"
         INTERFACE_INCLUDE_DIRECTORIES "${SOURCE_DIR}/include"
         INTERFACE_COMPILE_DEFINITIONS "MPICH_SKIP_MPICXX")
-      add_dependencies(MPI::MPI_CXX mpi4win_build)
+      add_dependencies(MPI::MPI_C mpi4win_build)
 
       # set variables for status reporting at the end of CMake run
-      set(MPI_CXX_INCLUDE_PATH "${SOURCE_DIR}/include")
-      set(MPI_CXX_COMPILE_DEFINITIONS "MPICH_SKIP_MPICXX")
-      set(MPI_CXX_LIBRARIES "${SOURCE_DIR}/lib/libmpi.a")
+      set(MPI_C_INCLUDE_PATH "${SOURCE_DIR}/include")
+      set(MPI_C_COMPILE_DEFINITIONS "MPICH_SKIP_MPICXX")
+      set(MPI_C_LIBRARIES "${SOURCE_DIR}/lib/libmpi.a")
     endif()
   else()
     find_package(MPI REQUIRED)
@@ -124,7 +125,7 @@ if(BUILD_MPI)
       target_compile_definitions(lammps INTERFACE -DLAMMPS_LONGLONG_TO_LONG)
     endif()
   endif()
-  target_link_libraries(lammps INTERFACE MPI::MPI_CXX)
+  target_link_libraries(lammps INTERFACE MPI::MPI_C)
 else()
   target_include_directories(lammps INTERFACE "${LAMMPS_SOURCE_DIR}/STUBS")
 endif()

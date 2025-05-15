@@ -386,7 +386,6 @@ if(PKG_ADIOS)
   # The search for ADIOS2 must come before MPI because
   # it includes its own MPI search with the latest FindMPI.cmake
   # script that defines the MPI::MPI_C target
-  enable_language(C)
   find_package(ADIOS2 REQUIRED)
   if(BUILD_MPI)
     if(NOT ADIOS2_HAVE_MPI)
@@ -401,7 +400,7 @@ if(PKG_ADIOS)
 endif()
 
 if(NOT CMAKE_CROSSCOMPILING)
-  find_package(MPI QUIET)
+  find_package(MPI QUIET COMPONENTS C)
   option(BUILD_MPI "Build MPI version" ${MPI_FOUND})
 else()
   option(BUILD_MPI "Build MPI version" OFF)
@@ -415,7 +414,6 @@ if(BUILD_MPI)
   if((CMAKE_SYSTEM_NAME STREQUAL "Windows") AND CMAKE_CROSSCOMPILING)
     include(MPI4WIN)
   else()
-    enable_language(C)
     find_package(MPI REQUIRED COMPONENTS C)
     option(LAMMPS_LONGLONG_TO_LONG "Workaround if your system or MPI version does not recognize 'long long' data types" OFF)
     if(LAMMPS_LONGLONG_TO_LONG)
@@ -543,7 +541,6 @@ if((CMAKE_CXX_COMPILER_ID STREQUAL "Intel") AND (CMAKE_CXX_STANDARD GREATER_EQUA
 endif()
 
 if(PKG_ATC OR PKG_AWPMD OR PKG_ML-QUIP OR PKG_ML-POD OR PKG_ELECTRODE OR PKG_RHEO OR BUILD_TOOLS)
-  enable_language(C)
   if (NOT USE_INTERNAL_LINALG)
     find_package(LAPACK)
     find_package(BLAS)
@@ -1058,9 +1055,9 @@ else()
 endif()
 if(BUILD_MPI)
   message(STATUS "<<< MPI flags >>>
--- MPI_defines:      ${MPI_CXX_COMPILE_DEFINITIONS}
--- MPI includes:     ${MPI_CXX_INCLUDE_PATH}
--- MPI libraries:    ${MPI_CXX_LIBRARIES};${MPI_Fortran_LIBRARIES}")
+-- MPI_defines:      ${MPI_C_COMPILE_DEFINITIONS}
+-- MPI includes:     ${MPI_C_INCLUDE_PATH}
+-- MPI libraries:    ${MPI_C_LIBRARIES};${MPI_Fortran_LIBRARIES}")
 endif()
 if(PKG_GPU)
   message(STATUS "<<< GPU package settings >>>
