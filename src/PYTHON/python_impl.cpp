@@ -62,6 +62,7 @@
 using namespace LAMMPS_NS;
 
 enum { NONE, INT, DOUBLE, STRING, PTR };
+enum { VALUE, VARIABLE, INTERNALVAR };
 
 /* ---------------------------------------------------------------------- */
 
@@ -174,7 +175,17 @@ void PythonImpl::command(int narg, char **arg)
                    arg[0], pfuncs[ifunc].ovarname, pfuncs[ifunc].name);
     }
 
-    invoke_function(ifunc, str);
+    // NOTE to Richard - if this function returns a value,
+    //   I don't believe it will be accessible to the input script
+    //   b/c that only occurs if Variable::retreive() or Variable::compute_equal() is called
+    //   so if a Python function with a return is invoked this way,
+    //     it might be better to issue an error or warning ?
+    //     i.e. it only make sense to call a setup-style kind of Python function this way
+    //          one with no return value
+    //   it also means there is no need to call Variable::pythonstyle() here
+    //     or even define the pythonstyle() method in Variable ?
+    
+    invoke_function(ifunc, str, nullptr);
     return;
   }
 
@@ -317,7 +328,7 @@ void PythonImpl::command(int narg, char **arg)
 
 /* ------------------------------------------------------------------ */
 
-void PythonImpl::invoke_function(int ifunc, char *result)
+void PythonImpl::invoke_function(int ifunc, char *result, double *dvalue)
 {
   PyUtils::GIL lock;
   PyObject *pValue;
@@ -336,27 +347,33 @@ void PythonImpl::invoke_function(int ifunc, char *result)
   for (int i = 0; i < ninput; i++) {
     int itype = pfuncs[ifunc].itype[i];
     if (itype == INT) {
-      if (pfuncs[ifunc].ivarflag[i]) {
+      if (pfuncs[ifunc].ivarflag[i] == VARIABLE) {
         str = input->variable->retrieve(pfuncs[ifunc].svalue[i]);
         if (!str)
           error->all(FLERR, "Could not evaluate Python function {} input variable: {}",
                      pfuncs[ifunc].name, pfuncs[ifunc].svalue[i]);
         pValue = PY_INT_FROM_LONG(PY_LONG_FROM_STRING(str));
+      } else if (pfuncs[ifunc].ivarflag[i] == INTERNALVAR) {
+        double value = input->variable->compute_equal(pfuncs[ifunc].internal_var[i]);
+        pValue = PyLong_FromDouble(value);
       } else {
         pValue = PY_INT_FROM_LONG(pfuncs[ifunc].ivalue[i]);
       }
     } else if (itype == DOUBLE) {
-      if (pfuncs[ifunc].ivarflag[i]) {
+      if (pfuncs[ifunc].ivarflag[i] == VARIABLE) {
         str = input->variable->retrieve(pfuncs[ifunc].svalue[i]);
         if (!str)
           error->all(FLERR, "Could not evaluate Python function {} input variable: {}",
                      pfuncs[ifunc].name, pfuncs[ifunc].svalue[i]);
         pValue = PyFloat_FromDouble(std::stod(str));
+      } else if (pfuncs[ifunc].ivarflag[i] == INTERNALVAR) {
+        double value = input->variable->compute_equal(pfuncs[ifunc].internal_var[i]);
+        pValue = PyFloat_FromDouble(value);
       } else {
         pValue = PyFloat_FromDouble(pfuncs[ifunc].dvalue[i]);
       }
     } else if (itype == STRING) {
-      if (pfuncs[ifunc].ivarflag[i]) {
+      if (pfuncs[ifunc].ivarflag[i] == VARIABLE) {
         str = input->variable->retrieve(pfuncs[ifunc].svalue[i]);
         if (!str)
           error->all(FLERR, "Could not evaluate Python function {} input variable: {}",
@@ -385,17 +402,24 @@ void PythonImpl::invoke_function(int ifunc, char *result)
   }
 
   // function returned a value
-  // assign it to result string stored by python-style variable
-  // or if user specified a length, assign it to longstr
+  // if result is non-NULL, assign to result string stored by python-style variable
+  //   or if value is string and user specified a length, assign it to longstr
+  // if dvalue is non-NULL, assign numeric value directly to dvalue
 
   if (pfuncs[ifunc].noutput) {
     int otype = pfuncs[ifunc].otype;
     if (otype == INT) {
-      auto value = fmt::format("{}", PY_INT_AS_LONG(pValue));
-      strncpy(result, value.c_str(), Variable::VALUELENGTH - 1);
+      if (dvalue) *dvalue = (double) PY_INT_AS_LONG(pValue);
+      else {
+        auto value = fmt::format("{}", PY_INT_AS_LONG(pValue));
+        strncpy(result, value.c_str(), Variable::VALUELENGTH - 1);
+      }
     } else if (otype == DOUBLE) {
-      auto value = fmt::format("{:.15g}", PyFloat_AsDouble(pValue));
-      strncpy(result, value.c_str(), Variable::VALUELENGTH - 1);
+      if (*dvalue) *dvalue = PyFloat_AsDouble(pValue);
+      else {
+        auto value = fmt::format("{:.15g}", PyFloat_AsDouble(pValue));
+        strncpy(result, value.c_str(), Variable::VALUELENGTH - 1);
+      }
     } else if (otype == STRING) {
       const char *pystr = PyUnicode_AsUTF8(pValue);
       if (pfuncs[ifunc].longstr)
@@ -416,10 +440,22 @@ int PythonImpl::find(const char *name)
   return -1;
 }
 
-/* ------------------------------------------------------------------ */
+/* ---------------------------------------------------------------------
+   called by Variable class when a python-style variable is evaluated
+     this will call invoke_function() in this class
+   either via Variable::retrieve() or Variable::equalstyle
+     retrieve calls with numeric = 0, equalstyle with numeric = 1
+   ensure name matches a Python function
+   ensure the Python function produces an output
+   ensure the Python function outputs to the matching python-style variable
+   ensure a string is returned only if retrieve() is the caller
+--------------------------------------------------------------------- */
 
-int PythonImpl::variable_match(const char *name, const char *varname, int numeric)
+int PythonImpl::function_match(const char *name, const char *varname, int numeric)
 {
+  // NOTE to Richard - any reason not to put error messages here instead of in Variable class ?
+  //   error messages appear 3x in Variable
+  
   int ifunc = find(name);
   if (ifunc < 0) return -1;
   if (pfuncs[ifunc].noutput == 0) return -2;
@@ -427,6 +463,50 @@ int PythonImpl::variable_match(const char *name, const char *varname, int numeri
   if (numeric && pfuncs[ifunc].otype == STRING) return -4;
   return ifunc;
 }
+
+/* ---------------------------------------------------------------------
+   called by Variable class when evaluating a Python wrapper function
+     which will call invoke_function()
+   either via equal-style or atom-style variable formula
+     the latter calls invoke_function() once per atom
+   same error checks as function_match() plus 2 new ones
+   ensure match of number of Python function args mapped to internal-style variables
+   ensure each internal-style variable still exists
+     must check now in case user input script deleted variables between runs
+       which could invalidate indices set in create_event()
+     other classes avoid this issue by setting variable indices in their init() method
+--------------------------------------------------------------------- */
+
+int PythonImpl::wrapper_match(const char *name, const char *varname, int narg, int *argvars)
+{
+  // NOTE to Richard - any reason not to put 2 extra error messages here instead of in Variable class ?
+  //   only this class knows the name of the missing internal var, so can generate better error message
+  
+  int ifunc = function_match(name, varname, 1);
+  if (ifunc < 0) return ifunc;
+
+  int internal_count = 0;
+  for (int i = 0; i < pfuncs[ifunc].ninput; i++)
+    if (pfuncs[ifunc].ivarflag[i] == INTERNALVAR) internal_count++;
+  if (internal_count != narg) return -5;
+
+  // set argvars of internal-style variables for use by Variable class
+  //   in Python wrapper functions
+  // also set internal_var for use by invoke_function()
+  //   so that invoke_function() is as fast as possible for args which are internal-style vars
+  
+  int j = 0;
+  for (int i = 0; i < pfuncs[ifunc].ninput; i++)
+    if (pfuncs[ifunc].ivarflag[i] == INTERNALVAR) {
+      int ivar = input->variable->find(pfuncs[ifunc].svalue[i]);
+      if (ivar < 0) return -6;
+      pfuncs[ifunc].internal_var[i] = ivar;
+      argvars[j++] = ivar;
+    }
+  
+  return ifunc;
+}
+
 
 /* ------------------------------------------------------------------ */
 
@@ -469,6 +549,7 @@ int PythonImpl::create_entry(char *name, int ninput, int noutput, int length_lon
   pfuncs[ifunc].ivalue = new int[ninput];
   pfuncs[ifunc].dvalue = new double[ninput];
   pfuncs[ifunc].svalue = new char *[ninput];
+  pfuncs[ifunc].internal_var = new int[ninput];
 
   for (int i = 0; i < ninput; i++) {
     pfuncs[ifunc].svalue[i] = nullptr;
@@ -476,32 +557,56 @@ int PythonImpl::create_entry(char *name, int ninput, int noutput, int length_lon
     if (type == 'i') {
       pfuncs[ifunc].itype[i] = INT;
       if (utils::strmatch(istr[i], "^v_")) {
-        pfuncs[ifunc].ivarflag[i] = 1;
+        pfuncs[ifunc].ivarflag[i] = VARIABLE;
         pfuncs[ifunc].svalue[i] = utils::strdup(istr[i] + 2);
+      } else if (utils::strmatch(istr[i], "^iv_")) {
+        pfuncs[ifunc].ivarflag[i] = INTERNALVAR;
+        pfuncs[ifunc].svalue[i] = utils::strdup(istr[i] + 3);
+        char *vname = pfuncs[ifunc].svalue[i];
+        int ivar = input->variable->find(vname);
+        if (ivar < 0) {   // create internal variable if does not exist
+          input->variable->internal_create(vname,0.0); 
+          ivar = input->variable->find(vname);
+        }
+        if (!input->variable->internalstyle(ivar))
+          error->all(FLERR, Error::NOLASTLINE, "Variable {} for python command is invalid style", vname);
       } else {
-        pfuncs[ifunc].ivarflag[i] = 0;
+        pfuncs[ifunc].ivarflag[i] = VALUE;
         pfuncs[ifunc].ivalue[i] = utils::inumeric(FLERR, istr[i], false, lmp);
       }
     } else if (type == 'f') {
       pfuncs[ifunc].itype[i] = DOUBLE;
       if (utils::strmatch(istr[i], "^v_")) {
-        pfuncs[ifunc].ivarflag[i] = 1;
+        pfuncs[ifunc].ivarflag[i] = VARIABLE;
         pfuncs[ifunc].svalue[i] = utils::strdup(istr[i] + 2);
+      } else if (utils::strmatch(istr[i], "^iv_")) {
+        pfuncs[ifunc].ivarflag[i] = INTERNALVAR;
+        pfuncs[ifunc].svalue[i] = utils::strdup(istr[i] + 3);
+        char *vname = pfuncs[ifunc].svalue[i];
+        int ivar = input->variable->find(vname);
+        if (ivar < 0) {   // create internal variable if does not exist
+          input->variable->internal_create(vname,0.0); 
+          ivar = input->variable->find(vname);
+        }
+        if (!input->variable->internalstyle(ivar))
+          error->all(FLERR, Error::NOLASTLINE, "Variable {} for python command is invalid style", vname);
       } else {
-        pfuncs[ifunc].ivarflag[i] = 0;
+        pfuncs[ifunc].ivarflag[i] = VALUE;
         pfuncs[ifunc].dvalue[i] = utils::numeric(FLERR, istr[i], false, lmp);
       }
     } else if (type == 's') {
       pfuncs[ifunc].itype[i] = STRING;
       if (utils::strmatch(istr[i], "^v_")) {
-        pfuncs[ifunc].ivarflag[i] = 1;
+        pfuncs[ifunc].ivarflag[i] = VARIABLE;
         pfuncs[ifunc].svalue[i] = utils::strdup(istr[i] + 2);
+      } else if (utils::strmatch(istr[i], "^iv_")) {
+        error->all(FLERR, "Input argument {} cannot be internal variable with string format", istr[i]);
       } else {
-        pfuncs[ifunc].ivarflag[i] = 0;
+        pfuncs[ifunc].ivarflag[i] = VALUE;
         pfuncs[ifunc].svalue[i] = utils::strdup(istr[i]);
       }
     } else if (type == 'p') {
-      pfuncs[ifunc].ivarflag[i] = 0;
+      pfuncs[ifunc].ivarflag[i] = VALUE;
       pfuncs[ifunc].itype[i] = PTR;
       if (strcmp(istr[i], "SELF") != 0) error->all(FLERR, "Invalid python command");
 
@@ -574,6 +679,7 @@ void PythonImpl::deallocate(int i)
   delete[] pfuncs[i].dvalue;
   for (int j = 0; j < pfuncs[i].ninput; j++) delete[] pfuncs[i].svalue[j];
   delete[] pfuncs[i].svalue;
+  delete[] pfuncs[i].internal_var;
   delete[] pfuncs[i].ovarname;
   delete[] pfuncs[i].longstr;
 }

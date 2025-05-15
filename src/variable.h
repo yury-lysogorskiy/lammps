@@ -49,6 +49,7 @@ class Variable : protected Pointers {
   void compute_atom(int, int, double *, int, int);
   int compute_vector(int, double **);
   void internal_set(int, double);
+  void internal_create(char *, double);
 
   tagint int_between_brackets(char *&, int);
   double evaluate_boolean(char *);
@@ -87,6 +88,7 @@ class Variable : protected Pointers {
   int *num;                    // # of values for each variable
   int *which;                  // next available value for each variable
   int *pad;                    // 1 = pad loop/uloop variables with 0s, 0 = no pad
+  int *pyindex;                // indices to Python funcs for python-style vars
   class VarReader **reader;    // variable that reads from file
   char ***data;                // str value of each variable's values
   double *dvalue;              // single numeric value for internal variables
