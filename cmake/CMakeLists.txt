@@ -7,6 +7,10 @@ if(CMAKE_VERSION VERSION_LESS 3.20)
   message(WARNING "LAMMPS is planning to require at least CMake version 3.20 by Summer 2025. Please upgrade!")
 endif()
 ########################################
+# initialize version variables with project command
+if(POLICY CMP0048)
+  cmake_policy(SET CMP0048 NEW)
+endif()
 # set policy to silence warnings about ignoring <PackageName>_ROOT but use it
 if(POLICY CMP0074)
   cmake_policy(SET CMP0074 NEW)
@@ -27,7 +31,10 @@ endif()
 
 ########################################
 
-project(lammps CXX)
+project(lammps
+        DESCRIPTION "The LAMMPS Molecular Dynamics Simulator"
+        HOMEPAGE_URL "https://www.lammps.org"
+        LANGUAGES CXX C)
 set(SOVERSION 0)
 get_property(BUILD_IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 
