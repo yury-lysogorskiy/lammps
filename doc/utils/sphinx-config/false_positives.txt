@@ -103,6 +103,7 @@ Amit
 amsmath
 amu
 Amzallag
+Anandakrishnan
 analytical
 Anders
 Andric
@@ -1732,6 +1733,7 @@ Iyz
 iz
 izcm
 ized
+Izadi
 Izrailev
 Izumi
 Izvekov
@@ -2808,6 +2810,7 @@ oneMKL
 oneway
 onlysalt
 ons
+Onufriev
 OO
 Oord
 opencl
