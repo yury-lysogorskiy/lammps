@@ -76,8 +76,11 @@ is positive for a repulsive force and negative for an attractive
 force.
 
 The values *fx*, *fy*, and *fz* are the :math:`(x,y,z)` components of
-the force vector on atom *i* obtained by projecting *force* on the
-distance vector.  For pair styles that apply non-central forces, such as
+the force vector on the first atom *i* of a pair in the neighbor list
+due to the second atom *j*.  Mathematically, they are obtained by
+multiplying the value of *force* from above with a unit vector created
+from the *dx*, *dy*, and *dz* components of the distance vector also
+described above.  For pair styles that apply non-central forces, such as
 :doc:`granular pair styles <pair_gran>`, these values only include the
 :math:`(x,y,z)` components of the normal force component.
 

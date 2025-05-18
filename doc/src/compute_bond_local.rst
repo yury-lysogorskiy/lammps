@@ -85,11 +85,13 @@ of atoms in the bond, which is positive for a repulsive force and
 negative for an attractive force.
 
 The values *fx*, *fy*, and *fz* are the :math:`(x,y,z)` components of
-the force vector on atom *i* obtained by projecting *force* on the
-distance vector.  For bond styles that apply non-central forces, such as
-:doc:`bond_style bpm/rotational <bond_bpm_rotational>`, these values
-only include the :math:`(x,y,z)` components of the normal force
-component.
+the force on the first atom *i* in the bond due to the second atom *j*.
+Mathematically, they are obtained by multiplying the value of *force*
+from above with a unit vector created from the *dx*, *dy*, and *dz*
+components of the distance vector also described above.  For bond styles
+that apply non-central forces, such as :doc:`bond_style bpm/rotational
+<bond_bpm_rotational>`, these values only include the :math:`(x,y,z)`
+components of the normal force component.
 
 The remaining properties are all computed for motion of the two atoms
 relative to the center of mass (COM) velocity of the two atoms in the
