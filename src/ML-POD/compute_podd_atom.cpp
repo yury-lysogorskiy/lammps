@@ -59,7 +59,7 @@ ComputePODDAtom::ComputePODDAtom(LAMMPS *lmp, int narg, char **arg) :
   elements = nullptr;
 
   if ((((3.0*atom->natoms)*podptr->nClusters)*podptr->Mdesc) > (MAXSMALLINT*1.0))
-      error->all(FLERR, "Too many atoms ({}_ for compute {}", atom->natoms, style);
+      error->all(FLERR, "Too many atoms ({}) for compute {}", atom->natoms, style);
   size_peratom_cols = 3 * atom->natoms * podptr->Mdesc * podptr->nClusters;
   peratom_flag = 1;
 }
