@@ -507,7 +507,6 @@ int PythonImpl::wrapper_match(const char *name, const char *varname, int narg, i
   return ifunc;
 }
 
-
 /* ------------------------------------------------------------------ */
 
 char *PythonImpl::long_string(int ifunc)
