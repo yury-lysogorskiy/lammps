@@ -171,10 +171,11 @@ previously defined arguments and the return value is processed as
 explained below.  You can invoke a registered function as many times
 as you wish in your input script.
 
-NOTE: As indicated with a NOTE in python_impl.cpp, I don't think there
-is any access to a value returned by invoking a Py function in this way.
-If that is correct, I think this should be clarified in the doc page,
-with a better explanation of the utility of using the *invoke* keyword.
+NOTE for Richard: As indicated with a NOTE in python_impl.cpp, I don't
+think there is any access to a value returned by invoking a Py
+function in this way.  If that is correct, I think this should be
+clarified in the doc page, with a better explanation of the utility of
+using the *invoke* keyword.
 
 The *input* keyword defines how many arguments *N* the Python function
 expects.  If it takes no arguments, then the *input* keyword should
