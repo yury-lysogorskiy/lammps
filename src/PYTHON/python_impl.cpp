@@ -415,7 +415,7 @@ void PythonImpl::invoke_function(int ifunc, char *result, double *dvalue)
         strncpy(result, value.c_str(), Variable::VALUELENGTH - 1);
       }
     } else if (otype == DOUBLE) {
-      if (*dvalue) *dvalue = PyFloat_AsDouble(pValue);
+      if (dvalue) *dvalue = PyFloat_AsDouble(pValue);
       else {
         auto value = fmt::format("{:.15g}", PyFloat_AsDouble(pValue));
         strncpy(result, value.c_str(), Variable::VALUELENGTH - 1);

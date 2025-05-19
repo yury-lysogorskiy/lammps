@@ -1,4 +1,4 @@
-LAMMPS (2 Apr 2025 - Development - patch_2Apr2025-125-g7ca493917a-modified)
+LAMMPS (2 Apr 2025 - Development - patch_2Apr2025-266-gebfb94a717-modified)
 # 3d Lennard-Jones melt with equal- and atom-style variables which
 #   use a Python function wrapper in their formulas
 
@@ -35,11 +35,10 @@ neigh_modify    delay 0 every 20 check no
 fix             1 all nve
 
 variable        foo python truncate
-python          truncate return v_foo input 1 v_pyarg1 format fi here """
+python          truncate return v_foo input 1 iv_arg format fi here """
 def truncate(x):
   return int(x)
 """
-variable        pyarg1 internal 0.0
 
 variable        scalar equal py_foo(4.5)
 print           "TRUNCATE ${scalar}"
@@ -49,7 +48,8 @@ variable        xtrunc atom py_foo(x)
 variable        ytrunc atom py_foo(y)
 variable        ztrunc atom py_foo(z)
 
-#dump            1 all custom 100 tmp.dump id x y z
+# examine dump file to see truncated xyz coords of each atom
+
 dump            1 all custom 100 tmp.dump id x y z v_xtrunc v_ytrunc v_ztrunc
 
 run             100
@@ -70,20 +70,20 @@ Per MPI rank memory allocation (min/avg/max) = 2.644 | 2.644 | 2.644 Mbytes
    Step          Temp          E_pair         E_mol          TotEng         Press     
          0   1.44          -6.7733681      0             -4.6176881     -5.0221006    
        100   0.75627408    -5.7580082      0             -4.6258659      0.21870071   
-Loop time of 0.0160255 on 1 procs for 100 steps with 500 atoms
+Loop time of 0.014627 on 1 procs for 100 steps with 500 atoms
 
-Performance: 2695709.610 tau/day, 6240.069 timesteps/s, 3.120 Matom-step/s
+Performance: 2953445.899 tau/day, 6836.680 timesteps/s, 3.418 Matom-step/s
 100.0% CPU use with 1 MPI tasks x no OpenMP threads
 
 MPI task timing breakdown:
 Section |  min time  |  avg time  |  max time  |%varavg| %total
 ---------------------------------------------------------------
-Pair    | 0.011326   | 0.011326   | 0.011326   |   0.0 | 70.67
-Neigh   | 0.002924   | 0.002924   | 0.002924   |   0.0 | 18.25
-Comm    | 0.00046255 | 0.00046255 | 0.00046255 |   0.0 |  2.89
-Output  | 0.0010398  | 0.0010398  | 0.0010398  |   0.0 |  6.49
-Modify  | 0.00020589 | 0.00020589 | 0.00020589 |   0.0 |  1.28
-Other   |            | 6.725e-05  |            |       |  0.42
+Pair    | 0.010546   | 0.010546   | 0.010546   |   0.0 | 72.10
+Neigh   | 0.0027775  | 0.0027775  | 0.0027775  |   0.0 | 18.99
+Comm    | 0.00044818 | 0.00044818 | 0.00044818 |   0.0 |  3.06
+Output  | 0.00060601 | 0.00060601 | 0.00060601 |   0.0 |  4.14
+Modify  | 0.00018516 | 0.00018516 | 0.00018516 |   0.0 |  1.27
+Other   |            | 6.39e-05   |            |       |  0.44
 
 Nlocal:            500 ave         500 max         500 min
 Histogram: 1 0 0 0 0 0 0 0 0 0

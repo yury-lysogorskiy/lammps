@@ -397,13 +397,24 @@ using the :doc:`command-line switch -var <Run_options>`.
 
 For the *internal* style a numeric value is provided.  This value will
 be assigned to the variable until a LAMMPS command sets it to a new
-value.  There are currently only two LAMMPS commands that require
-*internal* variables as inputs, because they reset them:
-:doc:`create_atoms <create_atoms>` and :doc:`fix controller
-<fix_controller>`.  As mentioned above, an internal-style variable can
-be used in place of an equal-style variable anywhere else in an input
-script, e.g. as an argument to another command that allows for
-equal-style variables.
+value.
+
+Note however, that most commands which use internal-style variables do
+not require them to be defined in the input script.  They create one
+or more internal-style variables if they do not already exist.
+Examples are these commands:
+
+* :doc:`create_atoms <create_atoms>`
+* :doc:`fix deposit <fix_deposit>`
+* :doc:`compute bond/local <compute_bond_local>`
+* :doc:`compute angle/local <compute_angle/local>`
+* :doc:`compute dihedral/local <compute_dihedral_local>`
+* :doc:`python <python>` command in conjunction with Python function wrappers used in equal- and atom-style variable formulas
+
+A command which does require an internal-style variable to be defined
+in the input script is the :doc:`fix controller <fix_controller"`
+command, because another (arbitrary) command typically also references
+the variable.
 
 ----------
 
@@ -449,12 +460,13 @@ anywhere in an input script, e.g. as an argument to another command
 that allows for equal-style variables.
 
 A python-style variable can also be used within the formula for an
-equal-style or atom-style formula with the syntax
-py_varname(arg1,arg2,...) as explained below for variable formulas.
-When used in an atom-style formula, it can the variable can be invoked
-once per atom using arguments specific to each atom.  The resulting
-values in the atom-style variable can thus be calculated by Python
-code.
+equal-style or atom-style formula in a Python function wrapper, as
+explained below for variable formulas.  In this context, the usage
+syntax is py_varname(arg1,arg2,...), where varname is the name of the
+python-style variable.  When a Python wrapper function is used in an
+atom-style formula, it can be invoked once per atom using arguments
+specific to each atom.  The resulting values in the atom-style
+variable can thus be calculated by Python code.
 
 ----------
 
@@ -545,7 +557,7 @@ is a valid (though strange) variable formula:
 
 Specifically, a formula can contain numbers, constants, thermo
 keywords, math operators, math functions, group functions, region
-functions, special functions, feature functions, python function
+functions, special functions, feature functions, Python function
 wrappers, atom values, atom vectors, custom atom properties, compute
 references, fix references, and references to other variables.
 
@@ -568,7 +580,7 @@ references, fix references, and references to other variables.
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | Feature functions      | is_available(category,feature), is_active(category,feature), is_defined(category,id)                                                                                                                                                                                                                                                                       |
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Python func wrappers   | py_varname(x,y,z,...)                                                                                                                                                                                                                                                                                                                                      |
+| Python func wrapper    | py_varname(x,y,z,...)                                                                                                                                                                                                                                                                                                                                      |
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | Atom values            | id[i], mass[i], type[i], mol[i], x[i], y[i], z[i], vx[i], vy[i], vz[i], fx[i], fy[i], fz[i], q[i]                                                                                                                                                                                                                                                          |
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -1180,7 +1192,7 @@ variable name.
 
 ----------
 
-Python Function wrappers
+Python Function wrapper
 ------------------------
 
 A Python function wrapper enables the formula for an equal-style or
@@ -1211,11 +1223,10 @@ input script:
 .. code-block:: LAMMPS
 
    variable        foo python truncate
-   python          truncate return v_foo input 1 v_pyarg1 format fi here """
+   python          truncate return v_foo input 1 v_arg format fi here """
    def truncate(x):
     return int(x)
    """
-   variable        pyarg1 internal 0.0
    variable        xtrunc atom py_foo(x)
    variable        ytrunc atom py_foo(y)
    variable        ztrunc atom py_foo(z)
@@ -1228,12 +1239,6 @@ this case, the Python code for truncate() is included in the *python*
 command; it could also be contained in a file.  See the :doc:`python
 <python>` command doc page for details.
 
-The *variable pyarg1* command defines an internal-style variable.  It
-MUST have the name pyarg1.  If the Python function has *N* arguments,
-*N* internal-style variables MUST be defined with names *pyarg1*,
-*pyarg2*, ... *pyargN*.  Note that multiple Python function wrappers
-can use the same internal-style variables.
-
 The next three commands define atom-style variables *xtrunc*,
 *ytrunc*, and *ztrunc*.  Each of them include the same Python function
 wrapper in their formula, with a different argument.  The atom-style
@@ -1242,14 +1247,26 @@ will in turn invoke the Python-coded *truncate()* method.  Because
 *xtrunc* is an atom-style variable, and the argument *x* in the Python
 function wrapper is a per-atom quantity (the x-coord of each atom),
 each processor will invoke the *truncate()* method once per atom, for
-the atoms it owns.  When invoked for the Ith atom, the x-coord of the
-Ith atom becomes the value of the *pyarg1* internal-style variable.
-The call to the *truncate()* function uses the value of the *pyarg1*
-variable as its first (and only) argument.
+the atoms it owns.
+
+When invoked for the Ith atom, the value of the *arg* internal-style
+variable, defined by the *python* command, is set to the x-coord of
+the Ith atom.  The call via python-style variable *foo* to the Python
+*truncate()* function passes the value of the *arg* variable as its
+first (and only) argument.  Likewise, the return value of the Python
+function becomes is stored by the python-style variable *foo* and used
+in the *xtrunc* atom-style variable formula for the Ith atom.
 
 The resulting per-atom vector for *xtrunc* will thus contain the
 truncated x-coord of every atom in the system.  The dump command
 includes the truncated xyz coords for each atom in its output.
+
+See the :doc:`python <python>' command for more details on options the
+*python* command can specify as well as examples of more complex
+Python functions which can be wrapped in this manner.  In particular,
+the Python function can take a variety of arguments, some generated by
+the *python* command, and others by the arguments of the Python
+function wrapper.
 
 ----------
 
