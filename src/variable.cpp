@@ -1460,7 +1460,7 @@ void Variable::copy(int narg, char **from, char **to)
                       sin(x),cos(x),tan(x),asin(x),atan2(y,x),...
      group function = count(group), mass(group), xcm(group,x), ...
      special function = sum(x),min(x), ...
-     python function wrapper = py_varname(x,y,z,...)
+     python function wrapper = py_varname(x,y,z,...) (up to MAXFUNCARG)
      atom value = x[i], y[i], vx[i], ...
      atom vector = x, y, vx, ...
      custom atom property = i/d_name, i/d_name[i], i/d2_name[i], i/d2_name[i][j]
@@ -2663,7 +2663,8 @@ double Variable::evaluate(char *str, Tree **tree, int ivar)
      atan2(y,x),random(x,y,z),normal(x,y,z),ceil(),floor(),round(),ternary(x,y,z),
      ramp(x,y),stagger(x,y),logfreq(x,y,z),logfreq2(x,y,z),
      logfreq3(x,y,z),stride(x,y,z),stride2(x,y,z,a,b,c),vdisplace(x,y),swiggle(x,y,z),
-     cwiggle(x,y,z),sign(x),gmask(x),rmask(x),grmask(x,y)
+     cwiggle(x,y,z),sign(x),py_varname(x,y,z,...),
+     gmask(x),rmask(x),grmask(x,y)
 ---------------------------------------------------------------------- */
 
 double Variable::collapse_tree(Tree *tree)
@@ -3220,7 +3221,7 @@ double Variable::collapse_tree(Tree *tree)
     tree->value = (arg1 >= 0.0) ? 1.0 : -1.0; // sign(arg1);
     return tree->value;
   }
-
+    
   if (tree->type == PYWRAPPER) {
     int narg = tree->argcount;
     int *argvars = tree->argvars;
@@ -3231,6 +3232,16 @@ double Variable::collapse_tree(Tree *tree)
       else arg = collapse_tree(tree->extra[iarg-2]);
       internal_set(argvars[iarg],arg);
     }
+    for (int iarg = 0; iarg < narg; iarg++) {
+      if (iarg == 0) {
+        if (tree->first->type != VALUE) return 0.0;
+      } else if (iarg == 1) {
+        if (tree->second->type != VALUE) return 0.0;
+      } else {
+        if (tree->extra[iarg-2]->type != VALUE) return 0.0;
+      }
+    }
+    tree->type = VALUE;
     tree->value = compute_equal(tree->pyvar);
     return tree->value;
   }
@@ -3248,12 +3259,14 @@ double Variable::collapse_tree(Tree *tree)
    evaluate an atom-style or vector-style variable parse tree
    index I = atom I or vector index I
    tree was created by one-time parsing of formula string via evaluate()
+     followed by collapse_tree() operation to streamline tree as much as possible
    customize by adding a function:
      sqrt(),exp(),ln(),log(),sin(),cos(),tan(),asin(),acos(),atan(),
      atan2(y,x),random(x,y,z),normal(x,y,z),ceil(),floor(),round(),ternary(x,y,z),
      ramp(x,y),stagger(x,y),logfreq(x,y,z),logfreq2(x,y,z),
      logfreq3(x,y,z),stride(x,y,z),stride2(x,y,z,a,b,c),vdisplace(x,y),
-     swiggle(x,y,z),cwiggle(x,y,z),sign(x),gmask(x),rmask(x),grmask(x,y)
+     swiggle(x,y,z),cwiggle(x,y,z),sign(x),py_varname(x,y,z,...),
+     gmask(x),rmask(x),grmask(x,y)
 ---------------------------------------------------------------------- */
 
 double Variable::eval_tree(Tree *tree, int i)
@@ -3749,7 +3762,6 @@ tagint Variable::int_between_brackets(char *&ptr, int varallow)
 
 /* ----------------------------------------------------------------------
    process a math function in formula
-   includes a Python function with syntax py_varname(arg1,arg2,...)
    push result onto tree or arg stack
    word = math function name
    contents = str between parentheses with comma-separated args
@@ -3759,8 +3771,7 @@ tagint Variable::int_between_brackets(char *&ptr, int varallow)
      atan2(y,x),random(x,y,z),normal(x,y,z),ceil(),floor(),round(),ternary(),
      ramp(x,y),stagger(x,y),logfreq(x,y,z),logfreq2(x,y,z),
      logfreq3(x,y,z),stride(x,y,z),stride2(x,y,z,a,b,c),vdisplace(x,y),
-     swiggle(x,y,z),cwiggle(x,y,z),sign(x),
-     py_varname(arg1,arg2,...) (up to MAXFUNCARG)
+     swiggle(x,y,z),cwiggle(x,y,z),sign(x),py_varname(x,y,z,...)
 ------------------------------------------------------------------------- */
 
 int Variable::math_function(char *word, char *contents, Tree **tree, Tree **treestack,
@@ -5429,7 +5440,11 @@ void Variable::print_var_error(const std::string &srcfile, const int lineno,
 
 void Variable::print_tree(Tree *tree, int level)
 {
-  printf("TREE %d: %d %g\n",level,tree->type,tree->value);
+  if (tree->type == VALUE) {
+    printf("TREE %d: %d %g\n",level,tree->type,tree->value);
+    return;
+  }
+  printf("TREE %d: %d\n",level,tree->type);
   if (tree->first) print_tree(tree->first,level+1);
   if (tree->second) print_tree(tree->second,level+1);
   if (tree->nextra)

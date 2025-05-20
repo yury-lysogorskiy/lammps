@@ -98,20 +98,21 @@ function.
 
 Later execution can be triggered in one of two ways.  One is to use
 the python command again with its *invoke* keyword.  The other is to
-trigger the evaluation of a python-style, equal-style, or atom-style
-variable.  A python-style variable invokes its associated Python
-function; its return value becomes the value of the python-style
-variable.  Equal- and atom-style variables can use a Python function
-wrapper in their formulas which encodes the Python function name, and
-specifies arguments to pass to the function.
+trigger the evaluation of a python-style, equal-style, vector-style,
+or atom-style variable.  A python-style variable invokes its
+associated Python function; its return value becomes the value of the
+python-style variable.  Equal-, vector-, and atom-style variables can
+use a Python function wrapper in their formulas which encodes the
+Python function name, and specifies arguments to pass to the function.
 
-Note python-style, equal-style, and atom-style variables can be used
-in many different ways within LAMMPS.  They can be evaulated directly
-in an input script, effectively replacing the variable with its value.
-Or they can be passed to various commands as arguments, so that the
-variable is evaluated multiple times during a simulation run.  See the
-:doc:`variable <variable>` command doc page for more details on
-variable styles which enable Python function evaluation.
+Note that python-style, equal-style, vectir-style, and atom-style
+variables can be used in many different ways within LAMMPS.  They can
+be evaulated directly in an input script, effectively replacing the
+variable with its value.  Or they can be passed to various commands as
+arguments, so that the variable is evaluated multiple times during a
+simulation run.  See the :doc:`variable <variable>` command doc page
+for more details on variable styles which enable Python function
+evaluation.
 
 The Python code for the function can be included directly in the input
 script or in a separate Python file.  The function can be standard
@@ -199,7 +200,9 @@ command.  The style of variable must be consistent with the *format*
 keyword specification for the type of data that is passed to Python.
 Each time the Python function is invoked, the LAMMPS variable is
 evaluated and its value is passed as an argument to the Python
-function.
+function.  Note that a python-style variable can be used as an
+argument, which means that the a Python function can use arguments
+which invoke other Python functions.
 
 A LAMMPS internal-style variable can also be used as an *input*
 argument, specified as iv_name, where "name" is the name of the
@@ -208,26 +211,35 @@ be defined in the input script (though it can be); if it is not
 defined, this command creates an :doc:`internal-style variable
 <variable>` with the specified name.
 
-An internal-style variable must be used when an equal-style or
-atom-style variable triggers the invocation of the Python function
-defined by this command, by including a Python function wrapper in its
-formula, with one or more arguments also included in the formula.
+An internal-style variable must be used when an equal-style,
+vector-style, or atom-style variable triggers the invocation of the
+Python function defined by this command, by including a Python
+function wrapper with arguments in its formula.  Each of the arguments
+must be specified as an internal-style variable via the *input*
+keyword.
 
 In brief, the syntax for a Python function wrapper in a variable
 formula is py_varname(arg1,arg2,...argN), where "varname" is the name
 of a python-style variable associated with a Python function defined
 by this command.  One or more arguments to the function wrapper can
-themselves be formulas which the variable command will evaluate and
-pass as arguments to the Python function.  This is done by assigning
-the numeric result for each argument to an internal-style variable;
-this the *input* keyword must specify the arguments as internal-style
-variables and their format (see below) as "f" for floating point.
-This is because LAMMPS variable formulas are calculated with floating
-point arithmetic (any integer values are converted to floating point).
+themselves be sub-formulas which the variable command will evaluate
+and pass as arguments to the Python function.  This is done by
+assigning the numeric result for each argument to an internal-style
+variable; thus the *input* keyword must specify the arguments as
+internal-style variables and their format (see below) as "f" for
+floating point.  This is because LAMMPS variable formulas are
+calculated with floating point arithmetic (any integer values are
+converted to floating point).  Note that the Python function can also
+have additional inputs, also specified by the *input* keyword, which
+are NOT arguments in the Python function wrapper.  See the example
+below for the "mixedargs" Python function.
 
 See the :doc:`variable <variable>` command doc page for full details
 on formula syntax including for Python function wrappers.  Examples
-using Python function wrappers are shown below.
+using Python function wrappers are shown below.  Note that as
+explained above with python-style variables, Python function wrappers
+can be nested; a sub-formula for an argument can contain its own
+Python function wrapper which invokes another Python function.
 
 The *return* keyword is only needed if the Python function returns a
 value.  The specified *varReturn* is of the form v_name, where "name"
@@ -545,12 +557,14 @@ simulation run at each time step using the :doc:`fix python/invoke
 ----------
 
 A Python function can also be invoked within the formula for an
-equal-style or atom-style varaible.  This means the Python function
-will be invoked whenever the variable is invoked.  In the case of an
-atom-style varaible, the Python function can be invoked once per atom.
+equal-style, vector-style, or atom-style varaible.  This means the
+Python function will be invoked whenever the variable is invoked.  In
+the case of a vector-style variable, the Python function can be
+invoked once per element of the global vector.  In the case of an
+atom-style variable, the Python function can be invoked once per atom.
 
-Here are two simple examples using equal- and atom-style variables to
-trigger execution of a Python function:
+Here are three simple examples using equal-, vector-, and atom-style
+variables to trigger execution of a Python function:
 
 .. code-block:: LAMMPS
 
@@ -571,8 +585,24 @@ keyword for the *python* command, specifies an internal-style variable
 named "arg" as iv_arg which is required to invoke the Python function
 from a Python function wrapper.
 
-The last 2 lines can be replaced by these to define atom-style
-varaibles which invoke the same Python "truncate" function:
+The last 2 lines can be replaced by these to define a vector-style
+variable which invokes the same Python "truncate" function:
+
+.. code-block:: LAMMPS
+
+  compute         ke all temp
+  variable        ke vector c_ke
+  variable        ketrunc vector py_foo(v_ke)
+  thermo_style    custom step temp epair v_ketrunc[*]
+
+The vector-style variable "ketrunc" invokes the Python "truncate"
+function on each of the 6 components of the global kinetic energy
+tensor calculated by the :doc:`compute ke <compute_ke>` command.  The
+6 truncated values will be printed with thermo output to the screen
+and log file.
+
+Alternatively, the last 2 lines can be replaced by these to define
+atom-style variables which invoke the same Python "truncate" function:
 
 .. code-block:: LAMMPS
 
@@ -581,7 +611,7 @@ varaibles which invoke the same Python "truncate" function:
    variable        ztrunc atom py_foo(z)
    dump            1 all custom 100 tmp.dump id x y z v_xtrunc v_ytrunc v_ztrunc
 
-Now when the dump command invokes the 3 atom-style variables, their
+When the dump command invokes the 3 atom-style variables, their
 arguments x,y,z to the Python function wrapper are the current
 per-atom coordinates of each atom.  The Python "truncate" function is
 thus invoked 3 times for each atom, and the truncated coordinate
