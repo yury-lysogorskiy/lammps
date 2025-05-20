@@ -717,6 +717,7 @@ foreach(PKG_LIB POEMS ATC AWPMD H5MD)
     file(GLOB_RECURSE ${PKG_LIB}_SOURCES CONFIGURE_DEPENDS
       ${LAMMPS_LIB_SOURCE_DIR}/${PKG_LIB}/[^.]*.c ${LAMMPS_LIB_SOURCE_DIR}/${PKG_LIB}/[^.]*.cpp)
     add_library(${PKG_LIB} STATIC ${${PKG_LIB}_SOURCES})
+    target_compile_definitions(${PKG_LIB} PUBLIC -DMPICH_SKIP_MPICXX -DOMPI_SKIP_MPICXX=1)
     set_target_properties(${PKG_LIB} PROPERTIES OUTPUT_NAME lammps_${PKG_LIB}${LAMMPS_MACHINE})
     target_link_libraries(lammps PRIVATE ${PKG_LIB})
     if(PKG_LIB STREQUAL "awpmd")
