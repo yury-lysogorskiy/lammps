@@ -593,7 +593,7 @@ variable which invokes the same Python "truncate" function:
   compute         ke all temp
   variable        ke vector c_ke
   variable        ketrunc vector py_foo(v_ke)
-  thermo_style    custom step temp epair v_ketrunc[*]
+  thermo_style    custom step temp epair v_ketrunc[*6]
 
 The vector-style variable "ketrunc" invokes the Python "truncate"
 function on each of the 6 components of the global kinetic energy
@@ -601,8 +601,9 @@ tensor calculated by the :doc:`compute ke <compute_ke>` command.  The
 6 truncated values will be printed with thermo output to the screen
 and log file.
 
-Alternatively, the last 2 lines can be replaced by these to define
-atom-style variables which invoke the same Python "truncate" function:
+Or the last 2 lines of the equal-style variable example can be
+replaced by these to define atom-style variables which invoke the same
+Python "truncate" function:
 
 .. code-block:: LAMMPS
 
@@ -625,13 +626,13 @@ example, consider these (made up) commands:
 .. code-block:: LAMMPS
 
    variable        foo python mixedargs
-   python          mixedargs return v_foo input 6 7.5 v_myValue iv_arg1 iv_argy iv_argz v_flags &
+   python          mixedargs return v_foo input 6 7.5 v_myValue iv_arg1 iv_argy iv_argz v_flag &
                    format fffffsf here """
-def mixedargs(a,b,x,y,z,flags):
+def mixedargs(a,b,x,y,z,flag):
   ...
   return result
 """
-   variable        flags string optionABC
+   variable        flag string optionABC
    variable        myValue equal "2.0*temp*c_pe"
    compute         pe all pe
    compute         peatom all pe/atom
@@ -644,13 +645,13 @@ In this example, these arguments are themselves small formulas
 containing the x,y,z coordinates of each atom as well as a per-atom
 compute (c_peratom) and thermodynamic keyword (zlo).
 
-The other three arguements (7.5,v_myValue,v_flags) are defined by the
+The other three arguements (7.5,v_myValue,v_flag) are defined by the
 *python* command.  The first and last are constant values (7.5 and the
 optionABC string).  The second argument (myValue) is the result of an
 equal-style variable formula which accesses the system temperature and
 potential energy.
 
-The "result" returned by teach invocation of the Python "mixedargs"
+The "result" returned by each invocation of the Python "mixedargs"
 function becomes the per-atom value in the atom-style "field"
 variable, which could be output to a dump file or used elsewhere in
 the input script.
