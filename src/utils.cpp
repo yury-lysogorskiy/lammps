@@ -1046,6 +1046,9 @@ int utils::expand_args(const char *file, int line, int narg, char **arg, int mod
             if (nhi < MAXSMALLINT) {
               nmax = nhi;
               expandflag = 1;
+            } else {
+              lmp->error->all(file, line, ioffset + iarg,
+                              "Upper bound required to expand vector style variable {}", id);
             }
           }
         }
