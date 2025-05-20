@@ -1859,6 +1859,7 @@ Kloss
 Kloza
 kmax
 Kmax
+kMC
 KMP
 kmu
 Knizhnik
@@ -4131,6 +4132,7 @@ volpress
 volumetric
 von
 Voro
+voro
 Vorobyov
 voronoi
 Voronoi
