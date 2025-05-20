@@ -902,7 +902,7 @@ int utils::expand_args(const char *file, int line, int narg, char **arg, int mod
     // match grids
 
     if (strmatch(word, "^[cf]_\\w+:\\w+:\\w+\\[\\d*\\*\\d*\\]")) {
-      auto gridid = utils::parse_grid_id(FLERR, word, lmp->error);
+      auto gridid = utils::parse_grid_id(file, line, word, lmp->error);
 
       size_t first = gridid[2].find('[');
       size_t second = gridid[2].find(']', first + 1);
