@@ -27,7 +27,7 @@ if(BUILD_OMP)
 endif()
 
 if(BUILD_MPI)
-  target_compile_definitions(colvars PUBLIC -DCOLVARS_MPI)
+  target_compile_definitions(colvars PUBLIC -DCOLVARS_MPI -DMPICH_SKIP_MPICXX -DOMPI_SKIP_MPICXX=1)
   target_link_libraries(colvars PUBLIC MPI::MPI_C)
 endif()
 
