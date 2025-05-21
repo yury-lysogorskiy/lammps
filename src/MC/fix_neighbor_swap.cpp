@@ -122,7 +122,7 @@ FixNeighborSwap::FixNeighborSwap(LAMMPS *lmp, int narg, char **arg) :
 
   // read options from end of input line
 
-  options(narg - 8, &arg[8]);
+  options(narg - 9, &arg[9]);
 
   // random number generator, same for all procs
 
@@ -180,7 +180,7 @@ void FixNeighborSwap::options(int narg, char **arg)
 {
   if (narg < 0) utils::missing_cmd_args(FLERR, "fix neighbor/swap", error);
 
-  int ioffset = 8;    // first 8 arguments are fixed and handled in constructor
+  int ioffset = 9;    // first 9 arguments are fixed and handled in constructor
   int iarg = 0;
   while (iarg < narg) {
     if (strcmp(arg[iarg], "region") == 0) {
