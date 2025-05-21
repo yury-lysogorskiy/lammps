@@ -135,7 +135,7 @@ class Molecule : protected Pointers {
   FILE *fp;
   int *count;
   int toffset, boffset, aoffset, doffset, ioffset;
-  int autospecial;
+  int json_format;
   double sizescale;
 
   void read(int);

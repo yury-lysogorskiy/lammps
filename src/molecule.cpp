@@ -24,6 +24,7 @@
 #include "label_map.h"
 #include "math_eigen.h"
 #include "math_extra.h"
+#include "math_special.h"
 #include "memory.h"
 #include "tokenizer.h"
 
@@ -31,6 +32,7 @@
 #include <cstring>
 
 using namespace LAMMPS_NS;
+using MathSpecial::powint;
 
 static constexpr int MAXLINE = 1024;
 static constexpr double EPSILON = 1.0e-7;
@@ -64,6 +66,7 @@ Molecule::Molecule(LAMMPS *lmp, int narg, char **arg, int &index) :
 
   toffset = 0;
   boffset = aoffset = doffset = ioffset = 0;
+  json_format = 0;
   sizescale = 1.0;
 
   fileiarg = index;
@@ -117,7 +120,7 @@ Molecule::Molecule(LAMMPS *lmp, int narg, char **arg, int &index) :
     } else
       break;
   }
-
+  // clang-format on
   index = iarg;
 
   if (atom->labelmapflag &&
@@ -140,7 +143,7 @@ Molecule::Molecule(LAMMPS *lmp, int narg, char **arg, int &index) :
   Molecule::initialize();
 
   json moldata;
-  int json_format = 0;
+  json_format = 0;
   if (comm->me == 0) {
     fp = fopen(arg[fileiarg], "r");
     if (fp == nullptr)
@@ -181,11 +184,96 @@ Molecule::Molecule(LAMMPS *lmp, int narg, char **arg, int &index) :
   }
   MPI_Bcast(&json_format, 1, MPI_INT, 0, world);
 
-  if (json_format) {
-    // process JSON format molecule file
+  if (json_format) {    // process JSON format molecule file
 
-  } else {
-    // process native molecule file
+    // determine sizes and broadcast
+#define JSON_EXTRACT_SIZE(field, value)                                                  \
+  if ((comm->me == 0) && moldata.contains(#field) && moldata[#field].contains("data")) { \
+    value = moldata[#field]["data"].size();                                              \
+  }                                                                                      \
+  MPI_Bcast(&value, 1, MPI_INT, 0, world)
+
+    JSON_EXTRACT_SIZE(coords, natoms);
+    JSON_EXTRACT_SIZE(bonds, nbonds);
+    JSON_EXTRACT_SIZE(angles, nangles);
+    JSON_EXTRACT_SIZE(dihedrals, ndihedrals);
+    JSON_EXTRACT_SIZE(impropers, nimpropers);
+    JSON_EXTRACT_SIZE(fragments, nfragments);
+#undef JSON_EXTRACT_SIZE
+
+    // extract global properties
+    if (comm->me == 0) {
+      if (moldata.contains("masstotal")) {
+        massflag = 1;
+        masstotal = double(moldata["masstotal"]) * sizescale * sizescale * sizescale;
+      }
+      if (moldata.contains("com") && (moldata["com"].size() == 3)) {
+        comflag = 1;
+        com[0] = double(moldata["com"][0]) * sizescale;
+        com[1] = double(moldata["com"][1]) * sizescale;
+        com[2] = double(moldata["com"][2]) * sizescale;
+      }
+      if (moldata.contains("inertia") && (moldata["inertia"].size() == 6)) {
+        inertiaflag = 1;
+        const double scale5 = powint(sizescale, 5);
+        itensor[0] = double(moldata["inertia"][0]) * scale5;
+        itensor[1] = double(moldata["inertia"][1]) * scale5;
+        itensor[2] = double(moldata["inertia"][2]) * scale5;
+        itensor[3] = double(moldata["inertia"][3]) * scale5;
+        itensor[4] = double(moldata["inertia"][4]) * scale5;
+        itensor[5] = double(moldata["inertia"][5]) * scale5;
+      }
+      if (moldata.contains("body") && (moldata["body"].size() == 2)) {
+        bodyflag = 1;
+        const double scale5 = powint(sizescale, 5);
+        avec_body = dynamic_cast<AtomVecBody *>(atom->style_match("body"));
+        if (!avec_body) error->all(FLERR, fileiarg, "Molecule file requires atom style body");
+        nibody = moldata["body"][0];
+        ndbody = moldata["body"][1];
+      }
+      if (moldata.contains("coords")) xflag = 1;
+      if (moldata.contains("types")) typeflag = 1;
+      if (moldata.contains("molecules")) moleculeflag = 1;
+      if (moldata.contains("fragments")) fragmentflag = 1;
+      if (moldata.contains("charges")) qflag = 1;
+      if (moldata.contains("diameters")) radiusflag = 1;
+      if (moldata.contains("dipoles")) muflag = 1;
+      if (moldata.contains("masses")) rmassflag = 1;
+    }
+    // broadcast data
+    MPI_Bcast(&massflag, 1, MPI_INT, 0, world);
+    MPI_Bcast(&masstotal, 1, MPI_DOUBLE, 0, world);
+    MPI_Bcast(&comflag, 1, MPI_INT, 0, world);
+    MPI_Bcast(&com, 3, MPI_DOUBLE, 0, world);
+    MPI_Bcast(&inertiaflag, 1, MPI_INT, 0, world);
+    MPI_Bcast(&inertia, 6, MPI_DOUBLE, 0, world);
+    MPI_Bcast(&bodyflag, 1, MPI_INT, 0, world);
+    MPI_Bcast(&nibody, 1, MPI_INT, 0, world);
+    MPI_Bcast(&ndbody, 1, MPI_INT, 0, world);
+    MPI_Bcast(&xflag, 1, MPI_INT, 0, world);
+    MPI_Bcast(&typeflag, 1, MPI_INT, 0, world);
+    MPI_Bcast(&moleculeflag, 1, MPI_INT, 0, world);
+    MPI_Bcast(&fragmentflag, 1, MPI_INT, 0, world);
+    MPI_Bcast(&qflag, 1, MPI_INT, 0, world);
+    MPI_Bcast(&radiusflag, 1, MPI_INT, 0, world);
+    MPI_Bcast(&muflag, 1, MPI_INT, 0, world);
+    MPI_Bcast(&rmassflag, 1, MPI_INT, 0, world);
+
+    if (nbonds > 0) bondflag = tag_require = 1;
+    if (nangles > 0) angleflag = tag_require = 1;
+    if (ndihedrals > 0) dihedralflag = tag_require = 1;
+    if (nimpropers > 0) improperflag = tag_require = 1;
+
+    // checks. No checks for < 0 needed since size() is at least 0
+
+    if (natoms < 1) error->all(FLERR, fileiarg, "No atoms in molecule file");
+    if ((domain->dimension == 2) && (com[2] != 0.0))
+      error->all(FLERR, fileiarg, "Molecule file z center-of-mass must be 0.0 for 2d systems");
+
+    // allocate required storage
+    Molecule::allocate();
+
+  } else {    // process native molecule file
 
     // scan file for sizes of all fields and allocate storage for them
 
@@ -216,6 +304,7 @@ Molecule::Molecule(LAMMPS *lmp, int narg, char **arg, int &index) :
                    nangletypes, ndihedrals, ndihedraltypes, nimpropers, nimpropertypes);
 }
 
+// clang-format off
 /* ---------------------------------------------------------------------- */
 
 Molecule::~Molecule()
@@ -526,7 +615,7 @@ void Molecule::read(int flag)
         com[0] *= sizescale;
         com[1] *= sizescale;
         com[2] *= sizescale;
-        if (domain->dimension == 2 && com[2] != 0.0)
+        if ((domain->dimension == 2) && (com[2] != 0.0))
           error->all(FLERR, fileiarg, "Molecule file z center-of-mass must be 0.0 for 2d systems");
       } else if (values.matches("^\\s*\\f+\\s+\\f+\\s+\\f+\\s+\\f+\\s+\\f+\\s+\\f+\\s+inertia")) {
         inertiaflag = 1;
@@ -537,7 +626,7 @@ void Molecule::read(int flag)
         itensor[4] = values.next_double();
         itensor[5] = values.next_double();
         nwant = 7;
-        const double scale5 = sizescale * sizescale * sizescale * sizescale * sizescale;
+        const double scale5 = powint(sizescale, 5);
         itensor[0] *= scale5;
         itensor[1] *= scale5;
         itensor[2] *= scale5;
