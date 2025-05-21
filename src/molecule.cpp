@@ -20,6 +20,7 @@
 #include "domain.h"
 #include "error.h"
 #include "force.h"
+#include "json.h"
 #include "label_map.h"
 #include "math_eigen.h"
 #include "math_extra.h"
@@ -138,23 +139,62 @@ Molecule::Molecule(LAMMPS *lmp, int narg, char **arg, int &index) :
 
   Molecule::initialize();
 
-  // scan file for sizes of all fields and allocate storage for them
-
-  if (me == 0) {
+  json moldata;
+  int json_format = 0;
+  if (comm->me == 0) {
     fp = fopen(arg[fileiarg], "r");
     if (fp == nullptr)
       error->one(FLERR, fileiarg, "Cannot open molecule file {}: {}", arg[fileiarg],
                  utils::getsyserror());
+    try {
+      // try to parse as a JSON file
+      moldata = json::parse(fp);
+      json_format = 1;
+      fclose(fp);
+    } catch (std::exception &) {
+      // rewind so we can try reading the file as a native molecule file
+      rewind(fp);
+    }
+
+    // check if JSON file is compatible
+    if (json_format) {
+      if (moldata.contains("application")) {
+        if (moldata["application"] != "LAMMPS")
+          error->one(FLERR, fileiarg, "JSON file {} is not compatible with LAMMPS", arg[fileiarg]);
+      }
+      if (moldata.contains("format")) {
+        if (moldata["format"] != "molecule")
+          error->one(FLERR, fileiarg, "JSON file {} is not a molecule file", arg[fileiarg]);
+      }
+      if (moldata.contains("revision")) {
+        int rev = moldata["revision"];
+        if ((rev < 1) || (rev > 1))
+          error->one(FLERR, fileiarg, "JSON molecule file {} with unsupported revision {}",
+                     arg[fileiarg], rev);
+      }
+      if (moldata.contains("title")) title = moldata["title"];
+      json_format = 1;
+    }
   }
-  Molecule::read(0);
-  if (me == 0) fclose(fp);
-  Molecule::allocate();
+  MPI_Bcast(&json_format, 1, MPI_INT, 0, world);
 
-  // read file again to populate all fields
+  if (json_format) {
+    // process JSON format molecule file
 
-  if (me == 0) fp = fopen(arg[fileiarg], "r");
-  Molecule::read(1);
-  if (me == 0) fclose(fp);
+  } else {
+    // process native molecule file
+
+    // scan file for sizes of all fields and allocate storage for them
+
+    Molecule::read(0);
+    Molecule::allocate();
+
+    // read file again to populate all fields
+
+    if (comm->me == 0) rewind(fp);
+    Molecule::read(1);
+    if (comm->me == 0) fclose(fp);
+  }
 
   // stats
 
