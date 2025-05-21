@@ -132,7 +132,6 @@ class Molecule : protected Pointers {
   void check_attributes();
 
  private:
-  int me;
   FILE *fp;
   int *count;
   int toffset, boffset, aoffset, doffset, ioffset;

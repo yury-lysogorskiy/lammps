@@ -52,16 +52,12 @@ Molecule::Molecule(LAMMPS *lmp, int narg, char **arg, int &index) :
     dx(nullptr), dxcom(nullptr), dxbody(nullptr), quat_external(nullptr), fp(nullptr),
     count(nullptr)
 {
-  me = comm->me;
-
   if (index >= narg) utils::missing_cmd_args(FLERR, "molecule", error);
 
   id = utils::strdup(arg[0]);
   if (!utils::is_id(id))
     error->all(FLERR, Error::ARGZERO,
-               "Molecule template ID {} must have only alphanumeric or underscore"
-               " characters",
-               id);
+               "Molecule template ID {} must have only alphanumeric or underscore characters", id);
 
   // parse args until reach unknown arg (next file)
 
@@ -163,7 +159,7 @@ Molecule::Molecule(LAMMPS *lmp, int narg, char **arg, int &index) :
   // stats
 
   if (title.empty()) title = "(no title)";
-  if (me == 0)
+  if (comm->me == 0)
     utils::logmesg(lmp,
                    "Read molecule template {}:\n{}\n"
                    "  {} molecules\n"
@@ -429,7 +425,7 @@ void Molecule::read(int flag)
 
   // skip 1st line of file
 
-  if (me == 0) {
+  if (comm->me == 0) {
     eof = fgets(line, MAXLINE, fp);
     if (eof == nullptr) error->one(FLERR, fileiarg, "Unexpected end of molecule file");
   }
@@ -1892,8 +1888,9 @@ void Molecule::check_attributes()
   if (radiusflag && !atom->radius_flag) mismatch = 1;
   if (rmassflag && !atom->rmass_flag) mismatch = 1;
 
-  if (mismatch && me == 0)
-    error->warning(FLERR, "Molecule attributes do not match system attributes" + utils::errorurl(26));
+  if (mismatch && (comm->me == 0))
+    error->warning(FLERR, "Molecule attributes do not match system attributes"
+                   + utils::errorurl(26));
 
   // for all atom styles, check nbondtype,etc
 
@@ -1904,7 +1901,8 @@ void Molecule::check_attributes()
   if (atom->nimpropertypes < nimpropertypes) mismatch = 1;
 
   if (mismatch)
-    error->all(FLERR, fileiarg, "Molecule topology type exceeds system topology type" + utils::errorurl(25));
+    error->all(FLERR, fileiarg, "Molecule topology type exceeds system topology type"
+               + utils::errorurl(25));
 
   // for molecular atom styles, check bond_per_atom,etc + maxspecial
   // do not check for atom style template, since nothing stored per atom
@@ -1923,7 +1921,7 @@ void Molecule::check_attributes()
   // warn if molecule topology defined but no special settings
 
   if (bondflag && !specialflag)
-    if (me == 0) error->warning(FLERR, "Molecule has bond topology but no special bond settings");
+    if (comm->me == 0) error->warning(FLERR, "Molecule has bond topology but no special bond settings");
 }
 
 /* ----------------------------------------------------------------------
@@ -2133,7 +2131,7 @@ void Molecule::deallocate()
 void Molecule::readline(char *line)
 {
   int n;
-  if (me == 0) {
+  if (comm->me == 0) {
     if (fgets(line, MAXLINE, fp) == nullptr)
       n = 0;
     else
@@ -2159,7 +2157,7 @@ std::string Molecule::parse_keyword(int flag, char *line)
     // eof is set to 1 if any read hits end-of-file
 
     int eof = 0;
-    if (me == 0) {
+    if (comm->me == 0) {
       if (fgets(line, MAXLINE, fp) == nullptr) eof = 1;
       while (eof == 0 && strspn(line, " \t\n\r") == strlen(line)) {
         if (fgets(line, MAXLINE, fp) == nullptr) eof = 1;
@@ -2170,7 +2168,7 @@ std::string Molecule::parse_keyword(int flag, char *line)
     // if eof, set keyword empty and return
 
     MPI_Bcast(&eof, 1, MPI_INT, 0, world);
-    if (eof) { return {""}; }
+    if (eof) return {""};
 
     // bcast keyword line to all procs
 
