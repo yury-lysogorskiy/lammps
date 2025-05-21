@@ -40,13 +40,14 @@
 #include "region.h"
 #include "update.h"
 
-#include <cctype>
 #include <cfloat>
 #include <cmath>
 #include <cstring>
+#include <unordered_set>
 
 using namespace LAMMPS_NS;
 using namespace FixConst;
+using MathSpecial::square;
 
 static const char cite_fix_neighbor_swap_c[] =
     "fix neighbor/swap command: doi:10.1016/j.commatsci.2022.111929\n\n"
@@ -64,9 +65,11 @@ static const char cite_fix_neighbor_swap_c[] =
 /* ---------------------------------------------------------------------- */
 
 FixNeighborSwap::FixNeighborSwap(LAMMPS *lmp, int narg, char **arg) :
-    Fix(lmp, narg, arg), region(nullptr), idregion(nullptr), type_list(nullptr), qtype(nullptr),
-    c_voro(nullptr), voro_neighbor_list(nullptr), sqrt_mass_ratio(nullptr),
-    local_swap_iatom_list(nullptr), random_equal(nullptr), c_pe(nullptr)
+    Fix(lmp, narg, arg), region(nullptr), idregion(nullptr), type_list(nullptr), rate_list(nullptr),
+    qtype(nullptr), sqrt_mass_ratio(nullptr), voro_neighbor_list(nullptr),
+    local_swap_iatom_list(nullptr), local_swap_neighbor_list(nullptr),
+    local_swap_type_list(nullptr), local_swap_probability(nullptr), random_equal(nullptr),
+    id_voro(nullptr), c_voro(nullptr), c_pe(nullptr)
 {
   if (narg < 10) utils::missing_cmd_args(FLERR, "fix neighbor/swap", error);
 
@@ -79,30 +82,40 @@ FixNeighborSwap::FixNeighborSwap(LAMMPS *lmp, int narg, char **arg) :
   restart_global = 1;
   time_depend = 1;
 
+  ke_flag = 1;
+  diff_flag = 0;
+  rates_flag = 0;
+  nswaptypes = 0;
+
   // required args
 
   nevery = utils::inumeric(FLERR, arg[3], false, lmp);
   ncycles = utils::inumeric(FLERR, arg[4], false, lmp);
   seed = utils::inumeric(FLERR, arg[5], false, lmp);
   double temperature = utils::numeric(FLERR, arg[6], false, lmp);
-  r_0 = utils::inumeric(FLERR, arg[7], false, lmp);
+  double r_0 = utils::inumeric(FLERR, arg[7], false, lmp);
+
+  if (nevery <= 0)
+    error->all(FLERR, 3, "Illegal fix neighbor/swap command nevery value: {}", nevery);
+  if (ncycles < 0)
+    error->all(FLERR, 4, "Illegal fix neighbor/swap command ncycles value: {}", ncycles);
+  if (seed <= 0) error->all(FLERR, 5, "Illegal fix neighbor/swap command seed value: {}", seed);
+  if (temperature <= 0.0)
+    error->all(FLERR, 6, "Illegal fix neighbor/swap command temperature value: {}", temperature);
+  if (r_0 <= 0.0) error->all(FLERR, 7, "Illegal fix neighbor/swap command R0 value: {}", r_0);
 
   // Voro compute check
 
-  int icompute = modify->find_compute(utils::strdup(arg[8]));
-  if (icompute < 0) error->all(FLERR, "Could not find neighbor compute ID");
-  c_voro = modify->compute[icompute];
+  id_voro = utils::strdup(arg[8]);
+  c_voro = modify->get_compute_by_id(id_voro);
+  if (!c_voro) error->all(FLERR, 8, "Could not find compute voronoi ID {}", id_voro);
   if (c_voro->local_flag == 0)
-    error->all(FLERR, "Neighbor compute does not compute local info");
+    error->all(FLERR, 8, "Voronoi compute {} does not compute local info", id_voro);
   if (c_voro->size_local_cols != 3)
-    error->all(FLERR, "Neighbor compute does not give i, j, size as expected");
-
-  if (nevery <= 0) error->all(FLERR, "Illegal fix neighbor/swap command nevery value");
-  if (ncycles < 0) error->all(FLERR, "Illegal fix neighbor/swap command ncycles value");
-  if (seed <= 0) error->all(FLERR, "Illegal fix neighbor/swap command seed value");
-  if (temperature <= 0.0) error->all(FLERR, "Illegal fix neighbor/swap command temperature value");
+    error->all(FLERR, 8, "Voronoi compute {} does not compute i, j, sizes as expected", id_voro);
 
   beta = 1.0 / (force->boltz * temperature);
+  inv_r_0 = 1.0 / r_0;
 
   memory->create(type_list, atom->ntypes, "neighbor/swap:type_list");
   memory->create(rate_list, atom->ntypes, "neighbor/swap:rate_list");
@@ -126,11 +139,6 @@ FixNeighborSwap::FixNeighborSwap(LAMMPS *lmp, int narg, char **arg) :
   nswap_successes = 0.0;
 
   atom_swap_nmax = 0;
-  voro_neighbor_list = nullptr;
-  local_swap_iatom_list = nullptr;
-  local_swap_neighbor_list = nullptr;
-  local_swap_probability = nullptr;
-  local_swap_type_list = nullptr;
 
   // set comm size needed by this Fix
 
@@ -153,6 +161,7 @@ FixNeighborSwap::~FixNeighborSwap()
   memory->destroy(local_swap_probability);
   memory->destroy(local_swap_type_list);
   delete[] idregion;
+  delete[] id_voro;
   delete random_equal;
 }
 
@@ -160,62 +169,86 @@ FixNeighborSwap::~FixNeighborSwap()
    parse optional parameters at end of input line
 ------------------------------------------------------------------------- */
 
+static const std::unordered_set<std::string> known_keywords = {"region", "ke", "types", "diff",
+                                                               "rates"};
+static bool is_keyword(const std::string &arg)
+{
+  return known_keywords.find(arg) != known_keywords.end();
+}
+
 void FixNeighborSwap::options(int narg, char **arg)
 {
-  if (narg < 0) error->all(FLERR, "Illegal fix neighbor/swap command\n");
+  if (narg < 0) utils::missing_cmd_args(FLERR, "fix neighbor/swap", error);
 
-  ke_flag = 1;
-  diff_flag = 0;
-  rates_flag = 0;
-  nswaptypes = 0;
-
+  int ioffset = 8;    // first 8 arguments are fixed and handled in constructor
   int iarg = 0;
   while (iarg < narg) {
     if (strcmp(arg[iarg], "region") == 0) {
-      if (iarg + 2 > narg) error->all(FLERR, "Illegal fix neighbor/swap command");
-      region = domain->get_region_by_id(arg[iarg + 1]);
-      if (!region) error->all(FLERR, "Region ID for fix neighbor/swap does not exist");
+      if (iarg + 2 > narg) utils::missing_cmd_args(FLERR, "fix neighbor/swap region", error);
+      delete[] idregion;
       idregion = utils::strdup(arg[iarg + 1]);
+      region = domain->get_region_by_id(idregion);
+      if (!region)
+        error->all(FLERR, iarg + 1 + ioffset, "Region ID {} for fix neighbor/swap does not exist",
+                   idregion);
       iarg += 2;
     } else if (strcmp(arg[iarg], "ke") == 0) {
-      if (iarg + 2 > narg) error->all(FLERR, "Illegal fix neighbor/swap command");
+      if (iarg + 2 > narg) utils::missing_cmd_args(FLERR, "fix neighbor/swap ke", error);
       ke_flag = utils::logical(FLERR, arg[iarg + 1], false, lmp);
       iarg += 2;
     } else if (strcmp(arg[iarg], "types") == 0) {
-      if (iarg + 3 > narg) error->all(FLERR, "Illegal fix neighbor/swap command");
-      if (diff_flag != 0) error->all(FLERR, "Illegal fix neighbor/swap command");
+      if (iarg + 3 > narg) utils::missing_cmd_args(FLERR, "fix neighbor/swap types", error);
+      if (diff_flag)
+        error->all(FLERR, iarg + ioffset, "Cannot use 'diff' and 'types' keywords together");
       iarg++;
       nswaptypes = 0;
       while (iarg < narg) {
-        if (isalpha(arg[iarg][0])) break;
-        if (nswaptypes >= atom->ntypes) error->all(FLERR, "Illegal fix neighbor/swap command");
-        type_list[nswaptypes] = utils::numeric(FLERR, arg[iarg], false, lmp);
+        if (is_keyword(arg[iarg])) break;
+        if (nswaptypes >= atom->ntypes)
+          error->all(FLERR, iarg + ioffset, "Too many arguments to fix neighbor/swap types");
+        type_list[nswaptypes] = utils::expand_type_int(FLERR, arg[iarg], Atom::ATOM, lmp);
         nswaptypes++;
         iarg++;
       }
     } else if (strcmp(arg[iarg], "diff") == 0) {
-      if (iarg + 2 > narg) error->all(FLERR, "Illegal fix neighbor/swap command");
-      if (nswaptypes != 0) error->all(FLERR, "Illegal fix neighbor/swap command");
+      if (iarg + 2 > narg) utils::missing_cmd_args(FLERR, "fix neighbor/swap diff", error);
+      if (diff_flag)
+        error->all(FLERR, iarg + ioffset, "Cannot not use 'diff' keyword multiple times");
+      if (nswaptypes != 0)
+        error->all(FLERR, iarg + ioffset, "Cannot use 'diff' and 'types' keywords together");
       type_list[nswaptypes] = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
       diff_flag = 1;
       nswaptypes++;
       iarg += 2;
     } else if (strcmp(arg[iarg], "rates") == 0) {
-      if (iarg + atom->ntypes >= narg) error->all(FLERR, "Illegal fix neighbor/swap command");
+      if (iarg + atom->ntypes >= narg)
+        utils::missing_cmd_args(FLERR, "fix neighbor/swap rates", error);
       iarg++;
       int i = 0;
       while (iarg < narg) {
-        if (isalpha(arg[iarg][0])) break;
-        if (i >= atom->ntypes) error->all(FLERR, "Illegal fix neighbor/swap command");
+        if (is_keyword(arg[iarg])) break;
+        if (i >= atom->ntypes) error->all(FLERR, "Too many values for fix neighbor/swap rates");
         rate_list[i] = utils::numeric(FLERR, arg[iarg], false, lmp);
         i++;
         iarg++;
       }
       rates_flag = 1;
-      if (i != atom->ntypes) error->all(FLERR, "Illegal fix neighbor/swap command");
-    } else
-      error->all(FLERR, "Illegal fix neighbor/swap command");
+      if (i != atom->ntypes)
+        error->all(FLERR, "Fix neighbor/swap rates keyword must have exactly {} arguments",
+                   atom->ntypes);
+    } else {
+      error->all(FLERR, "Unknown fix neighbor/swap keyword: {}", arg[iarg]);
+    }
   }
+
+  // checks
+  if (!nswaptypes && !diff_flag)
+    error->all(FLERR, Error::NOLASTLINE,
+               "Must specify at either 'types' or 'diff' keyword with fix neighbor/swap");
+
+  if (nswaptypes < 2 && !diff_flag)
+    error->all(FLERR, Error::NOLASTLINE,
+               "Must specify at least 2 atom types in fix neighbor/swap 'types' keyword");
 }
 
 /* ---------------------------------------------------------------------- */
@@ -232,23 +265,26 @@ int FixNeighborSwap::setmask()
 void FixNeighborSwap::init()
 {
   c_pe = modify->get_compute_by_id("thermo_pe");
+  if (!c_pe) error->all(FLERR, Error::NOLASTLINE, "Could not find 'thermo_pe' compute");
 
-  int *type = atom->type;
-
-  if (nswaptypes < 2 && !diff_flag)
-    error->all(FLERR, "Must specify at least 2 types in fix neighbor/swap command");
+  c_voro = modify->get_compute_by_id(id_voro);
+  if (!c_voro)
+    error->all(FLERR, Error::NOLASTLINE, "Could not find compute voronoi ID {}", id_voro);
 
   // set index and check validity of region
 
   if (idregion) {
     region = domain->get_region_by_id(idregion);
-    if (!region) error->all(FLERR, "Region {} for fix setforce does not exist", idregion);
+    if (!region)
+      error->all(FLERR, Error::NOLASTLINE, "Region {} for fix neighbor/swap does not exist",
+                 idregion);
   }
 
   for (int iswaptype = 0; iswaptype < nswaptypes; iswaptype++)
     if (type_list[iswaptype] <= 0 || type_list[iswaptype] > atom->ntypes)
-      error->all(FLERR, "Invalid atom type in fix neighbor/swap command");
+      error->all(FLERR, Error::NOLASTLINE, "Invalid atom type in fix neighbor/swap command");
 
+  int *type = atom->type;
   if (atom->q_flag) {
     double qmax, qmin;
     int firstall, first;
@@ -258,23 +294,27 @@ void FixNeighborSwap::init()
       for (int i = 0; i < atom->nlocal; i++) {
         if (atom->mask[i] & groupbit) {
           if (type[i] == type_list[iswaptype]) {
-            if (first) {
+            if (first > 0) {
               qtype[iswaptype] = atom->q[i];
               first = 0;
             } else if (qtype[iswaptype] != atom->q[i])
-              error->one(FLERR, "All atoms of a swapped type must have the same charge.");
+              first = -1;
           }
         }
       }
       MPI_Allreduce(&first, &firstall, 1, MPI_INT, MPI_MIN, world);
-      if (firstall)
-        error->all(FLERR,
-                   "At least one atom of each swapped type must be present to define charges.");
+      if (firstall < 0)
+        error->all(FLERR, Error::NOLASTLINE,
+                   "All atoms of a swapped type must have the same charge");
+      if (firstall > 0)
+        error->all(FLERR, Error::NOLASTLINE,
+                   "At least one atom of each swapped type must be present to define charges");
       if (first) qtype[iswaptype] = -DBL_MAX;
       MPI_Allreduce(&qtype[iswaptype], &qmax, 1, MPI_DOUBLE, MPI_MAX, world);
       if (first) qtype[iswaptype] = DBL_MAX;
       MPI_Allreduce(&qtype[iswaptype], &qmin, 1, MPI_DOUBLE, MPI_MIN, world);
-      if (qmax != qmin) error->all(FLERR, "All atoms of a swapped type must have same charge.");
+      if (qmax != qmin)
+        error->all(FLERR, Error::NOLASTLINE, "All atoms of a swapped type must have same charge.");
     }
   }
 
@@ -308,8 +348,9 @@ void FixNeighborSwap::init()
 
     int flagall;
     MPI_Allreduce(&flag, &flagall, 1, MPI_INT, MPI_SUM, world);
-
-    if (flagall) error->all(FLERR, "Cannot do neighbor/swap on atoms in atom_modify first group");
+    if (flagall)
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Cannot use fix neighbor/swap on atoms in atom_modify first group");
   }
 }
 
@@ -535,7 +576,7 @@ int FixNeighborSwap::pick_j_swap_neighbor(int i)
         return j;
       }
     }
-    error->all(FLERR, "Did not select local neighbor swap atom");
+    error->all(FLERR, Error::NOLASTLINE, "Did not select local neighbor swap atom");
   }
 
   MPI_Allreduce(&jtype_selected_local, &jtype_selected, 1, MPI_INT, MPI_MAX, world);
@@ -547,8 +588,7 @@ int FixNeighborSwap::pick_j_swap_neighbor(int i)
 
 double FixNeighborSwap::get_distance(double *i, double *j)
 {
-  double r = sqrt(MathSpecial::square((i[0] - j[0])) + MathSpecial::square((i[1] - j[1])) +
-                  MathSpecial::square((i[2] - j[2])));
+  double r = sqrt(square((i[0] - j[0])) + square((i[1] - j[1])) + square((i[2] - j[2])));
   return r;
 }
 
@@ -632,9 +672,9 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
             if (rates_flag) {
               local_swap_probability[njswap_local] =
-                  rate_list[type[temp_j] - 1] * exp(-MathSpecial::square(r / r_0));
+                  rate_list[type[temp_j] - 1] * exp(-square(r * inv_r_0));
             } else {
-              local_swap_probability[njswap_local] = exp(-MathSpecial::square(r / r_0));
+              local_swap_probability[njswap_local] = exp(-square(r * inv_r_0));
             }
             local_probability += local_swap_probability[njswap_local];
             local_swap_type_list[njswap_local] = type[temp_j];
@@ -657,9 +697,9 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
                 if (rates_flag) {
                   local_swap_probability[njswap_local] =
-                      rate_list[type[temp_j] - 1] * exp(-MathSpecial::square(r / r_0));
+                      rate_list[type[temp_j] - 1] * exp(-square(r * inv_r_0));
                 } else {
-                  local_swap_probability[njswap_local] = exp(-MathSpecial::square(r / r_0));
+                  local_swap_probability[njswap_local] = exp(-square(r * inv_r_0));
                 }
                 local_probability += local_swap_probability[njswap_local];
 
@@ -687,9 +727,9 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
           if (rates_flag) {
             local_swap_probability[njswap_local] =
-                rate_list[type[temp_j] - 1] * exp(-MathSpecial::square(r / r_0));
+                rate_list[type[temp_j] - 1] * exp(-square(r * inv_r_0));
           } else {
-            local_swap_probability[njswap_local] = exp(-MathSpecial::square(r / r_0));
+            local_swap_probability[njswap_local] = exp(-square(r * inv_r_0));
           }
           local_probability += local_swap_probability[njswap_local];
 
@@ -713,9 +753,9 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
               if (rates_flag) {
                 local_swap_probability[njswap_local] =
-                    rate_list[type[temp_j] - 1] * exp(-MathSpecial::square(r / r_0));
+                    rate_list[type[temp_j] - 1] * exp(-square(r * inv_r_0));
               } else {
-                local_swap_probability[njswap_local] = exp(-MathSpecial::square(r / r_0));
+                local_swap_probability[njswap_local] = exp(-square(r * inv_r_0));
               }
               local_probability += local_swap_probability[njswap_local];
 
@@ -897,5 +937,6 @@ void FixNeighborSwap::restart(char *buf)
 
   bigint ntimestep_restart = (bigint) ubuf(list[n++]).i;
   if (ntimestep_restart != update->ntimestep)
-    error->all(FLERR, "Must not reset timestep when restarting fix neighbor/swap");
+    error->all(FLERR, Error::NOLASTLINE,
+               "Must not reset timestep when restarting fix neighbor/swap");
 }

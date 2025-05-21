@@ -47,7 +47,6 @@ class FixNeighborSwap : public Fix {
   int niswap, njswap;                  // # of i,j swap atoms on all procs
   int niswap_local, njswap_local;      // # of swap atoms on this proc
   int niswap_before, njswap_before;    // # of swap atoms on procs < this proc
-  // int global_i_ID;                     // global id of selected i atom
   class Region *region;    // swap region
   char *idregion;          // swap region id
 
@@ -66,7 +65,7 @@ class FixNeighborSwap : public Fix {
   bool unequal_cutoffs;
 
   int atom_swap_nmax;
-  double beta, r_0;
+  double beta, inv_r_0;
   double local_probability;     // Total swap probability stored on this proc
   double global_probability;    // Total swap probability across all proc
   double prev_probability;      // Swap probability on proc < this proc
@@ -81,8 +80,8 @@ class FixNeighborSwap : public Fix {
 
   class RanPark *random_equal;
 
-  class Compute *c_voro;
-  class Compute *c_pe;
+  char *id_voro;
+  class Compute *c_voro, *c_pe;
 
   void options(int, char **);
   int attempt_swap();
