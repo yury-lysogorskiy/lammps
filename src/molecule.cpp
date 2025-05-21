@@ -158,13 +158,16 @@ Molecule::Molecule(LAMMPS *lmp, int narg, char **arg, int &index) :
 
     // check if JSON file is compatible
     if (json_format) {
+      std::string val;
       if (moldata.contains("application")) {
         if (moldata["application"] != "LAMMPS")
-          error->one(FLERR, fileiarg, "JSON file {} is not compatible with LAMMPS", arg[fileiarg]);
+          error->one(FLERR, fileiarg, "JSON file {} is not compatible with LAMMPS: {}",
+                     arg[fileiarg], std::string(moldata["application"]));
       }
       if (moldata.contains("format")) {
         if (moldata["format"] != "molecule")
-          error->one(FLERR, fileiarg, "JSON file {} is not a molecule file", arg[fileiarg]);
+          error->one(FLERR, fileiarg, "JSON file {} is not a molecule file: {}", arg[fileiarg],
+                     std::string(moldata["format"]));
       }
       if (moldata.contains("revision")) {
         int rev = moldata["revision"];
