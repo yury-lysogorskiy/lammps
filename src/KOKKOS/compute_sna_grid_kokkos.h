@@ -39,8 +39,8 @@ namespace LAMMPS_NS {
 struct TagCSNAGridComputeNeigh{};
 struct TagCSNAGridComputeCayleyKlein{};
 struct TagCSNAGridPreUi{};
-struct TagCSNAGridComputeUiSmall{}; // more parallelism, more divergence
-struct TagCSNAGridComputeUiLarge{}; // less parallelism, no divergence
+template <bool chemsnap> struct TagCSNAGridComputeUiSmall{}; // more parallelism, more divergence
+template <bool chemsnap> struct TagCSNAGridComputeUiLarge{}; // less parallelism, no divergence
 struct TagCSNAGridTransformUi{}; // re-order ulisttot from SoA to AoSoA, zero ylist
 template <bool chemsnap> struct TagCSNAGridComputeZi{};
 template <bool chemsnap> struct TagCSNAGridComputeBi{};
@@ -166,11 +166,11 @@ class ComputeSNAGridKokkos : public ComputeSNAGrid {
   KOKKOS_INLINE_FUNCTION
   void operator() (TagCSNAGridPreUi, const int& iatom) const;
 
-  KOKKOS_INLINE_FUNCTION
-  void operator() (TagCSNAGridComputeUiSmall,const typename Kokkos::TeamPolicy<DeviceType, TagCSNAGridComputeUiSmall>::member_type& team) const;
+  template <bool chemsnap> KOKKOS_INLINE_FUNCTION
+  void operator() (TagCSNAGridComputeUiSmall<chemsnap>,const typename Kokkos::TeamPolicy<DeviceType, TagCSNAGridComputeUiSmall<chemsnap>>::member_type& team) const;
 
-  KOKKOS_INLINE_FUNCTION
-  void operator() (TagCSNAGridComputeUiLarge,const typename Kokkos::TeamPolicy<DeviceType, TagCSNAGridComputeUiLarge>::member_type& team) const;
+  template <bool chemsnap> KOKKOS_INLINE_FUNCTION
+  void operator() (TagCSNAGridComputeUiLarge<chemsnap>,const typename Kokkos::TeamPolicy<DeviceType, TagCSNAGridComputeUiLarge<chemsnap>>::member_type& team) const;
 
   KOKKOS_INLINE_FUNCTION
   void operator() (TagCSNAGridTransformUi, const int& iatom_mod, const int& idxu, const int& iatom_div) const;
@@ -204,7 +204,7 @@ class ComputeSNAGridKokkos : public ComputeSNAGrid {
 
  protected:
 
-  SNAKokkos<DeviceType, real_type, vector_length, 1> snaKK;
+  SNAKokkos<DeviceType, real_type, vector_length> snaKK;
 
   int max_neighs, chunk_size, chunk_offset;
   int host_flag;
@@ -255,7 +255,7 @@ class ComputeSNAGridKokkos : public ComputeSNAGrid {
 
   // Make SNAKokkos a friend
   // the 1 is because ComputeSNAGridKokkos does not support padded vectorization yet
-  friend class SNAKokkos<DeviceType, real_type, vector_length, 1>;
+  friend class SNAKokkos<DeviceType, real_type, vector_length>;
 };
 
 // These wrapper classes exist to make the compute style factory happy/avoid having

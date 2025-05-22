@@ -32,6 +32,11 @@ namespace LAMMPS_NS {
 // copied from pair_snap_kokkos.h
 // pre-declare so sna_kokkos.h can refer to it
 template<class DeviceType, typename real_type_, int vector_length_> class PairSNAPKokkos;
+
+// This class acts as a shared memory backing to what otherwise looks like a
+// per-thread register array. It is specialized to complex numbers, and automatically
+// stores complex numbers in a way that is automatically coalesced across
+// a warp.
 template<typename real_type_, int vector_length_>
 struct WignerWrapper {
   using real_type = real_type_;
@@ -39,7 +44,7 @@ struct WignerWrapper {
   static constexpr int vector_length = vector_length_;
 
   const int offset; // my offset into the vector (0, ..., vector_length - 1)
-  real_type* buffer; // buffer of real numbers
+  real_type* buffer; // buffer of real numbers, contiguous real then imaginary
 
   KOKKOS_INLINE_FUNCTION
   WignerWrapper(complex* buffer_, const int offset_)
@@ -55,6 +60,47 @@ struct WignerWrapper {
   void set(const int& ma, const complex& store) const {
     buffer[offset + 2 * vector_length * ma] = store.re;
     buffer[offset + vector_length + 2 * vector_length * ma] = store.im;
+  }
+};
+
+// This class is an extension of the Wigner wrapper above, which automatically
+// stores a Kokkos::Array of complex values in a way that is automatically
+// coalesced across a warp.
+template<typename real_type_, int vector_length_, int num_elems_ = 1>
+struct MultiWignerWrapper {
+  using real_type = real_type_;
+  using complex = SNAComplex<real_type>;
+  static constexpr int vector_length = vector_length_;
+  static constexpr int num_elems = num_elems_;
+
+  using complex_array = Kokkos::Array<complex, num_elems>;
+
+  const int offset; // my offset into the vector (0, ..., vector_length - 1)
+  real_type* buffer; // buffer of real numbers
+
+  KOKKOS_INLINE_FUNCTION
+  MultiWignerWrapper(complex* buffer_, const int offset_)
+   : offset(offset_), buffer(reinterpret_cast<real_type*>(buffer_)
+    )
+  { ; }
+
+  KOKKOS_INLINE_FUNCTION
+  complex_array get(const int& ma) const {
+    complex_array store;
+    #pragma unroll (num_elems)
+    for (int d = 0; d < num_elems; d++)
+      store[d] = complex(buffer[offset + 2 * num_elems * vector_length * ma + (2 * d) * vector_length],
+                         buffer[offset + 2 * num_elems * vector_length * ma + (2 * d + 1) * vector_length]);
+    return store;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  void set(const int& ma, const complex_array& store) const {
+    #pragma unroll (num_elems)
+    for (int d = 0; d < num_elems; d++) {
+      buffer[offset + 2 * num_elems * vector_length * ma + (2 * d) * vector_length] = store[d].re;
+      buffer[offset + 2 * num_elems * vector_length * ma + (2 * d + 1) * vector_length] = store[d].im;
+    }
   }
 };
 
@@ -127,7 +173,7 @@ struct alignas(16) idxz_struct {
 };
 
 
-template<class DeviceType, typename real_type_, int vector_length_, int padding_factor_>
+template<class DeviceType, typename real_type_, int vector_length_, int padding_factor_ = 1, int ui_batch_ = 1, int yi_batch_ = 1>
 class SNAKokkos {
 
  public:
@@ -136,7 +182,8 @@ class SNAKokkos {
   static constexpr int vector_length = vector_length_;
   static constexpr int padding_factor = padding_factor_;
 
-  static constexpr int yi_batch = PairSNAPKokkos<DeviceType, real_type, vector_length>::yi_batch;
+  static constexpr int ui_batch = ui_batch_;
+  static constexpr int yi_batch = yi_batch_;
 
   using KKDeviceType = typename KKDevice<DeviceType>::value;
   static constexpr LAMMPS_NS::ExecutionSpace execution_space = ExecutionSpaceFromDevice<DeviceType>::space;
@@ -173,7 +220,7 @@ class SNAKokkos {
   SNAKokkos() {};
 
   KOKKOS_INLINE_FUNCTION
-  SNAKokkos(const SNAKokkos<DeviceType, real_type, vector_length, padding_factor>& sna, const typename Kokkos::TeamPolicy<DeviceType>::member_type& team);
+  SNAKokkos(const SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>& sna, const typename Kokkos::TeamPolicy<DeviceType>::member_type& team);
 
   template<class CopyClass>
   inline
@@ -199,11 +246,11 @@ class SNAKokkos {
   void pre_ui(const int&, const int&, const int&) const; // ForceSNAP
 
   // version of the code with parallelism over j_bend
-  KOKKOS_INLINE_FUNCTION
-  void compute_ui_small(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team, const int, const int, const int, const int) const; // ForceSNAP
+  template <bool chemsnap> KOKKOS_INLINE_FUNCTION
+  void compute_ui_small(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team, const int, const int, const int, const int, const int) const; // ForceSNAP
   // version of the code without parallelism over j_bend
-  KOKKOS_INLINE_FUNCTION
-  void compute_ui_large(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team, const int, const int, const int) const; // ForceSNAP
+  template <bool chemsnap> KOKKOS_INLINE_FUNCTION
+  void compute_ui_large(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team, const int, const int, const int, const int) const; // ForceSNAP
 
   // desymmetrize ulisttot
   KOKKOS_INLINE_FUNCTION
@@ -234,9 +281,15 @@ class SNAKokkos {
 
   // core "evaluation" functions that get plugged into "compute" functions
   // plugged into compute_ui_small, compute_ui_large
+  template<bool chemsnap>
   KOKKOS_FORCEINLINE_FUNCTION
-  void evaluate_ui_jbend(const WignerWrapper<real_type, vector_length>&, const complex&, const complex&, const real_type&, const int&,
-                        const int&, const int&) const;
+  void evaluate_ui_jbend(const MultiWignerWrapper<real_type, vector_length, ui_batch>&,
+    const Kokkos::Array<complex, ui_batch>& a,
+    const Kokkos::Array<complex, ui_batch>& b,
+    const Kokkos::Array<real_type, ui_batch>& sfac,
+    const Kokkos::Array<int, ui_batch>&,
+    const int&, const int&) const;
+
   // plugged into compute_zi, compute_yi; returns complex
   KOKKOS_FORCEINLINE_FUNCTION
   auto evaluate_zi(const int&, const int&, const int&, const int&, const int&, const int&, const int&, const int&, const int&,
@@ -300,7 +353,7 @@ class SNAKokkos {
   t_sna_2d dinnerij;
   t_sna_2i element;
   t_sna_3d dedr;
-  int natom, natom_pad, nmax;
+  int natom, natom_pad, nmax, batched_max_neighs;
 
   void grow_rij(int, int);
 

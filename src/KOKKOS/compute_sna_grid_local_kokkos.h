@@ -39,8 +39,8 @@ namespace LAMMPS_NS {
 struct TagCSNAGridLocalComputeNeigh{};
 struct TagCSNAGridLocalComputeCayleyKlein{};
 struct TagCSNAGridLocalPreUi{};
-struct TagCSNAGridLocalComputeUiSmall{}; // more parallelism, more divergence
-struct TagCSNAGridLocalComputeUiLarge{}; // less parallelism, no divergence
+template <bool chemsnap> struct TagCSNAGridLocalComputeUiSmall{}; // more parallelism, more divergence
+template <bool chemsnap> struct TagCSNAGridLocalComputeUiLarge{}; // less parallelism, no divergence
 struct TagCSNAGridLocalTransformUi{}; // re-order ulisttot from SoA to AoSoA, zero ylist
 template <bool chemsnap> struct TagCSNAGridLocalComputeZi{};
 template <bool chemsnap> struct TagCSNAGridLocalComputeBi{};
@@ -161,11 +161,13 @@ class ComputeSNAGridLocalKokkos : public ComputeSNAGridLocal {
   KOKKOS_INLINE_FUNCTION
   void operator() (TagCSNAGridLocalPreUi, const int& iatom) const;
 
-  KOKKOS_INLINE_FUNCTION
-  void operator() (TagCSNAGridLocalComputeUiSmall,const typename Kokkos::TeamPolicy<DeviceType, TagCSNAGridLocalComputeUiSmall>::member_type& team) const;
+  template <bool chemsnap> KOKKOS_INLINE_FUNCTION
+  void operator() (TagCSNAGridLocalComputeUiSmall<chemsnap>,
+    const typename Kokkos::TeamPolicy<DeviceType, TagCSNAGridLocalComputeUiSmall<chemsnap>>::member_type& team) const;
 
-  KOKKOS_INLINE_FUNCTION
-  void operator() (TagCSNAGridLocalComputeUiLarge,const typename Kokkos::TeamPolicy<DeviceType, TagCSNAGridLocalComputeUiLarge>::member_type& team) const;
+  template <bool chemsnap> KOKKOS_INLINE_FUNCTION
+  void operator() (TagCSNAGridLocalComputeUiLarge<chemsnap>,
+    const typename Kokkos::TeamPolicy<DeviceType, TagCSNAGridLocalComputeUiLarge<chemsnap>>::member_type& team) const;
 
   KOKKOS_INLINE_FUNCTION
   void operator() (TagCSNAGridLocalTransformUi, const int& iatom_mod, const int& idxu, const int& iatom_div) const;
@@ -245,7 +247,7 @@ class ComputeSNAGridLocalKokkos : public ComputeSNAGridLocal {
   double lo0, lo1, lo2;
 
   // Make SNAKokkos a friend
-  friend class SNAKokkos<DeviceType, real_type, vector_length, 1>;
+  friend class SNAKokkos<DeviceType, real_type, vector_length>;
 };
 
 // These wrapper classes exist to make the compute style factory happy/avoid having

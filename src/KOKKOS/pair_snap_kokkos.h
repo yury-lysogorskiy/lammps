@@ -56,8 +56,8 @@ struct TagPairSNAPComputeForce{};
 // GPU backend only
 struct TagPairSNAPComputeNeigh{};
 struct TagPairSNAPComputeCayleyKlein{};
-struct TagPairSNAPComputeUiSmall{}; // more parallelism, more divergence
-struct TagPairSNAPComputeUiLarge{}; // less parallelism, no divergence
+template <bool chemsnap> struct TagPairSNAPComputeUiSmall{}; // more parallelism, more divergence
+template <bool chemsnap> struct TagPairSNAPComputeUiLarge{}; // less parallelism, no divergence
 template<int dir>
 struct TagPairSNAPComputeFusedDeidrjSmall{}; // more parallelism, more divergence
 template<int dir>
@@ -93,7 +93,7 @@ class PairSNAPKokkos : public PairSNAP {
   static constexpr int team_size_compute_neigh = 2;
   static constexpr int tile_size_compute_ck = 2;
   static constexpr int tile_size_pre_ui = 2;
-  static constexpr int team_size_compute_ui = 2;
+  static constexpr int base_team_size_compute_ui = 2;
   static constexpr int tile_size_transform_ui = 2;
   static constexpr int tile_size_compute_zi = 2;
   static constexpr int min_blocks_compute_zi = 0; // no minimum bound
@@ -103,12 +103,13 @@ class PairSNAPKokkos : public PairSNAP {
   static constexpr int min_blocks_compute_yi = 0; // no minimum bound
   static constexpr int team_size_compute_fused_deidrj = 2;
 
+  static constexpr int ui_batch = 1;
   static constexpr int yi_batch = 1;
 #elif defined(KOKKOS_ENABLE_SYCL)
   static constexpr int team_size_compute_neigh = 4;
   static constexpr int tile_size_compute_ck = 4;
   static constexpr int tile_size_pre_ui = 8;
-  static constexpr int team_size_compute_ui = 8;
+  static constexpr int base_team_size_compute_ui = 8;
   static constexpr int tile_size_transform_ui = 8;
   static constexpr int tile_size_compute_zi = 4;
   static constexpr int min_blocks_compute_zi = 0; // no minimum bound
@@ -118,12 +119,13 @@ class PairSNAPKokkos : public PairSNAP {
   static constexpr int min_blocks_compute_yi = 0; // no minimum bound
   static constexpr int team_size_compute_fused_deidrj = 4;
 
+  static constexpr int ui_batch = 1;
   static constexpr int yi_batch = 1;
 #else
   static constexpr int team_size_compute_neigh = 4;
   static constexpr int tile_size_compute_ck = 4;
   static constexpr int tile_size_pre_ui = 4;
-  static constexpr int team_size_compute_ui = sizeof(real_type) == 4 ? 8 : 4;
+  static constexpr int base_team_size_compute_ui = sizeof(real_type) == 4 ? 8 : 4;
   static constexpr int tile_size_transform_ui = 4;
   static constexpr int tile_size_compute_zi = 8;
   static constexpr int tile_size_compute_bi = 4;
@@ -135,8 +137,14 @@ class PairSNAPKokkos : public PairSNAP {
   static constexpr int min_blocks_compute_zi = 2;
   static constexpr int min_blocks_compute_yi = 2;
 
+  static constexpr int ui_batch = host_flag ? 1 : 4;
   static constexpr int yi_batch = host_flag ? 1 : 4;
 #endif
+
+  // get the final batch size for ComputeUi
+  static constexpr int team_size_compute_ui = base_team_size_compute_ui / ui_batch;
+  static_assert(team_size_compute_ui > 0, "ui_batch is too large for team_size_compute_ui");
+  static_assert(base_team_size_compute_ui % ui_batch == 0, "ComputeUi batch size must divide into the team size");
 
   // check yi_batch divides into padding_factor
   static_assert((padding_factor / yi_batch) * yi_batch == padding_factor, "yi_batch must divide into padding_factor");
@@ -213,11 +221,13 @@ class PairSNAPKokkos : public PairSNAP {
   KOKKOS_INLINE_FUNCTION
   void operator() (TagPairSNAPPreUi, const int& iatom) const;
 
-  KOKKOS_INLINE_FUNCTION
-  void operator() (TagPairSNAPComputeUiSmall,const typename Kokkos::TeamPolicy<DeviceType, TagPairSNAPComputeUiSmall>::member_type& team) const;
+  template<bool chemsnap> KOKKOS_INLINE_FUNCTION
+  void operator() (TagPairSNAPComputeUiSmall<chemsnap>,
+    const typename Kokkos::TeamPolicy<DeviceType, TagPairSNAPComputeUiSmall<chemsnap>>::member_type& team) const;
 
-  KOKKOS_INLINE_FUNCTION
-  void operator() (TagPairSNAPComputeUiLarge,const typename Kokkos::TeamPolicy<DeviceType, TagPairSNAPComputeUiLarge>::member_type& team) const;
+  template<bool chemsnap> KOKKOS_INLINE_FUNCTION
+  void operator() (TagPairSNAPComputeUiLarge<chemsnap>,
+    const typename Kokkos::TeamPolicy<DeviceType, TagPairSNAPComputeUiLarge<chemsnap>>::member_type& team) const;
 
   KOKKOS_INLINE_FUNCTION
   void operator() (TagPairSNAPTransformUi, const int& iatom_mod, const int& idxu, const int& iatom_div) const;
@@ -328,9 +338,9 @@ class PairSNAPKokkos : public PairSNAP {
   typename AT::t_efloat_1d d_eatom;
   typename AT::t_virial_array d_vatom;
 
-  SNAKokkos<DeviceType, real_type, vector_length, padding_factor> snaKK;
+  SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch> snaKK;
 
-  int inum, max_neighs, chunk_size, chunk_offset;
+  int inum, max_neighs, batched_max_neighs, chunk_size, chunk_offset;
   int neighflag;
 
   int eflag,vflag;
@@ -380,7 +390,7 @@ class PairSNAPKokkos : public PairSNAP {
   int scratch_size_helper(int values_per_team);
 
   // Make SNAKokkos a friend
-  friend class SNAKokkos<DeviceType, real_type, vector_length, padding_factor>;
+  friend class SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>;
 };
 
 

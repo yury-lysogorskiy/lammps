@@ -163,6 +163,8 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::compute(int eflag_in,
   }*/
   max_neighs = 0;
   Kokkos::parallel_reduce("PairSNAPKokkos::find_max_neighs",inum, FindMaxNumNeighs<DeviceType>(k_list), Kokkos::Max<int>(max_neighs));
+  Kokkos::fence();
+  batched_max_neighs = (max_neighs + ui_batch - 1) / ui_batch;
 
   if (beta_max < inum) {
     beta_max = inum;
@@ -239,31 +241,47 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::compute(int eflag_in,
       // team_size_compute_ui is defined in `pair_snap_kokkos.h`
       // scratch size: 32 atoms * (twojmax+1) cached values, no double buffer
       const int tile_size = vector_length * (twojmax + 1);
-      const int scratch_size = scratch_size_helper<complex>(team_size_compute_ui * tile_size);
+      const int scratch_size = scratch_size_helper<complex>(ui_batch * team_size_compute_ui * tile_size);
 
       if (chunk_size < parallel_thresh)
       {
         // Version with parallelism over j_bend
 
         // total number of teams needed: (natoms / 32) * (max_neighs) * ("bend" locations)
-        const int n_teams = chunk_size_div * max_neighs * (twojmax + 1);
+        const int n_teams = chunk_size_div * batched_max_neighs * (twojmax + 1);
         const int n_teams_div = (n_teams + team_size_compute_ui - 1) / team_size_compute_ui;
 
-        SnapAoSoATeamPolicy<DeviceType, team_size_compute_ui, TagPairSNAPComputeUiSmall>
-          policy_ui(n_teams_div, team_size_compute_ui, vector_length);
-        policy_ui = policy_ui.set_scratch_size(0, Kokkos::PerTeam(scratch_size));
-        Kokkos::parallel_for("ComputeUiSmall",policy_ui,*this);
+        if (nelements > 1) {
+          SnapAoSoATeamPolicy<DeviceType, team_size_compute_ui, TagPairSNAPComputeUiSmall<true>>
+            policy_ui(n_teams_div, team_size_compute_ui, vector_length);
+          policy_ui = policy_ui.set_scratch_size(0, Kokkos::PerTeam(scratch_size));
+          Kokkos::parallel_for("ComputeUiSmallChemsnap", policy_ui, *this);
+        } else {
+          SnapAoSoATeamPolicy<DeviceType, team_size_compute_ui, TagPairSNAPComputeUiSmall<false>>
+            policy_ui(n_teams_div, team_size_compute_ui, vector_length);
+          policy_ui = policy_ui.set_scratch_size(0, Kokkos::PerTeam(scratch_size));
+          Kokkos::parallel_for("ComputeUiSmall", policy_ui, *this);
+        }
+
       } else {
         // Version w/out parallelism over j_bend
 
         // total number of teams needed: (natoms / 32) * (max_neighs)
-        const int n_teams = chunk_size_div * max_neighs;
+        const int n_teams = chunk_size_div * batched_max_neighs;
         const int n_teams_div = (n_teams + team_size_compute_ui - 1) / team_size_compute_ui;
 
-        SnapAoSoATeamPolicy<DeviceType, team_size_compute_ui, TagPairSNAPComputeUiLarge>
-          policy_ui(n_teams_div, team_size_compute_ui, vector_length);
-        policy_ui = policy_ui.set_scratch_size(0, Kokkos::PerTeam(scratch_size));
-        Kokkos::parallel_for("ComputeUiLarge",policy_ui,*this);
+        if (nelements > 1) {
+          SnapAoSoATeamPolicy<DeviceType, team_size_compute_ui, TagPairSNAPComputeUiLarge<true>>
+            policy_ui(n_teams_div, team_size_compute_ui, vector_length);
+          policy_ui = policy_ui.set_scratch_size(0, Kokkos::PerTeam(scratch_size));
+          Kokkos::parallel_for("ComputeUiLargeChemsnap", policy_ui, *this);
+        } else {
+          SnapAoSoATeamPolicy<DeviceType, team_size_compute_ui, TagPairSNAPComputeUiLarge<false>>
+            policy_ui(n_teams_div, team_size_compute_ui, vector_length);
+          policy_ui = policy_ui.set_scratch_size(0, Kokkos::PerTeam(scratch_size));
+          Kokkos::parallel_for("ComputeUiLarge", policy_ui, *this);
+        }
+
       }
     }
 
@@ -527,7 +545,7 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::coeff(int narg, char 
   Kokkos::deep_copy(d_dinnerelem,h_dinnerelem);
   Kokkos::deep_copy(d_map,h_map);
 
-  snaKK = SNAKokkos<DeviceType, real_type, vector_length, padding_factor>(*this);
+  snaKK = SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>(*this);
   snaKK.grow_rij(0,0);
   snaKK.init();
 }
@@ -769,17 +787,19 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::operator() (TagPairSN
 ------------------------------------------------------------------------- */
 
 template<class DeviceType, typename real_type, int vector_length>
+template<bool chemsnap>
 KOKKOS_INLINE_FUNCTION
-void PairSNAPKokkos<DeviceType, real_type, vector_length>::operator() (TagPairSNAPComputeUiSmall,const typename Kokkos::TeamPolicy<DeviceType,TagPairSNAPComputeUiSmall>::member_type& team) const {
+void PairSNAPKokkos<DeviceType, real_type, vector_length>::operator() (TagPairSNAPComputeUiSmall<chemsnap>,
+  const typename Kokkos::TeamPolicy<DeviceType,TagPairSNAPComputeUiSmall<chemsnap>>::member_type& team) const {
 
   // extract flattened atom_div / neighbor number / bend location
   int flattened_idx = team.team_rank() + team.league_rank() * team_size_compute_ui;
 
   // extract neighbor index, iatom_div
-  int iatom_div = flattened_idx / (max_neighs * (twojmax + 1)); // removed "const" to work around GCC 7 bug
-  const int jj_jbend = flattened_idx - iatom_div * (max_neighs * (twojmax + 1));
-  const int jbend = jj_jbend / max_neighs;
-  int jj = jj_jbend - jbend * max_neighs; // removed "const" to work around GCC 7 bug
+  int iatom_div = flattened_idx / (batched_max_neighs * (twojmax + 1)); // removed "const" to work around GCC 7 bug
+  const int jj_jbend = flattened_idx - iatom_div * (batched_max_neighs * (twojmax + 1));
+  const int j_bend = jj_jbend / batched_max_neighs;
+  int jnbor_batch = jj_jbend - j_bend * batched_max_neighs; // removed "const" to work around GCC 7 bug
 
   Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, vector_length),
     [&] (const int iatom_mod) {
@@ -787,23 +807,29 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::operator() (TagPairSN
     if (ii >= chunk_size) return;
 
     const int ninside = d_ninside(ii);
-    if (jj >= ninside) return;
 
-    snaKK.compute_ui_small(team, iatom_mod, jbend, jj, iatom_div);
+    // find out what the first jnbor is
+    // if that one is >= than neigh_inside, nothing to see here
+    int first_jnbor = ui_batch * jnbor_batch;
+    if (first_jnbor >= ninside) return;
+
+    snaKK.template compute_ui_small<chemsnap>(team, iatom_mod, j_bend, first_jnbor, ninside, iatom_div);
   });
 
 }
 
 template<class DeviceType, typename real_type, int vector_length>
+template<bool chemsnap>
 KOKKOS_INLINE_FUNCTION
-void PairSNAPKokkos<DeviceType, real_type, vector_length>::operator() (TagPairSNAPComputeUiLarge,const typename Kokkos::TeamPolicy<DeviceType,TagPairSNAPComputeUiLarge>::member_type& team) const {
+void PairSNAPKokkos<DeviceType, real_type, vector_length>::operator() (TagPairSNAPComputeUiLarge<chemsnap>,
+  const typename Kokkos::TeamPolicy<DeviceType,TagPairSNAPComputeUiLarge<chemsnap>>::member_type& team) const {
 
   // extract flattened atom_div / neighbor number / bend location
   int flattened_idx = team.team_rank() + team.league_rank() * team_size_compute_ui;
 
   // extract neighbor index, iatom_div
-  int iatom_div = flattened_idx / max_neighs; // removed "const" to work around GCC 7 bug
-  int jj = flattened_idx - iatom_div * max_neighs;
+  int iatom_div = flattened_idx / batched_max_neighs; // removed "const" to work around GCC 7 bug
+  int jnbor_batch = flattened_idx - iatom_div * batched_max_neighs;
 
   Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, vector_length),
     [&] (const int iatom_mod) {
@@ -811,9 +837,14 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::operator() (TagPairSN
     if (ii >= chunk_size) return;
 
     const int ninside = d_ninside(ii);
-    if (jj >= ninside) return;
 
-    snaKK.compute_ui_large(team,iatom_mod, jj, iatom_div);
+    // find out what the first jnbor is
+    // if that one is >= than neigh_inside, nothing to see here
+    int first_jnbor = ui_batch * jnbor_batch;
+    if (first_jnbor >= ninside) return;
+
+
+    snaKK.template compute_ui_large<chemsnap>(team, iatom_mod, first_jnbor, ninside, iatom_div);
   });
 }
 
