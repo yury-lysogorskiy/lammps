@@ -204,7 +204,7 @@ class ComputeSNAGridKokkos : public ComputeSNAGrid {
 
  protected:
 
-  SNAKokkos<DeviceType, real_type, vector_length> snaKK;
+  SNAKokkos<DeviceType, real_type, vector_length, 1> snaKK;
 
   int max_neighs, chunk_size, chunk_offset;
   int host_flag;
@@ -254,7 +254,8 @@ class ComputeSNAGridKokkos : public ComputeSNAGrid {
   double lo0, lo1, lo2;
 
   // Make SNAKokkos a friend
-  friend class SNAKokkos<DeviceType, real_type, vector_length>;
+  // the 1 is because ComputeSNAGridKokkos does not support padded vectorization yet
+  friend class SNAKokkos<DeviceType, real_type, vector_length, 1>;
 };
 
 // These wrapper classes exist to make the compute style factory happy/avoid having

@@ -119,7 +119,7 @@ ComputeSNAGridLocalKokkos<DeviceType, real_type, vector_length>::ComputeSNAGridL
   }
   Kokkos::deep_copy(d_test,h_test);
 
-  snaKK = SNAKokkos<DeviceType, real_type, vector_length>(*this);
+  snaKK = SNAKokkos<DeviceType, real_type, vector_length, 1>(*this);
   snaKK.grow_rij(0,0);
   snaKK.init();
 }

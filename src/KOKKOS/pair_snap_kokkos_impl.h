@@ -167,8 +167,8 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::compute(int eflag_in,
   if (beta_max < inum) {
     beta_max = inum;
     // padded allocation, similar to within grow_rij
-    const int inum_div = (inum + vector_length - 1) / vector_length;
-    const int inum_pad = inum_div * vector_length;
+    const int inum_div = (inum + (vector_length * padding_factor) - 1) / (vector_length * padding_factor);
+    const int inum_pad = inum_div * (vector_length * padding_factor);
     MemKK::realloc_kokkos(d_beta,"PairSNAPKokkos:beta", inum_pad, ncoeff);
     snaKK.d_beta = d_beta;
     MemKK::realloc_kokkos(d_ninside,"PairSNAPKokkos:ninside", inum_pad);
@@ -521,7 +521,7 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::coeff(int narg, char 
   Kokkos::deep_copy(d_dinnerelem,h_dinnerelem);
   Kokkos::deep_copy(d_map,h_map);
 
-  snaKK = SNAKokkos<DeviceType, real_type, vector_length>(*this);
+  snaKK = SNAKokkos<DeviceType, real_type, vector_length, padding_factor>(*this);
   snaKK.grow_rij(0,0);
   snaKK.init();
 }

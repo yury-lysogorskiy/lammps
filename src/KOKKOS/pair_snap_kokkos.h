@@ -84,6 +84,9 @@ class PairSNAPKokkos : public PairSNAP {
   using real_type = real_type_;
   using complex = SNAComplex<real_type>;
 
+  // extra padding factor
+  static constexpr int padding_factor = host_flag ? 1 : 4;
+
   // Static team/tile sizes for device offload
 
 #ifdef KOKKOS_ENABLE_HIP
@@ -316,7 +319,7 @@ class PairSNAPKokkos : public PairSNAP {
   typename AT::t_efloat_1d d_eatom;
   typename AT::t_virial_array d_vatom;
 
-  SNAKokkos<DeviceType, real_type, vector_length> snaKK;
+  SNAKokkos<DeviceType, real_type, vector_length, padding_factor> snaKK;
 
   int inum,max_neighs,chunk_size,chunk_offset;
   int neighflag;
@@ -327,12 +330,12 @@ class PairSNAPKokkos : public PairSNAP {
 
   Kokkos::View<real_type*, DeviceType> d_radelem;              // element radii
   Kokkos::View<real_type*, DeviceType> d_wjelem;               // elements weights
-  typename SNAKokkos<DeviceType, real_type, vector_length>::t_sna_2d_lr d_coeffelem; // element bispectrum coefficients
+  typename SNAKokkos<DeviceType, real_type, vector_length, padding_factor>::t_sna_2d_lr d_coeffelem; // element bispectrum coefficients
   Kokkos::View<real_type*, DeviceType> d_sinnerelem;           // element inner cutoff midpoint
   Kokkos::View<real_type*, DeviceType> d_dinnerelem;           // element inner cutoff half-width
   Kokkos::View<T_INT*, DeviceType> d_map;                    // mapping from atom types to elements
   Kokkos::View<T_INT*, DeviceType> d_ninside;                // ninside for all atoms in list
-  typename SNAKokkos<DeviceType, real_type, vector_length>::t_sna_2d d_beta;                // betas for all atoms in list
+  typename SNAKokkos<DeviceType, real_type, vector_length, padding_factor>::t_sna_2d d_beta;                // betas for all atoms in list
 
   typedef Kokkos::DualView<F_FLOAT**, DeviceType> tdual_fparams;
   tdual_fparams k_cutsq;
@@ -368,7 +371,7 @@ class PairSNAPKokkos : public PairSNAP {
   int scratch_size_helper(int values_per_team);
 
   // Make SNAKokkos a friend
-  friend class SNAKokkos<DeviceType, real_type, vector_length>;
+  friend class SNAKokkos<DeviceType, real_type, vector_length, padding_factor>;
 };
 
 

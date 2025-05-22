@@ -127,13 +127,14 @@ struct alignas(16) idxz_struct {
 };
 
 
-template<class DeviceType, typename real_type_, int vector_length_>
+template<class DeviceType, typename real_type_, int vector_length_, int padding_factor_>
 class SNAKokkos {
 
  public:
   using real_type = real_type_;
   using complex = SNAComplex<real_type>;
   static constexpr int vector_length = vector_length_;
+  static constexpr int padding_factor = padding_factor_;
 
   using KKDeviceType = typename KKDevice<DeviceType>::value;
   static constexpr LAMMPS_NS::ExecutionSpace execution_space = ExecutionSpaceFromDevice<DeviceType>::space;
@@ -170,7 +171,7 @@ class SNAKokkos {
   SNAKokkos() {};
 
   KOKKOS_INLINE_FUNCTION
-  SNAKokkos(const SNAKokkos<DeviceType,real_type,vector_length>& sna, const typename Kokkos::TeamPolicy<DeviceType>::member_type& team);
+  SNAKokkos(const SNAKokkos<DeviceType, real_type, vector_length, padding_factor>& sna, const typename Kokkos::TeamPolicy<DeviceType>::member_type& team);
 
   template<class CopyClass>
   inline
@@ -234,20 +235,20 @@ class SNAKokkos {
   KOKKOS_FORCEINLINE_FUNCTION
   void evaluate_ui_jbend(const WignerWrapper<real_type, vector_length>&, const complex&, const complex&, const real_type&, const int&,
                         const int&, const int&) const;
-  // plugged into compute_zi, compute_yi
+  // plugged into compute_zi, compute_yi; returns complex
   KOKKOS_FORCEINLINE_FUNCTION
-  complex evaluate_zi(const int&, const int&, const int&, const int&, const int&, const int&, const int&, const int&, const int&,
+  auto evaluate_zi(const int&, const int&, const int&, const int&, const int&, const int&, const int&, const int&, const int&,
                         const int&, const int&, const int&, const real_type*) const;
   // plugged into compute_bi
   KOKKOS_FORCEINLINE_FUNCTION
   real_type evaluate_bi(const int&, const int&, const int&, const int&,
                           const int&, const int&, const int&) const;
-  // plugged into compute_yi, compute_yi_with_zlist
+  // plugged into compute_yi, compute_yi_with_zlist; returns real_type
   template <bool chemsnap> KOKKOS_FORCEINLINE_FUNCTION
-  real_type evaluate_beta_scaled(const int&, const int&, const int&, const int&, const int&, const int&, const int&) const;
-  // plugged into compute_fused_deidrj_small, compute_fused_deidrj_large
+  auto evaluate_beta_scaled(const int&, const int&, const int&, const int&, const int&, const int&, const int&) const;
+  // plugged into compute_fused_deidrj_small, compute_fused_deidrj_large; returns real_type
   KOKKOS_FORCEINLINE_FUNCTION
-  real_type evaluate_duidrj_jbend(const WignerWrapper<real_type, vector_length>&, const complex&, const complex&, const real_type&,
+  auto evaluate_duidrj_jbend(const WignerWrapper<real_type, vector_length>&, const complex&, const complex&, const real_type&,
                         const WignerWrapper<real_type, vector_length>&, const complex&, const complex&, const real_type&,
                         const int&, const int&, const int&) const;
 

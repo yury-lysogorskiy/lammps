@@ -199,7 +199,7 @@ class ComputeSNAGridLocalKokkos : public ComputeSNAGridLocal {
 
  protected:
 
-  SNAKokkos<DeviceType, real_type, vector_length> snaKK;
+  SNAKokkos<DeviceType, real_type, vector_length, 1> snaKK;
 
   int max_neighs, chunk_size, chunk_offset;
   int host_flag;
@@ -245,7 +245,7 @@ class ComputeSNAGridLocalKokkos : public ComputeSNAGridLocal {
   double lo0, lo1, lo2;
 
   // Make SNAKokkos a friend
-  friend class SNAKokkos<DeviceType, real_type, vector_length>;
+  friend class SNAKokkos<DeviceType, real_type, vector_length, 1>;
 };
 
 // These wrapper classes exist to make the compute style factory happy/avoid having
