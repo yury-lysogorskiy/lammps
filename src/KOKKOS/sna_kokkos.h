@@ -428,6 +428,9 @@ class SNAKokkos {
   t_sna_1d cglist;
   t_sna_2d rootpqarray;
 
+  // whether or not to use the legacy path on the GPU
+  bool legacy_on_gpu;
+
   static const int nmaxfactorial = 167;
   static const double nfac_table[];
   inline

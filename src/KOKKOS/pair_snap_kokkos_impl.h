@@ -199,7 +199,6 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::compute(int eflag_in,
     // this is intentionally without the padding factor b/c it doesn't apply to all kernels
     const int chunk_size_div = (chunk_size + vector_length - 1) / vector_length;
     const int chunk_size_div_padded = (chunk_size + yi_batch * vector_length - 1) / (vector_length * yi_batch);
-    //const int chunk_size_pad = chunk_size_div * vector_length;
 
     // ComputeNeigh
     if constexpr (host_flag) {
@@ -217,7 +216,7 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::compute(int eflag_in,
     }
 
     // ComputeCayleyKlein; this is only called on the GPU
-    if constexpr (!host_flag) {
+    if constexpr (!host_flag && !legacy_on_gpu) {
       // tile_size_compute_ck is defined in `pair_snap_kokkos.h`
       Snap3DRangePolicy<DeviceType, tile_size_compute_ck, TagPairSNAPComputeCayleyKlein>
           policy_compute_ck({0,0,0},{vector_length,max_neighs,chunk_size_div},{vector_length,tile_size_compute_ck,1});
@@ -231,7 +230,7 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::compute(int eflag_in,
     }
 
     // ComputeUi; separate CPU, GPU codepaths
-    if constexpr (host_flag) {
+    if constexpr (host_flag || legacy_on_gpu) {
       // Fused calculation of ulist and accumulation into ulisttot using atomics
       auto policy_ui_cpu = snap_get_policy<DeviceType, 8, TagPairSNAPComputeUiCPU>(chunk_size_div, max_neighs);
       Kokkos::parallel_for("ComputeUiCPU", policy_ui_cpu, *this);
@@ -279,7 +278,6 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::compute(int eflag_in,
         auto policy_compute_bi = snap_get_policy<DeviceType, tile_size_compute_bi, TagPairSNAPComputeBi<false>>(chunk_size_div_padded, snaKK.idxb_max);
         Kokkos::parallel_for("ComputeBi", policy_compute_bi, *this);
       }
-
     }
 
     {
@@ -313,13 +311,13 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::compute(int eflag_in,
       }
     }
 
-    if constexpr (host_flag) {
+    if constexpr (host_flag || legacy_on_gpu) {
       //ComputeDuidrj and Deidrj
       auto policy_duidrj_cpu = snap_get_policy<DeviceType, 4, TagPairSNAPComputeDuidrjCPU>(chunk_size_div, max_neighs);
       Kokkos::parallel_for("ComputeDuidrjCPU", policy_duidrj_cpu, *this);
 
       auto policy_deidrj_cpu = snap_get_policy<DeviceType, 4, TagPairSNAPComputeDeidrjCPU>(chunk_size_div, max_neighs);
-      Kokkos::parallel_for("ComputeDeidrjCPU",policy_deidrj_cpu,*this);
+      Kokkos::parallel_for("ComputeDeidrjCPU", policy_deidrj_cpu, *this);
     } else { // GPU
       
       // Fused ComputeDuidrj, ComputeDeidrj
@@ -815,6 +813,16 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::operator() (TagPairSN
 
 template<class DeviceType, typename real_type, int vector_length>
 KOKKOS_INLINE_FUNCTION
+void PairSNAPKokkos<DeviceType, real_type, vector_length>::operator() (TagPairSNAPComputeUiCPU, const int& iatom_mod, const int& jnbor, const int& iatom_div) const {
+  const int iatom = iatom_mod + iatom_div * vector_length;
+  if (iatom >= chunk_size) return;
+  const int ninside = d_ninside(iatom);
+  if (jnbor >= ninside) return;
+  snaKK.template compute_ui_cpu<true>(iatom, jnbor);
+}
+
+template<class DeviceType, typename real_type, int vector_length>
+KOKKOS_INLINE_FUNCTION
 void PairSNAPKokkos<DeviceType, real_type, vector_length>::operator() (TagPairSNAPComputeUiCPU, const int& iatom, const int& jnbor) const {
   if (iatom >= chunk_size) return;
   const int ninside = d_ninside(iatom);
@@ -1239,6 +1247,16 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::operator() (TagPairSN
 
 template<class DeviceType, typename real_type, int vector_length>
 KOKKOS_INLINE_FUNCTION
+void PairSNAPKokkos<DeviceType, real_type, vector_length>::operator() (TagPairSNAPComputeDuidrjCPU, const int& iatom_mod, const int& jnbor, const int& iatom_div) const {
+  const int iatom = iatom_mod + vector_length * iatom_div;
+  if (iatom >= chunk_size) return;
+  const int ninside = d_ninside(iatom);
+  if (jnbor >= ninside) return;
+  snaKK.compute_duidrj_cpu(iatom, jnbor);
+}
+
+template<class DeviceType, typename real_type, int vector_length>
+KOKKOS_INLINE_FUNCTION
 void PairSNAPKokkos<DeviceType, real_type, vector_length>::operator() (TagPairSNAPComputeDuidrjCPU, const int& iatom, const int& jnbor) const {
   if (iatom >= chunk_size) return;
   const int ninside = d_ninside(iatom);
@@ -1260,6 +1278,16 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::operator() (TagPairSN
   contracting the adjoint matrices Y with the pre-computed derivatives
   of the Wigner matrices U. CPU only.
 ------------------------------------------------------------------------- */
+
+template<class DeviceType, typename real_type, int vector_length>
+KOKKOS_INLINE_FUNCTION
+void PairSNAPKokkos<DeviceType, real_type, vector_length>::operator() (TagPairSNAPComputeDeidrjCPU, const int& iatom_mod, const int& jnbor, const int& iatom_div) const {
+  const int iatom = iatom_mod + vector_length * iatom_div;
+  if (iatom >= chunk_size) return;
+  const int ninside = d_ninside(iatom);
+  if (jnbor >= ninside) return;
+  snaKK.compute_deidrj_cpu(iatom, jnbor);
+}
 
 template<class DeviceType, typename real_type, int vector_length>
 KOKKOS_INLINE_FUNCTION

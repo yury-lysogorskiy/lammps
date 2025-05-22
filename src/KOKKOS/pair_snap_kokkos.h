@@ -80,6 +80,7 @@ class PairSNAPKokkos : public PairSNAP {
 
   static constexpr LAMMPS_NS::ExecutionSpace execution_space = ExecutionSpaceFromDevice<DeviceType>::space;
   static constexpr int host_flag = (execution_space == LAMMPS_NS::Host);
+  static constexpr bool legacy_on_gpu = false; // run the CPU path on the GPU
   static constexpr int vector_length = vector_length_;
   using real_type = real_type_;
   using complex = SNAComplex<real_type>;
@@ -387,16 +388,25 @@ class PairSNAPKokkos : public PairSNAP {
   void operator() (TagPairSNAPComputeNeighCPU,const typename Kokkos::TeamPolicy<DeviceType, TagPairSNAPComputeNeighCPU>::member_type& team) const;
 
   KOKKOS_INLINE_FUNCTION
+  void operator() (TagPairSNAPComputeUiCPU, const int& iatom_mod, const int& idxu, const int& iatom_div) const;
+
+  KOKKOS_INLINE_FUNCTION
   void operator() (TagPairSNAPComputeUiCPU, const int& iatom, const int& jnbor) const;
 
   KOKKOS_INLINE_FUNCTION
   void operator() (TagPairSNAPComputeUiCPU, const int& iatom) const;
 
   KOKKOS_INLINE_FUNCTION
+  void operator() (TagPairSNAPComputeDuidrjCPU, const int& iatom_mod, const int& jnbor, const int& iatom_div) const;
+
+  KOKKOS_INLINE_FUNCTION
   void operator() (TagPairSNAPComputeDuidrjCPU, const int& iatom, const int& jnbor) const;
 
   KOKKOS_INLINE_FUNCTION
   void operator() (TagPairSNAPComputeDuidrjCPU, const int& iatom) const;
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (TagPairSNAPComputeDeidrjCPU, const int& iatom_mod, const int& jnbor, const int& iatom_div) const;
 
   KOKKOS_INLINE_FUNCTION
   void operator() (TagPairSNAPComputeDeidrjCPU, const int& iatom, const int& jnbor) const;

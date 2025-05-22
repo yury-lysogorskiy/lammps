@@ -63,6 +63,9 @@ class ComputeSNAGridLocalKokkos : public ComputeSNAGridLocal {
   using real_type = real_type_;
   using complex = SNAComplex<real_type>;
 
+  static constexpr bool legacy_on_gpu = false; // run the CPU path on the GPU
+  static_assert(legacy_on_gpu == false, "legacy_on_gpu must be false");
+
   // extra padding factor, see pair_snap_kokkos.h for more context
   static constexpr int padding_factor = 1;
 

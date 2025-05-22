@@ -35,7 +35,7 @@ SNAKokkos<DeviceType, real_type, vector_length>::SNAKokkos(const CopyClass& copy
   : twojmax(copy.twojmax), d_coeffelem(copy.d_coeffelem), rmin0(copy.rmin0),
     rfac0(copy.rfac0), switch_flag(copy.switchflag), switch_inner_flag(copy.switchinnerflag),
     chem_flag(copy.chemflag), bnorm_flag(copy.bnormflag), wselfall_flag(copy.wselfallflag),
-    quadratic_flag(copy.quadraticflag), bzero_flag(copy.bzeroflag)
+    quadratic_flag(copy.quadraticflag), bzero_flag(copy.bzeroflag), legacy_on_gpu(copy.legacy_on_gpu)
 {
   wself = static_cast<real_type>(1.0);
 
@@ -317,7 +317,7 @@ void SNAKokkos<DeviceType, real_type, vector_length>::grow_rij(int newnatom, int
   MemKK::realloc_kokkos(ylist_re,"sna:ylist_re", natom_pad, nelements, idxu_half_max);
   MemKK::realloc_kokkos(ylist_im,"sna:ylist_im", natom_pad, nelements, idxu_half_max);
 
-  if constexpr (!host_flag) {
+  if (!host_flag && !legacy_on_gpu) {
     MemKK::realloc_kokkos(a_gpu,"sna:a_gpu",natom_pad,nmax);
     MemKK::realloc_kokkos(b_gpu,"sna:b_gpu",natom_pad,nmax);
     MemKK::realloc_kokkos(da_gpu,"sna:da_gpu",natom_pad,nmax,3);
@@ -333,7 +333,7 @@ void SNAKokkos<DeviceType, real_type, vector_length>::grow_rij(int newnatom, int
     MemKK::realloc_kokkos(sfac_gpu,"sna:sfac_gpu",1,1,1);
     MemKK::realloc_kokkos(ulist_cpu,"sna:ulist_cpu", natom_pad, nmax, idxu_cache_max);
     MemKK::realloc_kokkos(dulist_cpu,"sna:dulist_cpu", natom_pad, nmax, idxu_cache_max);
-  }
+  } 
 }
 
 /* ----------------------------------------------------------------------
@@ -489,19 +489,27 @@ void SNAKokkos<DeviceType, real_type, vector_length>::compute_ui_small(const typ
   Kokkos::Array<real_type, ui_batch> sfac;
   Kokkos::Array<int, ui_batch> jelem;
 
+  // Initialize u00 to 1.0 for all legal neighbors
+  Kokkos::Array<complex, ui_batch> u00;
+
   register_loop<ui_batch>([&] (int n) -> void {
     if ((first_jnbor + n) >= ninside) {
       a[n] = complex::zero();
       b[n] = complex::zero();
       sfac[n] = 0;
       jelem[n] = 0;
+      u00[n] = complex::zero();
     } else {
       a[n] = a_gpu(iatom, first_jnbor + n);
       b[n] = b_gpu(iatom, first_jnbor + n);
       sfac[n] = sfac_gpu(iatom, first_jnbor + n, 0);
       jelem[n] = element(iatom, first_jnbor + n);
+      u00[n] = complex::one();
     }
   });
+
+  // Initialize ulist_wrapper; level 0 is just 1.
+  ulist_wrapper.set(0, u00);
 
   // we need to "choose" when to bend
   // this for loop is here for context --- we expose additional
@@ -553,6 +561,20 @@ void SNAKokkos<DeviceType, real_type, vector_length>::compute_ui_large(const typ
   #pragma unroll
   #endif
   for (int j_bend = 0; j_bend <= twojmax; j_bend++) {
+    // Initialize u00 to 1.0 for all legal neighbors
+    Kokkos::Array<complex, ui_batch> u00;
+
+    register_loop<ui_batch>([&] (int n) -> void {
+      if ((first_jnbor + n) >= ninside) {
+        u00[n] = complex::zero();
+      } else {
+        u00[n] = complex::one();
+      }
+    });
+
+    // Initialize ulist_wrapper; level 0 is just 1.
+    ulist_wrapper.set(0, u00);
+
     evaluate_ui_jbend<chemsnap, ui_batch>(ulist_wrapper, a, b, sfac, jelem, iatom, j_bend);
   }
 }
@@ -575,14 +597,14 @@ void SNAKokkos<DeviceType, real_type, vector_length>::evaluate_ui_jbend(
   //   compute r0 = (x,y,z,z0)
   //   utot(j,ma,mb) += u(r0;j,ma,mb) for all j,ma,mb
 
-  // level 0 is just 1.
-  {
-    Kokkos::Array<complex, ui_batch> ulist_accum;
-    register_loop<ui_batch>([&] (int n) -> void {
-      ulist_accum[n] = complex::one();
-    });
-    ulist_wrapper.set(0, ulist_accum);
-  }
+  // level 0 is just 1; it's now pre-initialized
+  //{
+  //  Kokkos::Array<complex, ui_batch> ulist_accum;
+  //  register_loop<ui_batch>([&] (int n) -> void {
+  //    ulist_accum[n] = complex::one();
+  //  });
+  //  ulist_wrapper.set(0, ulist_accum);
+  //}
 
   // j from before the bend, don't store, mb == 0
   for (int j = 1; j <= j_bend; j++) {
@@ -1023,7 +1045,10 @@ auto SNAKokkos<DeviceType, real_type, vector_length>::evaluate_bi(const int& j, 
   // portion
 
   const int idouble = elem1 * nelements + elem2;
-  Kokkos::Array<real_type, yi_batch> bval = { 0 };
+  Kokkos::Array<real_type, yi_batch> bval;
+  register_loop<yi_batch>([&] (int n) -> void {
+    bval[n] = 0;
+  });
 
   for (int mb = 0; 2*mb < j; mb++) {
     int jju_index = jju + mb * (j + 1);
@@ -1042,7 +1067,10 @@ auto SNAKokkos<DeviceType, real_type, vector_length>::evaluate_bi(const int& j, 
 
   // For j even, special treatment for middle column
   if (j % 2 == 0) {
-    Kokkos::Array<real_type, yi_batch> btmp = { 0 };
+    Kokkos::Array<real_type, yi_batch> btmp;
+    register_loop<yi_batch>([&] (int n) -> void {
+      btmp[n] = 0;
+    });
 
     const int mb = j / 2;
     int jju_index = jju + mb * (j + 1);
@@ -1433,7 +1461,11 @@ void SNAKokkos<DeviceType, real_type, vector_length>::compute_fused_deidrj_large
   });
 
   // compute the contributions to dedr_full_sum for all "bend" locations
-  Kokkos::Array<real_type, num_dims> dedr_full_sum = { 0 };
+  Kokkos::Array<real_type, num_dims> dedr_full_sum;
+  register_loop<num_dims>([&] (int d) -> void {
+    dedr_full_sum[d] = 0;
+  });
+
   for (int j_bend = 0; j_bend <= twojmax; j_bend++) {
     const Kokkos::Array<real_type, num_dims> accum = evaluate_duidrj_jbend<num_dims>(ulist_wrapper, a, b, sfac, dulist_wrapper, da, db, dsfacu,
                                           jelem, iatom, j_bend);
@@ -1459,7 +1491,10 @@ auto SNAKokkos<DeviceType, real_type, vector_length>::evaluate_duidrj_jbend(cons
   const Kokkos::Array<complex, num_dims>& da, const Kokkos::Array<complex, num_dims>& db, const Kokkos::Array<real_type, num_dims>& dsfacu,
   const int& jelem, const int& iatom, const int& j_bend) const {
 
-  Kokkos::Array<real_type, num_dims> dedr_full_sum = { 0 };
+  Kokkos::Array<real_type, num_dims> dedr_full_sum;
+  register_loop<num_dims>([&] (int d) -> void {
+    dedr_full_sum[d] = 0;
+  });
 
   // level 0 is just 1, 0
   ulist_wrapper.set(0, complex::one());
