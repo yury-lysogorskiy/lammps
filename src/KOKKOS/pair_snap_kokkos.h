@@ -102,6 +102,8 @@ class PairSNAPKokkos : public PairSNAP {
   static constexpr int tile_size_compute_yi = 2;
   static constexpr int min_blocks_compute_yi = 0; // no minimum bound
   static constexpr int team_size_compute_fused_deidrj = 2;
+
+  static constexpr int yi_batch = 1;
 #elif defined(KOKKOS_ENABLE_SYCL)
   static constexpr int team_size_compute_neigh = 4;
   static constexpr int tile_size_compute_ck = 4;
@@ -115,6 +117,8 @@ class PairSNAPKokkos : public PairSNAP {
   static constexpr int tile_size_compute_yi = 8;
   static constexpr int min_blocks_compute_yi = 0; // no minimum bound
   static constexpr int team_size_compute_fused_deidrj = 4;
+
+  static constexpr int yi_batch = 1;
 #else
   static constexpr int team_size_compute_neigh = 4;
   static constexpr int tile_size_compute_ck = 4;
@@ -128,9 +132,14 @@ class PairSNAPKokkos : public PairSNAP {
   static constexpr int team_size_compute_fused_deidrj = sizeof(real_type) == 4 ? 4 : 2;
 
   // this empirically reduces perf fluctuations from compiler version to compiler version
-  static constexpr int min_blocks_compute_zi = 4;
-  static constexpr int min_blocks_compute_yi = 4;
+  static constexpr int min_blocks_compute_zi = 2;
+  static constexpr int min_blocks_compute_yi = 2;
+
+  static constexpr int yi_batch = host_flag ? 1 : 4;
 #endif
+
+  // check yi_batch divides into padding_factor
+  static_assert((padding_factor / yi_batch) * yi_batch == padding_factor, "yi_batch must divide into padding_factor");
 
   // Custom MDRangePolicy, Rank3, to reduce verbosity of kernel launches
   // This hides the Kokkos::IndexType<int> and Kokkos::Rank<3...>
@@ -321,7 +330,7 @@ class PairSNAPKokkos : public PairSNAP {
 
   SNAKokkos<DeviceType, real_type, vector_length, padding_factor> snaKK;
 
-  int inum,max_neighs,chunk_size,chunk_offset;
+  int inum, max_neighs, chunk_size, chunk_offset;
   int neighflag;
 
   int eflag,vflag;

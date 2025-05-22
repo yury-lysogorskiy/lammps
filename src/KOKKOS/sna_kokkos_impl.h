@@ -806,12 +806,20 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor>::compute_zi
     int idouble = 0;
     for (int elem1 = 0; elem1 < nelements; elem1++) {
       for (int elem2 = 0; elem2 < nelements; elem2++) {
-        zlist(iatom, idouble, jjz) = evaluate_zi(j1, j2, j, ma1min, ma2max, mb1min, mb2max, na, nb, iatom, elem1, elem2, cgblock);
+        auto zval = evaluate_zi(j1, j2, j, ma1min, ma2max, mb1min, mb2max, na, nb, iatom, elem1, elem2, cgblock);
+
+        register_loop<yi_batch>([&] (int n) -> void {
+          zlist(iatom + n * vector_length, idouble, jjz) = zval[n];
+        });
+
         idouble++;
       } // end loop over elem2
     } // end loop over elem1
   } else {
-    zlist(iatom, 0, jjz) = evaluate_zi(j1, j2, j, ma1min, ma2max, mb1min, mb2max, na, nb, iatom, 0, 0, cgblock);
+    auto zval = evaluate_zi(j1, j2, j, ma1min, ma2max, mb1min, mb2max, na, nb, iatom, 0, 0, cgblock);
+    register_loop<yi_batch>([&] (int n) -> void {
+      zlist(iatom + n * vector_length, 0, jjz) = zval[n];
+    });
   }
 }
 
@@ -825,7 +833,7 @@ KOKKOS_FORCEINLINE_FUNCTION
 auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor>::evaluate_zi(const int& j1, const int& j2, const int& j,
         const int& ma1min, const int& ma2max, const int& mb1min, const int& mb2max, const int& na, const int& nb,
         const int& iatom, const int& elem1, const int& elem2, const real_type* cgblock) const {
-  complex ztmp = complex::zero();
+  Kokkos::Array<complex, yi_batch> zval;
 
   int jju1 = idxu_block[j1] + (j1+1)*mb1min;
   int jju2 = idxu_block[j2] + (j2+1)*mb2max;
@@ -843,12 +851,14 @@ auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor>::evaluate_z
     #pragma unroll
     #endif
     for (int ia = 0; ia < na; ia++) {
-      const complex utot1 = ulisttot(iatom, elem1, jju1+ma1);
-      const complex utot2 = ulisttot(iatom, elem2, jju2+ma2);
       const real_type cgcoeff_a = cgblock[icga];
       const real_type cgcoeff_b = cgblock[icgb];
-      ztmp.re += cgcoeff_a * cgcoeff_b * (utot1.re * utot2.re - utot1.im * utot2.im);
-      ztmp.im += cgcoeff_a * cgcoeff_b * (utot1.re * utot2.im + utot1.im * utot2.re);
+      register_loop<yi_batch>([&] (int n) -> void {
+        const complex utot1 = ulisttot(iatom + n * vector_length, elem1, jju1+ma1);
+        const complex utot2 = ulisttot(iatom + n * vector_length, elem2, jju2+ma2);
+        zval[n].re += cgcoeff_a * cgcoeff_b * (utot1.re * utot2.re - utot1.im * utot2.im);
+        zval[n].im += cgcoeff_a * cgcoeff_b * (utot1.re * utot2.im + utot1.im * utot2.re);
+      });
       ma1++;
       ma2--;
       icga += j2;
@@ -861,11 +871,13 @@ auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor>::evaluate_z
 
   if (bnorm_flag) {
     const real_type scale = static_cast<real_type>(1) / static_cast<real_type>(j + 1);
-    ztmp.re *= scale;
-    ztmp.im *= scale;
+    register_loop<yi_batch>([&] (int n) -> void {
+      zval[n].re *= scale;
+      zval[n].im *= scale;
+    });
   }
 
-  return ztmp;
+  return zval;
 }
 
 /* ----------------------------------------------------------------------
@@ -1079,7 +1091,7 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor>::compute_yi
     for (int elem1 = 0; elem1 < nelements; elem1++) {
       for (int elem2 = 0; elem2 < nelements; elem2++) {
 
-        const complex ztmp = evaluate_zi(j1, j2, j, ma1min, ma2max, mb1min, mb2max, na, nb, iatom, elem1, elem2, cgblock);
+        const auto zval = evaluate_zi(j1, j2, j, ma1min, ma2max, mb1min, mb2max, na, nb, iatom, elem1, elem2, cgblock);
 
         // apply to z(j1,j2,j,ma,mb) to unique element of y(j)
         // find right y_list[jju] and beta(iatom,jjb) entries
@@ -1089,29 +1101,33 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor>::compute_yi
         // pick out right beta value
         for (int elem3 = 0; elem3 < nelements; elem3++) {
 
-          const real_type betaj = evaluate_beta_scaled<true>(j1, j2, j, iatom, elem1, elem2, elem3);
+          const auto betaj = evaluate_beta_scaled<true>(j1, j2, j, iatom, elem1, elem2, elem3);
 
-          if constexpr (need_atomics) {
-            Kokkos::atomic_add(&(ylist_re(iatom, elem3, jju_half)), betaj * ztmp.re);
-            Kokkos::atomic_add(&(ylist_im(iatom, elem3, jju_half)), betaj * ztmp.im);
-          } else {
-            ylist_re(iatom, elem3, jju_half) += betaj * ztmp.re;
-            ylist_im(iatom, elem3, jju_half) += betaj * ztmp.im;
-          }
+          register_loop<yi_batch>([&] (int n) -> void {
+            if constexpr (need_atomics) {
+              Kokkos::atomic_add(&(ylist_re(iatom + n * vector_length, elem3, jju_half)), betaj[n] * zval[n].re);
+              Kokkos::atomic_add(&(ylist_im(iatom + n * vector_length, elem3, jju_half)), betaj[n] * zval[n].im);
+            } else {
+              ylist_re(iatom + n * vector_length, elem3, jju_half) += betaj[n] * zval[n].re;
+              ylist_im(iatom + n * vector_length, elem3, jju_half) += betaj[n] * zval[n].im;
+            }
+          });
         } // end loop over elem3
       } // end loop over elem2
     } // end loop over elem1
   } else {
-    const complex ztmp = evaluate_zi(j1, j2, j, ma1min, ma2max, mb1min, mb2max, na, nb, iatom, 0, 0, cgblock);
-    const real_type betaj = evaluate_beta_scaled<false>(j1, j2, j, iatom, 0, 0, 0);
+    const auto zval = evaluate_zi(j1, j2, j, ma1min, ma2max, mb1min, mb2max, na, nb, iatom, 0, 0, cgblock);
+    const auto betaj = evaluate_beta_scaled<false>(j1, j2, j, iatom, 0, 0, 0);
 
-    if constexpr (need_atomics) {
-      Kokkos::atomic_add(&(ylist_re(iatom, 0, jju_half)), betaj * ztmp.re);
-      Kokkos::atomic_add(&(ylist_im(iatom, 0, jju_half)), betaj * ztmp.im);
-    } else {
-      ylist_re(iatom, 0, jju_half) += betaj * ztmp.re;
-      ylist_im(iatom, 0, jju_half) += betaj * ztmp.im;
-    }
+    register_loop<yi_batch>([&] (int n) -> void {
+      if constexpr (need_atomics) {
+        Kokkos::atomic_add(&(ylist_re(iatom + n * vector_length, 0, jju_half)), betaj[n] * zval[n].re);
+        Kokkos::atomic_add(&(ylist_im(iatom + n * vector_length, 0, jju_half)), betaj[n] * zval[n].im);
+      } else {
+        ylist_re(iatom + n * vector_length, 0, jju_half) += betaj[n] * zval[n].re;
+        ylist_im(iatom + n * vector_length, 0, jju_half) += betaj[n] * zval[n].im;
+      }
+    });
   }
 }
 
@@ -1131,7 +1147,11 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor>::compute_yi
     int idouble = 0;
     for (int elem1 = 0; elem1 < nelements; elem1++) {
       for (int elem2 = 0; elem2 < nelements; elem2++) {
-        const complex ztmp = zlist(iatom, idouble, jjz);
+        Kokkos::Array<complex, yi_batch> zval;
+        register_loop<yi_batch>([&] (int n) -> void {
+          zval[n] = zlist(iatom + n * vector_length, idouble, jjz);
+        });
+
         // apply to z(j1,j2,j,ma,mb) to unique element of y(j)
         // find right y_list[jju] and beta(iatom,jjb) entries
         // multiply and divide by j+1 factors
@@ -1139,30 +1159,38 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor>::compute_yi
         // pick out right beta value
         for (int elem3 = 0; elem3 < nelements; elem3++) {
 
-          const real_type betaj = evaluate_beta_scaled<true>(j1, j2, j, iatom, elem1, elem2, elem3);
+          const auto betaj = evaluate_beta_scaled<true>(j1, j2, j, iatom, elem1, elem2, elem3);
 
-          if constexpr (need_atomics) {
-            Kokkos::atomic_add(&(ylist_re(iatom, elem3, jju_half)), betaj * ztmp.re);
-            Kokkos::atomic_add(&(ylist_im(iatom, elem3, jju_half)), betaj * ztmp.im);
-          } else {
-            ylist_re(iatom, elem3, jju_half) += betaj * ztmp.re;
-            ylist_im(iatom, elem3, jju_half) += betaj * ztmp.im;
-          }
+          register_loop<yi_batch>([&] (int n) -> void {
+            if constexpr (need_atomics) {
+              Kokkos::atomic_add(&(ylist_re(iatom + n * vector_length, elem3, jju_half)), betaj[n] * zval[n].re);
+              Kokkos::atomic_add(&(ylist_im(iatom + n * vector_length, elem3, jju_half)), betaj[n] * zval[n].im);
+            } else {
+              ylist_re(iatom + n * vector_length, elem3, jju_half) += betaj[n] * zval[n].re;
+              ylist_im(iatom + n * vector_length, elem3, jju_half) += betaj[n] * zval[n].im;
+            }
+          });
         } // end loop over elem3
         idouble++;
       } // end loop over elem2
     } // end loop over elem1
   } else {
-    const complex ztmp = zlist(iatom, 0, jjz);
-    const real_type betaj = evaluate_beta_scaled<false>(j1, j2, j, iatom, 0, 0, 0);
+    Kokkos::Array<complex, yi_batch> zval;
+    register_loop<yi_batch>([&] (int n) -> void {
+      zval[n] = zlist(iatom + n * vector_length, 0, jjz);
+    });
 
-    if constexpr (need_atomics) {
-      Kokkos::atomic_add(&(ylist_re(iatom, 0, jju_half)), betaj * ztmp.re);
-      Kokkos::atomic_add(&(ylist_im(iatom, 0, jju_half)), betaj * ztmp.im);
-    } else {
-      ylist_re(iatom, 0, jju_half) += betaj * ztmp.re;
-      ylist_im(iatom, 0, jju_half) += betaj * ztmp.im;
-    }
+    const auto betaj = evaluate_beta_scaled<false>(j1, j2, j, iatom, 0, 0, 0);
+
+    register_loop<yi_batch>([&] (int n) -> void {
+      if constexpr (need_atomics) {
+        Kokkos::atomic_add(&(ylist_re(iatom + n * vector_length, 0, jju_half)), betaj[n] * zval[n].re);
+        Kokkos::atomic_add(&(ylist_im(iatom + n * vector_length, 0, jju_half)), betaj[n] * zval[n].im);
+      } else {
+        ylist_re(iatom + n * vector_length, 0, jju_half) += betaj[n] * zval[n].re;
+        ylist_im(iatom + n * vector_length, 0, jju_half) += betaj[n] * zval[n].im;
+      }
+    });
   }
 }
 
@@ -1211,11 +1239,17 @@ auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor>::evaluate_b
     }
   }
 
-  real_type betaj = factor * d_beta(iatom, itriple_jjb);
+  Kokkos::Array<real_type, yi_batch> betaj;
+
+  register_loop<yi_batch>([&] (int n) -> void {
+    betaj[n] = factor * d_beta(iatom + n * vector_length, itriple_jjb);
+  });
 
   if (!bnorm_flag && j1 > j) {
     const real_type scale = static_cast<real_type>(j1 + 1) / static_cast<real_type>(j + 1);
-    betaj *= scale;
+    register_loop<yi_batch>([&] (int n) -> void {
+      betaj[n] *= scale;
+    });
   }
 
   return betaj;

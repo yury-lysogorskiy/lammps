@@ -136,6 +136,8 @@ class SNAKokkos {
   static constexpr int vector_length = vector_length_;
   static constexpr int padding_factor = padding_factor_;
 
+  static constexpr int yi_batch = PairSNAPKokkos<DeviceType, real_type, vector_length>::yi_batch;
+
   using KKDeviceType = typename KKDevice<DeviceType>::value;
   static constexpr LAMMPS_NS::ExecutionSpace execution_space = ExecutionSpaceFromDevice<DeviceType>::space;
   static constexpr int host_flag = (execution_space == LAMMPS_NS::Host);
@@ -270,6 +272,15 @@ class SNAKokkos {
 
   KOKKOS_INLINE_FUNCTION
   void compute_s_dsfac(const real_type, const real_type, const real_type, const real_type, real_type&, real_type&) const; // compute_cayley_klein
+
+  // special function that just does a "vectorized" loop
+  template<int batch, typename Functor> KOKKOS_FORCEINLINE_FUNCTION
+  void register_loop(Functor&& f) const {
+    #pragma unroll (batch)
+    for (int n = 0; n < batch; n++)
+      f(n);
+  }
+
 
 #ifdef TIMING_INFO
   double* timers;
