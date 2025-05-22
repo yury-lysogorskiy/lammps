@@ -990,13 +990,19 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
     for (int elem1 = 0; elem1 < nelements; elem1++) {
       for (int elem2 = 0; elem2 < nelements; elem2++) {
         for (int elem3 = 0; elem3 < nelements; elem3++) {
-          blist(iatom, itriple, jjb) = evaluate_bi(j, jjz, jju, iatom, elem1, elem2, elem3);
+          Kokkos::Array<real_type, yi_batch> bval = evaluate_bi(j, jjz, jju, iatom, elem1, elem2, elem3);
+          register_loop<yi_batch>([&] (int n) -> void {
+            blist(iatom + n * vector_length, itriple, jjb) = bval[n];
+          });
           itriple++;
         } // end loop over elem3
       } // end loop over elem2
     } // end loop over elem1
   } else {
-    blist(iatom, 0, jjb) = evaluate_bi(j, jjz, jju, iatom, 0, 0, 0);
+    Kokkos::Array<real_type, yi_batch> bval = evaluate_bi(j, jjz, jju, iatom, 0, 0, 0);
+    register_loop<yi_batch>([&] (int n) -> void {
+      blist(iatom + n * vector_length, 0, jjb) = bval[n];
+    });
   }
 }
 
@@ -1007,7 +1013,7 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
 
 template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
 KOKKOS_INLINE_FUNCTION
-real_type SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::evaluate_bi(const int& j, const int& jjz, const int& jju, const int& iatom, const int& elem1, const int& elem2, const int& elem3) const
+auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::evaluate_bi(const int& j, const int& jjz, const int& jju, const int& iatom, const int& elem1, const int& elem2, const int& elem3) const
 {
   // this computes the:
   //        b(j1,j2,j) = 0
@@ -1018,57 +1024,68 @@ real_type SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_bat
   // portion
 
   const int idouble = elem1 * nelements + elem2;
-  real_type sumzu = 0.0;
-  real_type sumzu_temp = 0.0;
+  Kokkos::Array<real_type, yi_batch> bval = { 0 };
 
   for (int mb = 0; 2*mb < j; mb++) {
+    int jju_index = jju + mb * (j + 1);
+    int jjz_index = jjz + mb * (j + 1);
     for (int ma = 0; ma <= j; ma++) {
-      const int jju_index = jju+mb*(j+1)+ma;
-      const int jjz_index = jjz+mb*(j+1)+ma;
-      if (2*mb == j) return 0; // I think we can remove this?
-      const complex utot = ulisttot(iatom, elem3, jju_index);
-      const complex zloc = zlist(iatom, idouble, jjz_index);
-      sumzu_temp += utot.re * zloc.re + utot.im * zloc.im;
+      register_loop<yi_batch>([&] (int n) -> void {
+        const complex utot = ulisttot(iatom + n * vector_length, elem3, jju_index);
+        const complex zloc = zlist(iatom + n * vector_length, idouble, jjz_index);
+        bval[n] += utot.re * zloc.re;
+        bval[n] += utot.im * zloc.im;
+      });
+      jju_index++;
+      jjz_index++;
     }
   }
-  sumzu += sumzu_temp;
 
   // For j even, special treatment for middle column
-  if (j%2 == 0) {
-    sumzu_temp = 0.;
+  if (j % 2 == 0) {
+    Kokkos::Array<real_type, yi_batch> btmp = { 0 };
 
-    const int mb = j/2;
+    const int mb = j / 2;
+    int jju_index = jju + mb * (j + 1);
+    int jjz_index = jjz + mb * (j + 1);
     for (int ma = 0; ma < mb; ma++) {
-      const int jju_index = jju+(mb-1)*(j+1)+(j+1)+ma;
-      const int jjz_index = jjz+(mb-1)*(j+1)+(j+1)+ma;
-
-      const complex utot = ulisttot(iatom, elem3, jju_index);
-      const complex zloc = zlist(iatom, idouble, jjz_index);
-      sumzu_temp += utot.re * zloc.re + utot.im * zloc.im;
-
+      register_loop<yi_batch>([&] (int n) -> void {
+        const complex utot = ulisttot(iatom + n * vector_length, elem3, jju_index);
+        const complex zloc = zlist(iatom + n * vector_length, idouble, jjz_index);
+        btmp[n] += utot.re * zloc.re;
+        btmp[n] += utot.im * zloc.im;
+      });
+      jju_index++;
+      jjz_index++;
     }
-    sumzu += sumzu_temp;
 
-    const int ma = mb;
-    const int jju_index = jju+(mb-1)*(j+1)+(j+1)+ma;
-    const int jjz_index = jjz+(mb-1)*(j+1)+(j+1)+ma;
+    register_loop<yi_batch>([&] (int n) -> void {
+      bval[n] += btmp[n];
+    });
 
-    const complex utot = ulisttot(iatom, elem3, jju_index);
-    const complex zloc = zlist(iatom, idouble, jjz_index);
-    sumzu += static_cast<real_type>(0.5) * (utot.re * zloc.re + utot.im * zloc.im);
+    // const int ma = mb;
+    // const int jju_index = jju+(mb-1)*(j+1)+(j+1)+ma;
+    // const int jjz_index = jjz+(mb-1)*(j+1)+(j+1)+ma;
+    register_loop<yi_batch>([&] (int n) -> void {
+      const complex utot = ulisttot(iatom + n * vector_length, elem3, jju_index);
+      const complex zloc = zlist(iatom + n * vector_length, idouble, jjz_index);
+      bval[n] += static_cast<real_type>(0.5) * (utot.re * zloc.re + utot.im * zloc.im);
+    });
   } // end if jeven
 
-  sumzu *= static_cast<real_type>(2.0);
-  if (bzero_flag) {
-    if (!wselfall_flag) {
-      if (elem1 == elem2 && elem1 == elem3) {
-        sumzu -= bzero[j];
+  register_loop<yi_batch>([&] (int n) -> void {
+    bval[n] *= static_cast<real_type>(2.0);
+    if (bzero_flag) {
+      if (!wselfall_flag) {
+        if (elem1 == elem2 && elem1 == elem3) {
+          bval[n] -= bzero[j];
+        }
+      } else {
+        bval[n] -= bzero[j];
       }
-    } else {
-      sumzu -= bzero[j];
     }
-  }
-  return sumzu;
+  });
+  return bval;
       //} // end loop over j
     //} // end loop over j1, j2
 }

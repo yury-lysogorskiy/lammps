@@ -303,7 +303,7 @@ class SNAKokkos {
                         const int&, const int&, const int&, const real_type*) const;
   // plugged into compute_bi
   KOKKOS_FORCEINLINE_FUNCTION
-  real_type evaluate_bi(const int&, const int&, const int&, const int&,
+  auto evaluate_bi(const int&, const int&, const int&, const int&,
                           const int&, const int&, const int&) const;
   // plugged into compute_yi, compute_yi_with_zlist; returns real_type
   template <bool chemsnap> KOKKOS_FORCEINLINE_FUNCTION
