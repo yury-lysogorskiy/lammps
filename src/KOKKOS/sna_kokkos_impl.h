@@ -1340,6 +1340,7 @@ auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
    and accumulation into dEidRj. GPU only.
 ------------------------------------------------------------------------- */
 
+
 // Version of the code that exposes additional parallelism by threading over `j_bend` values
 template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
 template<int dir>
@@ -1557,6 +1558,246 @@ auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
     const complex du_prod = (dsfacu * ulist_prev) + (sfac * dulist_prev);
     dedr_full_sum += du_prod.re * y_local.re + du_prod.im * y_local.im;
 
+  }
+
+  return dedr_full_sum;
+}
+
+// Version of the code that exposes additional parallelism by threading over `j_bend` values
+template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+KOKKOS_INLINE_FUNCTION
+void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_fused_deidrj_all_small(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team, const int iatom_mod, const int j_bend, const int jnbor, const int iatom_div) const
+{
+  const int iatom = iatom_mod + vector_length * iatom_div;
+  // get shared memory offset
+  // scratch size: 32 atoms * (twojmax+1) cached values, no double buffer
+  const int tile_size = vector_length * (twojmax + 1);
+
+  const int team_rank = team.team_rank();
+  const int scratch_shift = team_rank * tile_size;
+
+  // extract, wrap shared memory buffer
+  WignerWrapper<real_type, vector_length> ulist_wrapper((complex*)team.team_shmem().get_shmem(team.team_size() * tile_size * sizeof(complex), 0) + scratch_shift, iatom_mod);
+  MultiWignerWrapper<real_type, vector_length, dims> dulist_wrapper((complex*)team.team_shmem().get_shmem(dims * team.team_size() * tile_size * sizeof(complex), 0) + dims * scratch_shift, iatom_mod);
+
+  // load parameters
+  const complex a = a_gpu(iatom, jnbor);
+  const complex b = b_gpu(iatom, jnbor);
+  const real_type sfac = sfac_gpu(iatom, jnbor, 0);
+  const int jelem = element(iatom, jnbor);
+
+  Kokkos::Array<complex, dims> da, db;
+  Kokkos::Array<real_type, dims> dsfacu;
+  register_loop<dims>([&] (int d) -> void {
+    da[d] = { da_gpu(iatom, jnbor, d) };
+    db[d] = { db_gpu(iatom, jnbor, d) };
+    dsfacu[d] = { sfac_gpu(iatom, jnbor, d + 1) }; // dsfac * u
+  });
+
+  // compute the contribution to dedr_full_sum for one "bend" location
+  const Kokkos::Array<real_type, dims> dedr_full_sum = evaluate_duidrj_all_jbend(ulist_wrapper, a, b, sfac, dulist_wrapper, da, db, dsfacu,
+                                                       jelem, iatom, j_bend);
+
+  // dedr gets zeroed out at the start of each iteration in compute_cayley_klein
+  register_loop<dims>([&] (int d) -> void {
+    Kokkos::atomic_add(&(dedr(iatom, jnbor, d)), static_cast<real_type>(2.0) * dedr_full_sum[d]);
+  });
+}
+
+// Version of the code that loops over all `j_bend` values which reduces integer arithmetic
+// and some amount of load imbalance, at the expense of reducing parallelism
+template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+KOKKOS_INLINE_FUNCTION
+void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_fused_deidrj_all_large(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team, const int iatom_mod, const int jnbor, const int iatom_div) const
+{
+  const int iatom = iatom_mod + vector_length * iatom_div;
+  // get shared memory offset
+  // scratch size: 32 atoms * (twojmax+1) cached values, no double buffer
+  const int tile_size = vector_length * (twojmax + 1);
+
+  const int team_rank = team.team_rank();
+  const int scratch_shift = team_rank * tile_size;
+
+  // extract, wrap shared memory buffer
+  WignerWrapper<real_type, vector_length> ulist_wrapper((complex*)team.team_shmem().get_shmem(team.team_size() * tile_size * sizeof(complex), 0) + scratch_shift, iatom_mod);
+  MultiWignerWrapper<real_type, vector_length, dims> dulist_wrapper((complex*)team.team_shmem().get_shmem(dims * team.team_size() * tile_size * sizeof(complex), 0) + dims * scratch_shift, iatom_mod);
+
+  // load parameters
+  const complex a = a_gpu(iatom, jnbor);
+  const complex b = b_gpu(iatom, jnbor);
+  const real_type sfac = sfac_gpu(iatom, jnbor, 0);
+  const int jelem = element(iatom, jnbor);
+
+  Kokkos::Array<complex, dims> da, db;
+  Kokkos::Array<real_type, dims> dsfacu;
+  register_loop<dims>([&] (int d) -> void {
+    da[d] = { da_gpu(iatom, jnbor, d) };
+    db[d] = { db_gpu(iatom, jnbor, d) };
+    dsfacu[d] = { sfac_gpu(iatom, jnbor, d + 1) }; // dsfac * u
+  });
+
+  // compute the contributions to dedr_full_sum for all "bend" locations
+  Kokkos::Array<real_type, dims> dedr_full_sum = { 0, 0, 0 };
+  for (int j_bend = 0; j_bend <= twojmax; j_bend++) {
+    const Kokkos::Array<real_type, dims> accum = evaluate_duidrj_all_jbend(ulist_wrapper, a, b, sfac, dulist_wrapper, da, db, dsfacu,
+                                          jelem, iatom, j_bend);
+    register_loop<dims>([&] (int d) -> void {                                   
+     dedr_full_sum[d] += accum[d];
+    });
+  }
+
+  // there's one thread per atom, neighbor pair, so no need to make this atomic
+  register_loop<dims>([&] (int d) -> void {
+    dedr(iatom, jnbor, d) = static_cast<real_type>(2.0) * dedr_full_sum[d];
+  });
+
+}
+
+// Core "evaluation" kernel that gets reused in `compute_fused_deidrj_all_small` and
+// `compute_fused_deidrj_all_large`
+template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+KOKKOS_INLINE_FUNCTION
+auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::evaluate_duidrj_all_jbend(const WignerWrapper<real_type, vector_length>& ulist_wrapper,
+  const complex& a, const complex& b, const real_type& sfac, const MultiWignerWrapper<real_type, vector_length, dims>& dulist_wrapper,
+  const Kokkos::Array<complex, dims>& da, const Kokkos::Array<complex, dims>& db, const Kokkos::Array<real_type, dims>& dsfacu,
+  const int& jelem, const int& iatom, const int& j_bend) const {
+
+  Kokkos::Array<real_type, dims> dedr_full_sum = { 0 };
+
+  // level 0 is just 1, 0
+  ulist_wrapper.set(0, complex::one());
+  dulist_wrapper.set(0, { complex::zero(), complex::zero(), complex::zero() });
+
+  // j from before the bend, don't store, mb == 0
+  // this is "creeping up the side"
+  for (int j = 1; j <= j_bend; j++) {
+
+    constexpr int mb = 0; // intentional for readability, compiler should optimize this out
+
+    complex ulist_accum = complex::zero();
+    Kokkos::Array<complex, dims> dulist_accum = { complex::zero(), complex::zero(), complex::zero() };
+
+    int ma;
+    for (ma = 0; ma < j; ma++) {
+
+      // grab the cached value
+      const complex ulist_prev = ulist_wrapper.get(ma);
+      const Kokkos::Array<complex, dims> dulist_prev = dulist_wrapper.get(ma);
+
+      // ulist_accum += rootpq * a.conj() * ulist_prev;
+      real_type rootpq = rootpqarray(j - ma, j - mb);
+      ulist_accum.re += rootpq * (a.re * ulist_prev.re + a.im * ulist_prev.im);
+      ulist_accum.im += rootpq * (a.re * ulist_prev.im - a.im * ulist_prev.re);
+
+      // product rule of above
+      register_loop<dims>([&] (int d) -> void {
+        dulist_accum[d].re += rootpq * (da[d].re * ulist_prev.re + da[d].im * ulist_prev.im + a.re * dulist_prev[d].re + a.im * dulist_prev[d].im);
+        dulist_accum[d].im += rootpq * (da[d].re * ulist_prev.im - da[d].im * ulist_prev.re + a.re * dulist_prev[d].im - a.im * dulist_prev[d].re);
+      });
+
+      // store ulist_accum, we atomic accumulate values after the bend, so no atomic add here
+      ulist_wrapper.set(ma, ulist_accum);
+      dulist_wrapper.set(ma, dulist_accum);
+
+      // next value
+      // ulist_accum = -rootpq * b.conj() * ulist_prev;
+      rootpq = rootpqarray(ma + 1, j - mb);
+      ulist_accum.re = -rootpq * (b.re * ulist_prev.re + b.im * ulist_prev.im);
+      ulist_accum.im = -rootpq * (b.re * ulist_prev.im - b.im * ulist_prev.re);
+
+      // product rule of above
+      register_loop<dims>([&] (int d) -> void {
+        dulist_accum[d].re = -rootpq * (db[d].re * ulist_prev.re + db[d].im * ulist_prev.im + b.re * dulist_prev[d].re + b.im * dulist_prev[d].im);
+        dulist_accum[d].im = -rootpq * (db[d].re * ulist_prev.im - db[d].im * ulist_prev.re + b.re * dulist_prev[d].im - b.im * dulist_prev[d].re);
+      });
+    }
+
+    ulist_wrapper.set(ma, ulist_accum);
+    dulist_wrapper.set(ma, dulist_accum);
+  }
+
+  // now we're after the bend, start storing but only up to the "half way point"
+  const int j_half_way = MIN(2 * j_bend, twojmax);
+
+  int mb = 1;
+  int j; //= j_bend + 1; // need this value below
+  for (j = j_bend + 1; j <= j_half_way; j++) {
+
+    const int jjup = idxu_half_block[j-1] + (mb - 1) * j;
+
+    complex ulist_accum = complex::zero();
+    Kokkos::Array<complex, dims> dulist_accum = { complex::zero(), complex::zero(), complex::zero() };
+
+    int ma;
+    for (ma = 0; ma < j; ma++) {
+      // grab y_local early
+      // this will never be the last element of a row, no need to rescale.
+      complex y_local = complex(ylist_re(iatom, jelem, jjup + ma), ylist_im(iatom, jelem, jjup+ma));
+
+      // grab the cached value
+      const complex ulist_prev = ulist_wrapper.get(ma);
+      const Kokkos::Array<complex, dims> dulist_prev = dulist_wrapper.get(ma);
+
+      // ulist_accum += rootpq * b * ulist_prev;
+      real_type rootpq = rootpqarray(j - ma, mb);
+      ulist_accum.re += rootpq * (b.re * ulist_prev.re - b.im * ulist_prev.im);
+      ulist_accum.im += rootpq * (b.re * ulist_prev.im + b.im * ulist_prev.re);
+
+      // product rule of above
+      register_loop<dims>([&] (int d) -> void {
+        dulist_accum[d].re += rootpq * (db[d].re * ulist_prev.re - db[d].im * ulist_prev.im + b.re * dulist_prev[d].re - b.im * dulist_prev[d].im);
+        dulist_accum[d].im += rootpq * (db[d].re * ulist_prev.im + db[d].im * ulist_prev.re + b.re * dulist_prev[d].im + b.im * dulist_prev[d].re);
+      });
+
+      // store ulist_accum
+      ulist_wrapper.set(ma, ulist_accum);
+      dulist_wrapper.set(ma, dulist_accum);
+
+      // Directly accumulate deidrj into sum_tmp
+      register_loop<dims>([&] (int d) -> void {
+        const complex du_prod = (dsfacu[d] * ulist_prev) + (sfac * dulist_prev[d]);
+        dedr_full_sum[d] += du_prod.re * y_local.re + du_prod.im * y_local.im;
+      });
+
+      // next value
+      // ulist_accum = rootpq * a * ulist_prev;
+      rootpq = rootpqarray(ma + 1, mb);
+      ulist_accum.re = rootpq * (a.re * ulist_prev.re - a.im * ulist_prev.im);
+      ulist_accum.im = rootpq * (a.re * ulist_prev.im + a.im * ulist_prev.re);
+
+      // product rule of above
+      register_loop<dims>([&] (int d) -> void {
+        dulist_accum[d].re = rootpq * (da[d].re * ulist_prev.re - da[d].im * ulist_prev.im + a.re * dulist_prev[d].re - a.im * dulist_prev[d].im);
+        dulist_accum[d].im = rootpq * (da[d].re * ulist_prev.im + da[d].im * ulist_prev.re + a.re * dulist_prev[d].im + a.im * dulist_prev[d].re);
+      });
+    }
+
+    ulist_wrapper.set(ma, ulist_accum);
+    dulist_wrapper.set(ma, dulist_accum);
+
+    mb++;
+  }
+
+  // accumulate the last level
+  const int jjup = idxu_half_block[j-1] + (mb - 1) * j;
+
+  for (int ma = 0; ma < j; ma++) {
+    // grab y_local early
+    complex y_local = complex(ylist_re(iatom, jelem, jjup + ma), ylist_im(iatom, jelem, jjup+ma));
+    if (j % 2 == 1 && 2*(mb-1) == j-1) { // double check me...
+      if (ma == (mb-1)) { y_local = static_cast<real_type>(0.5)*y_local; }
+      else if (ma > (mb-1)) { y_local.re = static_cast<real_type>(0.); y_local.im = static_cast<real_type>(0.); } // can probably avoid this outright
+      // else the ma < mb gets "double counted", cancelling the 0.5.
+    }
+
+    const complex ulist_prev = ulist_wrapper.get(ma);
+    const Kokkos::Array<complex, dims> dulist_prev = dulist_wrapper.get(ma);
+
+    // Directly accumulate deidrj into sum_tmp
+    register_loop<dims>([&] (int d) -> void {
+      const complex du_prod = (dsfacu[d] * ulist_prev) + (sfac * dulist_prev[d]);
+      dedr_full_sum[d] += du_prod.re * y_local.re + du_prod.im * y_local.im;
+    });
   }
 
   return dedr_full_sum;

@@ -58,10 +58,10 @@ struct TagPairSNAPComputeNeigh{};
 struct TagPairSNAPComputeCayleyKlein{};
 template <bool chemsnap> struct TagPairSNAPComputeUiSmall{}; // more parallelism, more divergence
 template <bool chemsnap> struct TagPairSNAPComputeUiLarge{}; // less parallelism, no divergence
-template<int dir>
-struct TagPairSNAPComputeFusedDeidrjSmall{}; // more parallelism, more divergence
-template<int dir>
-struct TagPairSNAPComputeFusedDeidrjLarge{}; // less parallelism, no divergence
+template<int dir> struct TagPairSNAPComputeFusedDeidrjSmall{}; // more parallelism, more divergence
+template<int dir> struct TagPairSNAPComputeFusedDeidrjLarge{}; // less parallelism, no divergence
+struct TagPairSNAPComputeFusedDeidrjAllSmall{};                // more parallelism, more divergence
+struct TagPairSNAPComputeFusedDeidrjAllLarge{};                // less parallelism, no divergence
 
 // CPU backend only
 struct TagPairSNAPComputeNeighCPU{};
@@ -102,6 +102,7 @@ class PairSNAPKokkos : public PairSNAP {
   static constexpr int tile_size_compute_yi = 2;
   static constexpr int min_blocks_compute_yi = 0; // no minimum bound
   static constexpr int team_size_compute_fused_deidrj = 2;
+  static constexpr int team_size_compute_fused_deidrj_all = 1;
 
   static constexpr int ui_batch = 1;
   static constexpr int yi_batch = 1;
@@ -118,6 +119,7 @@ class PairSNAPKokkos : public PairSNAP {
   static constexpr int tile_size_compute_yi = 8;
   static constexpr int min_blocks_compute_yi = 0; // no minimum bound
   static constexpr int team_size_compute_fused_deidrj = 4;
+  static constexpr int team_size_compute_fused_deidrj_all = 1;
 
   static constexpr int ui_batch = 1;
   static constexpr int yi_batch = 1;
@@ -132,6 +134,7 @@ class PairSNAPKokkos : public PairSNAP {
   static constexpr int tile_size_compute_beta = 4;
   static constexpr int tile_size_compute_yi = 8;
   static constexpr int team_size_compute_fused_deidrj = sizeof(real_type) == 4 ? 4 : 2;
+  static constexpr int team_size_compute_fused_deidrj_all = sizeof(real_type) == 4 ? 2 : 1;
 
   // this empirically reduces perf fluctuations from compiler version to compiler version
   static constexpr int min_blocks_compute_zi = 2;
@@ -140,6 +143,9 @@ class PairSNAPKokkos : public PairSNAP {
   static constexpr int ui_batch = host_flag ? 1 : 4;
   static constexpr int yi_batch = host_flag ? 1 : 4;
 #endif
+
+  // debugging for ComputeFusedDeidrj
+  static constexpr int dims = 3;
 
   // get the final batch size for ComputeUi
   static constexpr int team_size_compute_ui = base_team_size_compute_ui / ui_batch;
@@ -183,6 +189,75 @@ class PairSNAPKokkos : public PairSNAP {
       return Snap3DRangePolicy<Device, num_tiles, TagPairSNAP, min_blocks>({0, 0, 0},
                                                                    {vector_length, second_loop, chunk_size_div},
                                                                    {vector_length, num_tiles, 1});
+  }
+
+  // Helper routine that dispatches Ui with and without chemsnap
+  template <template <bool> class TagPairSNAPComputeUi>
+  void snap_dispatch_ui(int n_teams_div, int scratch_size) {
+    // make sure we're only passing in types we expect
+    static_assert(std::is_same_v<TagPairSNAPComputeUiLarge<false>, TagPairSNAPComputeUi<false>> ||
+      std::is_same_v<TagPairSNAPComputeUiSmall<false>, TagPairSNAPComputeUi<false>>);
+
+    std::string name = [&] () -> std::string {
+      if constexpr (std::is_same_v<TagPairSNAPComputeUiLarge<false>, TagPairSNAPComputeUi<false>>)
+        return (nelements > 1) ? "ComputeUiLargeChemsnap" : "ComputeUiLarge";
+      else
+        return (nelements > 1) ? "ComputeUiSmallChemsnap" : "ComputeUiSmall";
+    }();
+
+    if (nelements > 1) {
+      SnapAoSoATeamPolicy<DeviceType, team_size_compute_ui, TagPairSNAPComputeUi<true>>
+            policy_ui(n_teams_div, team_size_compute_ui, vector_length);
+      policy_ui = policy_ui.set_scratch_size(0, Kokkos::PerTeam(scratch_size));
+      Kokkos::parallel_for(name, policy_ui, *this);
+    } else {
+      SnapAoSoATeamPolicy<DeviceType, team_size_compute_ui, TagPairSNAPComputeUi<false>>
+            policy_ui(n_teams_div, team_size_compute_ui, vector_length);
+      policy_ui = policy_ui.set_scratch_size(0, Kokkos::PerTeam(scratch_size));
+      Kokkos::parallel_for(name, policy_ui, *this);
+    }
+  }
+
+  // Helper routine that dispatches directional ComputeFusedDeidrj
+  template <template <int> class TagPairSNAPComputeFusedDeidrj>
+  void snap_dispatch_fused_deidrj(int n_teams_div, int scratch_size) {
+    // make sure we're only passing in types we expect
+    static_assert(std::is_same_v<TagPairSNAPComputeFusedDeidrjLarge<0>, TagPairSNAPComputeFusedDeidrj<0>> ||
+      std::is_same_v<TagPairSNAPComputeFusedDeidrjSmall<0>, TagPairSNAPComputeFusedDeidrj<0>>);
+
+    std::string name = { std::is_same_v<TagPairSNAPComputeFusedDeidrjLarge<0>, TagPairSNAPComputeFusedDeidrj<0>> ? "ComputeFusedDeidrjLarge<0>" : "ComputeFusedDeidrjSmall<0>" };
+
+    // x direction
+    SnapAoSoATeamPolicy<DeviceType, team_size_compute_fused_deidrj, TagPairSNAPComputeFusedDeidrj<0> > policy_fused_deidrj_x(n_teams_div,team_size_compute_fused_deidrj,vector_length);
+    policy_fused_deidrj_x = policy_fused_deidrj_x.set_scratch_size(0, Kokkos::PerTeam(scratch_size));
+    Kokkos::parallel_for(name, policy_fused_deidrj_x, *this);
+
+    // y direction
+    name[24] = '1';
+    SnapAoSoATeamPolicy<DeviceType, team_size_compute_fused_deidrj, TagPairSNAPComputeFusedDeidrj<1> > policy_fused_deidrj_y(n_teams_div,team_size_compute_fused_deidrj,vector_length);
+    policy_fused_deidrj_y = policy_fused_deidrj_y.set_scratch_size(0, Kokkos::PerTeam(scratch_size));
+    Kokkos::parallel_for(name, policy_fused_deidrj_y, *this);
+
+    // z direction
+    name[24] = '2';
+    SnapAoSoATeamPolicy<DeviceType, team_size_compute_fused_deidrj, TagPairSNAPComputeFusedDeidrj<2> > policy_fused_deidrj_z(n_teams_div,team_size_compute_fused_deidrj,vector_length);
+    policy_fused_deidrj_z = policy_fused_deidrj_z.set_scratch_size(0, Kokkos::PerTeam(scratch_size));
+    Kokkos::parallel_for(name, policy_fused_deidrj_z, *this);
+  }
+
+  // Helper routine that dispatches fully fused ComputeFusedDeidrj
+  template <class TagPairSNAPComputeFusedDeidrjAll>
+  void snap_dispatch_fused_deidrj_all(int n_teams_div, int scratch_size) {
+    // make sure we're only passing in types we expect
+    static_assert(std::is_same_v<TagPairSNAPComputeFusedDeidrjAllLarge, TagPairSNAPComputeFusedDeidrjAll> ||
+      std::is_same_v<TagPairSNAPComputeFusedDeidrjAllSmall, TagPairSNAPComputeFusedDeidrjAll>);
+
+    std::string name = { std::is_same_v<TagPairSNAPComputeFusedDeidrjAllLarge, TagPairSNAPComputeFusedDeidrjAll> ? "ComputeFusedDeidrjAllLarge" : "ComputeFusedDeidrjAllSmall" };
+
+    // fully fused
+    SnapAoSoATeamPolicy<DeviceType, team_size_compute_fused_deidrj, TagPairSNAPComputeFusedDeidrjAll> policy_fused_deidrj_all(n_teams_div,team_size_compute_fused_deidrj_all,vector_length);
+    policy_fused_deidrj_all = policy_fused_deidrj_all.set_scratch_size(0, Kokkos::PerTeam(scratch_size));
+    Kokkos::parallel_for(name, policy_fused_deidrj_all, *this);
   }
 
   PairSNAPKokkos(class LAMMPS *);
@@ -292,13 +367,17 @@ class PairSNAPKokkos : public PairSNAP {
   template <bool chemsnap> KOKKOS_INLINE_FUNCTION
   void operator() (TagPairSNAPComputeYiWithZlist<chemsnap>, const int& iatom) const;
 
-  template<int dir>
-  KOKKOS_INLINE_FUNCTION
+  template<int dir> KOKKOS_INLINE_FUNCTION
   void operator() (TagPairSNAPComputeFusedDeidrjSmall<dir>,const typename Kokkos::TeamPolicy<DeviceType, TagPairSNAPComputeFusedDeidrjSmall<dir> >::member_type& team) const;
 
-  template<int dir>
-  KOKKOS_INLINE_FUNCTION
+  template<int dir> KOKKOS_INLINE_FUNCTION
   void operator() (TagPairSNAPComputeFusedDeidrjLarge<dir>,const typename Kokkos::TeamPolicy<DeviceType, TagPairSNAPComputeFusedDeidrjLarge<dir> >::member_type& team) const;
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (TagPairSNAPComputeFusedDeidrjAllSmall, const typename Kokkos::TeamPolicy<DeviceType, TagPairSNAPComputeFusedDeidrjAllSmall>::member_type& team) const;
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (TagPairSNAPComputeFusedDeidrjAllLarge, const typename Kokkos::TeamPolicy<DeviceType, TagPairSNAPComputeFusedDeidrjAllLarge>::member_type& team) const;
 
   // CPU backend only
   KOKKOS_INLINE_FUNCTION

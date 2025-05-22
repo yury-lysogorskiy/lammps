@@ -80,8 +80,7 @@ struct MultiWignerWrapper {
 
   KOKKOS_INLINE_FUNCTION
   MultiWignerWrapper(complex* buffer_, const int offset_)
-   : offset(offset_), buffer(reinterpret_cast<real_type*>(buffer_)
-    )
+   : offset(offset_), buffer(reinterpret_cast<real_type*>(buffer_))
   { ; }
 
   KOKKOS_INLINE_FUNCTION
@@ -185,6 +184,9 @@ class SNAKokkos {
   static constexpr int ui_batch = ui_batch_;
   static constexpr int yi_batch = yi_batch_;
 
+  // debugging for ComputeFusedDeidrj
+  static constexpr int dims = 3;
+
   using KKDeviceType = typename KKDevice<DeviceType>::value;
   static constexpr LAMMPS_NS::ExecutionSpace execution_space = ExecutionSpaceFromDevice<DeviceType>::space;
   static constexpr int host_flag = (execution_space == LAMMPS_NS::Host);
@@ -271,13 +273,18 @@ class SNAKokkos {
 
   // functions for derivatives, GPU only
   // version of the code with parallelism over j_bend
-  template<int dir>
-  KOKKOS_INLINE_FUNCTION
+  template<int dir> KOKKOS_INLINE_FUNCTION
   void compute_fused_deidrj_small(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team, const int, const int, const int, const int) const; //ForceSNAP
   // version of the code without parallelism over j_bend
-  template<int dir>
-  KOKKOS_INLINE_FUNCTION
+  template<int dir> KOKKOS_INLINE_FUNCTION
   void compute_fused_deidrj_large(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team, const int, const int, const int) const; //ForceSNAP
+
+  // super-fused versions
+  KOKKOS_INLINE_FUNCTION
+  void compute_fused_deidrj_all_small(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team, const int, const int, const int, const int) const; //ForceSNAP
+
+  KOKKOS_INLINE_FUNCTION
+  void compute_fused_deidrj_all_large(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team, const int, const int, const int) const; //ForceSNAP
 
   // core "evaluation" functions that get plugged into "compute" functions
   // plugged into compute_ui_small, compute_ui_large
@@ -306,6 +313,11 @@ class SNAKokkos {
   auto evaluate_duidrj_jbend(const WignerWrapper<real_type, vector_length>&, const complex&, const complex&, const real_type&,
                         const WignerWrapper<real_type, vector_length>&, const complex&, const complex&, const real_type&,
                         const int&, const int&, const int&) const;
+
+  KOKKOS_INLINE_FUNCTION
+  auto evaluate_duidrj_all_jbend(const WignerWrapper<real_type, vector_length>&, const complex&, const complex&, const real_type&,
+    const MultiWignerWrapper<real_type, vector_length, dims>&, const Kokkos::Array<complex, dims>&, const Kokkos::Array<complex, dims>&,
+    const Kokkos::Array<real_type, dims>&, const int&, const int&, const int&) const;
 
   // functions for bispectrum coefficients, CPU only
   template <bool need_atomics> KOKKOS_INLINE_FUNCTION
