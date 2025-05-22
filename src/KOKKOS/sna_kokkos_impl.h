@@ -28,10 +28,10 @@ namespace LAMMPS_NS {
 static const double MY_PI  = 3.14159265358979323846; // pi
 static const double MY_PI2  = 1.57079632679489661923; // pi/2
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 template<class CopyClass>
 inline
-SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::SNAKokkos(const CopyClass& copy)
+SNAKokkos<DeviceType, real_type, vector_length>::SNAKokkos(const CopyClass& copy)
   : twojmax(copy.twojmax), d_coeffelem(copy.d_coeffelem), rmin0(copy.rmin0),
     rfac0(copy.rfac0), switch_flag(copy.switchflag), switch_inner_flag(copy.switchinnerflag),
     chem_flag(copy.chemflag), bnorm_flag(copy.bnormflag), wselfall_flag(copy.wselfallflag),
@@ -73,15 +73,15 @@ SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_bat
 
 /* ---------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 KOKKOS_INLINE_FUNCTION
-SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::~SNAKokkos()
+SNAKokkos<DeviceType, real_type, vector_length>::~SNAKokkos()
 {
 }
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 inline
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::build_indexlist()
+void SNAKokkos<DeviceType, real_type, vector_length>::build_indexlist()
 {
   // index list for cglist
 
@@ -277,17 +277,17 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
 
 /* ---------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 inline
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::init()
+void SNAKokkos<DeviceType, real_type, vector_length>::init()
 {
   init_clebsch_gordan();
   init_rootpqarray();
 }
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 inline
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::grow_rij(int newnatom, int newnmax)
+void SNAKokkos<DeviceType, real_type, vector_length>::grow_rij(int newnatom, int newnmax, int padding_factor)
 {
   if (newnatom <= natom && newnmax <= nmax) return;
   natom = newnatom;
@@ -297,7 +297,6 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
   natom_pad = natom_div * vector_length * padding_factor;
 
   nmax = newnmax;
-  batched_max_neighs = (nmax + ui_batch - 1) / ui_batch; // not needed for any padding
 
   MemKK::realloc_kokkos(rij,"sna:rij",natom_pad,nmax,3);
   MemKK::realloc_kokkos(wj,"sna:wj",natom_pad,nmax);
@@ -348,9 +347,9 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
    ComputeFusedDeidrj, which are one warp per atom-neighbor pair.
 ------------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 KOKKOS_INLINE_FUNCTION
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_cayley_klein(const int& iatom, const int& jnbor) const
+void SNAKokkos<DeviceType, real_type, vector_length>::compute_cayley_klein(const int& iatom, const int& jnbor) const
 {
   const real_type x = rij(iatom,jnbor,0);
   const real_type y = rij(iatom,jnbor,1);
@@ -436,9 +435,9 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
    advantage of the symmetry of the Wigner U matrices.
 ------------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 KOKKOS_INLINE_FUNCTION
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::pre_ui(const int& iatom, const int& j, const int& ielem) const
+void SNAKokkos<DeviceType, real_type, vector_length>::pre_ui(const int& iatom, const int& j, const int& ielem) const
 {
   for (int jelem = 0; jelem < nelements; jelem++) {
     int jju_half = idxu_half_block(j);
@@ -468,10 +467,10 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
 
 // Version of the code that exposes additional parallelism by threading over `j_bend` values
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
-template<bool chemsnap>
+template<class DeviceType, typename real_type, int vector_length>
+template<bool chemsnap, int ui_batch>
 KOKKOS_INLINE_FUNCTION
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_ui_small(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team,
+void SNAKokkos<DeviceType, real_type, vector_length>::compute_ui_small(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team,
   const int iatom_mod, const int j_bend, const int first_jnbor, const int ninside, const int iatom_div) const
 {
   const int iatom = iatom_mod + vector_length * iatom_div;
@@ -508,15 +507,15 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
   // this for loop is here for context --- we expose additional
   // parallelism over this loop instead
   //for (int j_bend = 0; j_bend <= twojmax; j_bend++) {
-  evaluate_ui_jbend<chemsnap>(ulist_wrapper, a, b, sfac, jelem, iatom, j_bend);
+  evaluate_ui_jbend<chemsnap, ui_batch>(ulist_wrapper, a, b, sfac, jelem, iatom, j_bend);
 }
 
 // Version of the code that loops over all `j_bend` values which reduces integer arithmetic
 // and some amount of load imbalance, at the expense of reducing parallelism
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
-template<bool chemsnap>
+template<class DeviceType, typename real_type, int vector_length>
+template<bool chemsnap, int ui_batch>
 KOKKOS_INLINE_FUNCTION
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_ui_large(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team,
+void SNAKokkos<DeviceType, real_type, vector_length>::compute_ui_large(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team,
   const int iatom_mod, const int first_jnbor, const int ninside, const int iatom_div) const
 {
   const int iatom = iatom_mod + vector_length * iatom_div;
@@ -554,15 +553,15 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
   #pragma unroll
   #endif
   for (int j_bend = 0; j_bend <= twojmax; j_bend++) {
-    evaluate_ui_jbend<chemsnap>(ulist_wrapper, a, b, sfac, jelem, iatom, j_bend);
+    evaluate_ui_jbend<chemsnap, ui_batch>(ulist_wrapper, a, b, sfac, jelem, iatom, j_bend);
   }
 }
 
 // Core "evaluation" kernel that gets reused in `compute_ui_small` and `compute_ui_large`
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
-template<bool chemsnap>
+template<class DeviceType, typename real_type, int vector_length>
+template<bool chemsnap, int ui_batch>
 KOKKOS_FORCEINLINE_FUNCTION
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::evaluate_ui_jbend(
+void SNAKokkos<DeviceType, real_type, vector_length>::evaluate_ui_jbend(
           const MultiWignerWrapper<real_type, vector_length, ui_batch>& ulist_wrapper,
           const Kokkos::Array<complex, ui_batch>& a,
           const Kokkos::Array<complex, ui_batch>& b,
@@ -716,9 +715,9 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
    which still keeps the recursive calculation simple.
 ------------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 template <bool need_atomics> KOKKOS_INLINE_FUNCTION
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_ui_cpu(const int& iatom, const int& jnbor) const
+void SNAKokkos<DeviceType, real_type, vector_length>::compute_ui_cpu(const int& iatom, const int& jnbor) const
 {
   // utot(j,ma,mb) = 0 for all j,ma,ma
   // utot(j,ma,ma) = 1 for all j,ma
@@ -840,9 +839,9 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
   structure, fused in with zeroing ylist
 ------------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 KOKKOS_INLINE_FUNCTION
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::transform_ui(const int& iatom, const int& idxu) const
+void SNAKokkos<DeviceType, real_type, vector_length>::transform_ui(const int& iatom, const int& idxu) const
 {
   int elem_count = chem_flag ? nelements : 1;
 
@@ -872,9 +871,9 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
    compute Zi by summing over products of Ui
 ------------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
-template <bool chemsnap> KOKKOS_INLINE_FUNCTION
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_zi(const int& iatom, const int& jjz) const
+template<class DeviceType, typename real_type, int vector_length>
+template <bool chemsnap, int yi_batch> KOKKOS_INLINE_FUNCTION
+void SNAKokkos<DeviceType, real_type, vector_length>::compute_zi(const int& iatom, const int& jjz) const
 {
   int j1, j2, j, ma1min, ma2max, mb1min, mb2max, na, nb, idxcg;
   idxz(jjz).get_zi(j1, j2, j, ma1min, ma2max, mb1min, mb2max, na, nb, idxcg);
@@ -885,7 +884,7 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
     int idouble = 0;
     for (int elem1 = 0; elem1 < nelements; elem1++) {
       for (int elem2 = 0; elem2 < nelements; elem2++) {
-        auto zval = evaluate_zi(j1, j2, j, ma1min, ma2max, mb1min, mb2max, na, nb, iatom, elem1, elem2, cgblock);
+        auto zval = evaluate_zi<yi_batch>(j1, j2, j, ma1min, ma2max, mb1min, mb2max, na, nb, iatom, elem1, elem2, cgblock);
 
         register_loop<yi_batch>([&] (int n) -> void {
           zlist(iatom + n * vector_length, idouble, jjz) = zval[n];
@@ -895,7 +894,7 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
       } // end loop over elem2
     } // end loop over elem1
   } else {
-    auto zval = evaluate_zi(j1, j2, j, ma1min, ma2max, mb1min, mb2max, na, nb, iatom, 0, 0, cgblock);
+    auto zval = evaluate_zi<yi_batch>(j1, j2, j, ma1min, ma2max, mb1min, mb2max, na, nb, iatom, 0, 0, cgblock);
     register_loop<yi_batch>([&] (int n) -> void {
       zlist(iatom + n * vector_length, 0, jjz) = zval[n];
     });
@@ -907,9 +906,9 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
    This gets used in both `compute_zi` and `compute_yi`
 ------------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
-KOKKOS_FORCEINLINE_FUNCTION
-auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::evaluate_zi(const int& j1, const int& j2, const int& j,
+template<class DeviceType, typename real_type, int vector_length>
+template <int yi_batch> KOKKOS_FORCEINLINE_FUNCTION
+auto SNAKokkos<DeviceType, real_type, vector_length>::evaluate_zi(const int& j1, const int& j2, const int& j,
         const int& ma1min, const int& ma2max, const int& mb1min, const int& mb2max, const int& na, const int& nb,
         const int& iatom, const int& elem1, const int& elem2, const real_type* cgblock) const {
   Kokkos::Array<complex, yi_batch> zval;
@@ -965,9 +964,9 @@ auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
    divergence.
 ------------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
-template <bool chemsnap> KOKKOS_INLINE_FUNCTION
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_bi(const int& iatom, const int& jjb) const
+template<class DeviceType, typename real_type, int vector_length>
+template <bool chemsnap, int yi_batch> KOKKOS_INLINE_FUNCTION
+void SNAKokkos<DeviceType, real_type, vector_length>::compute_bi(const int& iatom, const int& jjb) const
 {
   // for j1 = 0,...,twojmax
   //   for j2 = 0,twojmax
@@ -990,7 +989,7 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
     for (int elem1 = 0; elem1 < nelements; elem1++) {
       for (int elem2 = 0; elem2 < nelements; elem2++) {
         for (int elem3 = 0; elem3 < nelements; elem3++) {
-          Kokkos::Array<real_type, yi_batch> bval = evaluate_bi(j, jjz, jju, iatom, elem1, elem2, elem3);
+          Kokkos::Array<real_type, yi_batch> bval = evaluate_bi<yi_batch>(j, jjz, jju, iatom, elem1, elem2, elem3);
           register_loop<yi_batch>([&] (int n) -> void {
             blist(iatom + n * vector_length, itriple, jjb) = bval[n];
           });
@@ -999,7 +998,7 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
       } // end loop over elem2
     } // end loop over elem1
   } else {
-    Kokkos::Array<real_type, yi_batch> bval = evaluate_bi(j, jjz, jju, iatom, 0, 0, 0);
+    Kokkos::Array<real_type, yi_batch> bval = evaluate_bi<yi_batch>(j, jjz, jju, iatom, 0, 0, 0);
     register_loop<yi_batch>([&] (int n) -> void {
       blist(iatom + n * vector_length, 0, jjb) = bval[n];
     });
@@ -1011,9 +1010,9 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
    This gets used in `compute_bi`
 ------------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
-KOKKOS_INLINE_FUNCTION
-auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::evaluate_bi(const int& j, const int& jjz, const int& jju, const int& iatom, const int& elem1, const int& elem2, const int& elem3) const
+template<class DeviceType, typename real_type, int vector_length>
+template <int yi_batch> KOKKOS_INLINE_FUNCTION
+auto SNAKokkos<DeviceType, real_type, vector_length>::evaluate_bi(const int& j, const int& jjz, const int& jju, const int& iatom, const int& elem1, const int& elem2, const int& elem3) const
 {
   // this computes the:
   //        b(j1,j2,j) = 0
@@ -1096,9 +1095,9 @@ auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
    or accumulating the quadratic terms from blist
 ------------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 KOKKOS_INLINE_FUNCTION
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_beta_linear(const int& iatom, const int& idxb, const int& ielem) const
+void SNAKokkos<DeviceType, real_type, vector_length>::compute_beta_linear(const int& iatom, const int& idxb, const int& ielem) const
 {
   auto d_coeffi = Kokkos::subview(d_coeffelem, ielem, Kokkos::ALL);
 
@@ -1108,10 +1107,10 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
   }
 }
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 template <bool need_atomics>
 KOKKOS_INLINE_FUNCTION
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_beta_quadratic(const int& iatom, const int& idxb, const int& ielem) const
+void SNAKokkos<DeviceType, real_type, vector_length>::compute_beta_quadratic(const int& iatom, const int& idxb, const int& ielem) const
 {
   auto d_coeffi = Kokkos::subview(d_coeffelem, ielem, Kokkos::ALL);
 
@@ -1171,10 +1170,10 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
    Compute Yi from Ui without storing Zi, looping over zlist indices.
 ------------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
-template <bool chemsnap, bool need_atomics>
+template<class DeviceType, typename real_type, int vector_length>
+template <bool chemsnap, bool need_atomics, int yi_batch>
 KOKKOS_INLINE_FUNCTION
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_yi(const int& iatom, const int& jjz) const
+void SNAKokkos<DeviceType, real_type, vector_length>::compute_yi(const int& iatom, const int& jjz) const
 {
   int j1, j2, j, ma1min, ma2max, mb1min, mb2max, na, nb, jju_half, idxcg;
   idxz(jjz).get_yi(j1, j2, j, ma1min, ma2max, mb1min, mb2max, na, nb, jju_half, idxcg);
@@ -1187,7 +1186,7 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
     for (int elem1 = 0; elem1 < nelements; elem1++) {
       for (int elem2 = 0; elem2 < nelements; elem2++) {
 
-        const auto zval = evaluate_zi(j1, j2, j, ma1min, ma2max, mb1min, mb2max, na, nb, iatom, elem1, elem2, cgblock);
+        const auto zval = evaluate_zi<yi_batch>(j1, j2, j, ma1min, ma2max, mb1min, mb2max, na, nb, iatom, elem1, elem2, cgblock);
 
         // apply to z(j1,j2,j,ma,mb) to unique element of y(j)
         // find right y_list[jju] and beta(iatom,jjb) entries
@@ -1197,7 +1196,7 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
         // pick out right beta value
         for (int elem3 = 0; elem3 < nelements; elem3++) {
 
-          const auto betaj = evaluate_beta_scaled<true>(j1, j2, j, iatom, elem1, elem2, elem3);
+          const auto betaj = evaluate_beta_scaled<true, yi_batch>(j1, j2, j, iatom, elem1, elem2, elem3);
 
           register_loop<yi_batch>([&] (int n) -> void {
             if constexpr (need_atomics) {
@@ -1212,8 +1211,8 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
       } // end loop over elem2
     } // end loop over elem1
   } else {
-    const auto zval = evaluate_zi(j1, j2, j, ma1min, ma2max, mb1min, mb2max, na, nb, iatom, 0, 0, cgblock);
-    const auto betaj = evaluate_beta_scaled<false>(j1, j2, j, iatom, 0, 0, 0);
+    const auto zval = evaluate_zi<yi_batch>(j1, j2, j, ma1min, ma2max, mb1min, mb2max, na, nb, iatom, 0, 0, cgblock);
+    const auto betaj = evaluate_beta_scaled<false, yi_batch>(j1, j2, j, iatom, 0, 0, 0);
 
     register_loop<yi_batch>([&] (int n) -> void {
       if constexpr (need_atomics) {
@@ -1231,10 +1230,10 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
    compute Yi from Ui with the precomputed Zi.
 ------------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
-template <bool chemsnap, bool need_atomics>
+template<class DeviceType, typename real_type, int vector_length>
+template <bool chemsnap, bool need_atomics, int yi_batch>
 KOKKOS_INLINE_FUNCTION
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_yi_with_zlist(const int& iatom, const int& jjz) const
+void SNAKokkos<DeviceType, real_type, vector_length>::compute_yi_with_zlist(const int& iatom, const int& jjz) const
 {
   int j1, j2, j, jju_half;
   idxz(jjz).get_yi_with_zlist(j1, j2, j, jju_half);
@@ -1255,7 +1254,7 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
         // pick out right beta value
         for (int elem3 = 0; elem3 < nelements; elem3++) {
 
-          const auto betaj = evaluate_beta_scaled<true>(j1, j2, j, iatom, elem1, elem2, elem3);
+          const auto betaj = evaluate_beta_scaled<true, yi_batch>(j1, j2, j, iatom, elem1, elem2, elem3);
 
           register_loop<yi_batch>([&] (int n) -> void {
             if constexpr (need_atomics) {
@@ -1276,7 +1275,7 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
       zval[n] = zlist(iatom + n * vector_length, 0, jjz);
     });
 
-    const auto betaj = evaluate_beta_scaled<false>(j1, j2, j, iatom, 0, 0, 0);
+    const auto betaj = evaluate_beta_scaled<false, yi_batch>(j1, j2, j, iatom, 0, 0, 0);
 
     register_loop<yi_batch>([&] (int n) -> void {
       if constexpr (need_atomics) {
@@ -1295,9 +1294,9 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
    `beta` value which gets used in both `compute_yi` and `compute_yi_from_zlist`
 ------------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
-template <bool chemsnap> KOKKOS_FORCEINLINE_FUNCTION
-auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::evaluate_beta_scaled(const int& j1, const int& j2, const int& j,
+template<class DeviceType, typename real_type, int vector_length>
+template <bool chemsnap, int yi_batch> KOKKOS_FORCEINLINE_FUNCTION
+auto SNAKokkos<DeviceType, real_type, vector_length>::evaluate_beta_scaled(const int& j1, const int& j2, const int& j,
           const int& iatom, const int& elem1, const int& elem2, const int& elem3) const {
 
   int itriple_jjb = 0;
@@ -1359,10 +1358,10 @@ auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
 
 
 // Version of the code that exposes additional parallelism by threading over `j_bend` values
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
-template<int dir>
+template<class DeviceType, typename real_type, int vector_length>
+template<int start, int num_dims>
 KOKKOS_INLINE_FUNCTION
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_fused_deidrj_small(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team, const int iatom_mod, const int j_bend, const int jnbor, const int iatom_div) const
+void SNAKokkos<DeviceType, real_type, vector_length>::compute_fused_deidrj_small(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team, const int iatom_mod, const int j_bend, const int jnbor, const int iatom_div) const
 {
   const int iatom = iatom_mod + vector_length * iatom_div;
   // get shared memory offset
@@ -1374,228 +1373,7 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
 
   // extract, wrap shared memory buffer
   WignerWrapper<real_type, vector_length> ulist_wrapper((complex*)team.team_shmem().get_shmem(team.team_size() * tile_size * sizeof(complex), 0) + scratch_shift, iatom_mod);
-  WignerWrapper<real_type, vector_length> dulist_wrapper((complex*)team.team_shmem().get_shmem(team.team_size() * tile_size * sizeof(complex), 0) + scratch_shift, iatom_mod);
-
-  // load parameters
-  const complex a = a_gpu(iatom, jnbor);
-  const complex b = b_gpu(iatom, jnbor);
-  const complex da = da_gpu(iatom, jnbor, dir);
-  const complex db = db_gpu(iatom, jnbor, dir);
-  const real_type sfac = sfac_gpu(iatom, jnbor, 0);
-  const real_type dsfacu = sfac_gpu(iatom, jnbor, dir + 1); // dsfac * u
-
-  const int jelem = element(iatom, jnbor);
-
-  // compute the contribution to dedr_full_sum for one "bend" location
-  const real_type dedr_full_sum = evaluate_duidrj_jbend(ulist_wrapper, a, b, sfac, dulist_wrapper, da, db, dsfacu,
-                                                       jelem, iatom, j_bend);
-
-  // dedr gets zeroed out at the start of each iteration in compute_cayley_klein
-  Kokkos::atomic_add(&(dedr(iatom, jnbor, dir)), static_cast<real_type>(2.0) * dedr_full_sum);
-
-}
-
-// Version of the code that loops over all `j_bend` values which reduces integer arithmetic
-// and some amount of load imbalance, at the expense of reducing parallelism
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
-template<int dir>
-KOKKOS_INLINE_FUNCTION
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_fused_deidrj_large(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team, const int iatom_mod, const int jnbor, const int iatom_div) const
-{
-  const int iatom = iatom_mod + vector_length * iatom_div;
-  // get shared memory offset
-  // scratch size: 32 atoms * (twojmax+1) cached values, no double buffer
-  const int tile_size = vector_length * (twojmax + 1);
-
-  const int team_rank = team.team_rank();
-  const int scratch_shift = team_rank * tile_size;
-
-  // extract, wrap shared memory buffer
-  WignerWrapper<real_type, vector_length> ulist_wrapper((complex*)team.team_shmem().get_shmem(team.team_size() * tile_size * sizeof(complex), 0) + scratch_shift, iatom_mod);
-  WignerWrapper<real_type, vector_length> dulist_wrapper((complex*)team.team_shmem().get_shmem(team.team_size() * tile_size * sizeof(complex), 0) + scratch_shift, iatom_mod);
-
-  // load parameters
-  const complex a = a_gpu(iatom, jnbor);
-  const complex b = b_gpu(iatom, jnbor);
-  const complex da = da_gpu(iatom, jnbor, dir);
-  const complex db = db_gpu(iatom, jnbor, dir);
-  const real_type sfac = sfac_gpu(iatom, jnbor, 0);
-  const real_type dsfacu = sfac_gpu(iatom, jnbor, dir + 1); // dsfac * u
-
-  const int jelem = element(iatom, jnbor);
-
-  // compute the contributions to dedr_full_sum for all "bend" locations
-  real_type dedr_full_sum = static_cast<real_type>(0);
-  #ifdef LMP_KK_DEVICE_COMPILE
-  #pragma unroll
-  #endif
-  for (int j_bend = 0; j_bend <= twojmax; j_bend++) {
-    dedr_full_sum += evaluate_duidrj_jbend(ulist_wrapper, a, b, sfac, dulist_wrapper, da, db, dsfacu,
-                                          jelem, iatom,j_bend);
-  }
-
-  // there's one thread per atom, neighbor pair, so no need to make this atomic
-  dedr(iatom, jnbor, dir) = static_cast<real_type>(2.0) * dedr_full_sum;
-
-}
-
-// Core "evaluation" kernel that gets reused in `compute_fused_deidrj_small` and
-// `compute_fused_deidrj_large`
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
-KOKKOS_FORCEINLINE_FUNCTION
-auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::evaluate_duidrj_jbend(const WignerWrapper<real_type, vector_length>& ulist_wrapper, const complex& a, const complex& b, const real_type& sfac,
-                      const WignerWrapper<real_type, vector_length>& dulist_wrapper, const complex& da, const complex& db, const real_type& dsfacu,
-                      const int& jelem, const int& iatom, const int& j_bend) const {
-
-  real_type dedr_full_sum = static_cast<real_type>(0);
-
-  // level 0 is just 1, 0
-  ulist_wrapper.set(0, complex::one());
-  dulist_wrapper.set(0, complex::zero());
-
-  // j from before the bend, don't store, mb == 0
-  // this is "creeping up the side"
-  for (int j = 1; j <= j_bend; j++) {
-
-    constexpr int mb = 0; // intentional for readability, compiler should optimize this out
-
-    complex ulist_accum = complex::zero();
-    complex dulist_accum = complex::zero();
-
-    int ma;
-    for (ma = 0; ma < j; ma++) {
-
-      // grab the cached value
-      const complex ulist_prev = ulist_wrapper.get(ma);
-      const complex dulist_prev = dulist_wrapper.get(ma);
-
-      // ulist_accum += rootpq * a.conj() * ulist_prev;
-      real_type rootpq = rootpqarray(j - ma, j - mb);
-      ulist_accum.re += rootpq * (a.re * ulist_prev.re + a.im * ulist_prev.im);
-      ulist_accum.im += rootpq * (a.re * ulist_prev.im - a.im * ulist_prev.re);
-
-      // product rule of above
-      dulist_accum.re += rootpq * (da.re * ulist_prev.re + da.im * ulist_prev.im + a.re * dulist_prev.re + a.im * dulist_prev.im);
-      dulist_accum.im += rootpq * (da.re * ulist_prev.im - da.im * ulist_prev.re + a.re * dulist_prev.im - a.im * dulist_prev.re);
-
-      // store ulist_accum, we atomic accumulate values after the bend, so no atomic add here
-      ulist_wrapper.set(ma, ulist_accum);
-      dulist_wrapper.set(ma, dulist_accum);
-
-      // next value
-      // ulist_accum = -rootpq * b.conj() * ulist_prev;
-      rootpq = rootpqarray(ma + 1, j - mb);
-      ulist_accum.re = -rootpq * (b.re * ulist_prev.re + b.im * ulist_prev.im);
-      ulist_accum.im = -rootpq * (b.re * ulist_prev.im - b.im * ulist_prev.re);
-
-      // product rule of above
-      dulist_accum.re = -rootpq * (db.re * ulist_prev.re + db.im * ulist_prev.im + b.re * dulist_prev.re + b.im * dulist_prev.im);
-      dulist_accum.im = -rootpq * (db.re * ulist_prev.im - db.im * ulist_prev.re + b.re * dulist_prev.im - b.im * dulist_prev.re);
-
-    }
-
-    ulist_wrapper.set(ma, ulist_accum);
-    dulist_wrapper.set(ma, dulist_accum);
-  }
-
-  // now we're after the bend, start storing but only up to the "half way point"
-  const int j_half_way = MIN(2 * j_bend, twojmax);
-
-  int mb = 1;
-  int j; //= j_bend + 1; // need this value below
-  for (j = j_bend + 1; j <= j_half_way; j++) {
-
-    const int jjup = idxu_half_block[j-1] + (mb - 1) * j;
-
-    complex ulist_accum = complex::zero();
-    complex dulist_accum = complex::zero();
-
-    int ma;
-    for (ma = 0; ma < j; ma++) {
-
-      // grab y_local early
-      // this will never be the last element of a row, no need to rescale.
-      complex y_local = complex(ylist_re(iatom, jelem, jjup + ma), ylist_im(iatom, jelem, jjup+ma));
-
-      // grab the cached value
-      const complex ulist_prev = ulist_wrapper.get(ma);
-      const complex dulist_prev = dulist_wrapper.get(ma);
-
-      // ulist_accum += rootpq * b * ulist_prev;
-      real_type rootpq = rootpqarray(j - ma, mb);
-      ulist_accum.re += rootpq * (b.re * ulist_prev.re - b.im * ulist_prev.im);
-      ulist_accum.im += rootpq * (b.re * ulist_prev.im + b.im * ulist_prev.re);
-
-      // product rule of above
-      dulist_accum.re += rootpq * (db.re * ulist_prev.re - db.im * ulist_prev.im + b.re * dulist_prev.re - b.im * dulist_prev.im);
-      dulist_accum.im += rootpq * (db.re * ulist_prev.im + db.im * ulist_prev.re + b.re * dulist_prev.im + b.im * dulist_prev.re);
-
-      // store ulist_accum
-      ulist_wrapper.set(ma, ulist_accum);
-      dulist_wrapper.set(ma, dulist_accum);
-
-      // Directly accumulate deidrj into sum_tmp
-      const complex du_prod = (dsfacu * ulist_prev) + (sfac * dulist_prev);
-      dedr_full_sum += du_prod.re * y_local.re + du_prod.im * y_local.im;
-
-      // next value
-      // ulist_accum = rootpq * a * ulist_prev;
-      rootpq = rootpqarray(ma + 1, mb);
-      ulist_accum.re = rootpq * (a.re * ulist_prev.re - a.im * ulist_prev.im);
-      ulist_accum.im = rootpq * (a.re * ulist_prev.im + a.im * ulist_prev.re);
-
-      // product rule of above
-      dulist_accum.re = rootpq * (da.re * ulist_prev.re - da.im * ulist_prev.im + a.re * dulist_prev.re - a.im * dulist_prev.im);
-      dulist_accum.im = rootpq * (da.re * ulist_prev.im + da.im * ulist_prev.re + a.re * dulist_prev.im + a.im * dulist_prev.re);
-
-    }
-
-    ulist_wrapper.set(ma, ulist_accum);
-    dulist_wrapper.set(ma, dulist_accum);
-
-    mb++;
-  }
-
-  // accumulate the last level
-  const int jjup = idxu_half_block[j-1] + (mb - 1) * j;
-
-  for (int ma = 0; ma < j; ma++) {
-    // grab y_local early
-    complex y_local = complex(ylist_re(iatom, jelem, jjup + ma), ylist_im(iatom, jelem, jjup+ma));
-    if (j % 2 == 1 && 2*(mb-1) == j-1) { // double check me...
-      if (ma == (mb-1)) { y_local = static_cast<real_type>(0.5)*y_local; }
-      else if (ma > (mb-1)) { y_local.re = static_cast<real_type>(0.); y_local.im = static_cast<real_type>(0.); } // can probably avoid this outright
-      // else the ma < mb gets "double counted", cancelling the 0.5.
-    }
-
-    const complex ulist_prev = ulist_wrapper.get(ma);
-    const complex dulist_prev = dulist_wrapper.get(ma);
-
-    // Directly accumulate deidrj into sum_tmp
-    const complex du_prod = (dsfacu * ulist_prev) + (sfac * dulist_prev);
-    dedr_full_sum += du_prod.re * y_local.re + du_prod.im * y_local.im;
-
-  }
-
-  return dedr_full_sum;
-}
-
-// Version of the code that exposes additional parallelism by threading over `j_bend` values
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
-KOKKOS_INLINE_FUNCTION
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_fused_deidrj_all_small(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team, const int iatom_mod, const int j_bend, const int jnbor, const int iatom_div) const
-{
-  const int iatom = iatom_mod + vector_length * iatom_div;
-  // get shared memory offset
-  // scratch size: 32 atoms * (twojmax+1) cached values, no double buffer
-  const int tile_size = vector_length * (twojmax + 1);
-
-  const int team_rank = team.team_rank();
-  const int scratch_shift = team_rank * tile_size;
-
-  // extract, wrap shared memory buffer
-  WignerWrapper<real_type, vector_length> ulist_wrapper((complex*)team.team_shmem().get_shmem(team.team_size() * tile_size * sizeof(complex), 0) + scratch_shift, iatom_mod);
-  MultiWignerWrapper<real_type, vector_length, dims> dulist_wrapper((complex*)team.team_shmem().get_shmem(dims * team.team_size() * tile_size * sizeof(complex), 0) + dims * scratch_shift, iatom_mod);
+  MultiWignerWrapper<real_type, vector_length, num_dims> dulist_wrapper((complex*)team.team_shmem().get_shmem(num_dims * team.team_size() * tile_size * sizeof(complex), 0) + num_dims * scratch_shift, iatom_mod);
 
   // load parameters
   const complex a = a_gpu(iatom, jnbor);
@@ -1603,29 +1381,30 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
   const real_type sfac = sfac_gpu(iatom, jnbor, 0);
   const int jelem = element(iatom, jnbor);
 
-  Kokkos::Array<complex, dims> da, db;
-  Kokkos::Array<real_type, dims> dsfacu;
-  register_loop<dims>([&] (int d) -> void {
-    da[d] = { da_gpu(iatom, jnbor, d) };
-    db[d] = { db_gpu(iatom, jnbor, d) };
-    dsfacu[d] = { sfac_gpu(iatom, jnbor, d + 1) }; // dsfac * u
+  Kokkos::Array<complex, num_dims> da, db;
+  Kokkos::Array<real_type, num_dims> dsfacu;
+  register_loop<num_dims>([&] (int d) -> void {
+    da[d] = { da_gpu(iatom, jnbor, start + d) };
+    db[d] = { db_gpu(iatom, jnbor, start + d) };
+    dsfacu[d] = { sfac_gpu(iatom, jnbor, start + d + 1) }; // dsfac * u
   });
 
   // compute the contribution to dedr_full_sum for one "bend" location
-  const Kokkos::Array<real_type, dims> dedr_full_sum = evaluate_duidrj_all_jbend(ulist_wrapper, a, b, sfac, dulist_wrapper, da, db, dsfacu,
+  const Kokkos::Array<real_type, num_dims> dedr_full_sum = evaluate_duidrj_jbend<num_dims>(ulist_wrapper, a, b, sfac, dulist_wrapper, da, db, dsfacu,
                                                        jelem, iatom, j_bend);
 
   // dedr gets zeroed out at the start of each iteration in compute_cayley_klein
-  register_loop<dims>([&] (int d) -> void {
-    Kokkos::atomic_add(&(dedr(iatom, jnbor, d)), static_cast<real_type>(2.0) * dedr_full_sum[d]);
+  register_loop<num_dims>([&] (int d) -> void {
+    Kokkos::atomic_add(&(dedr(iatom, jnbor, start + d)), static_cast<real_type>(2.0) * dedr_full_sum[d]);
   });
 }
 
 // Version of the code that loops over all `j_bend` values which reduces integer arithmetic
 // and some amount of load imbalance, at the expense of reducing parallelism
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
+template<int start, int num_dims>
 KOKKOS_INLINE_FUNCTION
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_fused_deidrj_all_large(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team, const int iatom_mod, const int jnbor, const int iatom_div) const
+void SNAKokkos<DeviceType, real_type, vector_length>::compute_fused_deidrj_large(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team, const int iatom_mod, const int jnbor, const int iatom_div) const
 {
   const int iatom = iatom_mod + vector_length * iatom_div;
   // get shared memory offset
@@ -1637,7 +1416,7 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
 
   // extract, wrap shared memory buffer
   WignerWrapper<real_type, vector_length> ulist_wrapper((complex*)team.team_shmem().get_shmem(team.team_size() * tile_size * sizeof(complex), 0) + scratch_shift, iatom_mod);
-  MultiWignerWrapper<real_type, vector_length, dims> dulist_wrapper((complex*)team.team_shmem().get_shmem(dims * team.team_size() * tile_size * sizeof(complex), 0) + dims * scratch_shift, iatom_mod);
+  MultiWignerWrapper<real_type, vector_length, num_dims> dulist_wrapper((complex*)team.team_shmem().get_shmem(num_dims * team.team_size() * tile_size * sizeof(complex), 0) + num_dims * scratch_shift, iatom_mod);
 
   // load parameters
   const complex a = a_gpu(iatom, jnbor);
@@ -1645,45 +1424,46 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
   const real_type sfac = sfac_gpu(iatom, jnbor, 0);
   const int jelem = element(iatom, jnbor);
 
-  Kokkos::Array<complex, dims> da, db;
-  Kokkos::Array<real_type, dims> dsfacu;
-  register_loop<dims>([&] (int d) -> void {
-    da[d] = { da_gpu(iatom, jnbor, d) };
-    db[d] = { db_gpu(iatom, jnbor, d) };
-    dsfacu[d] = { sfac_gpu(iatom, jnbor, d + 1) }; // dsfac * u
+  Kokkos::Array<complex, num_dims> da, db;
+  Kokkos::Array<real_type, num_dims> dsfacu;
+  register_loop<num_dims>([&] (int d) -> void {
+    da[d] = { da_gpu(iatom, jnbor, start + d) };
+    db[d] = { db_gpu(iatom, jnbor, start + d) };
+    dsfacu[d] = { sfac_gpu(iatom, jnbor, start + d + 1) }; // dsfac * u
   });
 
   // compute the contributions to dedr_full_sum for all "bend" locations
-  Kokkos::Array<real_type, dims> dedr_full_sum = { 0, 0, 0 };
+  Kokkos::Array<real_type, num_dims> dedr_full_sum = { 0 };
   for (int j_bend = 0; j_bend <= twojmax; j_bend++) {
-    const Kokkos::Array<real_type, dims> accum = evaluate_duidrj_all_jbend(ulist_wrapper, a, b, sfac, dulist_wrapper, da, db, dsfacu,
+    const Kokkos::Array<real_type, num_dims> accum = evaluate_duidrj_jbend<num_dims>(ulist_wrapper, a, b, sfac, dulist_wrapper, da, db, dsfacu,
                                           jelem, iatom, j_bend);
-    register_loop<dims>([&] (int d) -> void {                                   
+    register_loop<num_dims>([&] (int d) -> void {
      dedr_full_sum[d] += accum[d];
     });
   }
 
   // there's one thread per atom, neighbor pair, so no need to make this atomic
-  register_loop<dims>([&] (int d) -> void {
-    dedr(iatom, jnbor, d) = static_cast<real_type>(2.0) * dedr_full_sum[d];
+  register_loop<num_dims>([&] (int d) -> void {
+    dedr(iatom, jnbor, start + d) = static_cast<real_type>(2.0) * dedr_full_sum[d];
   });
 
 }
 
-// Core "evaluation" kernel that gets reused in `compute_fused_deidrj_all_small` and
-// `compute_fused_deidrj_all_large`
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+// Core "evaluation" kernel that gets reused in `compute_fused_deidrj_small` and
+// `compute_fused_deidrj_large`
+template<class DeviceType, typename real_type, int vector_length>
+template<int num_dims>
 KOKKOS_INLINE_FUNCTION
-auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::evaluate_duidrj_all_jbend(const WignerWrapper<real_type, vector_length>& ulist_wrapper,
-  const complex& a, const complex& b, const real_type& sfac, const MultiWignerWrapper<real_type, vector_length, dims>& dulist_wrapper,
-  const Kokkos::Array<complex, dims>& da, const Kokkos::Array<complex, dims>& db, const Kokkos::Array<real_type, dims>& dsfacu,
+auto SNAKokkos<DeviceType, real_type, vector_length>::evaluate_duidrj_jbend(const WignerWrapper<real_type, vector_length>& ulist_wrapper,
+  const complex& a, const complex& b, const real_type& sfac, const MultiWignerWrapper<real_type, vector_length, num_dims>& dulist_wrapper,
+  const Kokkos::Array<complex, num_dims>& da, const Kokkos::Array<complex, num_dims>& db, const Kokkos::Array<real_type, num_dims>& dsfacu,
   const int& jelem, const int& iatom, const int& j_bend) const {
 
-  Kokkos::Array<real_type, dims> dedr_full_sum = { 0 };
+  Kokkos::Array<real_type, num_dims> dedr_full_sum = { 0 };
 
   // level 0 is just 1, 0
   ulist_wrapper.set(0, complex::one());
-  dulist_wrapper.set(0, { complex::zero(), complex::zero(), complex::zero() });
+  dulist_wrapper.set_all(0, complex::zero());
 
   // j from before the bend, don't store, mb == 0
   // this is "creeping up the side"
@@ -1692,14 +1472,17 @@ auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
     constexpr int mb = 0; // intentional for readability, compiler should optimize this out
 
     complex ulist_accum = complex::zero();
-    Kokkos::Array<complex, dims> dulist_accum = { complex::zero(), complex::zero(), complex::zero() };
+    Kokkos::Array<complex, num_dims> dulist_accum;
+    register_loop<num_dims>([&] (int d) -> void {
+      dulist_accum[d] = complex::zero();
+    });
 
     int ma;
     for (ma = 0; ma < j; ma++) {
 
       // grab the cached value
       const complex ulist_prev = ulist_wrapper.get(ma);
-      const Kokkos::Array<complex, dims> dulist_prev = dulist_wrapper.get(ma);
+      const Kokkos::Array<complex, num_dims> dulist_prev = dulist_wrapper.get(ma);
 
       // ulist_accum += rootpq * a.conj() * ulist_prev;
       real_type rootpq = rootpqarray(j - ma, j - mb);
@@ -1707,7 +1490,7 @@ auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
       ulist_accum.im += rootpq * (a.re * ulist_prev.im - a.im * ulist_prev.re);
 
       // product rule of above
-      register_loop<dims>([&] (int d) -> void {
+      register_loop<num_dims>([&] (int d) -> void {
         dulist_accum[d].re += rootpq * (da[d].re * ulist_prev.re + da[d].im * ulist_prev.im + a.re * dulist_prev[d].re + a.im * dulist_prev[d].im);
         dulist_accum[d].im += rootpq * (da[d].re * ulist_prev.im - da[d].im * ulist_prev.re + a.re * dulist_prev[d].im - a.im * dulist_prev[d].re);
       });
@@ -1723,7 +1506,7 @@ auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
       ulist_accum.im = -rootpq * (b.re * ulist_prev.im - b.im * ulist_prev.re);
 
       // product rule of above
-      register_loop<dims>([&] (int d) -> void {
+      register_loop<num_dims>([&] (int d) -> void {
         dulist_accum[d].re = -rootpq * (db[d].re * ulist_prev.re + db[d].im * ulist_prev.im + b.re * dulist_prev[d].re + b.im * dulist_prev[d].im);
         dulist_accum[d].im = -rootpq * (db[d].re * ulist_prev.im - db[d].im * ulist_prev.re + b.re * dulist_prev[d].im - b.im * dulist_prev[d].re);
       });
@@ -1743,7 +1526,10 @@ auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
     const int jjup = idxu_half_block[j-1] + (mb - 1) * j;
 
     complex ulist_accum = complex::zero();
-    Kokkos::Array<complex, dims> dulist_accum = { complex::zero(), complex::zero(), complex::zero() };
+    Kokkos::Array<complex, num_dims> dulist_accum;
+    register_loop<num_dims>([&] (int d) -> void {
+      dulist_accum[d] = complex::zero();
+    });
 
     int ma;
     for (ma = 0; ma < j; ma++) {
@@ -1753,7 +1539,7 @@ auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
 
       // grab the cached value
       const complex ulist_prev = ulist_wrapper.get(ma);
-      const Kokkos::Array<complex, dims> dulist_prev = dulist_wrapper.get(ma);
+      const Kokkos::Array<complex, num_dims> dulist_prev = dulist_wrapper.get(ma);
 
       // ulist_accum += rootpq * b * ulist_prev;
       real_type rootpq = rootpqarray(j - ma, mb);
@@ -1761,7 +1547,7 @@ auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
       ulist_accum.im += rootpq * (b.re * ulist_prev.im + b.im * ulist_prev.re);
 
       // product rule of above
-      register_loop<dims>([&] (int d) -> void {
+      register_loop<num_dims>([&] (int d) -> void {
         dulist_accum[d].re += rootpq * (db[d].re * ulist_prev.re - db[d].im * ulist_prev.im + b.re * dulist_prev[d].re - b.im * dulist_prev[d].im);
         dulist_accum[d].im += rootpq * (db[d].re * ulist_prev.im + db[d].im * ulist_prev.re + b.re * dulist_prev[d].im + b.im * dulist_prev[d].re);
       });
@@ -1771,7 +1557,7 @@ auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
       dulist_wrapper.set(ma, dulist_accum);
 
       // Directly accumulate deidrj into sum_tmp
-      register_loop<dims>([&] (int d) -> void {
+      register_loop<num_dims>([&] (int d) -> void {
         const complex du_prod = (dsfacu[d] * ulist_prev) + (sfac * dulist_prev[d]);
         dedr_full_sum[d] += du_prod.re * y_local.re + du_prod.im * y_local.im;
       });
@@ -1783,7 +1569,7 @@ auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
       ulist_accum.im = rootpq * (a.re * ulist_prev.im + a.im * ulist_prev.re);
 
       // product rule of above
-      register_loop<dims>([&] (int d) -> void {
+      register_loop<num_dims>([&] (int d) -> void {
         dulist_accum[d].re = rootpq * (da[d].re * ulist_prev.re - da[d].im * ulist_prev.im + a.re * dulist_prev[d].re - a.im * dulist_prev[d].im);
         dulist_accum[d].im = rootpq * (da[d].re * ulist_prev.im + da[d].im * ulist_prev.re + a.re * dulist_prev[d].im + a.im * dulist_prev[d].re);
       });
@@ -1808,10 +1594,10 @@ auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
     }
 
     const complex ulist_prev = ulist_wrapper.get(ma);
-    const Kokkos::Array<complex, dims> dulist_prev = dulist_wrapper.get(ma);
+    const Kokkos::Array<complex, num_dims> dulist_prev = dulist_wrapper.get(ma);
 
     // Directly accumulate deidrj into sum_tmp
-    register_loop<dims>([&] (int d) -> void {
+    register_loop<num_dims>([&] (int d) -> void {
       const complex du_prod = (dsfacu[d] * ulist_prev) + (sfac * dulist_prev[d]);
       dedr_full_sum[d] += du_prod.re * y_local.re + du_prod.im * y_local.im;
     });
@@ -1826,9 +1612,9 @@ auto SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
    data layout
 ------------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 KOKKOS_INLINE_FUNCTION
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_duidrj_cpu(const int& iatom, const int& jnbor) const
+void SNAKokkos<DeviceType, real_type, vector_length>::compute_duidrj_cpu(const int& iatom, const int& jnbor) const
 {
   complex da[3], db[3];
   real_type u[3], dz0[3], dr0inv[3];
@@ -2009,9 +1795,9 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
    dulist only uses the "half" data layout part of that structure.
 ------------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 KOKKOS_INLINE_FUNCTION
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_deidrj_cpu(const int& iatom, const int& jnbor) const
+void SNAKokkos<DeviceType, real_type, vector_length>::compute_deidrj_cpu(const int& iatom, const int& jnbor) const
 {
   real_type force_sum[3] = { 0, 0, 0 };
   const int jelem = element(iatom, jnbor);
@@ -2053,9 +1839,9 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
    factorial n, wrapper for precomputed table
 ------------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 inline
-double SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::factorial(int n)
+double SNAKokkos<DeviceType, real_type, vector_length>::factorial(int n)
 {
   //if (n < 0 || n > nmaxfactorial) {
   //  char str[128];
@@ -2070,8 +1856,8 @@ double SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch,
    factorial n table, size SNA::nmaxfactorial+1
 ------------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
-const double SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::nfac_table[] = {
+template<class DeviceType, typename real_type, int vector_length>
+const double SNAKokkos<DeviceType, real_type, vector_length>::nfac_table[] = {
   1,
   1,
   2,
@@ -2246,9 +2032,9 @@ const double SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_
    the function delta given by VMK Eq. 8.2(1)
 ------------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 inline
-double SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::deltacg(int j1, int j2, int j)
+double SNAKokkos<DeviceType, real_type, vector_length>::deltacg(int j1, int j2, int j)
 {
   double sfaccg = factorial((j1 + j2 + j) / 2 + 1);
   return sqrt(factorial((j1 + j2 - j) / 2) *
@@ -2261,9 +2047,9 @@ double SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch,
    the quasi-binomial formula VMK 8.2.1(3)
 ------------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 inline
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::init_clebsch_gordan()
+void SNAKokkos<DeviceType, real_type, vector_length>::init_clebsch_gordan()
 {
   auto h_cglist = Kokkos::create_mirror_view(cglist);
 
@@ -2331,9 +2117,9 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
    the p = 0, q = 0 entries are allocated and skipped for convenience.
 ------------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 inline
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::init_rootpqarray()
+void SNAKokkos<DeviceType, real_type, vector_length>::init_rootpqarray()
 {
   auto h_rootpqarray = Kokkos::create_mirror_view(rootpqarray);
   for (int p = 1; p <= twojmax; p++)
@@ -2345,9 +2131,9 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
 
 /* ---------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 inline
-int SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_ncoeff()
+int SNAKokkos<DeviceType, real_type, vector_length>::compute_ncoeff()
 {
   int ncount;
 
@@ -2368,9 +2154,9 @@ int SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi
 
 /* ---------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 KOKKOS_INLINE_FUNCTION
-real_type SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_sfac(real_type r, real_type rcut, real_type sinner, real_type  dinner) const
+real_type SNAKokkos<DeviceType, real_type, vector_length>::compute_sfac(real_type r, real_type rcut, real_type sinner, real_type  dinner) const
 {
   real_type sfac_outer;
   constexpr real_type one = static_cast<real_type>(1.0);
@@ -2401,9 +2187,9 @@ real_type SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_bat
 
 /* ---------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 KOKKOS_INLINE_FUNCTION
-real_type SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_dsfac(real_type r, real_type rcut, real_type sinner, real_type dinner) const
+real_type SNAKokkos<DeviceType, real_type, vector_length>::compute_dsfac(real_type r, real_type rcut, real_type sinner, real_type dinner) const
 {
   real_type sfac_outer, dsfac_outer, sfac_inner, dsfac_inner;
   constexpr real_type one = static_cast<real_type>(1.0);
@@ -2449,9 +2235,9 @@ real_type SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_bat
   return zero; // dummy return
 }
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
+template<class DeviceType, typename real_type, int vector_length>
 KOKKOS_INLINE_FUNCTION
-void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::compute_s_dsfac(const real_type r, const real_type rcut, const real_type sinner, const real_type dinner, real_type& sfac, real_type& dsfac) const {
+void SNAKokkos<DeviceType, real_type, vector_length>::compute_s_dsfac(const real_type r, const real_type rcut, const real_type sinner, const real_type dinner, real_type& sfac, real_type& dsfac) const {
 
   real_type sfac_outer, dsfac_outer, sfac_inner, dsfac_inner;
   constexpr real_type one = static_cast<real_type>(1.0);
@@ -2491,8 +2277,8 @@ void SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, y
    memory usage of arrays
 ------------------------------------------------------------------------- */
 
-template<class DeviceType, typename real_type, int vector_length, int padding_factor, int ui_batch, int yi_batch>
-double SNAKokkos<DeviceType, real_type, vector_length, padding_factor, ui_batch, yi_batch>::memory_usage()
+template<class DeviceType, typename real_type, int vector_length>
+double SNAKokkos<DeviceType, real_type, vector_length>::memory_usage()
 {
   double bytes = 0;
 

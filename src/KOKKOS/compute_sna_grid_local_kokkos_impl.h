@@ -119,8 +119,8 @@ ComputeSNAGridLocalKokkos<DeviceType, real_type, vector_length>::ComputeSNAGridL
   }
   Kokkos::deep_copy(d_test,h_test);
 
-  snaKK = SNAKokkos<DeviceType, real_type, vector_length, 1>(*this);
-  snaKK.grow_rij(0,0);
+  snaKK = SNAKokkos<DeviceType, real_type, vector_length>(*this);
+  snaKK.grow_rij(0,0,padding_factor);
   snaKK.init();
 }
 
@@ -186,7 +186,7 @@ void ComputeSNAGridLocalKokkos<DeviceType, real_type, vector_length>::compute_lo
   chunk_size = MIN(chunksize, total_range);
   chunk_offset = 0;
   //snaKK.grow_rij(chunk_size, ntotal);
-  snaKK.grow_rij(chunk_size, max_neighs);
+  snaKK.grow_rij(chunk_size, max_neighs, padding_factor);
 
   //chunk_size = total_range;
 

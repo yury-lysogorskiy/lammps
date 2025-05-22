@@ -63,6 +63,9 @@ class ComputeSNAGridKokkos : public ComputeSNAGrid {
   using real_type = real_type_;
   using complex = SNAComplex<real_type>;
 
+  // extra padding factor, see pair_snap_kokkos.h for more context
+  static constexpr int padding_factor = 1;
+
   // Static team/tile sizes for device offload
 
 #ifdef KOKKOS_ENABLE_HIP
