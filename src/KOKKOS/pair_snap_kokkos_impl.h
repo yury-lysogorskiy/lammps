@@ -319,7 +319,7 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::compute(int eflag_in,
       auto policy_deidrj_cpu = snap_get_policy<DeviceType, 4, TagPairSNAPComputeDeidrjCPU>(chunk_size_div, max_neighs);
       Kokkos::parallel_for("ComputeDeidrjCPU", policy_deidrj_cpu, *this);
     } else { // GPU
-      
+
       // Fused ComputeDuidrj, ComputeDeidrj
       // team_size_compute_fused_deidrj is defined in `pair_snap_kokkos.h`
 
