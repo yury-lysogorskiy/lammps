@@ -13,6 +13,9 @@
         "title": {"type": "string"},
         "docs": {"type": "string"},
         "schema": {"type": "string"},
+        "units": {
+            "enum": ["lj", "real", "metal", "si", "cgs", "electron", "micro", "nano" ]
+        },
         "com": {"type": "array",
                 "prefixItems": [
                     {"type": "number"},
