@@ -128,7 +128,7 @@ class Molecule : protected Pointers {
   ~Molecule() override;
 
   void command(int, char **, int &);
-  void from_json(const json &);
+  void from_json(const std::string &id, const json &);
 
   void compute_center();
   void compute_mass();

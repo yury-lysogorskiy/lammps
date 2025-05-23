@@ -27,6 +27,7 @@
 #include "math_special.h"
 #include "memory.h"
 #include "tokenizer.h"
+#include "update.h"
 
 #include <cmath>
 #include <cstring>
@@ -184,10 +185,10 @@ void Molecule::command(int narg, char **arg, int &index)
     // convert back to json class on all processors
     moldata.clear();
     moldata = json::from_ubjson(jsondata);
-    jsondata.clear(); // free binary data
+    jsondata.clear();    // free binary data
 
     // process JSON data
-    Molecule::from_json(moldata);
+    Molecule::from_json(id, moldata);
 
   } else {    // process native molecule file
 
@@ -209,9 +210,15 @@ void Molecule::command(int narg, char **arg, int &index)
 //  convert json data structure to molecule data structure
 // ------------------------------------------------------------------------------
 
-void Molecule::from_json(const json &moldata)
+void Molecule::from_json(const std::string &molid, const json &moldata)
 {
   json_format = 1;
+  if (!utils::is_id(molid))
+    error->all(FLERR, Error::NOLASTLINE,
+               "Molecule template ID {} must have only alphanumeric or underscore characters",
+               molid);
+  delete[] id;
+  id = utils::strdup(molid);
 
   // check if JSON file is compatible
 
@@ -229,7 +236,13 @@ void Molecule::from_json(const json &moldata)
   if (moldata.contains("revision")) {
     int rev = moldata["revision"];
     if ((rev < 1) || (rev > 1))
-      error->one(FLERR, Error::NOLASTLINE, "JSON molecule data with unsupported revision {}", rev);
+      error->all(FLERR, Error::NOLASTLINE, "JSON molecule data with unsupported revision {}", rev);
+  }
+
+  if (moldata.contains("units")) {
+    if (std::string(moldata["units"]) != update->unit_style)
+      error->all(FLERR, Error::NOLASTLINE, "JSON molecule data units {} incompatible with {} units",
+                 std::string(moldata["units"]), update->unit_style);
   }
   if (moldata.contains("title")) title = moldata["title"];
 
