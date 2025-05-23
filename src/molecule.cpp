@@ -42,7 +42,7 @@ static constexpr double SINERTIA = 0.4;    // moment of inertia prefactor for sp
 
 /* ---------------------------------------------------------------------- */
 
-Molecule::Molecule(LAMMPS *lmp, int narg, char **arg, int &index) :
+Molecule::Molecule(LAMMPS *lmp) :
     Pointers(lmp), id(nullptr), x(nullptr), type(nullptr), molecule(nullptr), q(nullptr),
     radius(nullptr), rmass(nullptr), mu(nullptr), num_bond(nullptr), bond_type(nullptr),
     bond_atom(nullptr), num_angle(nullptr), angle_type(nullptr), angle_atom1(nullptr),
@@ -55,6 +55,24 @@ Molecule::Molecule(LAMMPS *lmp, int narg, char **arg, int &index) :
     dx(nullptr), dxcom(nullptr), dxbody(nullptr), quat_external(nullptr), fp(nullptr),
     count(nullptr)
 {
+  // parse args until reach unknown arg (next file)
+
+  toffset = 0;
+  boffset = aoffset = doffset = ioffset = 0;
+  sizescale = 1.0;
+  json_format = 0;
+
+  // initialize all fields to empty
+
+  Molecule::initialize();
+}
+
+// ------------------------------------------------------------------------------
+//   process arguments from "molecule" command
+// ------------------------------------------------------------------------------
+
+void Molecule::command(int narg, char **arg, int &index)
+{
   if (index >= narg) utils::missing_cmd_args(FLERR, "molecule", error);
 
   id = utils::strdup(arg[0]);
@@ -63,11 +81,6 @@ Molecule::Molecule(LAMMPS *lmp, int narg, char **arg, int &index) :
                "Molecule template ID {} must have only alphanumeric or underscore characters", id);
 
   // parse args until reach unknown arg (next file)
-
-  toffset = 0;
-  boffset = aoffset = doffset = ioffset = 0;
-  json_format = 0;
-  sizescale = 1.0;
 
   fileiarg = index;
 
@@ -138,12 +151,11 @@ Molecule::Molecule(LAMMPS *lmp, int narg, char **arg, int &index) :
   else
     last = 0;
 
-  // initialize all fields to empty
-
-  Molecule::initialize();
-
   json moldata;
+  std::vector<std::uint8_t> jsondata;
+  int jsondata_size = 0;
   json_format = 0;
+
   if (comm->me == 0) {
     fp = fopen(arg[fileiarg], "r");
     if (fp == nullptr)
@@ -151,127 +163,31 @@ Molecule::Molecule(LAMMPS *lmp, int narg, char **arg, int &index) :
                  utils::getsyserror());
     try {
       // try to parse as a JSON file
+      // if successful serialize to bytearray for communication
       moldata = json::parse(fp);
       json_format = 1;
+      jsondata = json::to_ubjson(moldata);
+      jsondata_size = jsondata.size();
       fclose(fp);
     } catch (std::exception &) {
+      json_format = 0;
       // rewind so we can try reading the file as a native molecule file
       rewind(fp);
-    }
-
-    // check if JSON file is compatible
-    if (json_format) {
-      std::string val;
-      if (moldata.contains("application")) {
-        if (moldata["application"] != "LAMMPS")
-          error->one(FLERR, fileiarg, "JSON file {} is not compatible with LAMMPS: {}",
-                     arg[fileiarg], std::string(moldata["application"]));
-      }
-      if (moldata.contains("format")) {
-        if (moldata["format"] != "molecule")
-          error->one(FLERR, fileiarg, "JSON file {} is not a molecule file: {}", arg[fileiarg],
-                     std::string(moldata["format"]));
-      }
-      if (moldata.contains("revision")) {
-        int rev = moldata["revision"];
-        if ((rev < 1) || (rev > 1))
-          error->one(FLERR, fileiarg, "JSON molecule file {} with unsupported revision {}",
-                     arg[fileiarg], rev);
-      }
-      if (moldata.contains("title")) title = moldata["title"];
-      json_format = 1;
     }
   }
   MPI_Bcast(&json_format, 1, MPI_INT, 0, world);
 
-  if (json_format) {    // process JSON format molecule file
+  if (json_format) {
+    // broadcast binary JSON data to all processes and deserialize again
+    if (comm->me != 0) jsondata.resize(jsondata_size);
+    MPI_Bcast(jsondata.data(), jsondata_size, MPI_CHAR, 0, world);
+    // convert back to json class on all processors
+    moldata.clear();
+    moldata = json::from_ubjson(jsondata);
+    jsondata.clear(); // free binary data
 
-    // determine sizes and broadcast
-#define JSON_EXTRACT_SIZE(field, value)                                                  \
-  if ((comm->me == 0) && moldata.contains(#field) && moldata[#field].contains("data")) { \
-    value = moldata[#field]["data"].size();                                              \
-  }                                                                                      \
-  MPI_Bcast(&value, 1, MPI_INT, 0, world)
-
-    JSON_EXTRACT_SIZE(coords, natoms);
-    JSON_EXTRACT_SIZE(bonds, nbonds);
-    JSON_EXTRACT_SIZE(angles, nangles);
-    JSON_EXTRACT_SIZE(dihedrals, ndihedrals);
-    JSON_EXTRACT_SIZE(impropers, nimpropers);
-    JSON_EXTRACT_SIZE(fragments, nfragments);
-#undef JSON_EXTRACT_SIZE
-
-    // extract global properties
-    if (comm->me == 0) {
-      if (moldata.contains("masstotal")) {
-        massflag = 1;
-        masstotal = double(moldata["masstotal"]) * sizescale * sizescale * sizescale;
-      }
-      if (moldata.contains("com") && (moldata["com"].size() == 3)) {
-        comflag = 1;
-        com[0] = double(moldata["com"][0]) * sizescale;
-        com[1] = double(moldata["com"][1]) * sizescale;
-        com[2] = double(moldata["com"][2]) * sizescale;
-      }
-      if (moldata.contains("inertia") && (moldata["inertia"].size() == 6)) {
-        inertiaflag = 1;
-        const double scale5 = powint(sizescale, 5);
-        itensor[0] = double(moldata["inertia"][0]) * scale5;
-        itensor[1] = double(moldata["inertia"][1]) * scale5;
-        itensor[2] = double(moldata["inertia"][2]) * scale5;
-        itensor[3] = double(moldata["inertia"][3]) * scale5;
-        itensor[4] = double(moldata["inertia"][4]) * scale5;
-        itensor[5] = double(moldata["inertia"][5]) * scale5;
-      }
-      if (moldata.contains("body") && (moldata["body"].size() == 2)) {
-        bodyflag = 1;
-        const double scale5 = powint(sizescale, 5);
-        avec_body = dynamic_cast<AtomVecBody *>(atom->style_match("body"));
-        if (!avec_body) error->all(FLERR, fileiarg, "Molecule file requires atom style body");
-        nibody = moldata["body"][0];
-        ndbody = moldata["body"][1];
-      }
-      if (moldata.contains("coords")) xflag = 1;
-      if (moldata.contains("types")) typeflag = 1;
-      if (moldata.contains("molecules")) moleculeflag = 1;
-      if (moldata.contains("fragments")) fragmentflag = 1;
-      if (moldata.contains("charges")) qflag = 1;
-      if (moldata.contains("diameters")) radiusflag = 1;
-      if (moldata.contains("dipoles")) muflag = 1;
-      if (moldata.contains("masses")) rmassflag = 1;
-    }
-    // broadcast data
-    MPI_Bcast(&massflag, 1, MPI_INT, 0, world);
-    MPI_Bcast(&masstotal, 1, MPI_DOUBLE, 0, world);
-    MPI_Bcast(&comflag, 1, MPI_INT, 0, world);
-    MPI_Bcast(&com, 3, MPI_DOUBLE, 0, world);
-    MPI_Bcast(&inertiaflag, 1, MPI_INT, 0, world);
-    MPI_Bcast(&inertia, 6, MPI_DOUBLE, 0, world);
-    MPI_Bcast(&bodyflag, 1, MPI_INT, 0, world);
-    MPI_Bcast(&nibody, 1, MPI_INT, 0, world);
-    MPI_Bcast(&ndbody, 1, MPI_INT, 0, world);
-    MPI_Bcast(&xflag, 1, MPI_INT, 0, world);
-    MPI_Bcast(&typeflag, 1, MPI_INT, 0, world);
-    MPI_Bcast(&moleculeflag, 1, MPI_INT, 0, world);
-    MPI_Bcast(&fragmentflag, 1, MPI_INT, 0, world);
-    MPI_Bcast(&qflag, 1, MPI_INT, 0, world);
-    MPI_Bcast(&radiusflag, 1, MPI_INT, 0, world);
-    MPI_Bcast(&muflag, 1, MPI_INT, 0, world);
-    MPI_Bcast(&rmassflag, 1, MPI_INT, 0, world);
-
-    if (nbonds > 0) bondflag = tag_require = 1;
-    if (nangles > 0) angleflag = tag_require = 1;
-    if (ndihedrals > 0) dihedralflag = tag_require = 1;
-    if (nimpropers > 0) improperflag = tag_require = 1;
-
-    // checks. No checks for < 0 needed since size() is at least 0
-
-    if (natoms < 1) error->all(FLERR, fileiarg, "No atoms in molecule file");
-    if ((domain->dimension == 2) && (com[2] != 0.0))
-      error->all(FLERR, fileiarg, "Molecule file z center-of-mass must be 0.0 for 2d systems");
-
-    // allocate required storage
-    Molecule::allocate();
+    // process JSON data
+    Molecule::from_json(moldata);
 
   } else {    // process native molecule file
 
@@ -286,25 +202,112 @@ Molecule::Molecule(LAMMPS *lmp, int narg, char **arg, int &index) :
     Molecule::read(1);
     if (comm->me == 0) fclose(fp);
   }
-
-  // stats
-
-  if (title.empty()) title = "(no title)";
-  if (comm->me == 0)
-    utils::logmesg(lmp,
-                   "Read molecule template {}:\n{}\n"
-                   "  {} molecules\n"
-                   "  {} fragments\n"
-                   "  {} atoms with max type {}\n"
-                   "  {} bonds with max type {}\n"
-                   "  {} angles with max type {}\n"
-                   "  {} dihedrals with max type {}\n"
-                   "  {} impropers with max type {}\n",
-                   id, title, nmolecules, nfragments, natoms, ntypes, nbonds, nbondtypes, nangles,
-                   nangletypes, ndihedrals, ndihedraltypes, nimpropers, nimpropertypes);
+  Molecule::stats();
 }
 
-// clang-format off
+// ------------------------------------------------------------------------------
+//  convert json data structure to molecule data structure
+// ------------------------------------------------------------------------------
+
+void Molecule::from_json(const json &moldata)
+{
+  json_format = 1;
+
+  // check if JSON file is compatible
+
+  std::string val;
+  if (moldata.contains("application")) {
+    if (moldata["application"] != "LAMMPS")
+      error->all(FLERR, Error::NOLASTLINE, "JSON data is for incompatible application: {}",
+                 std::string(moldata["application"]));
+  }
+  if (moldata.contains("format")) {
+    if (moldata["format"] != "molecule")
+      error->all(FLERR, Error::NOLASTLINE, "JSON data is not for a molecule: {}",
+                 std::string(moldata["format"]));
+  }
+  if (moldata.contains("revision")) {
+    int rev = moldata["revision"];
+    if ((rev < 1) || (rev > 1))
+      error->one(FLERR, Error::NOLASTLINE, "JSON molecule data with unsupported revision {}", rev);
+  }
+  if (moldata.contains("title")) title = moldata["title"];
+
+  // determine sizes
+
+  if (moldata.contains("coords") && moldata["coords"].contains("data"))
+    natoms = moldata["coords"]["data"].size();
+  if (moldata.contains("bonds") && moldata["bonds"].contains("data"))
+    nbonds = moldata["bonds"]["data"].size();
+  if (moldata.contains("angles") && moldata["angles"].contains("data"))
+    nangles = moldata["angles"]["data"].size();
+  if (moldata.contains("dihedrals") && moldata["dihedrals"].contains("data"))
+    ndihedrals = moldata["dihedrals"]["data"].size();
+  if (moldata.contains("impropers") && moldata["impropers"].contains("data"))
+    nimpropers = moldata["impropers"]["data"].size();
+  if (moldata.contains("fragments") && moldata["fragments"].contains("data"))
+    nfragments = moldata["fragments"]["data"].size();
+
+  // extract global properties
+
+  if (moldata.contains("masstotal")) {
+    massflag = 1;
+    masstotal = double(moldata["masstotal"]) * sizescale * sizescale * sizescale;
+  }
+
+  if (moldata.contains("com") && (moldata["com"].size() == 3)) {
+    comflag = 1;
+    com[0] = double(moldata["com"][0]) * sizescale;
+    com[1] = double(moldata["com"][1]) * sizescale;
+    com[2] = double(moldata["com"][2]) * sizescale;
+  }
+
+  if (moldata.contains("inertia") && (moldata["inertia"].size() == 6)) {
+    inertiaflag = 1;
+    const double scale5 = powint(sizescale, 5);
+    itensor[0] = double(moldata["inertia"][0]) * scale5;
+    itensor[1] = double(moldata["inertia"][1]) * scale5;
+    itensor[2] = double(moldata["inertia"][2]) * scale5;
+    itensor[3] = double(moldata["inertia"][3]) * scale5;
+    itensor[4] = double(moldata["inertia"][4]) * scale5;
+    itensor[5] = double(moldata["inertia"][5]) * scale5;
+  }
+
+  if (moldata.contains("body") && (moldata["body"].size() == 2)) {
+    bodyflag = 1;
+    const double scale5 = powint(sizescale, 5);
+    avec_body = dynamic_cast<AtomVecBody *>(atom->style_match("body"));
+    if (!avec_body) error->all(FLERR, Error::NOLASTLINE, "Molecule data requires atom style body");
+    nibody = moldata["body"][0];
+    ndbody = moldata["body"][1];
+  }
+
+  if (moldata.contains("coords")) xflag = 1;
+  if (moldata.contains("types")) typeflag = 1;
+  if (moldata.contains("molecules")) moleculeflag = 1;
+  if (moldata.contains("fragments")) fragmentflag = 1;
+  if (moldata.contains("charges")) qflag = 1;
+  if (moldata.contains("diameters")) radiusflag = 1;
+  if (moldata.contains("dipoles")) muflag = 1;
+  if (moldata.contains("masses")) rmassflag = 1;
+
+  if (nbonds > 0) bondflag = tag_require = 1;
+  if (nangles > 0) angleflag = tag_require = 1;
+  if (ndihedrals > 0) dihedralflag = tag_require = 1;
+  if (nimpropers > 0) improperflag = tag_require = 1;
+
+  // checks. No checks for < 0 needed since size() is at least 0
+
+  if (natoms < 1) error->all(FLERR, Error::NOLASTLINE, "No atoms in molecule data");
+  if ((domain->dimension == 2) && (com[2] != 0.0))
+    error->all(FLERR, Error::NOLASTLINE,
+               "Molecule data z center-of-mass must be 0.0 for 2d systems");
+
+  // allocate required storage
+
+  Molecule::allocate();
+}
+
 /* ---------------------------------------------------------------------- */
 
 Molecule::~Molecule()
@@ -543,6 +546,8 @@ void Molecule::compute_inertia()
 
   for (int i = 0; i < natoms; i++) MathExtra::transpose_matvec(ex, ey, ez, dxcom[i], dxbody[i]);
 }
+
+// clang-format off
 
 /* ----------------------------------------------------------------------
    read molecule info from file
@@ -2326,6 +2331,25 @@ void Molecule::skip_lines(int n, char *line, const std::string &section)
                  "skipping {} section:\n{}",
                  section, line);
   }
+}
+
+/* ------------------------------------------------------------------------------ */
+
+void Molecule::stats()
+{
+  if (title.empty()) title = "(no title)";
+  if (comm->me == 0)
+    utils::logmesg(lmp,
+                   "Read molecule template {}:\n{}\n"
+                   "  {} molecules\n"
+                   "  {} fragments\n"
+                   "  {} atoms with max type {}\n"
+                   "  {} bonds with max type {}\n"
+                   "  {} angles with max type {}\n"
+                   "  {} dihedrals with max type {}\n"
+                   "  {} impropers with max type {}\n",
+                   id, title, nmolecules, nfragments, natoms, ntypes, nbonds, nbondtypes, nangles,
+                   nangletypes, ndihedrals, ndihedraltypes, nimpropers, nimpropertypes);
 }
 
 /* ----------------------------------------------------------------------
