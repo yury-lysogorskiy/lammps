@@ -1,0 +1,134 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://download.lammps.org/json/molecule-schema.json",
+    "type": "object",
+    "properties": {
+        "application": { "enum": ["LAMMPS"]},
+        "format": {"enum": ["molecule"]},
+        "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1
+        },
+        "title": {"type": "string"},
+        "docs": {"type": "string"},
+        "schema": {"type": "string"},
+        "com": {"type": "array",
+                "prefixItems": [
+                    {"type": "number"},
+                    {"type": "number"},
+                    {"type": "number"}
+                ],
+                "items": false
+               },
+        "masstotal": {"type": "number"},
+        "body": {"type": "array",
+                "prefixItems": [
+                    {"type": "integer"},
+                    {"type": "integer"}
+                ],
+                "items": false
+               },
+        "inertia": {"type": "array",
+                "prefixItems": [
+                    {"type": "number"},
+                    {"type": "number"},
+                    {"type": "number"},
+                    {"type": "number"},
+                    {"type": "number"},
+                    {"type": "number"}
+                ],
+                "items": false
+               },
+        "coords": {
+            "type": "object",
+            "properties": {
+                "format": {
+                    "type": "array",
+                    "prefixItems": [
+                        {"enum": ["atom-id"]},
+                        {"enum": ["x"]},
+                        {"enum": ["y"]},
+                        {"enum": ["z"]}
+                    ],
+                    "items": false
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "prefixItems": [
+                            {"type": "integer"},
+                            {"type": "number"},
+                            {"type": "number"},
+                            {"type": "number"}
+                        ],
+                        "items": false
+                    }
+                }
+            }
+        },
+        "types": {
+            "type": "object",
+            "properties": {
+                "format": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "prefixItems": [
+                            {"type": "number"},
+                            {"type": ["number", "string"]}
+                        ],
+                        "items": false
+                    }
+                }
+            }
+        },
+        "molecules": {
+            "type": "object",
+            "properties": {
+                "format": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        }
+                    }
+                }
+            }
+        },
+        "charges": {
+            "type": "object",
+            "properties": {
+                "format": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
