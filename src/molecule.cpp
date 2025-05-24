@@ -155,7 +155,6 @@ void Molecule::command(int narg, char **arg, int &index)
   json moldata;
   std::vector<std::uint8_t> jsondata;
   int jsondata_size = 0;
-  json_format = 0;
 
   if (comm->me == 0) {
     fp = fopen(arg[fileiarg], "r");
@@ -166,21 +165,18 @@ void Molecule::command(int narg, char **arg, int &index)
       // try to parse as a JSON file
       // if successful serialize to bytearray for communication
       moldata = json::parse(fp);
-      json_format = 1;
       jsondata = json::to_ubjson(moldata);
       jsondata_size = jsondata.size();
       fclose(fp);
     } catch (std::exception &) {
-      json_format = 0;
       // rewind so we can try reading the file as a native molecule file
       rewind(fp);
     }
   }
-  MPI_Bcast(&json_format, 1, MPI_INT, 0, world);
+  MPI_Bcast(&jsondata_size, 1, MPI_INT, 0, world);
 
-  if (json_format) {
+  if (jsondata_size > 0) {
     // broadcast binary JSON data to all processes and deserialize again
-    MPI_Bcast(&jsondata_size, 1, MPI_INT, 0, world);
     if (comm->me != 0) jsondata.resize(jsondata_size);
     MPI_Bcast(jsondata.data(), jsondata_size, MPI_CHAR, 0, world);
     // convert back to json class on all processors
