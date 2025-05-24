@@ -26,7 +26,7 @@ for how to use a tool called `check-jsonschema` which is available via
 # Installation into a virtual environment.
 # Once installed only the activation should be needed
 python3 -m venv validate-json
-source validata-json/bin/activate
+source validate-json/bin/activate
 pip install --upgrade pip
 pip install check-jsonschema
 
@@ -42,4 +42,4 @@ Otherwise details about the non-conforming fields are given.
 
 -------
 
-updated by Axel Kohlmeyer, 2025-05-22
+updated by Axel Kohlmeyer, 2025-05-23

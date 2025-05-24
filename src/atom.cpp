@@ -2169,6 +2169,7 @@ void Atom::add_molecule(const std::string &id, const json &moldata)
   molecules[nmolecule] = new Molecule(lmp);
   molecules[nmolecule]->from_json(id, moldata);
   molecules[nmolecule]->nset = 1;
+  molecules[nmolecule]->last = 1;
   nmolecule++;
 }
 

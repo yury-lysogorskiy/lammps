@@ -180,6 +180,7 @@ void Molecule::command(int narg, char **arg, int &index)
 
   if (json_format) {
     // broadcast binary JSON data to all processes and deserialize again
+    MPI_Bcast(jsondata_size, 1, MPI_INT, 0, world);
     if (comm->me != 0) jsondata.resize(jsondata_size);
     MPI_Bcast(jsondata.data(), jsondata_size, MPI_CHAR, 0, world);
     // convert back to json class on all processors
@@ -315,6 +316,22 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   if ((domain->dimension == 2) && (com[2] != 0.0))
     error->all(FLERR, Error::NOLASTLINE,
                "Molecule data z center-of-mass must be 0.0 for 2d systems");
+
+  if ((typeflag) && moldata["types"].contains("data")) {
+    if (moldata["types"]["data"].size() != natoms)
+      error->all(FLERR, Error::NOLASTLINE, "Found {} instead of {} data entries for 'types'",
+                 moldata["types"]["data"].size(), natoms);
+  }
+  if ((radiusflag) && moldata["diameters"].contains("data")) {
+    if (moldata["diameters"]["data"].size() != natoms)
+      error->all(FLERR, Error::NOLASTLINE, "Found {} instead of {} data entries for 'diameters'",
+                 moldata["diameters"]["data"].size(), natoms);
+  }
+  if ((rmassflag) && moldata["masses"].contains("data")) {
+    if (moldata["masses"]["data"].size() != natoms)
+      error->all(FLERR, Error::NOLASTLINE, "Found {} instead of {} data entries for 'masses'",
+                 moldata["masses"]["data"].size(), natoms);
+  }
 
   // allocate required storage
 
