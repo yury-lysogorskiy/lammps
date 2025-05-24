@@ -42,6 +42,7 @@ Examples
 .. code-block:: LAMMPS
 
    molecule 1 mymol.txt
+   molecule water tip3p.json
    molecule 1 co2.txt h2o.txt
    molecule CO2 co2.txt boff 3 aoff 2
    molecule 1 mymol.txt offset 6 9 18 23 14
@@ -73,6 +74,11 @@ molecule in the template, and will issue a warning if the template
 contains multiple molecules.  The :doc:`atom_style template
 <atom_style>` command allows multiple-molecule templates to define a
 system with more than one templated molecule.
+
+The molecule file can be either in *native* format or in `JSON format
+<https://www.json.org/>`_.  The details of the two formats are described
+below.  When referencing multiple molecule files in a single *molecule*
+command, each of those files may be either format.
 
 Each filename can be followed by optional keywords which are applied
 only to the molecule in the file as used in this template.  This is to
@@ -123,10 +129,10 @@ molecule (header keyword = inertia).
 
 ----------
 
-Format of a molecule file
-"""""""""""""""""""""""""
+Format of a native molecule file
+""""""""""""""""""""""""""""""""
 
-The format of an individual molecule file looks similar but is
+The format of an "native" individual molecule file looks similar but is
 different than that of a data file read by the :doc:`read_data <read_data>`
 commands.  Here is a simple example for a TIP3P water molecule:
 
@@ -666,6 +672,74 @@ and 4F vertex indices defining the faces are required.
 
 See the :doc:`Howto body <Howto_body>` page for a further description of
 the file format.
+
+----------
+
+Format of a JSON molecule file
+""""""""""""""""""""""""""""""
+
+The format of a JSON format individual molecule file looks has to follow
+the `JSON format <https://www.json.org/>`_, which evolved from the
+JavaScript programming language as a programming language neutral data
+interchange language.  The general syntax is independent of the content,
+and thus to be usable the data in the file has to follow suitable
+conventions.  LAMMPS provides a `JSON schema file
+<https://json-schema.org/>`_ to define those conventions so that files
+can be validated against the requirements.  This ensures that syntax and
+conventions are followed.  It does **not** check whether the file
+contents are physically meaningful.
+
+Here is a simple example for the same TIP3P water molecule from above in
+JSON format and also using :doc:`type lables <labelmap>` instead of
+numeric types:
+
+.. code-block:: json
+
+   {
+       "application": "LAMMPS",
+       "format": "molecule",
+       "revision": 1,
+       "title": "Water molecule. TIP3P geometry",
+       "schema": "https://download.lammps.org/json/molecule-schema.json",
+       "units": "real",
+       "coords": {
+           "format": ["atom-id", "x", "y", "z"],
+           "data": [
+               [1,  0.00000, -0.06556,  0.00000],
+               [2,  0.75695,  0.52032,  0.00000],
+               [3, -0.75695,  0.52032,  0.00000]
+           ]
+       },
+       "types": {
+           "format": ["atom-id", "type"],
+           "data": [
+               [1,  "OW"],
+               [2,  "HO1"],
+               [3,  "HO1"]
+           ]
+       },
+       "charges": {
+           "format": ["atom-id", "charge"],
+           "data": [
+               [1, -0.834],
+               [2,  0.417],
+               [3,  0.417]
+           ]
+       },
+       "bonds": {
+           "format": ["bond-type", "atom1", "atom2"],
+           "data": [
+               ["OW-HO1",  1,  2],
+               ["OW-HO1",  1,  3]
+           ]
+       },
+       "angles": {
+           "format": ["angle-type", "atom1", "atom2", "atom3"],
+           "data": [
+               ["HO1-OW-HO1",  2,  1,  3]
+           ]
+       }
+   }
 
 ----------
 
