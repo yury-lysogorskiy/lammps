@@ -1,6 +1,8 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://download.lammps.org/json/molecule-schema.json",
+    "title": "JSON schema for LAMMPS 'molecule' files and objects",
+    "description": "Version 0.1; last updated 2025-05-23",
     "type": "object",
     "properties": {
         "application": {
