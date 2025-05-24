@@ -3,58 +3,46 @@
     "$id": "https://download.lammps.org/json/molecule-schema.json",
     "type": "object",
     "properties": {
-        "application": { "enum": ["LAMMPS"]},
-        "format": {"enum": ["molecule"]},
+        "application": {
+            "type": "string",
+            "const": "LAMMPS"
+        },
+        "format": {
+            "type": "string",
+            "const": "molecule"
+        },
         "revision": {
             "type": "integer",
             "minimum": 1,
             "maximum": 1
         },
         "title": {"type": "string"},
-        "docs": {"type": "string"},
         "schema": {"type": "string"},
         "units": {
             "enum": ["lj", "real", "metal", "si", "cgs", "electron", "micro", "nano" ]
         },
         "com": {"type": "array",
-                "prefixItems": [
-                    {"type": "number"},
-                    {"type": "number"},
-                    {"type": "number"}
-                ],
-                "items": false
+                "items": { "type": "number"},
+                "minItems": 3,
+                "maxItems": 3
                },
         "masstotal": {"type": "number"},
         "body": {"type": "array",
-                "prefixItems": [
-                    {"type": "integer"},
-                    {"type": "integer"}
-                ],
-                "items": false
+                 "items": { "type": "integer"},
+                "minItems": 2,
+                "maxItems": 2
                },
         "inertia": {"type": "array",
-                "prefixItems": [
-                    {"type": "number"},
-                    {"type": "number"},
-                    {"type": "number"},
-                    {"type": "number"},
-                    {"type": "number"},
-                    {"type": "number"}
-                ],
-                "items": false
-               },
+                    "items": { "type": "number"},
+                    "minItems": 6,
+                    "maxItems": 6
+                   },
         "coords": {
             "type": "object",
             "properties": {
                 "format": {
                     "type": "array",
-                    "prefixItems": [
-                        {"enum": ["atom-id"]},
-                        {"enum": ["x"]},
-                        {"enum": ["y"]},
-                        {"enum": ["z"]}
-                    ],
-                    "items": false
+                    "const": ["atom-id", "x", "y", "z"]
                 },
                 "data": {
                     "type": "array",
@@ -76,9 +64,7 @@
             "properties": {
                 "format": {
                     "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                    "const": ["atom-id", "type"]
                 },
                 "data": {
                     "type": "array",
@@ -98,17 +84,17 @@
             "properties": {
                 "format": {
                     "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                    "const": ["atom-id", "molecule-id"]
                 },
                 "data": {
                     "type": "array",
                     "items": {
                         "type": "array",
                         "items": {
-                            "type": "number"
-                        }
+                            "type": "integer"
+                        },
+                        "minItems": 2,
+                        "maxItems": 2
                     }
                 }
             }
@@ -118,17 +104,17 @@
             "properties": {
                 "format": {
                     "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                    "const": ["atom-id", "charge"]
                 },
                 "data": {
                     "type": "array",
                     "items": {
                         "type": "array",
-                        "items": {
-                            "type": "number"
-                        }
+                        "prefixItems": [
+                            {"type": "integer"},
+                            {"type": "number"}
+                        ],
+                        "items": false
                     }
                 }
             }
@@ -138,17 +124,18 @@
             "properties": {
                 "format": {
                     "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                    "const": ["bond-type", "atom1", "atom2"]
                 },
                 "data": {
                     "type": "array",
                     "items": {
                         "type": "array",
-                        "items": {
-                            "type": "number"
-                        }
+                        "prefixItems": [
+                            {"type": ["integer", "string"]},
+                            {"type": "integer"},
+                            {"type": "integer"}
+                        ],
+                        "items": false
                     }
                 }
             }
@@ -158,17 +145,19 @@
             "properties": {
                 "format": {
                     "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                    "const": ["angle-type", "atom1", "atom2", "atom3"]
                 },
                 "data": {
                     "type": "array",
                     "items": {
                         "type": "array",
-                        "items": {
-                            "type": "number"
-                        }
+                        "prefixItems": [
+                            {"type": ["integer", "string"]},
+                            {"type": "integer"},
+                            {"type": "integer"},
+                            {"type": "integer"}
+                        ],
+                        "items": false
                     }
                 }
             }
@@ -178,17 +167,20 @@
             "properties": {
                 "format": {
                     "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                    "const": ["dihedral-type", "atom1", "atom2", "atom3", "atom4"]
                 },
                 "data": {
                     "type": "array",
                     "items": {
                         "type": "array",
-                        "items": {
-                            "type": "number"
-                        }
+                        "prefixItems": [
+                            {"type": ["integer", "string"]},
+                            {"type": "integer"},
+                            {"type": "integer"},
+                            {"type": "integer"},
+                            {"type": "integer"}
+                        ],
+                        "items": false
                     }
                 }
             }
@@ -198,97 +190,20 @@
             "properties": {
                 "format": {
                     "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                    "const": ["improper-type", "atom1", "atom2", "atom3", "atom4"]
                 },
                 "data": {
                     "type": "array",
                     "items": {
                         "type": "array",
-                        "items": {
-                            "type": "number"
-                        }
-                    }
-                }
-            }
-        },
-        "fragments": {
-            "type": "object",
-            "properties": {
-                "format": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "type": "number"
-                        }
-                    }
-                }
-            }
-        },
-        "diameters": {
-            "type": "object",
-            "properties": {
-                "format": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "type": "number"
-                        }
-                    }
-                }
-            }
-        },
-        "dipoles": {
-            "type": "object",
-            "properties": {
-                "format": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "type": "number"
-                        }
-                    }
-                }
-            }
-        },
-        "masses": {
-            "type": "object",
-            "properties": {
-                "format": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "type": "number"
-                        }
+                        "prefixItems": [
+                            {"type": ["integer", "string"]},
+                            {"type": "integer"},
+                            {"type": "integer"},
+                            {"type": "integer"},
+                            {"type": "integer"}
+                        ],
+                        "items": false
                     }
                 }
             }
