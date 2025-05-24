@@ -133,5 +133,6 @@
                 }
             }
         }
-    }
+    },
+    "required": ["application", "format", "revision", "coords", "types"]
 }
