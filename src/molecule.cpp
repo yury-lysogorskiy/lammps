@@ -180,7 +180,7 @@ void Molecule::command(int narg, char **arg, int &index)
 
   if (json_format) {
     // broadcast binary JSON data to all processes and deserialize again
-    MPI_Bcast(jsondata_size, 1, MPI_INT, 0, world);
+    MPI_Bcast(&jsondata_size, 1, MPI_INT, 0, world);
     if (comm->me != 0) jsondata.resize(jsondata_size);
     MPI_Bcast(jsondata.data(), jsondata_size, MPI_CHAR, 0, world);
     // convert back to json class on all processors
