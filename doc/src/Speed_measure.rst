@@ -1,8 +1,54 @@
 Measuring performance
 =====================
 
-Before trying to make your simulation run faster, you should
-understand how it currently performs and where the bottlenecks are.
+Before trying to make your simulation run faster, you should understand
+how it currently performs and where the bottlenecks are.  We generally
+distinguish between serial performance (how fast can a single process do
+the calculations?) and parallel efficiency (how much faster does a
+calculation get by using more processes?).  There are many factors
+affecting either and below are some lists discussing some commonly
+known but also some less known factors.
+
+Factors affecting serial performance (in no specific order):
+
+* CPU hardware: clock rate, cache sizes, CPU architecture (instructions
+  per clock, vectorization support, fused multiply-add support and more)
+* RAM speed and number of channels that the CPU can use to access RAM
+* Cooling: CPUs can change the CPU clock based on thermal load, thus the
+  degree of cooling can affect the speed of a CPU.  Sometimes even the
+  temperature of neighboring compute nodes in a cluster can make a
+  difference.
+* Compiler optimization:
+* Source code improvements: styles in the OPT, OPENMP, and INTEL package
+  can be faster than their base implementation due to improved data
+  access patterns, cache efficiency, or vectorization.
+* Number and kind of fixes, computes, or variables used during a simulation,
+  especially if they result in collective communication operations
+* Pair style cutoffs and system density: calculations get slower the more
+  neighbors are in the neighbor list and thus for which interactions need
+  to be computed.  Force fields with pair styles that compute interactions
+  between triples or quadruples of atoms or that use embedding energies or
+  charge equilibration will need to walk the neighbor lists multiple times.
+* Neighbor list settings: tradeoff between neighbor list skin (larger
+  skin = more neighbors, more distances to compute before applying the
+  cutoff) and frequency of neighbor list builds (larger skin = fewer
+  neighbor list builds).
+
+Factors affecting parallel efficiency (in no specific order):
+
+* Bandwidth and latency of communication between processes. This can vary a
+  lot between processes on the same CPU or physical node and processes
+  on different physical nodes and there vary between different
+  communication technologies (like Ethernet or InfiniBand or other
+  high-speed interconnects)
+* Frequency and complexity of communication patterns required
+* Number of "work units" (usually correlated with the number of atoms
+  and choice of force field) per MPI-process required for one time step
+* Choice of parallelization method (MPI-only, OpenMP-only, MPI+OpenMP,
+  MPI+GPU, MPI+GPU+OpenMP)
+* Algorithmic complexity of the chosen force field
+* Communication cutoff:
+* and frequency of neighbor list builds
 
 The best way to do this is run the your system (actual number of
 atoms) for a modest number of timesteps (say 100 steps) on several
