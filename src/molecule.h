@@ -16,7 +16,7 @@
 
 #include "pointers.h"
 
-#include "json.h"
+#include "json_fwd.h"
 
 namespace LAMMPS_NS {
 

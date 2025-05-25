@@ -11,13 +11,13 @@
    See the README file in the top-level LAMMPS directory.
 ------------------------------------------------------------------------- */
 
-#ifndef LMP_JSON_H
-#define LMP_JSON_H
+#ifndef LMP_JSON_FWD_H
+#define LMP_JSON_FWD_H
 
-// wrapper around including the JSON parsing and writing class
-// Do NOT include in any header file
+// Forward declarations for header-only JSON class
+// For use in headers
 
-#include "nlohmann/json.hpp"
+#include "nlohmann/json_fwd.hpp"
 
 namespace LAMMPS_NS {
 using json = ::nlohmann_lmp::basic_json<>;
