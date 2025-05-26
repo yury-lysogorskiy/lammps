@@ -103,46 +103,46 @@ have the same molecule ID), the second to inter-molecular interactions
 .. admonition:: When **NOT** to use a hybrid pair style
    :class: warning
 
-   Using pair style *hybrid* can be very tempting to use, if you need a
-   **many-body potential** supporting a mix of elements for which no
-   potential file exists that covers *all* of them.  Regardless of how
-   this is set up, there will be *errors* but those errors are of
-   different magnitude.  The major use case where the error is *small*,
-   is when the many-body sub-styles are used on different objects (for
-   example a slab and a liquid, a metal and a nano-machining work piece).
-   In that case the *mixed* terms **must** be provided by a pair-wise
-   additive potential (like Lennard-Jones or Morse).
+   Using pair style *hybrid* can be very tempting to use if you need a
+   **many-body potential** supporting a mix of elements for which you
+   cannot find a potential file that covers *all* of them.  Regardless
+   of how this is set up, there will be *errors*.  The major use case
+   where the error is *small*, is when the many-body sub-styles are used
+   on different objects (for example a slab and a liquid, a metal and a
+   nano-machining work piece).  In that case the *mixed* terms **must**
+   be provided by a pair-wise additive potential (like Lennard-Jones or
+   Morse).  Outside of this, we *strongly* recommend *against* using
+   pair style hybrid with many-body potentials for the following
+   reasons:
 
-   Outside of this, we *strongly* recommend *against* using pair style
-   hybrid for the following reasons:
+   1. When trying to combine EAM or MEAM potentials, there is a *large*
+      error in the embedding term, since it is computed separately for
+      each sub-style only.
 
-   1) When trying to combine EAM or MEAM potentials, there is a *large*
-   error in the embedding term, since it is computed separately for each
-   sub-style.
+   2. When trying to combine many-body potentials like Stillinger-Weber,
+      Tersoff, AIREBO, Vashishta, or similar, you have to understand
+      that the potential of a sub-style cannot be applied in a pair-wise
+      fashion but will need to be applied to multiples of atoms
+      (e.g. a Tersoff potential of elements A and B includes the
+      interactions A-A, B-B, A-B, A-A-A, A-A-B, A-B-B, A-B-A, B-A-A,
+      B-A-B, B-B-A, B-B-B; AIREBO also considers quadruples).
 
-   2) When trying to combine many-body potentials like Stillinger-Weber,
-   Tersoff, AIREBO, Vashishta, or similar, you have to understand that
-   the potential of a sub-style cannot be applied in a pair-wise fashion
-   but will need to be applied to all multiples of elements (e.g. for a
-   Tersoff potential of elements A and B, this includes the interactions,
-   A-A, B-B, A-B, A-A-A, A-A-B, A-B-B, A-B-A, B-A-A, B-A-B, B-B-A,
-   B-B-B; AIREBO also considers quadruples).
-
-   3) When one of the sub-styles uses charge-equilibration (= QEq; like
-   in ReaxFF, COMB, or COMB3) you are have inconsistent QEq behavior
-   because either you try to apply QEq to *all* atoms but then you are
-   missing the QEq parameters for the non-QEq pair style (and it would
-   be inconsistent to apply QEq for pair styles that are not
-   parameterized for QEq) or else you would have either no charges to
-   fixed charges interacting with the QEq which also leads to
-   inconsistent behavior between two sub-styles.
-   When attempting to use multiple ReaxFF instances to combine different
-   potential files, you might be able to work around the QEq limitations,
-   but point 2) still applies.
+   3. When one of the sub-styles uses charge-equilibration (= QEq; like
+      in ReaxFF or COMB) you have inconsistent QEq behavior because
+      either you try to apply QEq to *all* atoms but then you are
+      missing the QEq parameters for the non-QEq pair style (and it
+      would be inconsistent to apply QEq for pair styles that are not
+      parameterized for QEq) or else you would have either no charges or
+      fixed charges interacting with the QEq which also leads to
+      inconsistent behavior between two sub-styles.  When attempting to
+      use multiple ReaxFF instances to combine different potential
+      files, you might be able to work around the QEq limitations, but
+      point 2. still applies.
 
    We understand that it is frustrating to not be able to run simulations
    due to lack of available potential files, but that does not justify
-   combining potentials in a broken way via pair style hybrid.
+   combining potentials in a broken way via pair style hybrid.  This is
+   not what the hybrid pair styles are designed for.
 
 ----------
 
