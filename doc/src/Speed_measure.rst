@@ -18,10 +18,14 @@ Factors affecting serial performance (in no specific order):
   degree of cooling can affect the speed of a CPU.  Sometimes even the
   temperature of neighboring compute nodes in a cluster can make a
   difference.
-* Compiler optimization:
+* Compiler optimization: most of LAMMPS is written to be easy to modify
+  and thus compiler optimization can speed up calculations. However, too
+  aggressive compiler optimization can produce incorrect results or
+  crashes (during compilation or at runtime).
 * Source code improvements: styles in the OPT, OPENMP, and INTEL package
   can be faster than their base implementation due to improved data
-  access patterns, cache efficiency, or vectorization.
+  access patterns, cache efficiency, or vectorization. Compiler optimization
+  is required to take full advantage of these.
 * Number and kind of fixes, computes, or variables used during a simulation,
   especially if they result in collective communication operations
 * Pair style cutoffs and system density: calculations get slower the more
@@ -33,6 +37,13 @@ Factors affecting serial performance (in no specific order):
   skin = more neighbors, more distances to compute before applying the
   cutoff) and frequency of neighbor list builds (larger skin = fewer
   neighbor list builds).
+* Proximity of per-atom data in physical memory that for atoms that are
+  close in space improves cache efficiency (thus LAMMPS will by default
+  sort atoms in local storage accordingly)
+* Using r-RESPA multi-timestepping or a SHAKE or RATTLE fix to constrain
+  bonds with higher-frequency vibrations may allow a larger (outer) timestep
+  and thus fewer force evaluations (usually the most time consuming step in
+  MD) for the same simulated time (with some tradeoff in accuracy).
 
 Factors affecting parallel efficiency (in no specific order):
 
@@ -44,11 +55,32 @@ Factors affecting parallel efficiency (in no specific order):
 * Frequency and complexity of communication patterns required
 * Number of "work units" (usually correlated with the number of atoms
   and choice of force field) per MPI-process required for one time step
+  (if this number becomes too small, the cost of communication becomes
+  dominant).
 * Choice of parallelization method (MPI-only, OpenMP-only, MPI+OpenMP,
   MPI+GPU, MPI+GPU+OpenMP)
-* Algorithmic complexity of the chosen force field
-* Communication cutoff:
-* and frequency of neighbor list builds
+* Algorithmic complexity of the chosen force field (pair-wise vs. many-body
+  potential, Ewald vs. PPPM vs. (compensated or smoothed) cutoff-Coulomb)
+* Communication cutoff: a larger cutoff results in more ghost atoms and
+  thus more data that needs to be communicated
+* Frequency of neighbor list builds: during a neighbor list build the
+  domain decomposition is updated and the list of ghost atoms rebuilt
+  which requires multiple global communication steps
+* FFT-grid settings and number of MPI processes for kspace style PPPM:
+  PPPM uses parallel 3d FFTs which will drop much faster in parallel
+  efficiency with respect to the number of MPI processes than other
+  parts of the force computation.  Thus using MPI+OpenMP parallelization
+  or :doc:`run style verlet/split <run_style>` can improve parallel
+  efficiency by limiting the number of MPI processes used for the FFTs.
+* Load (im-)balance: LAMMPS' domain decomposition assumes that atoms are
+  evenly distributed across the entire simulation box. If there are
+  areas of vacuum, this may lead to different amounts of work for
+  different MPI processes. Using the :doc:`processors command
+  <processors>` to change the spatial decomposition, or MPI+OpenMP
+  parallelization instead of only-MPI to have larger sub-domains, or the
+  (fix) balance command (without or with switching to communication style
+  tiled) to change the sub-domain volumes are all methods that
+  can help to avoid load imbalances.
 
 The best way to do this is run the your system (actual number of
 atoms) for a modest number of timesteps (say 100 steps) on several
