@@ -16,6 +16,7 @@
 #include "atom.h"
 #include "error.h"
 #include "set.h"
+#include "update.h"
 
 using namespace LAMMPS_NS;
 using namespace FixConst;
@@ -26,10 +27,14 @@ enum{SETCOMMAND,FIXSET};     // also used in Set class
 
 FixSet::FixSet(LAMMPS *lmp, int narg, char **arg) : Fix(lmp, narg, arg)
 {
-  if (narg < 7) error->all(FLERR, 1, "Illegal fix set command: need at least four arguments");
+  if (narg < 8) error->all(FLERR, 1, "Illegal fix set command: need at least eight arguments");
 
   nevery = utils::inumeric(FLERR, arg[3], false, lmp);
   if (nevery <= 0) error->all(FLERR, "Fix {} Nevery must be > 0", style);
+
+  reneighbor = utils::inumeric(FLERR, arg[4], false, lmp);
+  if (reneighbor = 0 || reneighbor > 1)
+    error->all(FLERR, "Fix {} rnflag must be 0/1", style);
 
   // create instance of Set class
 
@@ -37,16 +42,10 @@ FixSet::FixSet(LAMMPS *lmp, int narg, char **arg) : Fix(lmp, narg, arg)
 
   // pass remaining args to Set class
   // only keywords which use per-atom variables are currently allowed
-  // NOTE: could also allow when set style = region, since atoms may move in/out of regions
+  // NOTE: could also allow when set style = region,
+  //       since atoms may move in/out of regions
 
-  set->process_args(FIXSET,narg-4,&arg[4]);
-
-  // NOTE: not sure if either of these options for fix set are needed or could be problematic
-  // could add ghost yes keyword/value to trigger
-  //   ghost comm, e.g. if atom types are reset
-  //   this could require an extract() method in Set to query what value(s) to comm
-  // could add reneigh yes keyword/value to trigger
-  //   full reneighbor on next step, e.g. if xyz coords are reset
+  set->process_args(FIXSET,narg-5,&arg[5]);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -79,5 +78,9 @@ void FixSet::end_of_step()
   // loop over list of actions to reset atom attributes
 
   set->invoke_actions();
+
+  // trigger reneighboring on next timestep if requested
+
+  if (reneighbor) next_reneighbor = update->ntimestep + 1;
 }
 

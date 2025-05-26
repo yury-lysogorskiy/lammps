@@ -32,6 +32,8 @@ class FixSet : public Fix {
   void end_of_step() override;
 
  private:
+  int reneighbor;
+
   class Set *set;
 };
 

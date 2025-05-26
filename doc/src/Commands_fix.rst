@@ -216,6 +216,7 @@ OPT.
    * :doc:`rigid/small (o) <fix_rigid>`
    * :doc:`rx (k) <fix_rx>`
    * :doc:`saed/vtk <fix_saed_vtk>`
+   * :doc:`set <fix_set>`
    * :doc:`setforce (k) <fix_setforce>`
    * :doc:`setforce/spin <fix_setforce>`
    * :doc:`sgcmc <fix_sgcmc>`

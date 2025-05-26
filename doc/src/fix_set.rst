@@ -8,11 +8,12 @@ Syntax
 
 .. code-block:: LAMMPS
 
-   fix ID group-ID set Nfreq set-args
+   fix ID group-ID set Nfreq rnflag set-args
 
 * ID, group-ID are documented in :doc:`fix <fix>` command
 * set = style name of this fix command
 * Nfreq = reset per-atom properties every this many timesteps
+* rnflag = 1 to reneighbor on next timestep, 0 to not
 * set-args = identical to args for the :doc:`set <set>` command
 
 Examples
@@ -20,8 +21,8 @@ Examples
 
 .. code-block:: LAMMPS
 
-   fix 10 all set 1 group all i_dump v_new
-   fix 10 all set 1 group all i_dump v_turnoff
+   fix 10 all set 1 0 group all i_dump v_new
+   fix 10 all set 1 0 group all i_dump v_turnoff
 
 Description
 """""""""""
@@ -29,11 +30,30 @@ Description
 Reset one or more properties of one or more atoms once every *Nfreq*
 steps during a simulation.
 
-The args following *Nfreq* are identical to those allowed for the
-:doc:`set <set>` command, as in the examples above and below.
+If the *rnflag* for reneighboring is set to 1, then a reneighboring
+will be triggered on the next timestep (since the fix set operation
+occurs at the end of the current timestep).  This is important to do
+if this command changes per-atom properties that need to be
+communicated to ghost atoms.  If this is not the case, an *rnflag*
+setting of 0 can be used; reneighboring will only be triggered on
+subsequent timesteps by the usual neighbor list criteria; see the
+:doc:`neigh_modify <neigh_modify.html>` command.
+
+Here are two examples where an *rnflag* setting of 1 are needed.  If a
+custom per-atom property is changed and the :doc:`fix property/atom
+<fix_property_atom>` command to create the property used the *ghost
+yes* keyword.  Or if per-atom charges are changed, all pair styles
+which compute Coulombic interactions require charge values for ghost
+atoms.  In both these examples, the re-neighboring will trigger the
+changes in the owned atom properties to be immediately communicated to
+ghost atoms.
+
+The arguments following *Nfreq* and *rnflag* are identical to those
+allowed for the :doc:`set <set>` command, as in the examples above and
+below.
 
 Note that the group-ID setting for this command is ignored.  The
-syntax for the :doc:`set <set>` command allows selection of which
+syntax for the :doc:`set <set>` arguments allows selection of which
 atoms have their properties reset.
 
 This command can only be used to reset an atom property using a
@@ -68,7 +88,7 @@ be output every step for *twindow* timesteps.
    #
    variable        start atom "vx > v_vthresh && i_dump == -1"
    variable        new atom ternary(v_start,step,i_dump)
-   fix             3 all set 1 group all i_dump v_new
+   fix             3 all set 1 0 group all i_dump v_new
    #
    # dump command with thresh which enforces twindow
    #
@@ -112,7 +132,7 @@ longer useful.
    variable        turnon atom ternary(v_start,step,i_dump)
    variable        stop atom "v_turnon >= 0 && (step-v_turnon) < v_twindow"
    variable        turnoff atom ternary(v_stop,v_turnon,-1)
-   fix             3 all set 1 group all i_dump v_turnoff
+   fix             3 all set 1 0 group all i_dump v_turnoff
    #
    # dump command with thresh which enforces twindow
    #
