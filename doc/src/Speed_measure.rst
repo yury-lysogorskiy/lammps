@@ -202,13 +202,16 @@ to the communication overhead:
 - 64 MPI tasks: 7.477 Matom-step/s, :math:`P_{eff} = 42\%`
 - 128 MPI tasks: 8.069 Matom-step/s, :math:`P_{eff} = 23\%`
 
-Before looking in The best way to do this is run the your system (actual
-number of atoms) for a modest number of timesteps (say 100 steps) on
-several different processor counts, including a single processor if
-possible.  Do this for an equilibrium version of your system, so that
-the 100-step timings are representative of a much longer run.  There is
-typically no need to run for 1000s of timesteps to get accurate timings;
-you can simply extrapolate from short runs.
+Measuring performance of your input deck
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The best way to do this is run the your system (actual number of atoms)
+for a modest number of timesteps (say 100 steps) on several different
+processor counts, including a single processor if possible.  Do this for
+an equilibrium version of your system, so that the 100-step timings are
+representative of a much longer run.  There is typically no need to run
+for 1000s of timesteps to get accurate timings; you can simply
+extrapolate from short runs.
 
 For the set of runs, look at the timing data printed to the screen and
 log file at the end of each LAMMPS run.  The
