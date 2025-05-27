@@ -257,6 +257,7 @@ accelerated styles exist.
 * :doc:`flow/gauss <fix_flow_gauss>` - Gaussian dynamics for constant mass flux
 * :doc:`freeze <fix_freeze>` - freeze atoms in a granular simulation
 * :doc:`gcmc <fix_gcmc>` - grand canonical insertions/deletions
+* :doc:`gjf <fix_gjf>` - statistically correct Langevin temperature control using the GJ methods
 * :doc:`gld <fix_gld>` - generalized Langevin dynamics integrator
 * :doc:`gle <fix_gle>` - generalized Langevin equation thermostat
 * :doc:`gravity <fix_gravity>` - add gravity to atoms in a granular simulation
@@ -291,6 +292,7 @@ accelerated styles exist.
 * :doc:`mvv/tdpd <fix_mvv_dpd>` - constant temperature DPD using the modified velocity-Verlet algorithm
 * :doc:`neb <fix_neb>` - nudged elastic band (NEB) spring forces
 * :doc:`neb/spin <fix_neb_spin>` - nudged elastic band (NEB) spring forces for spins
+* :doc:`neighbor/swap <fix_neighbor_swap>` - kinetic Monte Carlo (kMC) atom swapping
 * :doc:`nonaffine/displacement <fix_nonaffine_displacement>` - calculate nonaffine displacement of atoms
 * :doc:`nph <fix_nh>` - constant NPH time integration via Nose/Hoover
 * :doc:`nph/asphere <fix_nph_asphere>` - NPH for aspherical particles
