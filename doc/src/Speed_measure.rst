@@ -154,12 +154,13 @@ and change several settings incrementally:
 #. Use tight PPPM convergence (1.0e-6 instead of 1.0e-4): 161.9 katom-step/s
 #. Use Ewald summation instead of PPPM (at 1.0e-4 convergence): 19.9 katom-step/s
 
-The numbers show that gains from aggressive compiler optimizations are rather
-small in LAMMPS, the data access optimizations in the OPENMP (and OPT) packages
-are more visible. On the other side, using more accurate force field settings
-causes, not unexpectedly, a significant slowdown.  Finally, using regular Ewald
-summation causes a massive slowdown due to the bad algorithmic scaling with
-system size.
+The numbers show that gains from aggressive compiler optimizations are
+rather small in LAMMPS, the data access optimizations in the OPENMP (and
+OPT) packages are more prominent.  On the other side, using more
+accurate force field settings causes, not unexpectedly, a significant
+slowdown (to about half the speed).  Finally, using regular Ewald
+summation causes a massive slowdown due to the bad algorithmic scaling
+with system size.
 
 Examples comparing parallel performance
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
