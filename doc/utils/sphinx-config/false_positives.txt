@@ -1175,6 +1175,7 @@ Fermionic
 Ferrand
 fexternal
 Fexternal
+ffast
 ffield
 ffl
 fflush
@@ -1815,6 +1816,7 @@ Karniadakis
 Karplus
 Karttunen
 kate
+katom
 Katsnelson
 Katsura
 Kaufmann
@@ -2193,6 +2195,7 @@ Materias
 mathbf
 mathjax
 matlab
+Matom
 Matous
 matplotlib
 Matsubara
@@ -2780,6 +2783,7 @@ ocl
 octahedral
 octants
 Odegard
+Og
 Ohara
 O'Hearn
 ohenrich
@@ -3416,6 +3420,7 @@ ry
 Ryckaert
 Rycroft
 Rydbergs
+Ryzen
 rz
 Rz
 Sabry
@@ -3835,6 +3840,7 @@ Thiaville
 Thibaudeau
 Thijsse
 Thirumalai
+Threadripper
 threebody
 thrid
 ThunderX
