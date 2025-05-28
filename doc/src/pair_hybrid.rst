@@ -109,11 +109,14 @@ have the same molecule ID), the second to inter-molecular interactions
    of how this is set up, there will be *errors*.  The major use case
    where the error is *small*, is when the many-body sub-styles are used
    on different objects (for example a slab and a liquid, a metal and a
-   nano-machining work piece).  In that case the *mixed* terms **must**
-   be provided by a pair-wise additive potential (like Lennard-Jones or
-   Morse).  Outside of this, we *strongly* recommend *against* using
-   pair style hybrid with many-body potentials for the following
-   reasons:
+   nano-machining work piece).  In that case the *mixed* terms
+   **should** be provided by a pair-wise additive potential (like
+   Lennard-Jones or Morse) to avoid unexpected behavior and reduce
+   errors.  LAMMPS cannot easily check for this condition and thus will
+   accept good and bad choices alike.
+
+   Outside of this, we *strongly* recommend *against* using pair style
+   hybrid with many-body potentials for the following reasons:
 
    1. When trying to combine EAM or MEAM potentials, there is a *large*
       error in the embedding term, since it is computed separately for
@@ -125,7 +128,8 @@ have the same molecule ID), the second to inter-molecular interactions
       fashion but will need to be applied to multiples of atoms
       (e.g. a Tersoff potential of elements A and B includes the
       interactions A-A, B-B, A-B, A-A-A, A-A-B, A-B-B, A-B-A, B-A-A,
-      B-A-B, B-B-A, B-B-B; AIREBO also considers quadruples).
+      B-A-B, B-B-A, B-B-B; AIREBO also considers all quadruples of
+      atom elements).
 
    3. When one of the sub-styles uses charge-equilibration (= QEq; like
       in ReaxFF or COMB) you have inconsistent QEq behavior because
