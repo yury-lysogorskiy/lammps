@@ -230,12 +230,15 @@ breakdown and relative percentages.  For example, trying different
 options for speeding up the long-range solvers will have little impact
 if they only consume 10% of the run time.  If the pairwise time is
 dominating, you may want to look at GPU or OMP versions of the pair
-style, as discussed below.  Comparing how the percentages change as
-you increase the processor count gives you a sense of how different
-operations within the timestep are scaling.  Note that if you are
-running with a Kspace solver, there is additional output on the
-breakdown of the Kspace time.  For PPPM, this includes the fraction
-spent on FFTs, which can be communication intensive.
+style, as discussed below.  Comparing how the percentages change as you
+increase the processor count gives you a sense of how different
+operations within the timestep are scaling.  If you are using PPPM as
+Kspace solver, you can turn on an additional output with
+:doc:`kspace_modify fftbench yes <kspace_modify>` which measures the
+time spent during PPPM on the 3d FFTs, which can be communication
+intensive for larger processor counts.  This provides an indication
+whether it is worth trying out alternatives to the default FFT settings
+for additional performance.
 
 Another important detail in the timing info are the histograms of
 atoms counts and neighbor counts.  If these vary widely across
