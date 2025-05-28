@@ -377,8 +377,9 @@ double FixAveMoments::compute_array(int i, int j)
 {
   if (i >= size_vector) return 0.0;
   if (j >= nhistory) return 0.0;
+  // locate the j'th previous result in the ring buffer, relative to the
+  // row before iresult (the current insert cursor)
   int row = (iresult - 1 - j + nhistory) % nhistory;
-  if (row >= nhistory) return 0.0;
   return result_list[row][i];
 }
 

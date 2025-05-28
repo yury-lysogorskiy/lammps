@@ -53,7 +53,7 @@ Description
 .. versionadded:: TBD
 
 Using one or more values as input, calculate the moments of the underlying
-(population) distribution based on samples collected every few time
+(population) distributions based on samples collected every few time
 steps over a time step window. The definitions of the moments calculated
 are given below.
 
@@ -199,11 +199,12 @@ time 0, so setting *start* to a larger value can avoid including a 0.0
 in a longer series.
 
 The *history* keyword stores the Nrecent most recent outputs on Nfreq
-timesteps, so they can be accessed as global outputs of the fix.  By
-default, only the most recent output is accessible. For example, if
-history 10 is specified and Nfreq = 1000, then on timestep 20000, the
-Nfreq outputs from steps 20000, 19000, ... 11000 are available for
-access.  See below for details on how to access the history values.
+timesteps, so they can be accessed as global outputs of the fix.  Nrecent
+must be >= 1. The default is 1, meaning only the most recent output is
+accessible. For example, if history 10 is specified and Nfreq = 1000,
+then on timestep 20000, the Nfreq outputs from steps 20000, 19000, ...
+11000 are available for access.  See below for details on how to access
+the history values.
 
 For example, this will store the outputs of the previous 10 Nfreq
 time steps, i.e. a window of 10000 time steps:
@@ -214,10 +215,11 @@ time steps, i.e. a window of 10000 time steps:
 
 The previous results can be accessed as values in a global array output
 by this fix. Each column of the array is the vector output of the N-th
-preceding Nfreq timestep.  For example, the most recent result of the
-third input value would be accessed as "f_name[3][1]", "f_name[3][4]"
-is the 4th most recent and so on.  The current vector output is always
-the first column of the array, corresponding to the most recent result.
+preceding Nfreq timestep.  For example, assuming a single moment is
+calculated, the most recent result corresponding to the third input
+value would be accessed as "f_name[3][1]", "f_name[3][4]" is the 4th
+most recent and so on.  The current vector output is always the first
+column of the array, corresponding to the most recent result.
 
 To illustrate the utility of keeping output history, consider using
 this fix in conjunction with :doc:`fix halt <fix_halt>` to stop a run
@@ -250,9 +252,9 @@ accessed on any time step, but may not be current.
 
 A global vector is produced with the # of elements = number of moments *
 number of inputs.  The moments are output in the order given in the fix
-definition.  An array is produced having # of rows = same as vector output,
-using the same ordering and # of columns = value of *history*. There is
-always at least one column.
+definition.  An array is produced having # of rows = length of vector
+output (with an ordering which matches the vector) and # of columns =
+value of *history*. There is always at least one column.
 
 Each element of the global vector or array can be either "intensive" or
 "extensive", depending on whether the values contributing to the element
