@@ -33,7 +33,7 @@ FixSet::FixSet(LAMMPS *lmp, int narg, char **arg) : Fix(lmp, narg, arg)
   if (nevery <= 0) error->all(FLERR, "Fix {} Nevery must be > 0", style);
 
   reneighbor = utils::inumeric(FLERR, arg[4], false, lmp);
-  if (reneighbor = 0 || reneighbor > 1)
+  if (reneighbor < 0 || reneighbor > 1)
     error->all(FLERR, "Fix {} rnflag must be 0/1", style);
 
   // create instance of Set class
@@ -83,4 +83,3 @@ void FixSet::end_of_step()
 
   if (reneighbor) next_reneighbor = update->ntimestep + 1;
 }
-

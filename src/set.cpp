@@ -303,7 +303,7 @@ void Set::process_args(int caller_flag, int narg, char **arg)
     } else if (strcmp(arg[iarg],"smd/mass/density") == 0) {
       action->keyword = SMD_MASS_DENSITY;
       process_smd_mass_density(iarg,narg,arg,action);
-      invoke_choice[naction++] = &Set::invoke_density;
+      invoke_choice[naction++] = &Set::invoke_smd_mass_density;
     } else if (strcmp(arg[iarg],"sph/cv") == 0) {
       action->keyword = SPH_CV;
       process_sph_cv(iarg,narg,arg,action);
