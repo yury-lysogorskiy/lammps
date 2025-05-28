@@ -30,14 +30,14 @@ Syntax
 * one or more moments to compute can be listed
 * moment = *mean* or *stddev* or *variance* or *skew* or *kurtosis*, see exact definitions below.
 * zero or more keyword/arg pairs may be appended
-* keyword = *start* or *delay*
+* keyword = *start* or *history*
 
   .. parsed-literal::
 
        *start* args = Nstart
          Nstart = invoke first after this time step
-       *history* args = Ndelay
-         Ndelay = keep a history of up to Ndelay invocations
+       *history* args = Nrecent
+         Nrecent = keep a history of up to Nrecent outputs
 
 Examples
 """"""""
@@ -52,10 +52,10 @@ Description
 
 .. versionadded:: TBD
 
-Using one or more variables as input every few time steps, calculate the
-moments of the underlying distribution based on the samples collected
-over a time step window. The definitions of the moments calculated are
-given below.
+Using one or more values as input, calculate the moments of the underlying
+(population) distribution based on samples collected every few time
+steps over a time step window. The definitions of the moments calculated
+are given below.
 
 The group specified with this command is ignored.  However, note that
 specified values may represent calculations performed by computes and
@@ -64,30 +64,29 @@ fixes which store their own "group" definitions.
 Each listed value can be the result of a :doc:`compute <compute>` or
 :doc:`fix <fix>` or the evaluation of an equal-style or vector-style
 :doc:`variable <variable>`.  In each case, the compute, fix, or variable
-must produce a global quantity, quantity, not a per-atom or local
-quantity.  If you wish to spatial- or time-average or histogram per-atom
+must produce a global quantity, not a per-atom or local quantity.
+If you wish to spatial- or time-average or histogram per-atom
 quantities from a compute, fix, or variable, then see the :doc:`fix
 ave/chunk <fix_ave_chunk>`, :doc:`fix ave/atom <fix_ave_atom>`, or
 :doc:`fix ave/histo <fix_ave_histo>` commands.  If you wish to sum a
 per-atom quantity into a single global quantity, see the :doc:`compute
 reduce <compute_reduce>` command.
 
-:doc:`Computes <compute>` that produce global quantities are those which
-do not have the word *atom* in their style name.  Only a few :doc:`fixes
-<fix>` produce global quantities.  See the doc pages for individual
-fixes for info on which ones produce such values.  :doc:`Variables
-<variable>` of style *equal* and *vector* are the only ones that can be
-used with this fix.  Variables of style *atom* cannot be used, since
-they produce per-atom values.
+Many :doc:`computes <compute>` and :doc:`fixes <fix>` produce global
+quantities.  See their doc pages for details. :doc:`Variables <variable>`
+of style *equal* and *vector* are the only ones that can be used with
+this fix.  Variables of style *atom* cannot be used, since they produce
+per-atom values.
 
 The input values must all be scalars or vectors with a bracketed term
 appended, indicating the :math:`I^\text{th}` value of the vector is
 used.
 
 The result of this fix can be accessed as a vector, containing the
-interleaved moments of each input in order.  The first requested moment
-of input 1 has index 1, the second index 2, the first of input 2 has
-index 3 and so on.
+interleaved moments of each input in order.  If M moments are requested,
+then the moments of input 1 will be the first M values in the vector
+output by this fix. The moments of input 2 will the next M values, etc.
+If there are N values, the vector length will be N*M.
 
 ----------
 
@@ -112,21 +111,23 @@ values will be used in order to contribute to the average.  The final
 statistics are generated on time steps that are a multiple of
 :math:`N_\text{freq}`\ .  The average is over a window of up to
 :math:`N_\text{repeat}` quantities, computed in the preceding portion of
-the simulation every :math:`N_\text{every}` time steps.
+the simulation once every :math:`N_\text{every}` time steps.
 
 .. note::
 
-    Contrary to some fix ave/* commands, the values of this fix are not
-    restricted by any special relation: it is valid to have a window
-    larger than :math:`N_\text{freq}` as well as the other way around.
+    Contrary to most fix ave/* commands, it is not required that Nevery *
+    Nrepeat <= Nfreq.  This is to allow the user to choose the time
+    window and number of samples contributing to the output at each
+    Nfreq interval.
 
 For example, if :math:`N_\text{freq}=100` and :math:`N_\text{repeat}=5`
-(and :math:`N_\text{every}=1`), then values from time steps 96, 97, 98,
-99, and 100 will be used. This means some intervening time steps do not
-contribute to the result.  If :math:`N_\text{freq}=5` and
-:math:`N_\text{repeat}=10`, then values will first be calculated on step
-5 from steps 1-5, on step 10 from 1-10, on step 15 from 5-15 and so on,
-forming a rolling average.
+(and :math:`N_\text{every}=1`), then on step 100 values from time steps
+96, 97, 98, 99, and 100 will be used. The fix does not compute its
+inputs on steps that are not required.  If :math:`N_\text{freq}=5`,
+:math:`N_\text{repeat}=8` and :math:`N_\text{every}=1`, then values
+will first be calculated on step 5 from steps 1-5, on step 10 from 3-10,
+on step 15 from 8-15 and so on, forming a rolling average over
+timesteps that span a time window larger than Nfreq.
 
 ----------
 
@@ -191,31 +192,36 @@ For *kurtosis*, the adjusted Fisher--Pearson standardized moment
 
 Fix invocation and output can be modified by optional keywords.
 
-The *start* keyword specifies that the first invocation should be no
+The *start* keyword specifies that the first computation should be no
 earlier than the step number given (but will still occur on a multiple
 of *Nfreq*).  The default is step 0.  Often input values can be 0.0 at
 time 0, so setting *start* to a larger value can avoid including a 0.0
 in a longer series.
 
-The *history* allows keeping a record of previous results.  By default,
-only the most recent invocation is accessible.
+The *history* keyword stores the Nrecent most recent outputs on Nfreq
+timesteps, so they can be accessed as global outputs of the fix.  By
+default, only the most recent output is accessible. For example, if
+history 10 is specified and Nfreq = 1000, then on timestep 20000, the
+Nfreq outputs from steps 20000, 19000, ... 11000 are available for
+access.  See below for details on how to access the history values.
 
-For example, this will output values which are delayed by 10
-invocations, meaning 10000 time steps:
+For example, this will store the outputs of the previous 10 Nfreq
+time steps, i.e. a window of 10000 time steps:
 
 .. code-block:: LAMMPS
 
    fix 1 all ave/moments 1 200 1000 v_volume mean history 10
 
-The previous results can be accessed by additional rows on the fix output
-array, containing the N-th last evaluation result.  For example, the most recent
-result of the first input value would be accessed as "f_name[1][1]",
-"f_name[1][4]" is the 4th most recent and so on.  Vector access is always the
-same as the first array row, corresponding to the most recent result.
+The previous results can be accessed as values in a global array output
+by this fix. Each column of the array is the vector output of the N-th
+preceding Nfreq timestep.  For example, the most recent result of the
+third input value would be accessed as "f_name[3][1]", "f_name[3][4]"
+is the 4th most recent and so on.  The current vector output is always
+the first column of the array, corresponding to the most recent result.
 
-This fix can be used in conjunction with :doc:`fix halt <fix_halt>` to
-stop a run automatically if a quantity is converged to within some
-limit:
+To illustrate the utility of keeping output history, consider using
+this fix in conjunction with :doc:`fix halt <fix_halt>` to stop a run
+automatically if a quantity is converged to within some desired tolerance:
 
 .. code-block:: LAMMPS
 
@@ -244,15 +250,16 @@ accessed on any time step, but may not be current.
 
 A global vector is produced with the # of elements = number of moments *
 number of inputs.  The moments are output in the order given in the fix
-definition.  An array is produced having # of rows = value of *history*
-and # of columns = same as vector output, using the same ordering.
+definition.  An array is produced having # of rows = same as vector output,
+using the same ordering and # of columns = value of *history*. There is
+always at least one column.
 
-Each element can be either "intensive" or "extensive", depending on whether
-the values contributing to the element are "intensive" or "extensive". If a
-compute or fix provides the value being time averaged, then the compute or
-fix determines whether the value is intensive or extensive; see the page
-for that compute or fix for further info.  Values produced by a variable
-are treated as intensive.
+Each element of the global vector or array can be either "intensive" or
+"extensive", depending on whether the values contributing to the element
+are "intensive" or "extensive".  If a compute or fix provides the value
+being time averaged, then the compute or fix determines whether the value
+is intensive or extensive; see the page for that compute or fix for
+further info.  Values produced by a variable are treated as intensive.
 
 No parameter of this fix can be used with the *start/stop* keywords of
 the :doc:`run <run>` command.  This fix is not invoked during
