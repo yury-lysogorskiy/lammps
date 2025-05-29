@@ -3221,7 +3221,7 @@ double Variable::collapse_tree(Tree *tree)
     tree->value = (arg1 >= 0.0) ? 1.0 : -1.0; // sign(arg1);
     return tree->value;
   }
-    
+
   if (tree->type == PYWRAPPER) {
     int narg = tree->argcount;
     int *argvars = tree->argvars;
