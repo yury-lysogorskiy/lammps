@@ -37,7 +37,7 @@ if this command changes per-atom properties that need to be
 communicated to ghost atoms.  If this is not the case, an *rnflag*
 setting of 0 can be used; reneighboring will only be triggered on
 subsequent timesteps by the usual neighbor list criteria; see the
-:doc:`neigh_modify <neigh_modify.html>` command.
+:doc:`neigh_modify command <neigh_modify>`.
 
 Here are two examples where an *rnflag* setting of 1 are needed.  If a
 custom per-atom property is changed and the :doc:`fix property/atom
