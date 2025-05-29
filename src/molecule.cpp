@@ -235,11 +235,10 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
     if ((rev < 1) || (rev > 1))
       error->all(FLERR, Error::NOLASTLINE, "JSON molecule data with unsupported revision {}", rev);
   }
-
-  if (moldata.contains("units")) {
+  if (moldata.contains("units") && (comm->me == 0)) {
     if (std::string(moldata["units"]) != update->unit_style)
-      error->all(FLERR, Error::NOLASTLINE, "JSON molecule data units {} incompatible with {} units",
-                 std::string(moldata["units"]), update->unit_style);
+      error->warning(FLERR, "Inconsistent units in JSON molecule data: current = {}, JSON = {}",
+                     update->unit_style, std::string(moldata["units"]));
   }
   if (moldata.contains("title")) title = moldata["title"];
 
@@ -590,6 +589,16 @@ void Molecule::read(int flag)
 
   if (comm->me == 0) {
     eof = fgets(line, MAXLINE, fp);
+
+    // check for units keyword in first line and print warning on mismatch
+
+    auto units = Tokenizer(utils::strfind(line, "units = \\w+")).as_vector();
+    if (units.size() > 2) {
+      if (units[2] != update->unit_style)
+        error->warning(FLERR, "Inconsistent units in data file: current = {}, data file = {}",
+                       update->unit_style, units[2]);
+    }
+
     if (eof == nullptr) error->one(FLERR, fileiarg, "Unexpected end of molecule file");
   }
 
