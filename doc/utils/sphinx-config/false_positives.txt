@@ -3360,6 +3360,7 @@ Rmin
 RMS
 rmsd
 rnage
+rnflag
 rng
 rNEMD
 ro
