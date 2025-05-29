@@ -664,7 +664,7 @@ void Molecule::read(int flag)
         itensor[3] *= scale5;
         itensor[4] *= scale5;
         itensor[5] *= scale5;
-      } else if (values.matches("^\\s*\\d+\\s+\\f+\\s+body")) {
+      } else if (values.matches("^\\s*\\d+\\s+\\d+\\s+body")) {
         bodyflag = 1;
         avec_body = dynamic_cast<AtomVecBody *>(atom->style_match("body"));
         if (!avec_body) error->all(FLERR, fileiarg, "Molecule file requires atom style body");
