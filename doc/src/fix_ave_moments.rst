@@ -44,7 +44,7 @@ Examples
 
 .. code-block:: LAMMPS
 
-   fix 1 all ave/moments 1 1000 100 v_volume mean sttdev
+   fix 1 all ave/moments 1 1000 100 v_volume mean stddev
    fix 1 all ave/moments 1 200 1000 v_volume variance kurtosis history 10
 
 Description
