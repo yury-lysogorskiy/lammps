@@ -70,7 +70,7 @@ add_test(NAME LibraryConfig COMMAND test_library_config)
 
 add_executable(test_library_mpi test_library_mpi.cpp)
 target_link_libraries(test_library_mpi PRIVATE lammps GTest::GMock)
-target_compile_definitions(test_library_mpi PRIVATE "${TEST_CONFIG_DEFS};-DMPICH_SKIP_MPICXX;-DOMPI_SKIP_MPICXX=1")
+target_compile_definitions(test_library_mpi PRIVATE "${TEST_CONFIG_DEFS};MPICH_SKIP_MPICXX=1;OMPI_SKIP_MPICXX=1")
 add_mpi_test(NAME LibraryMPI NUM_PROCS 4 COMMAND $<TARGET_FILE:test_library_mpi>)
 
 # simple run tests for coupling to the LAMMPS library
