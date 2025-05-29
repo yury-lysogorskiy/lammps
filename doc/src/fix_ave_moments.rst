@@ -169,9 +169,10 @@ time average.
 The moments are output in the order requested in the arguments following
 the last input.  Any number and order of moments can be specified,
 although it does not make much sense to specify the same moment multiple
-times.  All moments are computed in terms of corrected sample (not
-population) cumulants :math:`k_{1..4}` (see :ref:`(Cramer)<Cramer1>`),
-the standardized moments follow :ref:`(Joanes)<Joanes1>`.
+times.  All moments are computed using a correction of the sample estimators
+used to obtain unbiased cumulants :math:`k_{1..4}` (see :ref:`(Cramer)
+<Cramer1>`). The correction for variance is the standard Bessel
+correction. For other moments, see :ref:`(Joanes)<Joanes1>`.
 
 For *mean*, the arithmetic mean :math:`\bar{x} = \frac{1}{n}
 \sum_{i=1}^{n} x_i` is calculated.
