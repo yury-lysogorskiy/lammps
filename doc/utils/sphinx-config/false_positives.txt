@@ -631,6 +631,7 @@ cp
 cpp
 cpu
 cradius
+Cramer
 createatoms
 createAtoms
 CreateIDs
@@ -671,6 +672,7 @@ cuFFT
 CuH
 Cui
 Cummins
+cumulants
 Cundall
 cundall
 Curk
@@ -1772,6 +1774,7 @@ jik
 JIK
 jku
 jN
+Joanes
 Joannopoulos
 Jochim
 Jonsson
