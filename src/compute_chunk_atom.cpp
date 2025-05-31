@@ -1877,7 +1877,7 @@ void ComputeChunkAtom::atom2binsphere()
     // if requested, apply PBC to distance from sphere center
     // treat orthogonal and triclinic the same
     //   with dx,dy,dz = lengths independent of each other
-    // so do not use domain->minimum_image() which couples for triclinic
+    // so do not use domain->minimum_image(FLERR, ) which couples for triclinic
 
     if (pbcflag) {
       if (periodicity[0]) {
