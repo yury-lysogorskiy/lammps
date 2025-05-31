@@ -2708,6 +2708,7 @@ Nprocs
 npt
 nr
 Nr
+Nrecent
 Nrecompute
 Nrepeat
 nreset
