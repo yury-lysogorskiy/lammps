@@ -217,24 +217,33 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   delete[] id;
   id = utils::strdup(molid);
 
-  // check if JSON file is compatible
+  // check required fields if JSON data is compatible
 
   std::string val;
   if (moldata.contains("application")) {
     if (moldata["application"] != "LAMMPS")
       error->all(FLERR, Error::NOLASTLINE, "JSON data is for incompatible application: {}",
                  std::string(moldata["application"]));
+  } else {
+    error->all(FLERR, Error::NOLASTLINE, "JSON data does not contain required 'application' field");
   }
   if (moldata.contains("format")) {
     if (moldata["format"] != "molecule")
       error->all(FLERR, Error::NOLASTLINE, "JSON data is not for a molecule: {}",
                  std::string(moldata["format"]));
+  } else {
+    error->all(FLERR, Error::NOLASTLINE, "JSON data does not contain required 'format' field");
   }
   if (moldata.contains("revision")) {
     int rev = moldata["revision"];
     if ((rev < 1) || (rev > 1))
       error->all(FLERR, Error::NOLASTLINE, "JSON molecule data with unsupported revision {}", rev);
+  } else {
+    error->all(FLERR, Error::NOLASTLINE, "JSON data does not contain required 'revision' field");
   }
+
+  // optional fields
+
   if (moldata.contains("units") && (comm->me == 0)) {
     if (std::string(moldata["units"]) != update->unit_style)
       error->warning(FLERR, "Inconsistent units in JSON molecule data: current = {}, JSON = {}",
@@ -242,22 +251,53 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   }
   if (moldata.contains("title")) title = moldata["title"];
 
-  // determine sizes
+  // determine and check sizes
 
-  if (moldata.contains("coords") && moldata["coords"].contains("data"))
-    natoms = moldata["coords"]["data"].size();
-  if (moldata.contains("bonds") && moldata["bonds"].contains("data"))
-    nbonds = moldata["bonds"]["data"].size();
-  if (moldata.contains("angles") && moldata["angles"].contains("data"))
-    nangles = moldata["angles"]["data"].size();
-  if (moldata.contains("dihedrals") && moldata["dihedrals"].contains("data"))
-    ndihedrals = moldata["dihedrals"]["data"].size();
-  if (moldata.contains("impropers") && moldata["impropers"].contains("data"))
-    nimpropers = moldata["impropers"]["data"].size();
-  if (moldata.contains("fragments") && moldata["fragments"].contains("data"))
-    nfragments = moldata["fragments"]["data"].size();
+  int dummyvar;
 
-  // extract global properties
+#define JSON_INIT_FIELD(field, sizevar, flagvar, required, sizecheck)                             \
+  if (moldata.contains(#field)) {                                                                 \
+    sizevar = 0;                                                                                  \
+    flagvar = 0;                                                                                  \
+    if (!moldata[#field].contains("format"))                                                      \
+      error->all(FLERR, Error::NOLASTLINE,                                                        \
+                 "JSON molecule data does not contain required 'format' field for '{}'", #field); \
+    if (moldata[#field].contains("data")) {                                                       \
+      flagvar = 1;                                                                                \
+      sizevar = moldata[#field]["data"].size();                                                   \
+    } else {                                                                                      \
+      error->all(FLERR, Error::NOLASTLINE,                                                        \
+                 "JSON molecule data does not contain required 'data' field for '{}'", #field);   \
+    }                                                                                             \
+    if (sizevar < 1)                                                                              \
+      error->all(FLERR, Error::NOLASTLINE, "No {} in JSON data for molecule", #field);            \
+  } else {                                                                                        \
+    if (required)                                                                                 \
+      error->all(FLERR, Error::NOLASTLINE,                                                        \
+                 "JSON data for molecule does not contain required '{}' field", #field);          \
+  }                                                                                               \
+  if (sizecheck && (sizecheck != sizevar))                                                        \
+    error->all(FLERR, Error::NOLASTLINE, "Found {} instead of {} data entries for '{}'", sizevar, \
+               sizecheck, #field);
+
+  JSON_INIT_FIELD(coords, natoms, xflag, true, 0);
+  JSON_INIT_FIELD(types, dummyvar, typeflag, true, natoms);
+  JSON_INIT_FIELD(molecules, dummyvar, moleculeflag, false, natoms);
+  JSON_INIT_FIELD(fragments, nfragments, fragmentflag, false, 0);
+  JSON_INIT_FIELD(charges, dummyvar, qflag, false, natoms);
+  JSON_INIT_FIELD(diameters, dummyvar, radiusflag, false, natoms);
+  JSON_INIT_FIELD(dipoles, dummyvar, muflag, false, natoms);
+  JSON_INIT_FIELD(masses, dummyvar, rmassflag, false, natoms);
+  JSON_INIT_FIELD(bonds, nbonds, bondflag, false, 0);
+  JSON_INIT_FIELD(angles, nangles, angleflag, false, 0);
+  JSON_INIT_FIELD(dihedrals, ndihedrals, dihedralflag, false, 0);
+  JSON_INIT_FIELD(impropers, nimpropers, improperflag, false, 0);
+
+#undef JSON_INIT_FIELD
+
+  if ((nbonds > 0) || (nangles > 0) || (ndihedrals > 0) || (nimpropers > 0)) tag_require = 1;
+
+  // extract global properties, if present
 
   if (moldata.contains("masstotal")) {
     massflag = 1;
@@ -286,51 +326,93 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
     bodyflag = 1;
     const double scale5 = powint(sizescale, 5);
     avec_body = dynamic_cast<AtomVecBody *>(atom->style_match("body"));
-    if (!avec_body) error->all(FLERR, Error::NOLASTLINE, "Molecule data requires atom style body");
+    if (!avec_body)
+      error->all(FLERR, Error::NOLASTLINE, "JSON molecule data requires atom style body");
     nibody = moldata["body"][0];
     ndbody = moldata["body"][1];
   }
 
-  if (moldata.contains("coords")) xflag = 1;
-  if (moldata.contains("types")) typeflag = 1;
-  if (moldata.contains("molecules")) moleculeflag = 1;
-  if (moldata.contains("fragments")) fragmentflag = 1;
-  if (moldata.contains("charges")) qflag = 1;
-  if (moldata.contains("diameters")) radiusflag = 1;
-  if (moldata.contains("dipoles")) muflag = 1;
-  if (moldata.contains("masses")) rmassflag = 1;
-
-  if (nbonds > 0) bondflag = tag_require = 1;
-  if (nangles > 0) angleflag = tag_require = 1;
-  if (ndihedrals > 0) dihedralflag = tag_require = 1;
-  if (nimpropers > 0) improperflag = tag_require = 1;
-
   // checks. No checks for < 0 needed since size() is at least 0
 
-  if (natoms < 1) error->all(FLERR, Error::NOLASTLINE, "No atoms in molecule data");
   if ((domain->dimension == 2) && (com[2] != 0.0))
     error->all(FLERR, Error::NOLASTLINE,
                "Molecule data z center-of-mass must be 0.0 for 2d systems");
 
-  if ((typeflag) && moldata["types"].contains("data")) {
-    if (moldata["types"]["data"].size() != natoms)
-      error->all(FLERR, Error::NOLASTLINE, "Found {} instead of {} data entries for 'types'",
-                 moldata["types"]["data"].size(), natoms);
-  }
-  if ((radiusflag) && moldata["diameters"].contains("data")) {
-    if (moldata["diameters"]["data"].size() != natoms)
-      error->all(FLERR, Error::NOLASTLINE, "Found {} instead of {} data entries for 'diameters'",
-                 moldata["diameters"]["data"].size(), natoms);
-  }
-  if ((rmassflag) && moldata["masses"].contains("data")) {
-    if (moldata["masses"]["data"].size() != natoms)
-      error->all(FLERR, Error::NOLASTLINE, "Found {} instead of {} data entries for 'masses'",
-                 moldata["masses"]["data"].size(), natoms);
-  }
-
   // allocate required storage
 
   Molecule::allocate();
+
+  // count = vector for tallying bonds,angles,etc per atom
+
+  memory->create(count, natoms, "molecule:count");
+
+  // process data sections
+
+  // coords
+  // types
+  // molecules
+  // fragments
+  // charges
+  // diameters
+  // dipoles
+  // masses
+
+  // bonds
+  // angles
+  // dihedrals
+  // impropers
+
+  // special_bond_counts
+  // special_bonds
+
+  // shake_flags
+  // shake_atoms
+  // shake_bond_types
+
+  // body_integers
+  // body_doubles
+
+  // error checks
+
+  if ((nspecialflag && !specialflag) || (!nspecialflag && specialflag))
+    error->all(FLERR, fileiarg, "Molecule file needs both Special Bond sections");
+  if (specialflag && !bondflag)
+    error->all(FLERR, fileiarg, "Molecule file has special flags but no bonds");
+  if ((shakeflagflag || shakeatomflag || shaketypeflag) && !shakeflag)
+    error->all(FLERR, fileiarg, "Molecule file shake info is incomplete");
+  if (bodyflag && nibody && ibodyflag == 0)
+    error->all(FLERR, fileiarg, "Molecule file has no Body Integers section");
+  if (bodyflag && ndbody && dbodyflag == 0)
+    error->all(FLERR, fileiarg, "Molecule file has no Body Doubles section");
+  if (nfragments > 0 && !fragmentflag)
+    error->all(FLERR, fileiarg, "Molecule file has no Fragments section");
+  // auto-generate special bonds if needed and not in file
+
+  if (bondflag && specialflag == 0) {
+    if (domain->box_exist == 0)
+      error->all(FLERR, fileiarg,
+                 "Cannot auto-generate special bonds before simulation box is defined");
+
+    special_generate();
+    specialflag = 1;
+    nspecialflag = 1;
+  }
+
+  // body particle must have natom = 1
+  // set radius by having body class compute its own radius
+
+  if (bodyflag) {
+    radiusflag = 1;
+    if (natoms != 1) error->all(FLERR, fileiarg, "Molecule natoms must be 1 for body particle");
+    if (sizescale != 1.0)
+      error->all(FLERR, fileiarg, "Molecule sizescale must be 1.0 for body particle");
+    radius[0] = avec_body->radius_body(nibody, ndbody, ibodyparams, dbodyparams);
+    maxradius = radius[0];
+  }
+
+  // clean up
+
+  memory->destroy(count);
 }
 
 /* ---------------------------------------------------------------------- */
