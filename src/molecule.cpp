@@ -2443,9 +2443,8 @@ void Molecule::skip_lines(int n, char *line, const std::string &section)
   for (int i = 0; i < n; i++) {
     readline(line);
     if (utils::strmatch(utils::trim(utils::trim_comment(line)), "^[A-Za-z ]+$"))
-      error->one(FLERR,
-                 "Unexpected line in molecule file while "
-                 "skipping {} section:\n{}",
+      error->one(FLERR, Error::NOLASTLINE,
+                 "Unexpected line in molecule file while skipping {} section:\n{}",
                  section, line);
   }
 }
