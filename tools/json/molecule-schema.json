@@ -59,7 +59,8 @@
                         "items": false
                     }
                 }
-            }
+            },
+            "required": ["format", "data"]
         },
         "types": {
             "type": "object",
@@ -79,7 +80,8 @@
                         "items": false
                     }
                 }
-            }
+            },
+            "required": ["format", "data"]
         },
         "molecules": {
             "type": "object",
@@ -99,7 +101,8 @@
                         "maxItems": 2
                     }
                 }
-            }
+            },
+            "required": ["format", "data"]
         },
         "charges": {
             "type": "object",
@@ -119,7 +122,8 @@
                         "items": false
                     }
                 }
-            }
+            },
+            "required": ["format", "data"]
         },
         "bonds": {
             "type": "object",
@@ -140,7 +144,8 @@
                         "items": false
                     }
                 }
-            }
+            },
+            "required": ["format", "data"]
         },
         "angles": {
             "type": "object",
@@ -162,7 +167,8 @@
                         "items": false
                     }
                 }
-            }
+            },
+            "required": ["format", "data"]
         },
         "dihedrals": {
             "type": "object",
@@ -185,7 +191,8 @@
                         "items": false
                     }
                 }
-            }
+            },
+            "required": ["format", "data"]
         },
         "impropers": {
             "type": "object",
@@ -208,7 +215,8 @@
                         "items": false
                     }
                 }
-            }
+            },
+            "required": ["format", "data"]
         }
     },
     "required": ["application", "format", "revision", "coords", "types"]
