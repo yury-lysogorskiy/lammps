@@ -544,7 +544,7 @@ void ComputeStressMopProfile::compute_pairs()
             xj[0] -= xi[0];
             xj[1] -= xi[1];
             xj[2] -= xi[2];
-            domain->minimum_image(FLERR, xi[0], xi[1], xi[2]);
+            domain->minimum_image(FLERR, xj[0], xj[1], xj[2]);
             xj[0] += xi[0];
             xj[1] += xi[1];
             xj[2] += xi[2];
