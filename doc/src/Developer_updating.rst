@@ -635,7 +635,7 @@ Old:
    double delx2 = x[i3][0] - x[i2][0];
    double dely2 = x[i3][1] - x[i2][1];
    double delz2 = x[i3][2] - x[i2][2];
-   domain->minimum_image(delx2, dely2, delz2);
+   domain->minimum_image_big(delx2, dely2, delz2);
    double r2 = sqrt(delx2 * delx2 + dely2 * dely2 + delz2 * delz2);
 
 New:
@@ -651,7 +651,7 @@ New:
    double delx2 = x[i3][0] - x[i2][0];
    double dely2 = x[i3][1] - x[i2][1];
    double delz2 = x[i3][2] - x[i2][2];
-   domain->minimum_image(FLERR, delx2, dely2, delz2);
+   domain->minimum_image_big(FLERR, delx2, dely2, delz2);
    double r2 = sqrt(delx2 * delx2 + dely2 * dely2 + delz2 * delz2);
 
 This change is **required** or else the code will not compile.
