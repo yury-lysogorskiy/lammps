@@ -203,6 +203,10 @@ if((CMAKE_SYSTEM_NAME STREQUAL "Windows") AND BUILD_SHARED_LIBS)
   set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
+# do not include the (obsolete) MPI C++ bindings which makes for leaner object files
+# and avoids namespace conflicts. Put this early to increase its visbility.
+set(MPI_CXX_SKIP_MPICXX TRUE)
+
 ########################################################################
 # User input options                                                   #
 ########################################################################
@@ -400,28 +404,24 @@ if(PKG_ADIOS)
 endif()
 
 if(NOT CMAKE_CROSSCOMPILING)
-  find_package(MPI QUIET COMPONENTS C)
+  find_package(MPI QUIET COMPONENTS CXX)
   option(BUILD_MPI "Build MPI version" ${MPI_FOUND})
 else()
   option(BUILD_MPI "Build MPI version" OFF)
 endif()
 
 if(BUILD_MPI)
-  # do not include the (obsolete) MPI C++ bindings which makes
-  # for leaner object files and avoids namespace conflicts
-  set(MPI_CXX_SKIP_MPICXX TRUE)
   # We use a non-standard procedure to cross-compile with MPI on Windows
   if((CMAKE_SYSTEM_NAME STREQUAL "Windows") AND CMAKE_CROSSCOMPILING)
     include(MPI4WIN)
   else()
-    find_package(MPI REQUIRED COMPONENTS C)
+    find_package(MPI REQUIRED COMPONENTS CXX)
     option(LAMMPS_LONGLONG_TO_LONG "Workaround if your system or MPI version does not recognize 'long long' data types" OFF)
     if(LAMMPS_LONGLONG_TO_LONG)
       target_compile_definitions(lammps PRIVATE -DLAMMPS_LONGLONG_TO_LONG)
     endif()
   endif()
-  target_link_libraries(lammps PUBLIC MPI::MPI_C)
-  target_compile_definitions(lammps PUBLIC -DMPICH_SKIP_MPICXX -DOMPI_SKIP_MPICXX=1)
+  target_link_libraries(lammps PUBLIC MPI::MPI_CXX)
 else()
   target_sources(lammps PRIVATE ${LAMMPS_SOURCE_DIR}/STUBS/mpi.cpp)
   add_library(mpi_stubs INTERFACE)
@@ -717,7 +717,6 @@ foreach(PKG_LIB POEMS ATC AWPMD H5MD)
     file(GLOB_RECURSE ${PKG_LIB}_SOURCES CONFIGURE_DEPENDS
       ${LAMMPS_LIB_SOURCE_DIR}/${PKG_LIB}/[^.]*.c ${LAMMPS_LIB_SOURCE_DIR}/${PKG_LIB}/[^.]*.cpp)
     add_library(${PKG_LIB} STATIC ${${PKG_LIB}_SOURCES})
-    target_compile_definitions(${PKG_LIB} PUBLIC -DMPICH_SKIP_MPICXX -DOMPI_SKIP_MPICXX=1)
     set_target_properties(${PKG_LIB} PROPERTIES OUTPUT_NAME lammps_${PKG_LIB}${LAMMPS_MACHINE})
     target_link_libraries(lammps PRIVATE ${PKG_LIB})
     if(PKG_LIB STREQUAL "awpmd")
@@ -743,7 +742,7 @@ if(PKG_ATC)
     message(FATAL_ERROR "The ATC Package is not compatible with -DLAMMPS_BIGBIG")
   endif()
   if(BUILD_MPI)
-    target_link_libraries(atc PRIVATE ${LAPACK_LIBRARIES} MPI::MPI_C)
+    target_link_libraries(atc PRIVATE ${LAPACK_LIBRARIES} MPI::MPI_CXX)
   else()
     target_link_libraries(atc PRIVATE ${LAPACK_LIBRARIES} mpi_stubs)
   endif()
@@ -1057,9 +1056,9 @@ else()
 endif()
 if(BUILD_MPI)
   message(STATUS "<<< MPI flags >>>
--- MPI_defines:      ${MPI_C_COMPILE_DEFINITIONS}
--- MPI includes:     ${MPI_C_INCLUDE_PATH}
--- MPI libraries:    ${MPI_C_LIBRARIES};${MPI_Fortran_LIBRARIES}")
+-- MPI_defines:      ${MPI_CXX_COMPILE_DEFINITIONS}
+-- MPI includes:     ${MPI_CXX_INCLUDE_PATH}
+-- MPI libraries:    ${MPI_CXX_LIBRARIES};${MPI_Fortran_LIBRARIES}")
 endif()
 if(PKG_GPU)
   message(STATUS "<<< GPU package settings >>>

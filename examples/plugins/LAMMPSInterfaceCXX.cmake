@@ -33,10 +33,11 @@ endif()
 
 ################################################################################
 # MPI configuration
+# do not include the (obsolete) MPI C++ bindings which makes
+# for leaner object files and avoids namespace conflicts
+set(MPI_CXX_SKIP_MPICXX TRUE)
 if(NOT CMAKE_CROSSCOMPILING)
-  enable_language(C)
-  set(MPI_CXX_SKIP_MPICXX TRUE)
-  find_package(MPI QUIET COMPONENTS C)
+  find_package(MPI QUIET COMPONENTS CXX)
   option(BUILD_MPI "Build MPI version" ${MPI_FOUND})
 else()
   option(BUILD_MPI "Build MPI version" OFF)

@@ -62,6 +62,9 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
 endif()
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 
+# skip over obsolete MPI-2 C++ bindings
+set(MPI_CXX_SKIP_MPICXX TRUE)
+
 #######
 # helper functions from LAMMPSUtils.cmake
 function(validate_option name values)
@@ -128,9 +131,7 @@ endif()
 ################################################################################
 # MPI configuration
 if(NOT CMAKE_CROSSCOMPILING)
-  set(MPI_CXX_SKIP_MPICXX TRUE)
-  enable_language(C)
-  find_package(MPI QUIET COMPONENTS C)
+  find_package(MPI QUIET COMPONENTS CXX)
   option(BUILD_MPI "Build MPI version" ${MPI_FOUND})
 else()
   option(BUILD_MPI "Build MPI version" OFF)
