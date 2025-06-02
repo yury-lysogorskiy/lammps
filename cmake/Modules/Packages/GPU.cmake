@@ -484,9 +484,9 @@ RegisterFixStyle(${GPU_SOURCES_DIR}/fix_gpu.h)
 
 get_property(GPU_SOURCES GLOBAL PROPERTY GPU_SOURCES)
 if(BUILD_MPI)
-  target_link_libraries(gpu PRIVATE MPI::MPI_CXX)
+  target_link_libraries(gpu PUBLIC MPI::MPI_CXX)
 else()
-  target_link_libraries(gpu PRIVATE mpi_stubs)
+  target_link_libraries(gpu PUBLIC mpi_stubs)
 endif()
 
 set_target_properties(gpu PROPERTIES OUTPUT_NAME lammps_gpu${LAMMPS_MACHINE})
