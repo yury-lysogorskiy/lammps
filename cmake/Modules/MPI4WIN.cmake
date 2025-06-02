@@ -18,8 +18,8 @@ endif()
 
 ExternalProject_get_property(mpi4win_build SOURCE_DIR)
 file(MAKE_DIRECTORY "${SOURCE_DIR}/include")
-add_library(MPI::MPI_C UNKNOWN IMPORTED)
-set_target_properties(MPI::MPI_CXXx PROPERTIES
+add_library(MPI::MPI_CXX UNKNOWN IMPORTED)
+set_target_properties(MPI::MPI_CXX PROPERTIES
   IMPORTED_LOCATION "${SOURCE_DIR}/lib/libmsmpi.a"
   INTERFACE_INCLUDE_DIRECTORIES "${SOURCE_DIR}/include"
   INTERFACE_COMPILE_DEFINITIONS "MPICH_SKIP_MPICXX=1")
