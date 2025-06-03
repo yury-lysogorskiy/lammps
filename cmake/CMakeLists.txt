@@ -205,7 +205,7 @@ endif()
 
 # do not include the (obsolete) MPI C++ bindings which makes for leaner object files
 # and avoids namespace conflicts. Put this early to increase its visbility.
-set(MPI_CXX_SKIP_MPICXX TRUE)
+set(MPI_CXX_SKIP_MPICXX TRUE CACHE BOOL "Skip MPI C++ Bindings" FORCE)
 
 ########################################################################
 # User input options                                                   #
