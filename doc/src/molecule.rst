@@ -678,15 +678,16 @@ the file format.
 Format of a JSON molecule file
 """"""""""""""""""""""""""""""
 
-The format of a JSON format individual molecule file looks has to follow
+The format of a JSON format individual molecule file must follow
 the `JSON format <https://www.json.org/>`_, which evolved from the
-JavaScript programming language as a programming language neutral data
-interchange language.  The general syntax is independent of the content,
-and thus to be usable the data in the file has to follow suitable
-conventions.  LAMMPS provides a `JSON schema file
+JavaScript programming language as a programming-language-neutral data
+interchange language.  The JSON syntax is independent of its content,
+and thus the data in the file must follow suitable conventions to be 
+correctly parsed during input.  LAMMPS provides a `JSON schema file
 <https://json-schema.org/>`_ to define those conventions so that files
-can be validated against the requirements.  This ensures that syntax and
-conventions are followed.  It does **not** check whether the file
+can be validated against the requirements.  Validating a particular
+molecule file against this schema ensures that the syntax and
+conventions are followed, but it does **not** check whether the file
 contents are physically meaningful.
 
 Here is a simple example for the same TIP3P water molecule from above in
