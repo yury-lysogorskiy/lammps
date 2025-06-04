@@ -204,7 +204,7 @@ cd ..
 rm -r release-packages
 ```
 
-#### Build Multi-arch App-bundle for macOS
+#### Build Multi-arch App-bundle with GUI for macOS
 
 Building app-bundles for macOS is not as easily automated and portable
 as some of the other steps.  It requires a machine actually running
@@ -251,7 +251,7 @@ attached to the GitHub release page.
 
 We are currently building the application images on macOS 12 (aka Monterey).
 
-#### Build Linux x86_64 binary tarball on Ubuntu 20.04LTS
+#### Build Linux x86_64 binary tarball with GUI on Ubuntu 20.04LTS
 
 While the flatpak Linux version uses portable runtime libraries provided
 by the flatpak environment, we also build regular Linux executables that
