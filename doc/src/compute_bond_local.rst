@@ -64,7 +64,7 @@ All these properties are computed for the pair of atoms in a bond,
 whether the two atoms represent a simple diatomic molecule, or are part
 of some larger molecule.
 
-.. versionchanged:: TBD
+.. versionchanged:: 12Jun2025
 
    The sign of *dx*, *dy*, *dz* is no longer determined by the atom IDs
    of the bonded atoms but by their order in the bond list to be
