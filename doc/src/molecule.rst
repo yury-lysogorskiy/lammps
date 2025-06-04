@@ -682,13 +682,13 @@ The format of a JSON format individual molecule file must follow
 the `JSON format <https://www.json.org/>`_, which evolved from the
 JavaScript programming language as a programming-language-neutral data
 interchange language.  The JSON syntax is independent of its content,
-and thus the data in the file must follow suitable conventions to be 
+and thus the data in the file must follow suitable conventions to be
 correctly parsed during input.  LAMMPS provides a `JSON schema file
 <https://json-schema.org/>`_ to define those conventions so that files
 can be validated against the requirements.  Validating a particular
-molecule file against this schema ensures that the syntax and
-conventions are followed, but it does **not** check whether the file
-contents are physically meaningful.
+molecule file against this schema ensures that both, the syntax *and*
+the conventions are followed, but it **cannot** check whether the
+file contents are physically meaningful.
 
 Here is a simple example for the same TIP3P water molecule from above in
 JSON format and also using :doc:`type lables <labelmap>` instead of
