@@ -398,6 +398,7 @@ accelerated styles exist.
 * :doc:`rigid/small <fix_rigid>` - constrain many small clusters of atoms to move as a rigid body with NVE integration
 * :doc:`rx <fix_rx>` - solve reaction kinetic ODEs for a defined reaction set
 * :doc:`saed/vtk <fix_saed_vtk>` - time-average the intensities from :doc:`compute saed <compute_saed>`
+* :doc:`set <fix_set>` - reset an atom property via an atom-style variable every N steps
 * :doc:`setforce <fix_setforce>` - set the force on each atom
 * :doc:`setforce/spin <fix_setforce>` - set magnetic precession vectors on each atom
 * :doc:`sgcmc <fix_sgcmc>` - fix for hybrid semi-grand canonical MD/MC simulations
