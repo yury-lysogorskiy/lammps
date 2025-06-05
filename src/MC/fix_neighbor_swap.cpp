@@ -68,9 +68,11 @@ static const char cite_fix_neighbor_swap[] =
 /* ---------------------------------------------------------------------- */
 
 FixNeighborSwap::FixNeighborSwap(LAMMPS *lmp, int narg, char **arg) :
-    Fix(lmp, narg, arg), region(nullptr), idregion(nullptr), type_list(nullptr), qtype(nullptr),
-    id_voro(nullptr), c_voro(nullptr), voro_neighbor_list(nullptr), sqrt_mass_ratio(nullptr),
-    local_swap_iatom_list(nullptr), random_equal(nullptr), c_pe(nullptr)
+    Fix(lmp, narg, arg), region(nullptr), idregion(nullptr), type_list(nullptr), rate_list(nullptr),
+    qtype(nullptr), sqrt_mass_ratio(nullptr), voro_neighbor_list(nullptr),
+    local_swap_iatom_list(nullptr), local_swap_neighbor_list(nullptr),
+    local_swap_type_list(nullptr), local_swap_probability(nullptr), random_equal(nullptr),
+    id_voro(nullptr), c_voro(nullptr), c_pe(nullptr)
 {
   if (narg < 10) utils::missing_cmd_args(FLERR, "fix neighbor/swap", error);
 
@@ -109,10 +111,17 @@ FixNeighborSwap::FixNeighborSwap(LAMMPS *lmp, int narg, char **arg) :
   if (temperature <= 0.0) error->all(FLERR, "Illegal fix neighbor/swap command temperature value");
 
   beta = 1.0 / (force->boltz * temperature);
-  inv_r_0 =  1.0 / r_0;
+  inv_r_0 = 1.0 / r_0;
 
   memory->create(type_list, atom->ntypes, "neighbor/swap:type_list");
   memory->create(rate_list, atom->ntypes, "neighbor/swap:rate_list");
+
+  // defaults for options
+
+  ke_flag = 1;
+  diff_flag = 0;
+  rates_flag = 0;
+  nswaptypes = 0;
 
   // read options from end of input line
 
@@ -133,11 +142,6 @@ FixNeighborSwap::FixNeighborSwap(LAMMPS *lmp, int narg, char **arg) :
   nswap_successes = 0.0;
 
   atom_swap_nmax = 0;
-  voro_neighbor_list = nullptr;
-  local_swap_iatom_list = nullptr;
-  local_swap_neighbor_list = nullptr;
-  local_swap_probability = nullptr;
-  local_swap_type_list = nullptr;
 
   // set comm size needed by this Fix
 
@@ -179,11 +183,6 @@ static bool is_keyword(const std::string &arg)
 void FixNeighborSwap::options(int narg, char **arg)
 {
   if (narg < 0) error->all(FLERR, "Illegal fix neighbor/swap command\n");
-
-  ke_flag = 1;
-  diff_flag = 0;
-  rates_flag = 0;
-  nswaptypes = 0;
 
   int iarg = 0;
   while (iarg < narg) {
