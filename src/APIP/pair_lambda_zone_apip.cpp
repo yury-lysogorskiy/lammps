@@ -301,7 +301,7 @@ void PairLambdaZoneAPIP::calculate_time_per_atom()
 void *PairLambdaZoneAPIP::extract(const char *str, int &dim)
 {
   dim = 0;
-  if (strcmp(str, "lambda_zone/apip:time_per_atom") == 0) {
+  if (strcmp(str, "lambda/zone/apip:time_per_atom") == 0) {
     calculate_time_per_atom();
     return (void *) &time_per_atom;
   }

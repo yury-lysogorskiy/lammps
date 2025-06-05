@@ -210,7 +210,7 @@ void PairLambdaInputAPIP::calculate_time_per_atom()
 void *PairLambdaInputAPIP::extract(const char *str, int &dim)
 {
   dim = 0;
-  if (strcmp(str, "lambda_input/apip:time_per_atom") == 0) {
+  if (strcmp(str, "lambda/input/apip:time_per_atom") == 0) {
     calculate_time_per_atom();
     return (void *) &time_per_atom;
   }
