@@ -20,7 +20,6 @@
 #include "angle.h"
 #include "atom.h"
 #include "bond.h"
-#include "citeme.h"
 #include "comm.h"
 #include "compute.h"
 #include "compute_voronoi_atom.h"
@@ -32,7 +31,6 @@
 #include "group.h"
 #include "improper.h"
 #include "kspace.h"
-#include "math_extra.h"
 #include "math_special.h"
 #include "memory.h"
 #include "modify.h"
@@ -49,10 +47,9 @@
 
 using namespace LAMMPS_NS;
 using namespace FixConst;
-using MathExtra::distsq3;
 using MathSpecial::square;
 
-static const char cite_fix_neighbor_swap[] =
+static const char cite_fix_neighbor_swap_c[] =
     "fix neighbor/swap command: doi:10.1016/j.commatsci.2022.111929\n\n"
     "@Article{Tavenner2023111929,\n"
     " author = {Jacob P. Tavenner and Mikhail I. Mendelev and John W. Lawson},\n"
@@ -62,7 +59,7 @@ static const char cite_fix_neighbor_swap[] =
     " year = {2023},\n"
     " volume = {218},\n"
     " pages = {111929}\n"
-    " url = {https://dx.doi.org/10.1016/j.commatsci.2022.111929}\n"
+    " url = {https://www.sciencedirect.com/science/article/pii/S0927025622006401}\n"
     "}\n\n";
 
 /* ---------------------------------------------------------------------- */
@@ -89,8 +86,6 @@ FixNeighborSwap::FixNeighborSwap(LAMMPS *lmp, int narg, char **arg) :
   diff_flag = 0;
   rates_flag = 0;
   nswaptypes = 0;
-
-  if (lmp->citeme) lmp->citeme->add(cite_fix_neighbor_swap);
 
   // required args
 
@@ -217,7 +212,8 @@ void FixNeighborSwap::options(int narg, char **arg)
       }
     } else if (strcmp(arg[iarg], "diff") == 0) {
       if (iarg + 2 > narg) utils::missing_cmd_args(FLERR, "fix neighbor/swap diff", error);
-      if (diff_flag) error->all(FLERR, iarg + ioffset, "Cannot use 'diff' keyword multiple times");
+      if (diff_flag)
+        error->all(FLERR, iarg + ioffset, "Cannot use 'diff' keyword multiple times");
       if (nswaptypes != 0)
         error->all(FLERR, iarg + ioffset, "Cannot use 'diff' and 'types' keywords together");
       type_list[nswaptypes] = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
@@ -404,6 +400,9 @@ void FixNeighborSwap::pre_exchange()
 
 int FixNeighborSwap::attempt_swap()
 {
+  // int nlocal = atom->nlocal;
+  tagint *id = atom->tag;
+
   if (niswap == 0) return 0;
 
   // pre-swap energy
@@ -424,7 +423,7 @@ int FixNeighborSwap::attempt_swap()
 
   // pick a neighbor atom j based on i neighbor list
   jtype_selected = -1;
-  int j = pick_j_swap_neighbor();
+  int j = pick_j_swap_neighbor(i);
 
   int itype = type_list[0];
   int jtype = jtype_selected;
@@ -536,12 +535,14 @@ double FixNeighborSwap::energy_full()
 int FixNeighborSwap::pick_i_swap_atom()
 {
   tagint *id = atom->tag;
+  int id_center_local = -1;
   int i = -1;
 
   int iwhichglobal = static_cast<int>(niswap * random_equal->uniform());
   if ((iwhichglobal >= niswap_before) && (iwhichglobal < niswap_before + niswap_local)) {
     int iwhichlocal = iwhichglobal - niswap_before;
     i = local_swap_iatom_list[iwhichlocal];
+    id_center_local = id[i];
     MPI_Allreduce(&id[i], &id_center, 1, MPI_INT, MPI_MAX, world);
   } else {
     MPI_Allreduce(&id[i], &id_center, 1, MPI_INT, MPI_MAX, world);
@@ -553,7 +554,7 @@ int FixNeighborSwap::pick_i_swap_atom()
 /* ----------------------------------------------------------------------
 ------------------------------------------------------------------------- */
 
-int FixNeighborSwap::pick_j_swap_neighbor()
+int FixNeighborSwap::pick_j_swap_neighbor(int i)
 {
   int j = -1;
   int jtype_selected_local = -1;
@@ -580,6 +581,15 @@ int FixNeighborSwap::pick_j_swap_neighbor()
 
   MPI_Allreduce(&jtype_selected_local, &jtype_selected, 1, MPI_INT, MPI_MAX, world);
   return j;
+}
+
+/* ----------------------------------------------------------------------
+------------------------------------------------------------------------- */
+
+double FixNeighborSwap::get_distance(double *i, double *j)
+{
+  double r = sqrt(square((i[0] - j[0])) + square((i[1] - j[1])) + square((i[2] - j[2])));
+  return r;
 }
 
 /* ----------------------------------------------------------------------
@@ -651,11 +661,13 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
             // Get distance if own center atom
             double r = INFINITY;
+            if (i_center >= 0) { double r = get_distance(x[temp_j], x[i_center]); }
 
             // Get local id of ghost center atom when ghost
             for (int i = nlocal; i < nlocal + nghost; i++) {
-              double rtmp = sqrt(distsq3(x[temp_j], x[i]));
-              if ((id[i] == id_center) && (rtmp < r)) r = rtmp;
+              if ((id[i] == id_center) && (get_distance(x[temp_j], x[i]) < r)) {
+                r = get_distance(x[temp_j], x[i]);
+              }
             }
 
             if (rates_flag) {
@@ -674,11 +686,13 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
                 // Calculate distance from i to each j, adjust probability of selection
                 // Get distance if own center atom
                 double r = INFINITY;
+                if (i_center >= 0) { double r = get_distance(x[temp_j], x[i_center]); }
 
                 // Get local id of ghost center atom when ghost
                 for (int i = nlocal; i < nlocal + nghost; i++) {
-                  double rtmp = sqrt(distsq3(x[temp_j], x[i]));
-                  if ((id[i] == id_center) && (rtmp < r)) r = rtmp;
+                  if ((id[i] == id_center) && (get_distance(x[temp_j], x[i]) < r)) {
+                    r = get_distance(x[temp_j], x[i]);
+                  }
                 }
 
                 if (rates_flag) {
@@ -703,11 +717,12 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
           // Calculate distance from i to each j, adjust probability of selection
           // Get distance if own center atom
           double r = INFINITY;
+          if (i_center >= 0) { r = get_distance(x[temp_j], x[i_center]); }
 
           // Get local id of ghost center atoms
           for (int i = nlocal; i < nlocal + nghost; i++) {
-            double rtmp = sqrt(distsq3(x[temp_j], x[i]));
-            if ((id[i] == id_center) && (rtmp < r)) r = rtmp;
+            if ((id[i] == id_center) && (get_distance(x[temp_j], x[i]) < r))
+              r = get_distance(x[temp_j], x[i]);
           }
 
           if (rates_flag) {
@@ -727,11 +742,13 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
               // Calculate distance from i to each j, adjust probability of selection
               // Get distance if own center atom
               double r = INFINITY;
+              if (i_center >= 0) { double r = get_distance(x[temp_j], x[i_center]); }
 
               // Get local id of ghost center atom when ghost
               for (int i = nlocal; i < nlocal + nghost; i++) {
-                double rtmp = sqrt(distsq3(x[temp_j], x[i]));
-                if ((id[i] == id_center) && (rtmp < r)) r = rtmp;
+                if ((id[i] == id_center) && (get_distance(x[temp_j], x[i]) < r)) {
+                  r = get_distance(x[temp_j], x[i]);
+                }
               }
 
               if (rates_flag) {
