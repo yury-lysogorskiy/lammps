@@ -87,7 +87,7 @@ static int AtomicNumberByName_pace(char *elname)
 }
 
 /* ---------------------------------------------------------------------- */
-PairPACEapip::PairPACEapip(LAMMPS *lmp) : Pair(lmp)
+PairPACEAPIP::PairPACEAPIP(LAMMPS *lmp) : Pair(lmp)
 {
   single_enable = 0;
   restartinfo = 0;
@@ -118,7 +118,7 @@ PairPACEapip::PairPACEapip(LAMMPS *lmp) : Pair(lmp)
    check if allocated, since class can be destructed when incomplete
 ------------------------------------------------------------------------- */
 
-PairPACEapip::~PairPACEapip()
+PairPACEAPIP::~PairPACEAPIP()
 {
   if (copymode) return;
 
@@ -138,7 +138,7 @@ PairPACEapip::~PairPACEapip()
   */
 
 // written by DI. This function is required for the adaptive-precision.
-int PairPACEapip::check_abort_condition(double *lambda, double *lambda_const, int *lambda_required,
+int PairPACEAPIP::check_abort_condition(double *lambda, double *lambda_const, int *lambda_required,
                                         int i)
 {
   if ((lambda[i] == 1) && ((!lambda_thermostat) || (lambda_thermostat && lambda_const[i] == 1))) {
@@ -154,7 +154,7 @@ int PairPACEapip::check_abort_condition(double *lambda, double *lambda_const, in
   */
 
 // written by DI. This function is required for the adaptive-precision.
-double PairPACEapip::compute_factor_lambda(double lambda)
+double PairPACEAPIP::compute_factor_lambda(double lambda)
 {
   return 1 - lambda;
 }
@@ -164,14 +164,14 @@ double PairPACEapip::compute_factor_lambda(double lambda)
   */
 
 // written by DI. This function is required for the adaptive-precision.
-double *PairPACEapip::get_e_ref_ptr()
+double *PairPACEAPIP::get_e_ref_ptr()
 {
   return atom->apip_e_precise;
 }
 
 /* ---------------------------------------------------------------------- */
 
-void PairPACEapip::compute(int eflag, int vflag)
+void PairPACEAPIP::compute(int eflag, int vflag)
 {
 
   // start of adaptive-precision modifications by DI
@@ -357,7 +357,7 @@ void PairPACEapip::compute(int eflag, int vflag)
 
 /* ---------------------------------------------------------------------- */
 
-void PairPACEapip::allocate()
+void PairPACEAPIP::allocate()
 {
   allocated = 1;
   int n = atom->ntypes + 1;
@@ -372,7 +372,7 @@ void PairPACEapip::allocate()
    global settings
 ------------------------------------------------------------------------- */
 
-void PairPACEapip::settings(int narg, char **arg)
+void PairPACEAPIP::settings(int narg, char **arg)
 {
   if (narg > 3) utils::missing_cmd_args(FLERR, "pair_style pace", error);
 
@@ -410,7 +410,7 @@ void PairPACEapip::settings(int narg, char **arg)
    set coeffs for one or more type pairs
 ------------------------------------------------------------------------- */
 
-void PairPACEapip::coeff(int narg, char **arg)
+void PairPACEAPIP::coeff(int narg, char **arg)
 {
 
   if (!allocated) allocate();
@@ -490,7 +490,7 @@ void PairPACEapip::coeff(int narg, char **arg)
    init specific to this pair style
 ------------------------------------------------------------------------- */
 
-void PairPACEapip::init_style()
+void PairPACEAPIP::init_style()
 {
   if (atom->tag_enable == 0) error->all(FLERR, "Pair style pace requires atom IDs");
   if (force->newton_pair == 0) error->all(FLERR, "Pair style pace requires newton pair on");
@@ -510,7 +510,7 @@ void PairPACEapip::init_style()
    init for one type pair i,j and corresponding j,i
 ------------------------------------------------------------------------- */
 
-double PairPACEapip::init_one(int i, int j)
+double PairPACEAPIP::init_one(int i, int j)
 {
   if (setflag[i][j] == 0) error->all(FLERR, "All pair coeffs are not set");
   //cutoff from the basis set's radial functions settings
@@ -525,7 +525,7 @@ double PairPACEapip::init_one(int i, int j)
   */
 
 // written by DI. This function is required for the adaptive-precision.
-void PairPACEapip::setup()
+void PairPACEAPIP::setup()
 {
   if (modify->get_fix_by_style("^lambda_thermostat/apip$").size() == 0) {
     lambda_thermostat = false;
@@ -559,7 +559,7 @@ void PairPACEapip::setup()
   */
 
 // written by DI. This function is required for the adaptive-precision.
-void PairPACEapip::calculate_time_per_atom()
+void PairPACEAPIP::calculate_time_per_atom()
 {
   if (n_computations_accumulated > 0)
     time_per_atom = time_wall_accumulated / n_computations_accumulated;
@@ -574,7 +574,7 @@ void PairPACEapip::calculate_time_per_atom()
 /* ----------------------------------------------------------------------
     extract method for extracting value of scale variable
  ---------------------------------------------------------------------- */
-void *PairPACEapip::extract(const char *str, int &dim)
+void *PairPACEAPIP::extract(const char *str, int &dim)
 {
   dim = 0;
   //check if str=="corerep_flag" then compute extrapolation grades on this iteration
@@ -598,7 +598,7 @@ void *PairPACEapip::extract(const char *str, int &dim)
      1 or more = # of columns in per-atom array
    return NULL if str is not recognized
 ---------------------------------------------------------------------- */
-void *PairPACEapip::extract_peratom(const char *str, int &ncol)
+void *PairPACEAPIP::extract_peratom(const char *str, int &ncol)
 {
   if (strcmp(str, "corerep") == 0) {
     ncol = 0;

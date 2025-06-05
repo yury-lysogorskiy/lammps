@@ -64,7 +64,7 @@ FixAtomWeightAPIP::FixAtomWeightAPIP(LAMMPS *lmp, int narg, char **arg) :
   if (strcmp(arg[4], "eam") == 0) {
     time_simple_extract_name = utils::strdup("eam/apip:time_per_atom");
   } else if (strcmp(arg[4], "ace") == 0) {
-    time_simple_extract_name = utils::strdup("pace/apip/fast:time_per_atom");
+    time_simple_extract_name = utils::strdup("pace/fast/apip:time_per_atom");
   } else {
     time_simple_atom = utils::numeric(FLERR, arg[4], false, lmp);
     avg_time_atom[0] = time_simple_atom;

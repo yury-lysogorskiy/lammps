@@ -1,4 +1,4 @@
-/* ----------------------------------------------------------------------
+/* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
    https://www.lammps.org/, Sandia National Laboratories
    LAMMPS development team: developers@lammps.org
@@ -14,58 +14,58 @@
    Contributing author: David Immel (d.immel@fz-juelich.de, FZJ, Germany)
 ------------------------------------------------------------------------- */
 
-#include "pair_pace_apip_fast.h"
+#include "pair_pace_precise_apip.h"
 
 #include "atom.h"
 #include "atom_vec_apip.h"
 
 using namespace LAMMPS_NS;
 
-PairPACEapipFast::PairPACEapipFast(LAMMPS *lmp) : PairPACEapip(lmp) {}
+PairPACEPreciseAPIP::PairPACEPreciseAPIP(LAMMPS *lmp) : PairPACEAPIP(lmp) {}
 
 /**
   * Set lambda_required based on lambda and lambda_const
   * @return true if this calculation is not required
   */
 
-int PairPACEapipFast::check_abort_condition(double *lambda, double *lambda_const,
-                                            int *lambda_required, int i)
+int PairPACEPreciseAPIP::check_abort_condition(double *lambda, double *lambda_const,
+                                               int *lambda_required, int i)
 {
-  if ((lambda[i] == 0) && ((!lambda_thermostat) || (lambda_thermostat && lambda_const[i] == 0))) {
-    lambda_required[i] |= ApipLambdaRequired::NO_SIMPLE;
+  if ((lambda[i] == 1) && ((!lambda_thermostat) || (lambda_thermostat && lambda_const[i] == 1))) {
+    lambda_required[i] |= ApipLambdaRequired::NO_COMPLEX;
     return 1;
   }
-  lambda_required[i] |= ApipLambdaRequired::SIMPLE;
+  lambda_required[i] |= ApipLambdaRequired::COMPLEX;
   return 0;
 }
 
 /**
-  * @return prefactor lambda which is used for a fast ACE potential
+  * @return prefactor 1-lambda which is used for a precise ACE potential
   */
 
-double PairPACEapipFast::compute_factor_lambda(double lambda)
+double PairPACEPreciseAPIP::compute_factor_lambda(double lambda)
 {
-  return lambda;
+  return 1 - lambda;
 }
 
 /**
-  * @return atom->apip_e_fast which is used for a fast ACE potential
+  * @return atom->apip_e_precise which is used for a precise ACE potential
   */
 
-double *PairPACEapipFast::get_e_ref_ptr()
+double *PairPACEPreciseAPIP::get_e_ref_ptr()
 {
-  return atom->apip_e_fast;
+  return atom->apip_e_precise;
 }
 
 /* ----------------------------------------------------------------------
     extract method for extracting value of scale variable
  ---------------------------------------------------------------------- */
-void *PairPACEapipFast::extract(const char *str, int &dim)
+void *PairPACEPreciseAPIP::extract(const char *str, int &dim)
 {
   dim = 2;
   if (strcmp(str, "scale") == 0) return (void *) scale;
   dim = 0;
-  if (strcmp(str, "pace/apip/fast:time_per_atom") == 0) {
+  if (strcmp(str, "pace/apip:time_per_atom") == 0) {
     calculate_time_per_atom();
     return (void *) &time_per_atom;
   }

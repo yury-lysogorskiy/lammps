@@ -16,20 +16,20 @@
 
 #ifdef PAIR_CLASS
 // clang-format off
-PairStyle(pace/apip/precise,PairPACEapipPrecise);
+PairStyle(pace/fast/apip,PairPACEFastAPIP);
 // clang-format on
 #else
 
-#ifndef LMP_PAIR_PACE_APIP_PRECISE_H
-#define LMP_PAIR_PACE_APIP_PRECISE_H
+#ifndef LMP_PAIR_PACE_FAST_APIP_H
+#define LMP_PAIR_PACE_FAST_APIP_H
 
 #include "pair_pace_apip.h"
 
 namespace LAMMPS_NS {
 
-class PairPACEapipPrecise : public PairPACEapip {
+class PairPACEFastAPIP : public PairPACEAPIP {
  public:
-  PairPACEapipPrecise(class LAMMPS *);
+  PairPACEFastAPIP(class LAMMPS *);
   void *extract(const char *, int &) override;
 
  protected:

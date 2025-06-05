@@ -30,7 +30,7 @@ Copyright 2021 Yury Lysogorskiy^1, Cas van der Oord^2, Anton Bochkarev^1,
 
 #ifdef PAIR_CLASS
 // clang-format off
-PairStyle(pace/apip,PairPACEapip);
+PairStyle(pace/apip,PairPACEAPIP);
 // clang-format on
 #else
 
@@ -41,10 +41,10 @@ PairStyle(pace/apip,PairPACEapip);
 
 namespace LAMMPS_NS {
 
-class PairPACEapip : public Pair {
+class PairPACEAPIP : public Pair {
  public:
-  PairPACEapip(class LAMMPS *);
-  ~PairPACEapip() override;
+  PairPACEAPIP(class LAMMPS *);
+  ~PairPACEAPIP() override;
 
   void compute(int, int) override;
   void settings(int, char **) override;

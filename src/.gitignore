@@ -127,10 +127,10 @@
 /pair_lambda_zone.h
 /pair_pace_apip.cpp
 /pair_pace_apip.h
-/pair_pace_apip_precise.cpp
-/pair_pace_apip_precise.h
-/pair_pace_apip_fast.cpp
-/pair_pace_apip_fast.h
+/pair_pace_precise_apip.cpp
+/pair_pace_precise_apip.h
+/pair_pace_fast_apip.cpp
+/pair_pace_fast_apip.h
 /fix_atom_weight_apip.cpp
 /fix_atom_weight_apip.h
 
