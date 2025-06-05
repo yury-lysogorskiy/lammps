@@ -115,7 +115,7 @@ FixNeighborSwap::FixNeighborSwap(LAMMPS *lmp, int narg, char **arg) :
 
   // read options from end of input line
 
-  options(narg - 8, &arg[8]);
+  options(narg - 9, &arg[9]);
 
   // random number generator, same for all procs
 
