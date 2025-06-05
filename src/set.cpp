@@ -45,7 +45,7 @@ using namespace MathConst;
 enum{ATOM_SELECT,MOL_SELECT,TYPE_SELECT,GROUP_SELECT,REGION_SELECT};
 
 enum{TYPE,TYPE_FRACTION,TYPE_RATIO,TYPE_SUBSET,
-     MOLECULE,X,Y,Z,VX,VY,VZ,CHARGE,MASS,SHAPE,LAMBDA,LENGTH,TRI,
+     MOLECULE,X,Y,Z,VX,VY,VZ,CHARGE,MASS,SHAPE,APIP_LAMBDA,LENGTH,TRI,
      DIPOLE,DIPOLE_RANDOM,SPIN_ATOM,SPIN_RANDOM,SPIN_ELECTRON,RADIUS_ELECTRON,
      QUAT,QUAT_RANDOM,THETA,THETA_RANDOM,ANGMOM,OMEGA,TEMPERATURE,
      DIAMETER,RADIUS_ATOM,DENSITY,VOLUME,IMAGE,BOND,ANGLE,DIHEDRAL,IMPROPER,
@@ -692,8 +692,8 @@ void Set::command(int narg, char **arg)
       set(EPSILON);
       iarg += 2;
 
-    } else if (strcmp(arg[iarg],"lambda") == 0) {
-      if (iarg+2 > narg) utils::missing_cmd_args(FLERR, "set lambda", error);
+    } else if (strcmp(arg[iarg],"apip_lambda") == 0) {
+      if (iarg+2 > narg) utils::missing_cmd_args(FLERR, "set apip_lambda", error);
       if (strcmp(arg[iarg+1],"fast") == 0) dvalue = 1;
       else if (strcmp(arg[iarg+1],"precise") == 0) dvalue = 0;
       else if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1);
@@ -701,7 +701,7 @@ void Set::command(int narg, char **arg)
       if (!atom->lambda_flag)
         error->all(FLERR, iarg, "Cannot set attribute {} for atom style {}", arg[iarg],
                    atom->get_style());
-      set(LAMBDA);
+      set(APIP_LAMBDA);
       iarg += 2;
 
 
@@ -1218,9 +1218,9 @@ void Set::set(int keyword)
 
     // set switching parameter of APIP
 
-    else if (keyword == LAMBDA) {
+    else if (keyword == APIP_LAMBDA) {
       if (dvalue < 0 || dvalue > 1)
-        error->one(FLERR, "lambda {} not in [0,1] in set command", dvalue);
+        error->one(FLERR, "apip_lambda {} not in [0,1] in set command", dvalue);
 
       atom->lambda[i] = dvalue;
       if (atom->lambda_const_flag)
