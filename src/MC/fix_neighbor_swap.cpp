@@ -213,7 +213,7 @@ void FixNeighborSwap::options(int narg, char **arg)
     } else if (strcmp(arg[iarg], "diff") == 0) {
       if (iarg + 2 > narg) utils::missing_cmd_args(FLERR, "fix neighbor/swap diff", error);
       if (diff_flag)
-        error->all(FLERR, iarg + ioffset, "Cannot use 'diff' keyword multiple times");
+        error->all(FLERR, iarg + ioffset, "Cannot not use 'diff' keyword multiple times");
       if (nswaptypes != 0)
         error->all(FLERR, iarg + ioffset, "Cannot use 'diff' and 'types' keywords together");
       type_list[nswaptypes] = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
