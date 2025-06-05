@@ -34,7 +34,7 @@ using namespace LAMMPS_NS;
 
 /* ---------------------------------------------------------------------- */
 
-PairEAMapip::PairEAMapip(LAMMPS *lmp) : Pair(lmp)
+PairEAMAPIP::PairEAMAPIP(LAMMPS *lmp) : Pair(lmp)
 {
   restartinfo = 0;
   manybody_flag = 1;
@@ -74,7 +74,7 @@ PairEAMapip::PairEAMapip(LAMMPS *lmp) : Pair(lmp)
    check if allocated, since class can be destructed when incomplete
 ------------------------------------------------------------------------- */
 
-PairEAMapip::~PairEAMapip()
+PairEAMAPIP::~PairEAMAPIP()
 {
   if (copymode) return;
 
@@ -136,7 +136,7 @@ PairEAMapip::~PairEAMapip()
 
 /* ---------------------------------------------------------------------- */
 
-void PairEAMapip::compute(int eflag, int vflag)
+void PairEAMAPIP::compute(int eflag, int vflag)
 {
   // start timers
   double time_wall_start = platform::walltime();
@@ -429,7 +429,7 @@ void PairEAMapip::compute(int eflag, int vflag)
    allocate all arrays
 ------------------------------------------------------------------------- */
 
-void PairEAMapip::allocate()
+void PairEAMAPIP::allocate()
 {
   allocated = 1;
   int n = atom->ntypes;
@@ -454,7 +454,7 @@ void PairEAMapip::allocate()
    global settings
 ------------------------------------------------------------------------- */
 
-void PairEAMapip::settings(int narg, char ** /*arg*/)
+void PairEAMAPIP::settings(int narg, char ** /*arg*/)
 {
   if (narg > 0) error->all(FLERR, "Illegal pair_style command");
 }
@@ -464,7 +464,7 @@ void PairEAMapip::settings(int narg, char ** /*arg*/)
    read DYNAMO funcfl file
 ------------------------------------------------------------------------- */
 
-void PairEAMapip::coeff(int narg, char **arg)
+void PairEAMAPIP::coeff(int narg, char **arg)
 {
   if (!allocated) allocate();
 
@@ -513,7 +513,7 @@ void PairEAMapip::coeff(int narg, char **arg)
    init specific to this pair style
 ------------------------------------------------------------------------- */
 
-void PairEAMapip::init_style()
+void PairEAMAPIP::init_style()
 {
   // convert read-in file(s) to arrays and spline them
   if (!atom->apip_lambda_flag)
@@ -534,7 +534,7 @@ void PairEAMapip::init_style()
    init for one type pair i,j and corresponding j,i
 ------------------------------------------------------------------------- */
 
-double PairEAMapip::init_one(int i, int j)
+double PairEAMAPIP::init_one(int i, int j)
 {
   // single global cutoff = max of cut from all files read in
   // for funcfl could be multiple files
@@ -562,7 +562,7 @@ double PairEAMapip::init_one(int i, int j)
   * lambda_thermostat.
   */
 
-void PairEAMapip::setup()
+void PairEAMAPIP::setup()
 {
   if (modify->get_fix_by_style("^lambda_thermostat/apip$").size() == 0) {
     lambda_thermostat = false;
@@ -591,7 +591,7 @@ void PairEAMapip::setup()
    read potential values from a DYNAMO single element funcfl file
 ------------------------------------------------------------------------- */
 
-void PairEAMapip::read_file(char *filename)
+void PairEAMAPIP::read_file(char *filename)
 {
   Funcfl *file = &funcfl[nfuncfl - 1];
 
@@ -661,7 +661,7 @@ void PairEAMapip::read_file(char *filename)
    interpolate all file values to a single grid and cutoff
 ------------------------------------------------------------------------- */
 
-void PairEAMapip::file2array()
+void PairEAMAPIP::file2array()
 {
   int i, j, k, m, n;
   int ntypes = atom->ntypes;
@@ -873,7 +873,7 @@ void PairEAMapip::file2array()
 
 /* ---------------------------------------------------------------------- */
 
-void PairEAMapip::array2spline()
+void PairEAMAPIP::array2spline()
 {
   rdr = 1.0 / dr;
   rdrho = 1.0 / drho;
@@ -895,7 +895,7 @@ void PairEAMapip::array2spline()
 
 /* ---------------------------------------------------------------------- */
 
-void PairEAMapip::interpolate(int n, double delta, double *f, double **spline)
+void PairEAMAPIP::interpolate(int n, double delta, double *f, double **spline)
 {
   for (int m = 1; m <= n; m++) spline[m][6] = f[m];
 
@@ -928,7 +928,7 @@ void PairEAMapip::interpolate(int n, double delta, double *f, double **spline)
    memory usage of local atom-based arrays
 ------------------------------------------------------------------------- */
 
-double PairEAMapip::memory_usage()
+double PairEAMAPIP::memory_usage()
 {
   double bytes = (double) maxeatom * sizeof(double);
   bytes += (double) maxvatom * 6 * sizeof(double);
@@ -940,7 +940,7 @@ double PairEAMapip::memory_usage()
    swap fp array with one passed in by caller
 ------------------------------------------------------------------------- */
 
-void PairEAMapip::swap_eam(double *fp_caller, double **fp_caller_hold)
+void PairEAMAPIP::swap_eam(double *fp_caller, double **fp_caller_hold)
 {
   double *tmp = fp;
   fp = fp_caller;
@@ -951,7 +951,7 @@ void PairEAMapip::swap_eam(double *fp_caller, double **fp_caller_hold)
    set return values for timers and counted particles
 ------------------------------------------------------------------------- */
 
-void PairEAMapip::calculate_time_per_atom()
+void PairEAMAPIP::calculate_time_per_atom()
 {
   if (n_non_complex_accumulated > 0)
     time_per_atom = time_wall_accumulated / n_non_complex_accumulated;
@@ -965,7 +965,7 @@ void PairEAMapip::calculate_time_per_atom()
 
 /* ---------------------------------------------------------------------- */
 
-void *PairEAMapip::extract(const char *str, int &dim)
+void *PairEAMAPIP::extract(const char *str, int &dim)
 {
   dim = 2;
   if (strcmp(str, "scale") == 0) return (void *) scale;

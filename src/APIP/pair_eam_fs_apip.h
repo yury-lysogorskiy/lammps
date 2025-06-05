@@ -17,7 +17,7 @@
 
 #ifdef PAIR_CLASS
 // clang-format off
-PairStyle(eam/fs/apip,PairEAMFSapip);
+PairStyle(eam/fs/apip,PairEAMFSAPIP);
 // clang-format on
 #else
 
@@ -30,9 +30,9 @@ namespace LAMMPS_NS {
 
 // need virtual public b/c of how eam/fs/opt inherits from it
 
-class PairEAMFSapip : virtual public PairEAMapip {
+class PairEAMFSAPIP : virtual public PairEAMAPIP {
  public:
-  PairEAMFSapip(class LAMMPS *);
+  PairEAMFSAPIP(class LAMMPS *);
 
   void coeff(int, char **) override;
 

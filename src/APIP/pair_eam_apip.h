@@ -17,7 +17,7 @@
 
 #ifdef PAIR_CLASS
 // clang-format off
-PairStyle(eam/apip,PairEAMapip);
+PairStyle(eam/apip,PairEAMAPIP);
 // clang-format on
 #else
 
@@ -28,7 +28,7 @@ PairStyle(eam/apip,PairEAMapip);
 
 namespace LAMMPS_NS {
 
-class PairEAMapip : public Pair {
+class PairEAMAPIP : public Pair {
  public:
   friend class FixSemiGrandCanonicalMC;    // Alex Stukowski option
 
@@ -48,8 +48,8 @@ class PairEAMapip : public Pair {
   double dr, rdr, drho, rdrho, rhomax, rhomin;
   double ***rhor_spline, ***frho_spline, ***z2r_spline;
 
-  PairEAMapip(class LAMMPS *);
-  ~PairEAMapip() override;
+  PairEAMAPIP(class LAMMPS *);
+  ~PairEAMAPIP() override;
   void compute(int, int) override;
   void settings(int, char **) override;
   void setup() override;

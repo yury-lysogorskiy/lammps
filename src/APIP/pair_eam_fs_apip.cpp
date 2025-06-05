@@ -28,7 +28,7 @@ using namespace LAMMPS_NS;
 
 /* ---------------------------------------------------------------------- */
 
-PairEAMFSapip::PairEAMFSapip(LAMMPS *lmp) : PairEAMapip(lmp)
+PairEAMFSAPIP::PairEAMFSAPIP(LAMMPS *lmp) : PairEAMAPIP(lmp)
 {
   one_coeff = 1;
   manybody_flag = 1;
@@ -40,7 +40,7 @@ PairEAMFSapip::PairEAMFSapip(LAMMPS *lmp) : PairEAMapip(lmp)
    read EAM Finnis-Sinclair file
 ------------------------------------------------------------------------- */
 
-void PairEAMFSapip::coeff(int narg, char **arg)
+void PairEAMFSAPIP::coeff(int narg, char **arg)
 {
   int i, j;
 
@@ -111,7 +111,7 @@ void PairEAMFSapip::coeff(int narg, char **arg)
    read a multi-element DYNAMO setfl file
 ------------------------------------------------------------------------- */
 
-void PairEAMFSapip::read_file(char *filename)
+void PairEAMFSAPIP::read_file(char *filename)
 {
   Fs *file = fs;
 
@@ -241,7 +241,7 @@ void PairEAMFSapip::read_file(char *filename)
    copy read-in setfl potential to standard array format
 ------------------------------------------------------------------------- */
 
-void PairEAMFSapip::file2array()
+void PairEAMFSAPIP::file2array()
 {
   int i, j, m, n;
   int ntypes = atom->ntypes;
