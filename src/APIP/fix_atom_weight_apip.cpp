@@ -252,7 +252,7 @@ void FixAtomWeightAPIP::init()
   // get ptr to fix lambda
   counter = 0;
   for (int i = 0; i < modify->nfix; i++) {
-    if (strcmp(modify->fix[i]->style, "lambda") == 0) {
+    if (strcmp(modify->fix[i]->style, "lambda/apip") == 0) {
       fix_lambda = modify->fix[i];
       counter++;
     }

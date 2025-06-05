@@ -23,13 +23,13 @@ PairStyle(lambda_input,PairLambdaInput);
 #ifndef LMP_PAIR_LAMBDA_INPUT_H
 #define LMP_PAIR_LAMBDA_INPUT_H
 
-#include "fix_lambda.h"
+#include "fix_lambda_apip.h"
 #include "pair.h"
 
 namespace LAMMPS_NS {
 
 class PairLambdaInput : public Pair {
-  friend class FixLambda;
+  friend class FixLambdaAPIP;
 
  public:
   PairLambdaInput(class LAMMPS *);
@@ -42,7 +42,7 @@ class PairLambdaInput : public Pair {
   void *extract(const char *, int &) override;
 
  protected:
-  class FixLambda *fix_lambda;    // ptr to fix lambda to store the calculated lambda_input
+  class FixLambdaAPIP *fix_lambda;    // ptr to fix lambda to store the calculated lambda_input
 
   // pro forma pair style variables
   double cut_global;

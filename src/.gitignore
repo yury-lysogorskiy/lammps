@@ -111,8 +111,8 @@
 
 /atom_vec_apip.cpp
 /atom_vec_apip.h
-/fix_lambda.cpp
-/fix_lambda.h
+/fix_lambda_apip.cpp
+/fix_lambda_apip.h
 /fix_lambda_thermostat_apip.cpp
 /fix_lambda_thermostat_apip.h
 /pair_lambda_input.cpp

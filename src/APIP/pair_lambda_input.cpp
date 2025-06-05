@@ -141,8 +141,8 @@ void PairLambdaInput::init_style()
   // find fix lambda
   int count = 0;
   for (int i = 0; i < modify->nfix; i++) {
-    if (strcmp(modify->fix[i]->style, "lambda") == 0) {
-      fix_lambda = (FixLambda *) modify->fix[i];
+    if (strcmp(modify->fix[i]->style, "lambda/apip") == 0) {
+      fix_lambda = (FixLambdaAPIP *) modify->fix[i];
       count++;
     }
   }

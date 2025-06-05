@@ -14,7 +14,7 @@
    Contributing author: David Immel (d.immel@fz-juelich.de, FZJ, Germany)
 ------------------------------------------------------------------------- */
 
-#include "fix_lambda.h"
+#include "fix_lambda_apip.h"
 
 #include "atom.h"
 #include "citeme.h"
@@ -45,7 +45,7 @@ static const char cite_fix_lambda_c[] =
 
 /* ---------------------------------------------------------------------- */
 
-FixLambda::FixLambda(LAMMPS *lmp, int narg, char **arg) :
+FixLambdaAPIP::FixLambdaAPIP(LAMMPS *lmp, int narg, char **arg) :
     Fix(lmp, narg, arg), peratom_stats(nullptr), group_name_simple(nullptr),
     group_name_complex(nullptr), group_name_ignore_lambda_input(nullptr), fixstore(nullptr),
     fixstore2(nullptr), pair_lambda_input(nullptr), pair_lambda_zone(nullptr)
@@ -186,7 +186,7 @@ FixLambda::FixLambda(LAMMPS *lmp, int narg, char **arg) :
    modify cutoff setings
 ------------------------------------------------------------------------- */
 
-int FixLambda::modify_param(int narg, char **arg)
+int FixLambdaAPIP::modify_param(int narg, char **arg)
 {
   cut_lo = utils::numeric(FLERR, arg[0], false, lmp);
   cut_hi = utils::numeric(FLERR, arg[1], false, lmp);
@@ -203,7 +203,7 @@ int FixLambda::modify_param(int narg, char **arg)
 
 /* ---------------------------------------------------------------------- */
 
-FixLambda::~FixLambda()
+FixLambdaAPIP::~FixLambdaAPIP()
 {
   // check nfix in case all fixes have already been deleted
   if (fixstore && modify->nfix) modify->delete_fix(fixstore->id);
@@ -219,7 +219,7 @@ FixLambda::~FixLambda()
 
 /* ---------------------------------------------------------------------- */
 
-int FixLambda::setmask()
+int FixLambdaAPIP::setmask()
 {
   int mask = 0;
   mask |= POST_INTEGRATE;
@@ -230,14 +230,14 @@ int FixLambda::setmask()
 
 /* ---------------------------------------------------------------------- */
 
-void FixLambda::init()
+void FixLambdaAPIP::init()
 {
   if (force->pair == nullptr) error->all(FLERR, "Fix lambda requires a pair style be defined");
 
   // only one fix lambda
   int count = 0;
   for (int i = 0; i < modify->nfix; i++) {
-    if (strcmp(modify->fix[i]->style, "lambda") == 0) count++;
+    if (strcmp(modify->fix[i]->style, "lambda/apip") == 0) count++;
   }
   if (count > 1) error->all(FLERR, "More than one fix lambda.");
 
@@ -286,7 +286,7 @@ void FixLambda::init()
   * fix could already be allocated if fix lambda is re-specified
   */
 
-void FixLambda::post_constructor()
+void FixLambdaAPIP::post_constructor()
 {
   std::string cmd, cmd2;
   cmd = id;
@@ -330,7 +330,7 @@ void FixLambda::post_constructor()
   * If required, this includes communication.
   */
 
-void FixLambda::setup_pre_force(int /*vflag*/)
+void FixLambdaAPIP::setup_pre_force(int /*vflag*/)
 {
   // lambda, lambda_input, lambda_input_ta and lambda_const are written to restart files.
 
@@ -360,7 +360,7 @@ void FixLambda::setup_pre_force(int /*vflag*/)
   * Update lambda and lambda_const with the running average including the new lambda.
   */
 
-void FixLambda::post_integrate()
+void FixLambdaAPIP::post_integrate()
 {
   double *lambda, *lambda_const, *lambda_input_ta;
 
@@ -390,7 +390,7 @@ void FixLambda::post_integrate()
   * write stats at end of step
   */
 
-void FixLambda::end_of_step()
+void FixLambdaAPIP::end_of_step()
 {
   write_peratom_stats();
 }
@@ -401,7 +401,7 @@ void FixLambda::end_of_step()
   * Use only in setup_pre_force.
   */
 
-void FixLambda::comm_forward_lambda()
+void FixLambdaAPIP::comm_forward_lambda()
 {
   if (history2_used == 1) {
     // There is only one one calculated lambda.
@@ -424,7 +424,7 @@ void FixLambda::comm_forward_lambda()
   * write per atom stats
   */
 
-void FixLambda::write_peratom_stats()
+void FixLambdaAPIP::write_peratom_stats()
 {
   if (!peratom_flag) return;
 
@@ -471,7 +471,7 @@ void FixLambda::write_peratom_stats()
   * Update running average of lambda_input.
   */
 
-void FixLambda::update_lambda_input_history()
+void FixLambdaAPIP::update_lambda_input_history()
 {
   if (invoked_history_update == update->ntimestep) return;
   invoked_history_update = update->ntimestep;
@@ -531,7 +531,7 @@ void FixLambda::update_lambda_input_history()
   * Update running average of lambda with lambda_input_ta.
   */
 
-void FixLambda::update_lambda_history()
+void FixLambdaAPIP::update_lambda_history()
 {
   if (invoked_history2_update == update->ntimestep) return;
   invoked_history2_update = update->ntimestep;
@@ -572,7 +572,7 @@ void FixLambda::update_lambda_history()
   * Copy running average of lambda to lambda_input_ta.
   */
 
-void FixLambda::get_lambda_average()
+void FixLambdaAPIP::get_lambda_average()
 {
   double *lambda_input_ta, **lambda_history, avg;
   int *mask, nlocal;
@@ -612,7 +612,7 @@ void FixLambda::get_lambda_average()
   * calculate lambda_input_ta for own atoms
   */
 
-void FixLambda::calculate_lambda_input_ta()
+void FixLambdaAPIP::calculate_lambda_input_ta()
 {
   int i, nlocal;
   int *mask;
@@ -631,7 +631,7 @@ void FixLambda::calculate_lambda_input_ta()
   Save this temporary lambda as lambda_input_ta and send it to neighbours.
 ------------------------------------------------------------------------- */
 
-void FixLambda::communicate_lambda_input_ta()
+void FixLambdaAPIP::communicate_lambda_input_ta()
 {
   calculate_lambda_input_ta();
 
@@ -645,7 +645,7 @@ void FixLambda::communicate_lambda_input_ta()
 // similar to cutoff_func_poly in ace_radial.cpp
 // compare Phys Rev Mat 6, 013804 (2022) APPENDIX C: RADIAL AND CUTOFF FUNCTIONS 2. Cutoff function
 // the first two derivatives of the switching function lambda vanishes at the boundaries of the switching region
-double FixLambda::switching_function_poly(double input)
+double FixLambdaAPIP::switching_function_poly(double input)
 {
   // calculate lambda
   if (input <= threshold_lo) {
@@ -662,7 +662,7 @@ double FixLambda::switching_function_poly(double input)
   * Send lambda to neighbours.
   */
 
-int FixLambda::pack_forward_comm(int n, int *list, double *buf, int /*pbc_flag*/, int * /*pbc*/)
+int FixLambdaAPIP::pack_forward_comm(int n, int *list, double *buf, int /*pbc_flag*/, int * /*pbc*/)
 {
   int i, j, m;
   double *lambda_input_ta = atom->apip_lambda_input_ta;
@@ -688,7 +688,7 @@ int FixLambda::pack_forward_comm(int n, int *list, double *buf, int /*pbc_flag*/
   * Recv lambda from neighbours.
   */
 
-void FixLambda::unpack_forward_comm(int n, int first, double *buf)
+void FixLambdaAPIP::unpack_forward_comm(int n, int first, double *buf)
 {
   int i, m, last;
   double *lambda_input_ta = atom->apip_lambda_input_ta;
@@ -709,7 +709,7 @@ void FixLambda::unpack_forward_comm(int n, int first, double *buf)
    * store scalar history information
    */
 
-void FixLambda::write_restart(FILE *fp)
+void FixLambdaAPIP::write_restart(FILE *fp)
 {
   int timesteps_since_invoked_history_update = update->ntimestep - invoked_history_update;
   int timesteps_since_invoked_history2_update = update->ntimestep - invoked_history2_update;
@@ -736,7 +736,7 @@ void FixLambda::write_restart(FILE *fp)
    use state info from restart file to restart the Fix
 ------------------------------------------------------------------------- */
 
-void FixLambda::restart(char *buf)
+void FixLambdaAPIP::restart(char *buf)
 {
   int timesteps_since_invoked_history_update, history_length_br,
       timesteps_since_invoked_history2_update, history2_length_br;
@@ -767,7 +767,7 @@ void FixLambda::restart(char *buf)
   * extract lambda(time averaged lambda_input) and lambda_input_history_len
   */
 
-void *FixLambda::extract(const char *str, int &dim)
+void *FixLambdaAPIP::extract(const char *str, int &dim)
 {
   dim = 2;
   if (strcmp(str, "fix_lambda:lambda_input_history") == 0 && fixstore) { return fixstore->astore; }

@@ -29,7 +29,7 @@ PairStyle(lambda/zone,PairLambdaZone);
 namespace LAMMPS_NS {
 
 class PairLambdaZone : public Pair {
-  friend class FixLambda;
+  friend class FixLambdaAPIP;
 
  public:
   PairLambdaZone(class LAMMPS *);

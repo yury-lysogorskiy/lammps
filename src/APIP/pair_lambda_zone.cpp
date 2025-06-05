@@ -141,7 +141,7 @@ void PairLambdaZone::init_style()
   // find thermo style
   int count = 0;
   for (int i = 0; i < modify->nfix; i++) {
-    if (strcmp(modify->fix[i]->style, "lambda") == 0) {
+    if (strcmp(modify->fix[i]->style, "lambda/apip") == 0) {
       fix_lambda = modify->fix[i];
       count++;
     }

@@ -16,12 +16,12 @@
 
 #ifdef FIX_CLASS
 // clang-format off
-FixStyle(lambda,FixLambda);
+FixStyle(lambda/apip,FixLambdaAPIP);
 // clang-format on
 #else
 
-#ifndef LMP_FIX_LAMBDA_H
-#define LMP_FIX_LAMBDA_H
+#ifndef LMP_FIX_LAMBDA_APIP_H
+#define LMP_FIX_LAMBDA_APIP_H
 
 #include "fix.h"
 #include "pair_lambda_input.h"
@@ -29,13 +29,13 @@ FixStyle(lambda,FixLambda);
 
 namespace LAMMPS_NS {
 
-class FixLambda : public Fix {
+class FixLambdaAPIP : public Fix {
   friend class PairLambdaInput;
   friend class PairLambdaZone;
 
  public:
-  FixLambda(class LAMMPS *, int, char **);
-  ~FixLambda() override;
+  FixLambdaAPIP(class LAMMPS *, int, char **);
+  ~FixLambdaAPIP() override;
   int modify_param(int, char **) override;
   void init() override;
   int setmask() override;
