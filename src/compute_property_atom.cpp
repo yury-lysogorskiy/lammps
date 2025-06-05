@@ -331,26 +331,24 @@ ComputePropertyAtom::ComputePropertyAtom(LAMMPS *lmp, int narg, char **arg) :
         error->all(FLERR,"Compute property/atom {} requires atom style tri", arg[iarg]);
       pack_choice[i] = &ComputePropertyAtom::pack_corner3z;
 
-    } else if (strcmp(arg[iarg],"lambda") == 0) {
+    // APIP package
+
+    } else if (strcmp(arg[iarg],"apip_lambda") == 0) {
       if (!atom->lambda_flag)
         error->all(FLERR,"Compute property/atom {} is not available", arg[iarg]);
-      pack_choice[i] = &ComputePropertyAtom::pack_lambda;
-    } else if (strcmp(arg[iarg],"lambda_input") == 0) {
+      pack_choice[i] = &ComputePropertyAtom::pack_apip_lambda;
+    } else if (strcmp(arg[iarg],"apip_lambda_input") == 0) {
       if (!atom->lambda_input_flag)
         error->all(FLERR,"Compute property/atom {} is not available", arg[iarg]);
-      pack_choice[i] = &ComputePropertyAtom::pack_lambda_input;
-    } else if (strcmp(arg[iarg],"lambda_required") == 0) {
-      if (!atom->lambda_required_flag)
-        error->all(FLERR,"Compute property/atom {} is not available", arg[iarg]);
-      pack_choice[i] = &ComputePropertyAtom::pack_lambda_required;
-    } else if (strcmp(arg[iarg],"e_simple") == 0) {
+      pack_choice[i] = &ComputePropertyAtom::pack_apip_lambda_input;
+    } else if (strcmp(arg[iarg],"apip_e_fast") == 0) {
       if (!atom->e_simple_flag)
         error->all(FLERR,"Compute property/atom {} is not available", arg[iarg]);
-      pack_choice[i] = &ComputePropertyAtom::pack_e_simple;
-    } else if (strcmp(arg[iarg],"e_complex") == 0) {
+      pack_choice[i] = &ComputePropertyAtom::pack_apip_e_fast;
+    } else if (strcmp(arg[iarg],"apip_e_precise") == 0) {
       if (!atom->e_complex_flag)
         error->all(FLERR,"Compute property/atom {} is not available", arg[iarg]);
-      pack_choice[i] = &ComputePropertyAtom::pack_e_complex;
+      pack_choice[i] = &ComputePropertyAtom::pack_apip_e_precise;
 
     // custom per-atom vector or array
 
@@ -1585,7 +1583,7 @@ void ComputePropertyAtom::pack_tqz(int n)
 
 /* ---------------------------------------------------------------------- */
 
-void ComputePropertyAtom::pack_lambda(int n)
+void ComputePropertyAtom::pack_apip_lambda(int n)
 {
   double *lambda = atom->lambda;
   int *mask = atom->mask;
@@ -1600,7 +1598,7 @@ void ComputePropertyAtom::pack_lambda(int n)
 
 /* ---------------------------------------------------------------------- */
 
-void ComputePropertyAtom::pack_lambda_input(int n)
+void ComputePropertyAtom::pack_apip_lambda_input(int n)
 {
   double *lambda_input = atom->lambda_input;
   int *mask = atom->mask;
@@ -1615,22 +1613,7 @@ void ComputePropertyAtom::pack_lambda_input(int n)
 
 /* ---------------------------------------------------------------------- */
 
-void ComputePropertyAtom::pack_lambda_required(int n)
-{
-  int *lambda_required = atom->lambda_required;
-  int *mask = atom->mask;
-  int nlocal = atom->nlocal;
-
-  for (int i = 0; i < nlocal; i++) {
-    if (mask[i] & groupbit) buf[n] = lambda_required[i];
-    else buf[n] = 0.0;
-    n += nvalues;
-  }
-}
-
-/* ---------------------------------------------------------------------- */
-
-void ComputePropertyAtom::pack_e_simple(int n)
+void ComputePropertyAtom::pack_apip_e_fast(int n)
 {
   double *e_simple = atom->e_simple;
   int *mask = atom->mask;
@@ -1645,7 +1628,7 @@ void ComputePropertyAtom::pack_e_simple(int n)
 
 /* ---------------------------------------------------------------------- */
 
-void ComputePropertyAtom::pack_e_complex(int n)
+void ComputePropertyAtom::pack_apip_e_precise(int n)
 {
   double *e_complex = atom->e_complex;
   int *mask = atom->mask;

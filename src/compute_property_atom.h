@@ -138,11 +138,10 @@ class ComputePropertyAtom : public Compute {
 
   void pack_atom_style(int);
 
-  void pack_lambda(int);
-  void pack_lambda_required(int);
-  void pack_lambda_input(int);
-  void pack_e_simple(int);
-  void pack_e_complex(int);
+  void pack_apip_lambda(int);
+  void pack_apip_lambda_input(int);
+  void pack_apip_e_fast(int);
+  void pack_apip_e_precise(int);
 };
 
 }    // namespace LAMMPS_NS
