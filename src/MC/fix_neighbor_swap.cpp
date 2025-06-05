@@ -32,6 +32,7 @@
 #include "group.h"
 #include "improper.h"
 #include "kspace.h"
+#include "math_extra.h"
 #include "math_special.h"
 #include "memory.h"
 #include "modify.h"
@@ -48,6 +49,7 @@
 
 using namespace LAMMPS_NS;
 using namespace FixConst;
+using MathExtra::distsq3;
 
 static const char cite_fix_neighbor_swap[] =
     "fix neighbor/swap command: doi:10.1016/j.commatsci.2022.111929\n\n"
@@ -548,16 +550,6 @@ int FixNeighborSwap::pick_j_swap_neighbor(int i)
 /* ----------------------------------------------------------------------
 ------------------------------------------------------------------------- */
 
-double FixNeighborSwap::get_distance(double *i, double *j)
-{
-  double r = sqrt(MathSpecial::square((i[0] - j[0])) + MathSpecial::square((i[1] - j[1])) +
-                  MathSpecial::square((i[2] - j[2])));
-  return r;
-}
-
-/* ----------------------------------------------------------------------
-------------------------------------------------------------------------- */
-
 void FixNeighborSwap::build_i_neighbor_list(int i_center)
 {
   int nghost = atom->nghost;
@@ -624,13 +616,12 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
             // Get distance if own center atom
             double r = INFINITY;
-            if (i_center >= 0) { double r = get_distance(x[temp_j], x[i_center]); }
+            if (i_center >= 0) { double r = sqrt(distsq3(x[temp_j], x[i_center])); }
 
             // Get local id of ghost center atom when ghost
             for (int i = nlocal; i < nlocal + nghost; i++) {
-              if ((id[i] == id_center) && (get_distance(x[temp_j], x[i]) < r)) {
-                r = get_distance(x[temp_j], x[i]);
-              }
+              double rtmp = sqrt(distsq3(x[temp_j], x[i]));
+              if ((id[i] == id_center) && (rtmp < r)) r = rtmp;
             }
 
             if (rates_flag) {
@@ -649,13 +640,12 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
                 // Calculate distance from i to each j, adjust probability of selection
                 // Get distance if own center atom
                 double r = INFINITY;
-                if (i_center >= 0) { double r = get_distance(x[temp_j], x[i_center]); }
+                if (i_center >= 0) { double r = sqrt(distsq3(x[temp_j], x[i_center])); }
 
                 // Get local id of ghost center atom when ghost
                 for (int i = nlocal; i < nlocal + nghost; i++) {
-                  if ((id[i] == id_center) && (get_distance(x[temp_j], x[i]) < r)) {
-                    r = get_distance(x[temp_j], x[i]);
-                  }
+                  double rtmp = sqrt(distsq3(x[temp_j], x[i]));
+                  if ((id[i] == id_center) && (rtmp < r)) r = rtmp;
                 }
 
                 if (rates_flag) {
@@ -680,12 +670,12 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
           // Calculate distance from i to each j, adjust probability of selection
           // Get distance if own center atom
           double r = INFINITY;
-          if (i_center >= 0) { r = get_distance(x[temp_j], x[i_center]); }
+          if (i_center >= 0) { r = sqrt(distsq3(x[temp_j], x[i_center])); }
 
           // Get local id of ghost center atoms
           for (int i = nlocal; i < nlocal + nghost; i++) {
-            if ((id[i] == id_center) && (get_distance(x[temp_j], x[i]) < r))
-              r = get_distance(x[temp_j], x[i]);
+            double rtmp = sqrt(distsq3(x[temp_j], x[i]));
+            if ((id[i] == id_center) && (rtmp < r)) r = rtmp;
           }
 
           if (rates_flag) {
@@ -705,13 +695,12 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
               // Calculate distance from i to each j, adjust probability of selection
               // Get distance if own center atom
               double r = INFINITY;
-              if (i_center >= 0) { double r = get_distance(x[temp_j], x[i_center]); }
+              if (i_center >= 0) { double r = sqrt(distsq3(x[temp_j], x[i_center])); }
 
               // Get local id of ghost center atom when ghost
               for (int i = nlocal; i < nlocal + nghost; i++) {
-                if ((id[i] == id_center) && (get_distance(x[temp_j], x[i]) < r)) {
-                  r = get_distance(x[temp_j], x[i]);
-                }
+                double rtmp = sqrt(distsq3(x[temp_j], x[i]));
+                if ((id[i] == id_center) && (rtmp < r)) r = rtmp;
               }
 
               if (rates_flag) {
