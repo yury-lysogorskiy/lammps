@@ -16,24 +16,24 @@
 
 #ifdef PAIR_CLASS
 // clang-format off
-PairStyle(lambda_input,PairLambdaInput);
+PairStyle(lambda/input/apip,PairLambdaInputAPIP);
 // clang-format on
 #else
 
-#ifndef LMP_PAIR_LAMBDA_INPUT_H
-#define LMP_PAIR_LAMBDA_INPUT_H
+#ifndef LMP_PAIR_LAMBDA_INPUT_APIP_H
+#define LMP_PAIR_LAMBDA_INPUT_APIP_H
 
 #include "fix_lambda_apip.h"
 #include "pair.h"
 
 namespace LAMMPS_NS {
 
-class PairLambdaInput : public Pair {
+class PairLambdaInputAPIP : public Pair {
   friend class FixLambdaAPIP;
 
  public:
-  PairLambdaInput(class LAMMPS *);
-  ~PairLambdaInput() override;
+  PairLambdaInputAPIP(class LAMMPS *);
+  ~PairLambdaInputAPIP() override;
   void compute(int, int) override;
   virtual void settings(int, char **) override;
   void coeff(int, char **) override;

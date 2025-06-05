@@ -24,13 +24,13 @@ FixStyle(lambda/apip,FixLambdaAPIP);
 #define LMP_FIX_LAMBDA_APIP_H
 
 #include "fix.h"
-#include "pair_lambda_input.h"
+#include "pair_lambda_input_apip.h"
 #include "pair_lambda_zone_apip.h"
 
 namespace LAMMPS_NS {
 
 class FixLambdaAPIP : public Fix {
-  friend class PairLambdaInput;
+  friend class PairLambdaInputAPIP;
   friend class PairLambdaZoneAPIP;
 
  public:
@@ -53,7 +53,7 @@ class FixLambdaAPIP : public Fix {
   enum { FORWARD_MAX, FORWARD_TA };
   int comm_forward_flag;    // flag that determines which variables are communicated in comm forward
 
-  class PairLambdaInput *pair_lambda_input;
+  class PairLambdaInputAPIP *pair_lambda_input;
   class PairLambdaZoneAPIP *pair_lambda_zone;
 
   double cut_lo;    ///< distance at which the cutoff function of the transition zone decays from 1

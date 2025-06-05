@@ -249,9 +249,9 @@ void FixLambdaAPIP::init()
 
   Pair *pair_tmp;
   // lambda_input
-  pair_tmp = force->pair_match("lambda_input/", 0);
+  pair_tmp = force->pair_match("lambda/input/", 0);
   if (!pair_tmp) error->all(FLERR, "fix lambda requires a `pair lambda_input`");
-  pair_lambda_input = (PairLambdaInput *) pair_tmp;
+  pair_lambda_input = (PairLambdaInputAPIP *) pair_tmp;
   // lambda/zone
   pair_tmp = force->pair_match("lambda/zone/apip", 1);
   if (!pair_tmp) error->all(FLERR, "fix lambda requires a `pair lambda`");

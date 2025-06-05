@@ -115,10 +115,10 @@
 /fix_lambda_apip.h
 /fix_lambda_thermostat_apip.cpp
 /fix_lambda_thermostat_apip.h
-/pair_lambda_input.cpp
-/pair_lambda_input.h
-/pair_lambda_input_csp.cpp
-/pair_lambda_input_csp.h
+/pair_lambda_input_apip.cpp
+/pair_lambda_input_apip.h
+/pair_lambda_input_csp_apip.cpp
+/pair_lambda_input_csp_apip.h
 /pair_eam_fs_apip.cpp
 /pair_eam_fs_apip.h
 /pair_eam_apip.cpp

@@ -14,7 +14,7 @@
    Contributing author: David Immel (d.immel@fz-juelich.de, FZJ, Germany)
 ------------------------------------------------------------------------- */
 
-#include "pair_lambda_input.h"
+#include "pair_lambda_input_apip.h"
 
 #include "atom.h"
 #include "comm.h"
@@ -30,7 +30,7 @@ using namespace LAMMPS_NS;
 
 /* ---------------------------------------------------------------------- */
 
-PairLambdaInput::PairLambdaInput(LAMMPS *lmp) : Pair(lmp), fix_lambda(nullptr), cut(nullptr)
+PairLambdaInputAPIP::PairLambdaInputAPIP(LAMMPS *lmp) : Pair(lmp), fix_lambda(nullptr), cut(nullptr)
 {
 
   cut_global = -1;
@@ -42,7 +42,7 @@ PairLambdaInput::PairLambdaInput(LAMMPS *lmp) : Pair(lmp), fix_lambda(nullptr), 
 
 /* ---------------------------------------------------------------------- */
 
-PairLambdaInput::~PairLambdaInput()
+PairLambdaInputAPIP::~PairLambdaInputAPIP()
 {
   if (copymode) return;
 
@@ -55,7 +55,7 @@ PairLambdaInput::~PairLambdaInput()
 }
 
 /* ---------------------------------------------------------------------- */
-void PairLambdaInput::coeff(int narg, char **arg)
+void PairLambdaInputAPIP::coeff(int narg, char **arg)
 {
   if (narg != 2) error->all(FLERR, "Incorrect args for pair coefficients");
   if (!allocated) allocate();
@@ -80,7 +80,7 @@ void PairLambdaInput::coeff(int narg, char **arg)
    allocate all arrays
 ------------------------------------------------------------------------- */
 
-void PairLambdaInput::allocate()
+void PairLambdaInputAPIP::allocate()
 {
   allocated = 1;
   int n = atom->ntypes + 1;
@@ -95,7 +95,7 @@ void PairLambdaInput::allocate()
 
 /* ---------------------------------------------------------------------- */
 
-void PairLambdaInput::compute(int eflag, int vflag)
+void PairLambdaInputAPIP::compute(int eflag, int vflag)
 {
   // basic stuff (see pair_zero)
   ev_init(eflag, vflag);
@@ -114,7 +114,7 @@ void PairLambdaInput::compute(int eflag, int vflag)
    global settings
 ------------------------------------------------------------------------- */
 
-void PairLambdaInput::settings(int narg, char **arg)
+void PairLambdaInputAPIP::settings(int narg, char **arg)
 {
   if (narg < 1) utils::missing_cmd_args(FLERR, "pair_style lambda_input", error);
 
@@ -133,7 +133,7 @@ void PairLambdaInput::settings(int narg, char **arg)
    init specific to this pair style
 ------------------------------------------------------------------------- */
 
-void PairLambdaInput::init_style()
+void PairLambdaInputAPIP::init_style()
 {
   if (!atom->apip_lambda_input_flag)
     error->all(FLERR, "pair_lambda input requires an atom style with lambda_input");
@@ -158,7 +158,7 @@ void PairLambdaInput::init_style()
    init for one type pair i,j and corresponding j,i
 ------------------------------------------------------------------------- */
 
-double PairLambdaInput::init_one(int i, int j)
+double PairLambdaInputAPIP::init_one(int i, int j)
 {
   if (setflag[i][j] == 0) { cut[i][j] = mix_distance(cut[i][i], cut[j][j]); }
   return cut[i][j];
@@ -170,7 +170,7 @@ double PairLambdaInput::init_one(int i, int j)
   * fix atom_weight/apip.
   */
 
-int PairLambdaInput::calculate_lambda_input()
+int PairLambdaInputAPIP::calculate_lambda_input()
 {
   int i, ii, inum;
   int *ilist;
@@ -193,7 +193,7 @@ int PairLambdaInput::calculate_lambda_input()
    set return values for timers and counted particles
 ------------------------------------------------------------------------- */
 
-void PairLambdaInput::calculate_time_per_atom()
+void PairLambdaInputAPIP::calculate_time_per_atom()
 {
   if (n_calculations > 0)
     time_per_atom = timer / n_calculations;
@@ -207,10 +207,10 @@ void PairLambdaInput::calculate_time_per_atom()
 
 /* ---------------------------------------------------------------------- */
 
-void *PairLambdaInput::extract(const char *str, int &dim)
+void *PairLambdaInputAPIP::extract(const char *str, int &dim)
 {
   dim = 0;
-  if (strcmp(str, "lambda_input:time_per_atom") == 0) {
+  if (strcmp(str, "lambda_input/apip:time_per_atom") == 0) {
     calculate_time_per_atom();
     return (void *) &time_per_atom;
   }

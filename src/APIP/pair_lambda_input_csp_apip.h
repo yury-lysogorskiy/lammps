@@ -16,22 +16,22 @@
 
 #ifdef PAIR_CLASS
 // clang-format off
-PairStyle(lambda_input/csp,PairLambdaInputCsp);
+PairStyle(lambda/input/csp/apip,PairLambdaInputCSPAPIP);
 // clang-format on
 #else
 
-#ifndef LMP_PAIR_LAMBDA_INPUT_CSP_H
-#define LMP_PAIR_LAMBDA_INPUT_CSP_H
+#ifndef LMP_PAIR_LAMBDA_INPUT_CSP_APIP_H
+#define LMP_PAIR_LAMBDA_INPUT_CSP_APIP_H
 
-#include "pair_lambda_input.h"
+#include "pair_lambda_input_apip.h"
 
 namespace LAMMPS_NS {
 
-class PairLambdaInputCsp : virtual public PairLambdaInput {
+class PairLambdaInputCSPAPIP : virtual public PairLambdaInputAPIP {
 
  public:
-  PairLambdaInputCsp(class LAMMPS *);
-  ~PairLambdaInputCsp();
+  PairLambdaInputCSPAPIP(class LAMMPS *);
+  ~PairLambdaInputCSPAPIP();
   void settings(int, char **) override;
 
  protected:

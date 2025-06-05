@@ -77,15 +77,15 @@ FixAtomWeightAPIP::FixAtomWeightAPIP(LAMMPS *lmp, int narg, char **arg) :
     avg_time_atom[1] = time_complex_atom;
   }
 
-  if (strcmp(arg[6], "lambda_input") == 0) {
-    time_group_extract_name = utils::strdup("lambda_input:time_per_atom");
+  if (strcmp(arg[6], "lambda/input") == 0) {
+    time_group_extract_name = utils::strdup("lambda/input/apip:time_per_atom");
   } else {
     time_group_atom = utils::numeric(FLERR, arg[6], false, lmp);
     avg_time_atom[2] = time_group_atom;
   }
 
   if (strcmp(arg[7], "lambda/zone") == 0) {
-    time_lambda_extract_name = utils::strdup("lambda_zone:time_per_atom");
+    time_lambda_extract_name = utils::strdup("lambda/zone/apip:time_per_atom");
   } else {
     time_lambda_atom = utils::numeric(FLERR, arg[7], false, lmp);
     avg_time_atom[3] = time_lambda_atom;

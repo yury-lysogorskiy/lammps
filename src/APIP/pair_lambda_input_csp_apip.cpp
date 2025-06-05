@@ -14,7 +14,7 @@
    Contributing author: David Immel (d.immel@fz-juelich.de, FZJ, Germany)
 ------------------------------------------------------------------------- */
 
-#include "pair_lambda_input_csp.h"
+#include "pair_lambda_input_csp_apip.h"
 
 #include "atom.h"
 #include "error.h"
@@ -25,8 +25,8 @@ using namespace LAMMPS_NS;
 
 /* ---------------------------------------------------------------------- */
 
-PairLambdaInputCsp::PairLambdaInputCsp(LAMMPS *lmp) :
-    PairLambdaInput(lmp), distsq(nullptr), nearest(nullptr)
+PairLambdaInputCSPAPIP::PairLambdaInputCSPAPIP(LAMMPS *lmp) :
+    PairLambdaInputAPIP(lmp), distsq(nullptr), nearest(nullptr)
 {
   // set defaults
   nnn = 0;
@@ -37,7 +37,7 @@ PairLambdaInputCsp::PairLambdaInputCsp(LAMMPS *lmp) :
 
 /* ---------------------------------------------------------------------- */
 
-PairLambdaInputCsp::~PairLambdaInputCsp()
+PairLambdaInputCSPAPIP::~PairLambdaInputCSPAPIP()
 {
   if (copymode) return;
 
@@ -49,7 +49,7 @@ PairLambdaInputCsp::~PairLambdaInputCsp()
    global settings
 ------------------------------------------------------------------------- */
 
-void PairLambdaInputCsp::settings(int narg, char **arg)
+void PairLambdaInputCSPAPIP::settings(int narg, char **arg)
 {
   double cut_csp = 5;
 
@@ -103,7 +103,7 @@ void PairLambdaInputCsp::settings(int narg, char **arg)
   * fix atom_weight/apip.
   */
 
-int PairLambdaInputCsp::calculate_lambda_input()
+int PairLambdaInputCSPAPIP::calculate_lambda_input()
 {
   int i, j, k, ii, jj, kk, n, n_cutoff, inum, jnum;
   double xtmp, ytmp, ztmp, delx, dely, delz, rsq, value;
@@ -224,7 +224,7 @@ int PairLambdaInputCsp::calculate_lambda_input()
    2nd routine sorts auxiliary array at same time
 ------------------------------------------------------------------------- */
 
-void PairLambdaInputCsp::select(int k, int n, double *arr)
+void PairLambdaInputCSPAPIP::select(int k, int n, double *arr)
 {
   int i, ir, j, l, mid;
   double a;
@@ -263,7 +263,7 @@ void PairLambdaInputCsp::select(int k, int n, double *arr)
 
 /* ---------------------------------------------------------------------- */
 
-void PairLambdaInputCsp::select2(int k, int n, double *arr, int *iarr)
+void PairLambdaInputCSPAPIP::select2(int k, int n, double *arr, int *iarr)
 {
   int i, ir, j, l, mid, ia, itmp;
   double a;
