@@ -167,7 +167,7 @@ double PairLambdaInput::init_one(int i, int j)
 /**
   * Compute lambda_input and write it to atom->apip_lambda_input.
   * Count the number of computations and measure the compute time for
-  * fix apip_atom_weight.
+  * fix atom_weight/apip.
   */
 
 int PairLambdaInput::calculate_lambda_input()

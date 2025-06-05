@@ -14,7 +14,7 @@
    Contributing author: David Immel (d.immel@fz-juelich.de, FZJ, Germany)
 ------------------------------------------------------------------------- */
 
-#include "fix_apip_atom_weight.h"
+#include "fix_atom_weight_apip.h"
 
 #include "atom.h"
 #include "atom_vec_apip.h"
@@ -31,7 +31,7 @@
 using namespace LAMMPS_NS;
 using namespace FixConst;
 
-FixApipAtomWeight::FixApipAtomWeight(LAMMPS *lmp, int narg, char **arg) :
+FixAtomWeightAPIP::FixAtomWeightAPIP(LAMMPS *lmp, int narg, char **arg) :
     Fix(lmp, narg, arg), fixstore(nullptr), time_simple_extract_name(nullptr),
     time_complex_extract_name(nullptr), time_lambda_extract_name(nullptr),
     time_group_extract_name(nullptr), time_group_name(nullptr), fix_lambda(nullptr),
@@ -95,7 +95,7 @@ FixApipAtomWeight::FixApipAtomWeight(LAMMPS *lmp, int narg, char **arg) :
   time_group_name = utils::strdup(arg[8]);
   time_group_i = group->find(time_group_name);
   if (time_group_i == -1)
-    error->all(FLERR, "apip_atom_weight: group {} does not exist", time_group_name);
+    error->all(FLERR, "atom_weight/apip: group {} does not exist", time_group_name);
   time_group_bit = group->bitmask[time_group_i];
 
   // parse remaining arguments
@@ -103,19 +103,19 @@ FixApipAtomWeight::FixApipAtomWeight(LAMMPS *lmp, int narg, char **arg) :
     if (strcmp(arg[iarg], "no_rescale") == 0) {
       rescale_work = false;
     } else {
-      error->all(FLERR, "apip_atom_weight: unknown argument {}", arg[iarg]);
+      error->all(FLERR, "atom_weight/apip: unknown argument {}", arg[iarg]);
     }
   }
 
   // check arguments
-  if (nevery < 1) error->all(FLERR, "apip_atom_weight: nevery > 0 required");
+  if (nevery < 1) error->all(FLERR, "atom_weight/apip: nevery > 0 required");
   if (!atom->apip_lambda_required_flag)
-    error->all(FLERR, "apip_atom_weight: atomic style with lambda_required required");
+    error->all(FLERR, "atom_weight/apip: atomic style with lambda_required required");
 
   if (time_simple_extract_name || time_complex_extract_name || time_group_extract_name ||
       time_lambda_extract_name) {
     if (force->pair == nullptr)
-      error->all(FLERR, "apip_atom_weight: extract requires a defined pair style");
+      error->all(FLERR, "atom_weight/apip: extract requires a defined pair style");
   }
 
   int useless_dim = -1;
@@ -123,42 +123,42 @@ FixApipAtomWeight::FixApipAtomWeight(LAMMPS *lmp, int narg, char **arg) :
 
   if (time_simple_extract_name) {
     if (force->pair->extract(time_simple_extract_name, useless_dim) == nullptr)
-      error->all(FLERR, "apip_atom_weight: simple time cannot be extracted with {} from {}",
+      error->all(FLERR, "atom_weight/apip: simple time cannot be extracted with {} from {}",
                  time_simple_extract_name, force->pair_style);
   } else {
     if (time_simple_atom < 0)
-      error->all(FLERR, "apip_atom_weight: time_simple_atom needs to be non-negative instead of {}",
+      error->all(FLERR, "atom_weight/apip: time_simple_atom needs to be non-negative instead of {}",
                  time_simple_atom);
   }
 
   if (time_complex_extract_name) {
     if (force->pair->extract(time_complex_extract_name, useless_dim) == nullptr)
-      error->all(FLERR, "apip_atom_weight: complex time cannot be extracted with {} from {}",
+      error->all(FLERR, "atom_weight/apip: complex time cannot be extracted with {} from {}",
                  time_complex_extract_name, force->pair_style);
   } else {
     if (time_complex_atom < 0)
       error->all(FLERR,
-                 "apip_atom_weight: time_complex_atom needs to be non-negative instead of {}",
+                 "atom_weight/apip: time_complex_atom needs to be non-negative instead of {}",
                  time_complex_atom);
   }
 
   if (time_group_extract_name) {
     if (force->pair->extract(time_group_extract_name, useless_dim) == nullptr)
-      error->all(FLERR, "apip_atom_weight: group time cannot be extracted with {} from {}",
+      error->all(FLERR, "atom_weight/apip: group time cannot be extracted with {} from {}",
                  time_group_extract_name, force->pair_style);
   } else {
     if (time_group_atom < 0)
-      error->all(FLERR, "apip_atom_weight: time_group_atom needs to be non-negative instead of {}",
+      error->all(FLERR, "atom_weight/apip: time_group_atom needs to be non-negative instead of {}",
                  time_group_atom);
   }
 
   if (time_lambda_extract_name) {
     if (force->pair->extract(time_lambda_extract_name, useless_dim) == nullptr)
-      error->all(FLERR, "apip_atom_weight: lambda time cannot be extracted with {} from {}",
+      error->all(FLERR, "atom_weight/apip: lambda time cannot be extracted with {} from {}",
                  time_lambda_extract_name, force->pair_style);
   } else {
     if (time_lambda_atom < 0)
-      error->all(FLERR, "apip_atom_weight: time_lambda_atom needs to be non-negative instead of {}",
+      error->all(FLERR, "atom_weight/apip: time_lambda_atom needs to be non-negative instead of {}",
                  time_lambda_atom);
   }
 
@@ -190,7 +190,7 @@ FixApipAtomWeight::FixApipAtomWeight(LAMMPS *lmp, int narg, char **arg) :
  *  Deconstructor. Delete allocated memory.
  */
 
-FixApipAtomWeight::~FixApipAtomWeight()
+FixAtomWeightAPIP::~FixAtomWeightAPIP()
 {
   delete ap_timer;
   delete[] time_simple_extract_name;
@@ -209,7 +209,7 @@ FixApipAtomWeight::~FixApipAtomWeight()
   * fix could already be allocated if fix balance is re-specified
   */
 
-void FixApipAtomWeight::post_constructor()
+void FixAtomWeightAPIP::post_constructor()
 {
   std::string cmd;
   cmd = id;
@@ -228,7 +228,7 @@ void FixApipAtomWeight::post_constructor()
  *  @return mask
  */
 
-int FixApipAtomWeight::setmask()
+int FixAtomWeightAPIP::setmask()
 {
   int mask = 0;
   mask |= PRE_EXCHANGE;
@@ -241,13 +241,13 @@ int FixApipAtomWeight::setmask()
  *  Initialise calculated variables and setup timer objects.
  */
 
-void FixApipAtomWeight::init()
+void FixAtomWeightAPIP::init()
 {
   int counter = 0;
   for (int i = 0; i < modify->nfix; i++) {
-    if (strcmp(modify->fix[i]->style, "apip_atom_weight") == 0) counter++;
+    if (strcmp(modify->fix[i]->style, "atom_weight/apip") == 0) counter++;
   }
-  if (counter > 1) error->all(FLERR, "More than one apip_atom_weight fix");
+  if (counter > 1) error->all(FLERR, "More than one atom_weight/apip fix");
 
   // get ptr to fix lambda
   counter = 0;
@@ -267,7 +267,7 @@ void FixApipAtomWeight::init()
       // The remaining fixes are called after fix atom_load_lambda and ,thus, are not of interest.
       break;
     } else if (ifix->box_change == BOX_CHANGE_DOMAIN) {
-      error->all(FLERR, "apip_atom_weight: fix {} should come after fix {}", ifix->id, id);
+      error->all(FLERR, "atom_weight/apip: fix {} should come after fix {}", ifix->id, id);
     }
   }
 
@@ -275,7 +275,7 @@ void FixApipAtomWeight::init()
   if (time_group_name) {
     time_group_i = group->find(time_group_name);
     if (time_group_i == -1)
-      error->all(FLERR, "apip_atom_weight: group {} does not exist", time_group_name);
+      error->all(FLERR, "atom_weight/apip: group {} does not exist", time_group_name);
     time_group_bit = group->bitmask[time_group_i];
   }
 
@@ -288,7 +288,7 @@ void FixApipAtomWeight::init()
   * Set 1 as initial weight as no forces have been calculated yet.
   */
 
-void FixApipAtomWeight::setup_pre_exchange()
+void FixAtomWeightAPIP::setup_pre_exchange()
 {
   // fix balance rebalances in setup_pre_exchange.
   // setup_pre_exchange is called prior to force-calculations.
@@ -315,7 +315,7 @@ void FixApipAtomWeight::setup_pre_exchange()
   * The atoms do not need to migrate with atoms any more.
   */
 
-void FixApipAtomWeight::setup_pre_force(int /*vflag*/)
+void FixAtomWeightAPIP::setup_pre_force(int /*vflag*/)
 {
   fixstore->disable = 1;
   // Atoms are with their weights now.
@@ -327,7 +327,7 @@ void FixApipAtomWeight::setup_pre_force(int /*vflag*/)
   *  Compute weight of particles for load balancing.
   */
 
-void FixApipAtomWeight::pre_exchange()
+void FixAtomWeightAPIP::pre_exchange()
 {
   if (update->ntimestep % peratom_freq != 0) { return; }
 
@@ -338,7 +338,7 @@ void FixApipAtomWeight::pre_exchange()
   *  Update output pointer for output.
   */
 
-void FixApipAtomWeight::end_of_step()
+void FixAtomWeightAPIP::end_of_step()
 {
   if (update->ntimestep % peratom_freq != 0) { return; }
 
@@ -357,7 +357,7 @@ void FixApipAtomWeight::end_of_step()
  *  @note updates particle number and time variables of this class.
  */
 
-void FixApipAtomWeight::calc_work_per_particle()
+void FixAtomWeightAPIP::calc_work_per_particle()
 {
   // calculating twice would destroy time measurements
   if (update->ntimestep == last_calc) { return; }
@@ -451,7 +451,7 @@ void FixApipAtomWeight::calc_work_per_particle()
     const int histlen_lambda_input =
         *((int *) fix_lambda->extract("fix_lambda:lambda_input_history_len", dim));
     if (lambda_input_history == nullptr || histlen_lambda_input < 1)
-      error->all(FLERR, "apip_atom_weight: extracting fix_lambda:lambda_input_history failed");
+      error->all(FLERR, "atom_weight/apip: extracting fix_lambda:lambda_input_history failed");
 
     for (int i = 0; i < nlocal; i++) {
       if (lambda_input_history[i][histlen_lambda_input + 1] != 1) {
@@ -485,7 +485,7 @@ void FixApipAtomWeight::calc_work_per_particle()
   * 4th: time per lambda calculation
   */
 
-double FixApipAtomWeight::compute_vector(int i)
+double FixAtomWeightAPIP::compute_vector(int i)
 {
   if (i < size_vector) return avg_time_atom[i];
   return 0;

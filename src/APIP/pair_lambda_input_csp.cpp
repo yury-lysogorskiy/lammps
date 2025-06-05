@@ -100,7 +100,7 @@ void PairLambdaInputCsp::settings(int narg, char **arg)
 /**
   * Compute CSP and write it to atom->apip_lambda_input.
   * Count the number of computations and measure the compute time for
-  * fix apip_atom_weight.
+  * fix atom_weight/apip.
   */
 
 int PairLambdaInputCsp::calculate_lambda_input()

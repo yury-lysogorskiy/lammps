@@ -131,8 +131,8 @@
 /pair_pace_apip_precise.h
 /pair_pace_apip_fast.cpp
 /pair_pace_apip_fast.h
-/fix_apip_atom_weight.cpp
-/fix_apip_atom_weight.h
+/fix_atom_weight_apip.cpp
+/fix_atom_weight_apip.h
 
 
 /pair_pod.cpp

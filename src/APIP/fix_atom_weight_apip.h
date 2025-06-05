@@ -16,12 +16,12 @@
 
 #ifdef FIX_CLASS
 // clang-format off
-FixStyle(apip_atom_weight,FixApipAtomWeight);
+FixStyle(atom_weight/apip,FixAtomWeightAPIP);
 // clang-format on
 #else
 
-#ifndef LMP_FIX_APIP_ATOM_WEIGHT_H
-#define LMP_FIX_APIP_ATOM_WEIGHT_H
+#ifndef LMP_FIX_ATOM_WEIGHT_APIP_H
+#define LMP_FIX_ATOM_WEIGHT_APIP_H
 
 #include "fix.h"
 #include "pointers.h"
@@ -49,10 +49,10 @@ class APIPtimer : protected Pointers {
  *  Fix to compute an atomic wegiht that can be used to load-balance an adaptive-precision potential.
  */
 
-class FixApipAtomWeight : public Fix {
+class FixAtomWeightAPIP : public Fix {
  public:
-  FixApipAtomWeight(class LAMMPS *, int, char **);
-  ~FixApipAtomWeight() override;
+  FixAtomWeightAPIP(class LAMMPS *, int, char **);
+  ~FixAtomWeightAPIP() override;
   int setmask() override;
   void post_constructor() override;
   void init() override;
