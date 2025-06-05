@@ -13,7 +13,7 @@
 /* ----------------------------------------------------------------------
    Contributing author: David Immel (d.immel@fz-juelich.de, FZJ, Germany)
 ------------------------------------------------------------------------- */
-#include "fix_lambda_thermostat.h"
+#include "fix_lambda_thermostat_apip.h"
 
 #include "atom.h"
 #include "comm.h"
@@ -36,7 +36,7 @@ using namespace FixConst;
 
 /* ---------------------------------------------------------------------- */
 
-FixLambdaThermostat::FixLambdaThermostat(LAMMPS *lmp, int narg, char **arg) :
+FixLambdaThermostatAPIP::FixLambdaThermostatAPIP(LAMMPS *lmp, int narg, char **arg) :
     Fix(lmp, narg, arg), list(nullptr), energy_change_atom(nullptr), peratom_stats(nullptr),
     local_numneigh(nullptr), local_firstneigh(nullptr), ipage(nullptr), jlist_copy(nullptr)
 {
@@ -60,52 +60,52 @@ FixLambdaThermostat::FixLambdaThermostat(LAMMPS *lmp, int narg, char **arg) :
   for (int iarg = 3; iarg < narg; iarg++) {
 
     if (strcmp(arg[iarg], "seed") == 0) {
-      if (iarg + 1 >= narg) error->all(FLERR, "fix lambda_thermostat: seed requires one argument");
+      if (iarg + 1 >= narg) error->all(FLERR, "fix lambda_thermostat/apip: seed requires one argument");
       seed = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
-      if (seed <= 0) { error->all(FLERR, "fix lambda_thermostat seed <= 0"); }
+      if (seed <= 0) { error->all(FLERR, "fix lambda_thermostat/apip seed <= 0"); }
       iarg++;
 
     } else if (strcmp(arg[iarg], "store_atomic_forces") == 0) {
       if (iarg + 1 >= narg)
-        error->all(FLERR, "fix lambda_thermostat: store_atomic_forces requires one argument");
+        error->all(FLERR, "fix lambda_thermostat/apip: store_atomic_forces requires one argument");
       peratom_flag = 1;
       peratom_freq = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
       if (peratom_freq < 1)
-        error->all(FLERR, "fix lambda_thermostat: frequency of store_atomic_forces < 1");
+        error->all(FLERR, "fix lambda_thermostat/apip: frequency of store_atomic_forces < 1");
       iarg++;
 
     } else if (strcmp(arg[iarg], "N_rescaling") == 0) {
       if (iarg + 1 >= narg)
-        error->all(FLERR, "fix lambda_thermostat: mode number requires one argument");
+        error->all(FLERR, "fix lambda_thermostat/apip: mode number requires one argument");
       rescaling_N_neighbours = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
       iarg += 1;
 
     } else
-      error->all(FLERR, "fix lambda_thermostat: unknown argument {}", arg[iarg]);
+      error->all(FLERR, "fix lambda_thermostat/apip: unknown argument {}", arg[iarg]);
   }
 
   // error checks
 
   if (!atom->apip_e_fast_flag) {
-    error->all(FLERR, "fix lambda_thermostat requires atomic style with e_simple.");
+    error->all(FLERR, "fix lambda_thermostat/apip requires atomic style with e_simple.");
   }
   if (!atom->apip_e_precise_flag) {
-    error->all(FLERR, "fix lambda_thermostat requires atomic style with e_complex.");
+    error->all(FLERR, "fix lambda_thermostat/apip requires atomic style with e_complex.");
   }
   if (!atom->apip_lambda_const_flag) {
-    error->all(FLERR, "fix lambda_thermostat requires atomic style with lambda_const.");
+    error->all(FLERR, "fix lambda_thermostat/apip requires atomic style with lambda_const.");
   }
   if (!atom->apip_lambda_flag) {
-    error->all(FLERR, "fix lambda_thermostat requires atomic style with lambda.");
+    error->all(FLERR, "fix lambda_thermostat/apip requires atomic style with lambda.");
   }
   if (!atom->apip_f_const_lambda_flag) {
-    error->all(FLERR, "fix lambda_thermostat requires atomic style with f_const_lambda.");
+    error->all(FLERR, "fix lambda_thermostat/apip requires atomic style with f_const_lambda.");
   }
   if (!atom->apip_f_dyn_lambda_flag) {
-    error->all(FLERR, "fix lambda_thermostat requires atomic style with f_dyn_lambda.");
+    error->all(FLERR, "fix lambda_thermostat/apip requires atomic style with f_dyn_lambda.");
   }
   if (rescaling_N_neighbours <= 1)
-    error->all(FLERR, "fix lambda_thermostat: rescaling_N_neighbours <= 1");
+    error->all(FLERR, "fix lambda_thermostat/apip: rescaling_N_neighbours <= 1");
 
   // rng for shuffle
   random_mt = std::mt19937(seed);
@@ -124,7 +124,7 @@ FixLambdaThermostat::FixLambdaThermostat(LAMMPS *lmp, int narg, char **arg) :
     // zero the array since a variable may access it before first run
 
     nmax_stats = atom->nmax;
-    memory->create(peratom_stats, nmax_stats, size_peratom_cols, "lambda_thermostat:peratom_stats");
+    memory->create(peratom_stats, nmax_stats, size_peratom_cols, "lambda_thermostat/apip:peratom_stats");
     array_atom = peratom_stats;
 
     int nlocal = atom->nlocal;
@@ -140,7 +140,7 @@ FixLambdaThermostat::FixLambdaThermostat(LAMMPS *lmp, int narg, char **arg) :
 
 /* ---------------------------------------------------------------------- */
 
-FixLambdaThermostat::~FixLambdaThermostat()
+FixLambdaThermostatAPIP::~FixLambdaThermostatAPIP()
 {
   memory->destroy(energy_change_atom);
   memory->destroy(peratom_stats);
@@ -153,7 +153,7 @@ FixLambdaThermostat::~FixLambdaThermostat()
 
 /* ---------------------------------------------------------------------- */
 
-int FixLambdaThermostat::setmask()
+int FixLambdaThermostatAPIP::setmask()
 {
   int mask = 0;
   mask |= POST_FORCE;
@@ -163,7 +163,7 @@ int FixLambdaThermostat::setmask()
 
 /* ---------------------------------------------------------------------- */
 
-void FixLambdaThermostat::init()
+void FixLambdaThermostatAPIP::init()
 {
   dtf = 0.5 * update->dt * force->ftm2v;
 
@@ -172,8 +172,8 @@ void FixLambdaThermostat::init()
 
   int counter = 0;
   for (int i = 0; i < modify->nfix; i++)
-    if (strcmp(modify->fix[i]->style, "lambda_thermostat") == 0) counter++;
-  if (counter > 1) error->all(FLERR, "fix lambda_thermostat: more than one fix lambda_thermostat");
+    if (strcmp(modify->fix[i]->style, "lambda_thermostat/apip") == 0) counter++;
+  if (counter > 1) error->all(FLERR, "fix lambda_thermostat/apip: more than one fix lambda_thermostat/apip");
 
   // local neighbor list
   // create pages if first time or if neighbor pgsize/oneatom has changed
@@ -186,7 +186,7 @@ void FixLambdaThermostat::init()
   if (oneatom != neighbor->oneatom || ipage == nullptr) {
     // allocate memory for copy of one ngh list
     memory->destroy(jlist_copy);
-    memory->create(jlist_copy, neighbor->oneatom, "lambda_thermostat:jlist_copy");
+    memory->create(jlist_copy, neighbor->oneatom, "lambda_thermostat/apip:jlist_copy");
   }
 
   if (create) {
@@ -202,7 +202,7 @@ void FixLambdaThermostat::init()
 
 /* ---------------------------------------------------------------------- */
 
-void FixLambdaThermostat::init_list(int /*id*/, NeighList *ptr)
+void FixLambdaThermostatAPIP::init_list(int /*id*/, NeighList *ptr)
 {
   list = ptr;
 }
@@ -215,7 +215,7 @@ void FixLambdaThermostat::init_list(int /*id*/, NeighList *ptr)
    Thus, update only local particles.
 ------------------------------------------------------------------------- */
 
-void FixLambdaThermostat::local_neighbour_list()
+void FixLambdaThermostatAPIP::local_neighbour_list()
 {
   int i, j, ii, jj, n, inum, jnum, nlocal;
   int *ilist, *jlist, *numneigh, **firstneigh;
@@ -226,9 +226,9 @@ void FixLambdaThermostat::local_neighbour_list()
     nmax_list = atom->nmax;
     memory->destroy(local_numneigh);
     memory->sfree(local_firstneigh);
-    memory->create(local_numneigh, nmax_list, "lambda_thermostat:numneigh");
+    memory->create(local_numneigh, nmax_list, "lambda_thermostat/apip:numneigh");
     local_firstneigh =
-        (int **) memory->smalloc(nmax_list * sizeof(int *), "lambda_thermostat:firstneigh");
+        (int **) memory->smalloc(nmax_list * sizeof(int *), "lambda_thermostat/apip:firstneigh");
   }
 
   nlocal = atom->nlocal;
@@ -266,7 +266,7 @@ void FixLambdaThermostat::local_neighbour_list()
 
 /* ---------------------------------------------------------------------- */
 
-double FixLambdaThermostat::calculate_kinetic_energy(int i)
+double FixLambdaThermostatAPIP::calculate_kinetic_energy(int i)
 {
   double *v = atom->v[i];
   double m = (atom->rmass ? atom->rmass[i] : atom->mass[atom->type[i]]);
@@ -275,7 +275,7 @@ double FixLambdaThermostat::calculate_kinetic_energy(int i)
 
 /* ---------------------------------------------------------------------- */
 
-void FixLambdaThermostat::post_force(int /*vflag*/)
+void FixLambdaThermostatAPIP::post_force(int /*vflag*/)
 {
   init_peratom_stats();
   calculate_energy_change();
@@ -283,7 +283,7 @@ void FixLambdaThermostat::post_force(int /*vflag*/)
 
 /* ---------------------------------------------------------------------- */
 
-void FixLambdaThermostat::end_of_step()
+void FixLambdaThermostatAPIP::end_of_step()
 {
   apply_thermostat();
 }
@@ -292,7 +292,7 @@ void FixLambdaThermostat::end_of_step()
   * Init per-atom array with zeros.
   */
 
-void FixLambdaThermostat::init_peratom_stats()
+void FixLambdaThermostatAPIP::init_peratom_stats()
 {
   if ((!peratom_flag) || (update->ntimestep % peratom_freq != 0)) {
     update_stats = false;
@@ -308,7 +308,7 @@ void FixLambdaThermostat::init_peratom_stats()
   if (atom->nmax > nmax_stats) {
     memory->destroy(peratom_stats);
     nmax_stats = atom->nmax;
-    memory->create(peratom_stats, nmax_stats, size_peratom_cols, "lambda_thermostat:peratom_stats");
+    memory->create(peratom_stats, nmax_stats, size_peratom_cols, "lambda_thermostat/apip:peratom_stats");
     array_atom = peratom_stats;
   }
 
@@ -321,7 +321,7 @@ void FixLambdaThermostat::init_peratom_stats()
   * by the local thermostat.
   */
 
-void FixLambdaThermostat::calculate_energy_change()
+void FixLambdaThermostatAPIP::calculate_energy_change()
 {
   double **v = atom->v;
   double *rmass = atom->rmass;
@@ -344,7 +344,7 @@ void FixLambdaThermostat::calculate_energy_change()
   if (atom->nmax > nmax_energy) {
     memory->destroy(energy_change_atom);
     nmax_energy = atom->nmax;
-    memory->create(energy_change_atom, nmax_energy, "lambda_thermostat:energy_change_atom");
+    memory->create(energy_change_atom, nmax_energy, "lambda_thermostat/apip:energy_change_atom");
   }
 
   // reset calculated changes
@@ -399,7 +399,7 @@ void FixLambdaThermostat::calculate_energy_change()
 
 /* ---------------------------------------------------------------------- */
 
-void FixLambdaThermostat::apply_thermostat()
+void FixLambdaThermostatAPIP::apply_thermostat()
 {
   double xtmp, ytmp, ztmp, delx, dely, delz, delvx, delvy, delvz, r, dotvu, masstmp, massj, muij,
       delv, delv_m, epsilon, epsilonsq, deltaK, rinv;
@@ -457,7 +457,7 @@ void FixLambdaThermostat::apply_thermostat()
 
     if (jnum == 0)
       error->one(FLERR,
-                 "fix lambda_thermostat: thermostating required for particle with no local "
+                 "fix lambda_thermostat/apip: thermostating required for particle with no local "
                  "particles in neighbour list particle: {} {} {} groupbit {}\n",
                  xtmp, ytmp, ztmp, mask[i] & groupbit);
 
@@ -472,7 +472,7 @@ void FixLambdaThermostat::apply_thermostat()
     // rescale velocities relative to centre of mass velocity
     const int n_ngh = MIN(rescaling_N_neighbours, jnum);
     if (n_ngh < 2)
-      error->one(FLERR, "fix lambda_thermostat: rescaling not possible for local ngh list size {}",
+      error->one(FLERR, "fix lambda_thermostat/apip: rescaling not possible for local ngh list size {}",
                  jnum);
     // 1. calculate centre of mass velocity
 
@@ -580,7 +580,7 @@ void FixLambdaThermostat::apply_thermostat()
 
 /* ---------------------------------------------------------------------- */
 
-double FixLambdaThermostat::compute_vector(int i)
+double FixLambdaThermostatAPIP::compute_vector(int i)
 {
   // 0 # atoms with energy differences compared to lambda_const
   // 1 # bath collisions
@@ -606,7 +606,7 @@ double FixLambdaThermostat::compute_vector(int i)
 
 /* ---------------------------------------------------------------------- */
 
-void FixLambdaThermostat::reset_dt()
+void FixLambdaThermostatAPIP::reset_dt()
 {
   dtf = 0.5 * update->dt * force->ftm2v;
 }
@@ -615,7 +615,7 @@ void FixLambdaThermostat::reset_dt()
    memory usage of local atom-based arrays
 ------------------------------------------------------------------------- */
 
-double FixLambdaThermostat::memory_usage()
+double FixLambdaThermostatAPIP::memory_usage()
 {
   double bytes = 0;
   bytes += (double) nmax_energy * sizeof(double);

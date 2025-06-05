@@ -16,22 +16,22 @@
 
 #ifdef FIX_CLASS
 // clang-format off
-FixStyle(lambda_thermostat,FixLambdaThermostat);
+FixStyle(lambda_thermostat/apip,FixLambdaThermostatAPIP);
 // clang-format on
 #else
 
-#ifndef LMP_FIX_LAMBDA_THERMOSTAT_H
-#define LMP_FIX_LAMBDA_THERMOSTAT_H
+#ifndef LMP_FIX_LAMBDA_THERMOSTAT_APIP_H
+#define LMP_FIX_LAMBDA_THERMOSTAT_APIP_H
 
 #include "fix.h"
 #include <random>
 
 namespace LAMMPS_NS {
 
-class FixLambdaThermostat : public Fix {
+class FixLambdaThermostatAPIP : public Fix {
  public:
-  FixLambdaThermostat(class LAMMPS *, int, char **);
-  ~FixLambdaThermostat() override;
+  FixLambdaThermostatAPIP(class LAMMPS *, int, char **);
+  ~FixLambdaThermostatAPIP() override;
 
   int setmask() override;
   void init() override;

@@ -558,13 +558,13 @@ double PairEAMapip::init_one(int i, int j)
 
 /**
   * setup specific to this pair style
-  * Determine whether there is a fix lambda_thermostat or not and set
+  * Determine whether there is a fix lambda_thermostat/apip or not and set
   * lambda_thermostat.
   */
 
 void PairEAMapip::setup()
 {
-  if (modify->get_fix_by_style("^lambda_thermostat$").size() == 0) {
+  if (modify->get_fix_by_style("^lambda_thermostat/apip$").size() == 0) {
     lambda_thermostat = false;
   } else {
     lambda_thermostat = true;
