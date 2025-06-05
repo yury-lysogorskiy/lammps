@@ -229,12 +229,12 @@ The APIP package requires also the installation of ML-PACE, which has
 * ``src/APIP``: filenames -> commands
 * :doc:`Howto APIP <Howto_apip>`
 * ``examples/PACKAGES/apip``
-* :doc:`fix apip_atom_weight <fix_apip_atom_weight>`
-* :doc:`fix lambda <fix_lambda>`
-* :doc:`fix lambda_thermostat <fix_lambda_thermostat>`
+* :doc:`fix atom_weight/apip <fix_atom_weight_apip>`
+* :doc:`fix lambda/apip <fix_lambda_apip>`
+* :doc:`fix lambda_thermostat/apip <fix_lambda_thermostat_apip>`
 * :doc:`pair_style eam/apip <pair_eam_apip>`
-* :doc:`pair_style lambda/zone <pair_lambda_zone>`
-* :doc:`pair_style lambda_input <pair_lambda_input>`
+* :doc:`pair_style lambda/zone/apip <pair_lambda_zone_apip>`
+* :doc:`pair_style lambda/input/apip <pair_lambda_input_apip>`
 * :doc:`pair_style pace/apip <pair_pace_apip>`
 
 ----------

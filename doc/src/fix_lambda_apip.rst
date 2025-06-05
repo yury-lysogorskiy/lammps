@@ -1,17 +1,17 @@
-.. index:: fix lambda
+.. index:: fix lambda/apip
 
-fix lambda command
-==============================
+fix lambda/apip command
+=======================
 
 Syntax
 """"""
 
 .. code-block:: LAMMPS
 
-   fix ID group-ID lambda thr_lo thr_hi keyword args ...
+   fix ID group-ID lambda/apip thr_lo thr_hi keyword args ...
 
 * ID, group-ID are documented in :doc:`fix <fix>` command
-* lambda = style name of this fix command
+* lambda/apip = style name of this fix command
 * thr_lo = value below which :math:`\lambda_i^\text{input}` results in a switching parameter of 1
 * thr_hi = value above which :math:`\lambda_i^\text{input}` results in a switching parameter of 0
 * zero or one keyword/args pairs may be appended
@@ -45,8 +45,8 @@ Examples
 
 .. code-block:: LAMMPS
 
-   fix 2 all lambda 3.0 3.5 time_averaged_zone 4.0 12.0 110 110 min_delta_lambda 0.01
-   fix 2 mobile lambda 3.0 3.5 time_averaged_zone 4.0 12.0 110 110 min_delta_lambda 0.01 group_ignore_lambda_input immobile lambda_non_group fast
+   fix 2 all lambda/apip 3.0 3.5 time_averaged_zone 4.0 12.0 110 110 min_delta_lambda 0.01
+   fix 2 mobile lambda/apip 3.0 3.5 time_averaged_zone 4.0 12.0 110 110 min_delta_lambda 0.01 group_ignore_lambda_input immobile lambda_non_group fast
 
 Description
 """""""""""
@@ -63,7 +63,7 @@ according to a fast interatomic potential like EAM,
 interatomic potential such as ACE and :math:`\lambda_i\in[0,1]` is the
 switching parameter that decides which potential energy is used.
 This fix calculates the switching parameter :math:`\lambda_i` based on the
-input provided from :doc:`pair_style lambda_input <pair_lambda_input>`.
+input provided from :doc:`pair_style lambda/input/apip <pair_lambda_input_apip>`.
 
 The calculation of the switching parameter is described in detail in
 :ref:`(Immel) <Immel2025_3>`.
@@ -80,7 +80,7 @@ can be set via *time_averaged_zone*.
 .. note::
 
    :math:`\lambda^\text{input}_{i}` is calculated by
-   :doc:`pair_style lambda_input <pair_lambda_input>`, which needs to be included
+   :doc:`pair_style lambda/input/apip <pair_lambda_input_apip>`, which needs to be included
    in the input script as well.
 
 The time averaged input :math:`\lambda^\text{input}_{\text{avg},i}` is then
@@ -131,7 +131,7 @@ neighboring atoms of atom :math:`i`.
 .. note::
 
    :math:`\lambda_{\text{min},i}` is calculated by
-   :doc:`pair_style lambda/zone <pair_lambda_zone>`, which needs to be included
+   :doc:`pair_style lambda/zone/apip <pair_lambda_zone_apip>`, which needs to be included
    in the input script as well.
 
 The switching parameter is smoothed by the calculation of the time average
@@ -173,21 +173,21 @@ A code example for the calculation of the switching parameter for an
 adaptive-precision potential is given in the following:
 The adaptive-precision potential is created
 by combining :doc:`pair_style eam/fs/apip <pair_eam_apip>`
-and :doc:`pair_style pace/apip/precise <pair_pace_apip>`.
+and :doc:`pair_style pace/precise/apip <pair_pace_apip>`.
 The input, from which the switching parameter is calculated, is provided
-by :doc:`pair lambda_input/csp <pair_lambda_input>`.
+by :doc:`pair lambda/input/csp/apip <pair_lambda_input_apip>`.
 The switching parameter is calculated by this fix, whereas the spatial
 transition zone of the switching parameter is calculated by
-:doc:`pair_style lambda/zone <pair_lambda_zone>`.
+:doc:`pair_style lambda/zone/apip <pair_lambda_zone_apip>`.
 
 .. code-block:: LAMMPS
 
-   pair_style hybrid/overlay eam/fs/apip pace/apip/precise lambda_input/csp fcc cutoff 5.0 lambda 12.0
+   pair_style hybrid/overlay eam/fs/apip pace/precise/apip lambda/input/csp/apip fcc cutoff 5.0 lambda/zone/apip 12.0
    pair_coeff * * eam/fs/apip Cu.eam.fs Cu
-   pair_coeff * * pace/apip Cu_precise.yace Cu
-   pair_coeff * * lambda_input/csp
-   pair_coeff * * lambda
-   fix 2 all lambda 3.0 3.5 time_averaged_zone 4.0 12.0 110 110 min_delta_lambda 0.01
+   pair_coeff * * pace/precise/apip Cu_precise.yace Cu
+   pair_coeff * * lambda/input/csp/apip
+   pair_coeff * * lambda/zone/apip
+   fix 2 all lambda/apip 3.0 3.5 time_averaged_zone 4.0 12.0 110 110 min_delta_lambda 0.01
 
 
 ----------
@@ -233,12 +233,12 @@ LAMMPS was built with that package. See the :doc:`Build package
 Related commands
 """"""""""""""""
 
-:doc:`pair_style lambda/zone <pair_lambda_zone>`,
-:doc:`pair_style lambda_input  <pair_lambda_input>`,
+:doc:`pair_style lambda/zone/apip <pair_lambda_zone_apip>`,
+:doc:`pair_style lambda/input/apip  <pair_lambda_input_apip>`,
 :doc:`pair_style eam/apip <pair_eam_apip>`,
 :doc:`pair_style pace/apip  <pair_pace_apip>`,
-:doc:`fix apip_atom_weight <fix_apip_atom_weight>`
-:doc:`fix lambda_thermostat <fix_lambda_thermostat>`,
+:doc:`fix atom_weight/apip <fix_atom_weight_apip>`
+:doc:`fix lambda_thermostat/apip <fix_lambda_thermostat_apip>`,
 
 Default
 """""""

@@ -51,24 +51,24 @@ following components:
    .. tab:: dynamic switching parameter
 
         #. :doc:`atom_style apip <atom_style>` so that the switching parameter :math:`\lambda_i` can be stored.
-        #. A fast potential: :doc:`eam/apip <pair_eam_apip>` or :doc:`pace/apip/fast <pair_pace_apip>`.
-        #. A precise potential: :doc:`pace/apip/precise <pair_pace_apip>`.
-        #. :doc:`pair_style lambda_input  <pair_lambda_input>` to calculate :math:`\lambda_i^\text{input}`, from which :math:`\lambda_i` is calculated.
-        #. :doc:`fix lambda <fix_lambda>` to calculate the switching parameter :math:`\lambda_i`.
-        #. :doc:`pair_style lambda/zone <pair_lambda_zone>` to calculate the spatial transition zone of the switching parameter.
+        #. A fast potential: :doc:`eam/apip <pair_eam_apip>` or :doc:`pace/fast/apip <pair_pace_apip>`.
+        #. A precise potential: :doc:`pace/precise/apip <pair_pace_apip>`.
+        #. :doc:`pair_style lambda/input/apip  <pair_lambda_input_apip>` to calculate :math:`\lambda_i^\text{input}`, from which :math:`\lambda_i` is calculated.
+        #. :doc:`fix lambda/apip <fix_lambda_apip>` to calculate the switching parameter :math:`\lambda_i`.
+        #. :doc:`pair_style lambda/zone/apip <pair_lambda_zone_apip>` to calculate the spatial transition zone of the switching parameter.
         #. :doc:`pair_style hybrid/overlay <pair_hybrid>` to combine the previously mentioned pair_styles.
-        #. :doc:`fix lambda_thermostat <fix_lambda_thermostat>` to conserve the energy when switching parameters change.
-        #. :doc:`fix apip_atom_weight <fix_apip_atom_weight>` to approximate the load caused by every atom, as the computations of the pair_styles are only required for a subset of atoms.
+        #. :doc:`fix lambda_thermostat/apip <fix_lambda_thermostat_apip>` to conserve the energy when switching parameters change.
+        #. :doc:`fix atom_weight/apip <fix_atom_weight_apip>` to approximate the load caused by every atom, as the computations of the pair_styles are only required for a subset of atoms.
         #. :doc:`fix balance <fix_balance>` to perform dynamic load balancing with the calculated load.
 
    .. tab:: constant switching parameter
 
         #. :doc:`atom_style apip <atom_style>` so that the switching parameter :math:`\lambda_i` can be stored.
-        #. A fast potential: :doc:`eam/apip <pair_eam_apip>` or :doc:`pace/apip/fast <pair_pace_apip>`.
-        #. A precise potential: :doc:`pace/apip/precise <pair_pace_apip>`.
-        #. :doc:`set <fix_lambda>` command to set the switching parameter :math:`\lambda_i`.
+        #. A fast potential: :doc:`eam/apip <pair_eam_apip>` or :doc:`pace/fast/apip <pair_pace_apip>`.
+        #. A precise potential: :doc:`pace/precise/apip <pair_pace_apip>`.
+        #. :doc:`set <set>` command to set the switching parameter :math:`\lambda_i`.
         #. :doc:`pair_style hybrid/overlay <pair_hybrid>` to combine the previously mentioned pair_styles.
-        #. :doc:`fix apip_atom_weight <fix_apip_atom_weight>` to approximate the load caused by every atom, as the computations of the pair_styles are only required for a subset of atoms.
+        #. :doc:`fix atom_weight/apip <fix_atom_weight_apip>` to approximate the load caused by every atom, as the computations of the pair_styles are only required for a subset of atoms.
         #. :doc:`fix balance <fix_balance>` to perform dynamic load balancing with the calculated load.
 
 ----------
@@ -92,15 +92,15 @@ Example
          atom_style apip
          comm_style tiled
 
-         pair_style hybrid/overlay eam/fs/apip pace/apip/precise lambda_input/csp fcc cutoff 5.0 lambda/zone 12.0
+         pair_style hybrid/overlay eam/fs/apip pace/precise/apip lambda/input/csp/apip fcc cutoff 5.0 lambda/zone/apip 12.0
          pair_coeff * * eam/fs/apip Cu.eam.fs Cu
-         pair_coeff * * pace/apip Cu.yace Cu
-         pair_coeff * * lambda_input/csp
-         pair_coeff * * lambda/zone
+         pair_coeff * * pace/precise/apip Cu.yace Cu
+         pair_coeff * * lambda/input/csp/apip
+         pair_coeff * * lambda/zone/apip
 
-         fix 2 all lambda 2.5 3.0 time_averaged_zone 4.0 12.0 110 110 min_delta_lambda 0.01
-         fix 3 all lambda_thermostat N_rescaling 200
-         fix 4 all apip_atom_weight 100 eam ace lambda_input lambda all
+         fix 2 all lambda/apip 2.5 3.0 time_averaged_zone 4.0 12.0 110 110 min_delta_lambda 0.01
+         fix 3 all lambda_thermostat/apip N_rescaling 200
+         fix 4 all atom_weight/apip 100 eam ace lambda/input lambda/zone all
 
          variable myweight atom f_4
 
@@ -129,15 +129,15 @@ Example
          atom_style apip
          comm_style tiled
 
-         pair_style hybrid/overlay eam/fs/apip pace/apip/precise
+         pair_style hybrid/overlay eam/fs/apip pace/precise/apip
          pair_coeff * * eam/fs/apip Cu.eam.fs Cu
-         pair_coeff * * pace/apip Cu.yace Cu
+         pair_coeff * * pace/precise/apip Cu.yace Cu
 
          # calculate lambda somehow
          variable lambda atom ...
-         set group all lambda v_lambda
+         set group all apip_lambda v_lambda
 
-         fix 4 all apip_atom_weight 100 eam ace lambda_input lambda all
+         fix 4 all atom_weight/apip 100 eam ace lambda/input lambda/zone all
 
          variable myweight atom f_4
 

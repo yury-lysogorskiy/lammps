@@ -1,30 +1,30 @@
-.. index:: pair_style lambda_input
-.. index:: pair_style lambda_input/csp
+.. index:: pair_style lambda/input/apip
+.. index:: pair_style lambda/input/csp/apip
 
-pair_style lambda_input command
-===============================
+pair_style lambda/input/apip command
+====================================
 
 Syntax
 """"""
 
 .. code-block:: LAMMPS
 
-   pair_style lambda_input cutoff
+   pair_style lambda/input/apip cutoff
 
-* lambda_input = style name of this pair style
+* lambda/input/apip = style name of this pair style
 * cutoff = global cutoff (distance units)
 
-pair_style lambda_input/csp command
-===================================
+pair_style lambda/input/csp/apip command
+========================================
 
 Syntax
 """"""
 
 .. code-block:: LAMMPS
 
-   pair_style lambda_input/csp lattice keyword args
+   pair_style lambda/input/csp/apip lattice keyword args
 
-* lambda_input/csp = style name of this pair style
+* lambda/input/csp/apip = style name of this pair style
 * lattice = *fcc* or *bcc* or integer
 
   .. parsed-literal::
@@ -48,16 +48,16 @@ Examples
 
 .. code-block:: LAMMPS
 
-   pair_style lambda_input/csp fcc
-   pair_style lambda_input/csp fcc cutoff 5.0
-   pair_style lambda_input/csp bcc cutoff 5.0 N_buffer 2
-   pair_style lambda_input/csp 14
+   pair_style lambda/input/csp/apip fcc
+   pair_style lambda/input/csp/apip fcc cutoff 5.0
+   pair_style lambda/input/csp/apip bcc cutoff 5.0 N_buffer 2
+   pair_style lambda/input/csp/apip 14
 
 Description
 """""""""""
 
 This pair_styles calculates :math:`\lambda_i^\text{input}(t)`, which
-is required for :doc:`fix lambda <fix_lambda>`.
+is required for :doc:`fix lambda/apip <fix_lambda_apip>`.
 
 The pair_style lambda_input sets :math:`\lambda_i^\text{input}(t) = 0`.
 
@@ -74,30 +74,30 @@ the calculation of the contributions from the pair j,j+N/2 to the CSP as
 discussed in :ref:`(Immel) <Immel2025_6>`.
 
 The computation of :math:`\lambda_i^\text{input}(t)` is done by this
-pair_style instead of by :doc:`fix lambda <fix_lambda>`, as this computation
+pair_style instead of by :doc:`fix lambda/apip <fix_lambda_apip>`, as this computation
 takes time and this pair_style can be included in the load-balancing via
-:doc:`fix apip_atom_weight <fix_apip_atom_weight>`.
+:doc:`fix atom_weight/apip <fix_atom_weight_apip>`.
 
 A code example for the calculation of the switching parameter for an adaptive-
 precision potential is given in the following:
 The adaptive-precision potential is created
 by combining :doc:`pair_style eam/fs/apip <pair_eam_apip>`
-and :doc:`pair_style pace/apip/precise <pair_pace_apip>`.
+and :doc:`pair_style pace/precise/apip <pair_pace_apip>`.
 The input, from which the switching parameter is calculated, is provided
 by this pair_style.
-The switching parameter is calculated by :doc:`fix lambda <fix_lambda>`,
+The switching parameter is calculated by :doc:`fix lambda/apip <fix_lambda_apip>`,
 whereas the spatial
 transition zone of the switching parameter is calculated by
-:doc:`pair_style lambda/zone <pair_lambda_zone>`.
+:doc:`pair_style lambda/zone/apip <pair_lambda_zone_apip>`.
 
 .. code-block:: LAMMPS
 
-   pair_style hybrid/overlay eam/fs/apip pace/apip/precise lambda_input/csp fcc cutoff 5.0 lambda 12.0
+   pair_style hybrid/overlay eam/fs/apip pace/precise/apip lambda/input/csp/apip fcc cutoff 5.0 lambda/zone/apip 12.0
    pair_coeff * * eam/fs/apip Cu.eam.fs Cu
-   pair_coeff * * pace/apip Cu_precise.yace Cu
-   pair_coeff * * lambda_input/csp
-   pair_coeff * * lambda
-   fix 2 all lambda 3.0 3.5 time_averaged_zone 4.0 12.0 110 110 min_delta_lambda 0.01
+   pair_coeff * * pace/precise/apip Cu_precise.yace Cu
+   pair_coeff * * lambda/input/csp/apip
+   pair_coeff * * lambda/zone/apip
+   fix 2 all lambda/apip 3.0 3.5 time_averaged_zone 4.0 12.0 110 110 min_delta_lambda 0.01
 
 ----------
 
@@ -128,12 +128,12 @@ Related commands
 """"""""""""""""
 
 :doc:`compute centro/atom <compute_centro_atom>`,
-:doc:`fix lambda <fix_lambda>`,
-:doc:`fix lambda_thermostat <fix_lambda_thermostat>`,
-:doc:`pair_style lambda/zone <pair_lambda_zone>`,
+:doc:`fix lambda/apip <fix_lambda_apip>`,
+:doc:`fix lambda_thermostat/apip <fix_lambda_thermostat_apip>`,
+:doc:`pair_style lambda/zone/apip <pair_lambda_zone_apip>`,
 :doc:`pair_style eam/apip <pair_eam_apip>`,
 :doc:`pair_style pace/apip  <pair_pace_apip>`,
-:doc:`fix apip_atom_weight <fix_apip_atom_weight>`
+:doc:`fix atom_weight/apip <fix_atom_weight_apip>`
 
 Default
 """""""

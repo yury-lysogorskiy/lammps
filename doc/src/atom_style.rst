@@ -118,7 +118,7 @@ the Additional Information section below.
      - :ref:`MOLECULE <PKG-MOLECULE>`
      - bead-spring polymers with stiffness
    * - *apip*
-     - *atomic* + lambda, lambda_required, lambda_input, lambda_const, lambda_input_ta, e_simple, e_complex, f_const_lambda, f_dyn_lambda
+     - *atomic* + apip_lambda, apip_lambda_required, apip_lambda_input, apip_lambda_const, apip_lambda_input_ta, apip_e_fast, apip_e_precise, apip_f_const_lambda, apip_f_dyn_lambda
      - :ref:`APIP <PKG-APIP>`
      - adaptive-precision interatomic potentials(APIP), see :doc:`APIP howto <Howto_apip>`
    * - *atomic*

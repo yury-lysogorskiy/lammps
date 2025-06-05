@@ -1,15 +1,15 @@
 .. index:: pair_style pace/apip
-.. index:: pair_style pace/apip/fast
-.. index:: pair_style pace/apip/precise
+.. index:: pair_style pace/fast/apip
+.. index:: pair_style pace/precise/apip
 
 pair_style pace/apip command
-==============================
+============================
 
-pair_style pace/apip/fast command
-===================================
+pair_style pace/fast/apip command
+=================================
 
-pair_style pace/apip/precise command
-======================================
+pair_style pace/precise/apip command
+====================================
 
 Constant precision variant: *pace*
 
@@ -19,8 +19,8 @@ Syntax
 .. code-block:: LAMMPS
 
    pair_style pace/apip ... keyword values ...
-   pair_style pace/apip/fast ... keyword values ...
-   pair_style pace/apip/precise ... keyword values ...
+   pair_style pace/fast/apip ... keyword values ...
+   pair_style pace/precise/apip ... keyword values ...
 
 * one or more keyword/value pairs may be appended
 
@@ -33,17 +33,17 @@ Examples
 
 .. code-block:: LAMMPS
 
-   pair_style hybrid/overlay pace/apip/fast pace/apip/precise lambda_input/csp fcc cutoff 5.0 lambda 12.0
-   pair_coeff * * pace/apip/fast Cu_fast.yace Cu
-   pair_coeff * * pace/apip/precise Cu_precise.yace Cu
-   pair_coeff * * lambda_input/csp
-   pair_coeff * * lambda
+   pair_style hybrid/overlay pace/fast/apip pace/precise/apip lambda/input/csp/apip fcc cutoff 5.0 lambda/zone/apip 12.0
+   pair_coeff * * pace/fast/apip Cu_fast.yace Cu
+   pair_coeff * * pace/precise/apip Cu_precise.yace Cu
+   pair_coeff * * lambda/input/csp/apip
+   pair_coeff * * lambda/zone/apip
 
-   pair_style hybrid/overlay eam/fs/apip pace/apip/precise lambda_input/csp fcc cutoff 5.0 lambda 12.0
+   pair_style hybrid/overlay eam/fs/apip pace/precise/apip lambda/input/csp/apip fcc cutoff 5.0 lambda/zone/apip 12.0
    pair_coeff * * eam/fs/apip Cu.eam.fs Cu
-   pair_coeff * * pace/apip Cu_precise.yace Cu
-   pair_coeff * * lambda_input/csp
-   pair_coeff * * lambda
+   pair_coeff * * pace/precise/apip Cu_precise.yace Cu
+   pair_coeff * * lambda/input/csp/apip
+   pair_coeff * * lambda/zone/apip
 
 
 Description
@@ -64,24 +64,24 @@ interatomic potential (APIP) according to
    E_i^\text{APIP} = \lambda_i E_i^\text{(fast)} + (1-\lambda_i) E_i^\text{(precise)}\,,
 
 whereas the switching parameter :math:`\lambda_i` is computed
-dynamically during a simulation by :doc:`fix lambda <fix_lambda>`
+dynamically during a simulation by :doc:`fix lambda/apip <fix_lambda_apip>`
 or set prior to a simulation via :doc:`set <set>`.
 
-The pair style *pace/apip/precise* computes the potential energy
+The pair style *pace/precise/apip* computes the potential energy
 :math:`(1-\lambda_i) E_i^\text{(pace)}` and the
 corresponding force and should be combined
 with a fast potential that computes the potential energy
 :math:`\lambda_i E_i^\text{(fast)}` and the corresponding force
 via :doc:`pair_style hybrid/overlay <pair_hybrid>`.
 
-The pair style *pace/apip/fast* computes the potential energy
+The pair style *pace/fast/apip* computes the potential energy
 :math:`\lambda_i E_i^\text{(pace)}` and the
 corresponding force and should be combined
 with a precise potential that computes the potential energy
 :math:`(1-\lambda_i) E_i^\text{(precise)}` and the corresponding force
 via :doc:`pair_style hybrid/overlay <pair_hybrid>`.
 
-The pair_styles *pace/apip/fast* and *pace/apip/precise*
+The pair_styles *pace/fast/apip* and *pace/precise/apip*
 commands may be followed by the optional keywords of
 :doc:`pair_style pace <pair_pace>`, which are described
 :doc:`here <pair_pace>`.
@@ -120,12 +120,12 @@ Related commands
 
 :doc:`pair_style pace  <pair_pace>`,
 :doc:`pair_style hybrid/overlay <pair_hybrid>`,
-:doc:`fix lambda <fix_lambda>`,
-:doc:`fix lambda_thermostat <fix_lambda_thermostat>`,
-:doc:`pair_style lambda/zone <pair_lambda_zone>`,
-:doc:`pair_style lambda_input  <pair_lambda_input>`,
+:doc:`fix lambda/apip <fix_lambda_apip>`,
+:doc:`fix lambda_thermostat/apip <fix_lambda_thermostat_apip>`,
+:doc:`pair_style lambda/zone/apip <pair_lambda_zone_apip>`,
+:doc:`pair_style lambda/input/apip  <pair_lambda_input_apip>`,
 :doc:`pair_style eam/apip <pair_eam_apip>`,
-:doc:`fix apip_atom_weight <fix_apip_atom_weight>`
+:doc:`fix atom_weight/apip <fix_atom_weight_apip>`
 
 Default
 """""""

@@ -1,17 +1,17 @@
-.. index:: fix lambda_thermostat
+.. index:: fix lambda_thermostat/apip
 
-fix lambda_thermostat command
-=============================
+fix lambda_thermostat/apip command
+==================================
 
 Syntax
 """"""
 
 .. code-block:: LAMMPS
 
-   fix ID group-ID lambda_thermostat keyword values ...
+   fix ID group-ID lambda_thermostat/apip keyword values ...
 
 * ID, group-ID are documented in :doc:`fix <fix>` command
-* lambda_thermostat = style name of this fix command
+* lambda_thermostat/apip = style name of this fix command
 * zero or more keyword/value pairs may be appended
 * keyword = *seed* or *store_atomic_forces* or *N_rescaling*
 
@@ -29,10 +29,10 @@ Examples
 
 .. code-block:: LAMMPS
 
-   fix 2 all lambda_thermostat
-   fix 2 all lambda_thermostat N_rescaling 100
-   fix 2 all lambda_thermostat seed 42
-   fix 2 all lambda_thermostat seed 42 store_atomic_forces 1000
+   fix 2 all lambda_thermostat/apip
+   fix 2 all lambda_thermostat/apip N_rescaling 100
+   fix 2 all lambda_thermostat/apip seed 42
+   fix 2 all lambda_thermostat/apip seed 42 store_atomic_forces 1000
 
 Description
 """""""""""
@@ -157,12 +157,12 @@ LAMMPS was built with that package. See the :doc:`Build package
 Related commands
 """"""""""""""""
 
-:doc:`fix lambda <fix_lambda>`,
-:doc:`pair_style lambda/zone <pair_lambda_zone>`,
-:doc:`pair_style lambda_input  <pair_lambda_input>`,
+:doc:`fix lambda/apip <fix_lambda_apip>`,
+:doc:`pair_style lambda/zone/apip <pair_lambda_zone_apip>`,
+:doc:`pair_style lambda/input/apip  <pair_lambda_input_apip>`,
 :doc:`pair_style eam/apip <pair_eam_apip>`,
 :doc:`pair_style pace/apip  <pair_pace_apip>`,
-:doc:`fix apip_atom_weight <fix_apip_atom_weight>`
+:doc:`fix atom_weight/apip <fix_atom_weight_apip>`
 
 Default
 """""""

@@ -24,11 +24,11 @@ Examples
 
 .. code-block:: LAMMPS
 
-   pair_style hybrid/overlay eam/fs/apip pace/apip/precise lambda_input/csp fcc cutoff 5.0 lambda 12.0
+   pair_style hybrid/overlay eam/fs/apip pace/precise/apip lambda/input/csp/apip fcc cutoff 5.0 lambda/zone/apip 12.0
    pair_coeff * * eam/fs/apip Cu.eam.fs Cu
-   pair_coeff * * pace/apip Cu_precise.yace Cu
-   pair_coeff * * lambda_input/csp
-   pair_coeff * * lambda
+   pair_coeff * * pace/precise/apip Cu_precise.yace Cu
+   pair_coeff * * lambda/input/csp/apip
+   pair_coeff * * lambda/zone/apip
 
 
 Description
@@ -58,14 +58,14 @@ interatomic potential (APIP) according to :ref:`(Immel) <Immel2025_5>` is given 
    E_i^\text{APIP} = \lambda_i E_i^\text{(fast)} + (1-\lambda_i) E_i^\text{(precise)}\,,
 
 whereas the switching parameter :math:`\lambda_i` is computed
-dynamically during a simulation by :doc:`fix lambda <fix_lambda>`
+dynamically during a simulation by :doc:`fix lambda/apip <fix_lambda_apip>`
 or set prior to a simulation via :doc:`set <set>`.
 
 The pair style *eam/fs/apip* computes the potential energy
 :math:`\lambda_i E_i^\text{EAM}` and the
 corresponding force and should be combined
 with a precise potential like
-:doc:`pair_style pace/apip/precise <pair_pace_apip>` that computes the
+:doc:`pair_style pace/precise/apip <pair_pace_apip>` that computes the
 potential energy :math:`(1-\lambda_i) E_i^\text{(precise)}` and the
 corresponding force via :doc:`pair_style hybrid/overlay <pair_hybrid>`.
 
@@ -103,12 +103,12 @@ Related commands
 
 :doc:`pair_style eam  <pair_eam>`,
 :doc:`pair_style hybrid/overlay <pair_hybrid>`,
-:doc:`fix lambda <fix_lambda>`,
-:doc:`fix lambda_thermostat <fix_lambda_thermostat>`,
-:doc:`pair_style lambda/zone <pair_lambda_zone>`,
-:doc:`pair_style lambda_input  <pair_lambda_input>`,
+:doc:`fix lambda/apip <fix_lambda_apip>`,
+:doc:`fix lambda_thermostat/apip <fix_lambda_thermostat_apip>`,
+:doc:`pair_style lambda/zone/apip <pair_lambda_zone_apip>`,
+:doc:`pair_style lambda/input/apip  <pair_lambda_input_apip>`,
 :doc:`pair_style pace/apip <pair_pace_apip>`,
-:doc:`fix apip_atom_weight <fix_apip_atom_weight>`
+:doc:`fix atom_weight/apip <fix_atom_weight_apip>`
 
 Default
 """""""

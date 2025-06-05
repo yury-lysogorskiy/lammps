@@ -219,9 +219,9 @@ accelerated styles exist.
 * :doc:`kim <pair_kim>` - interface to potentials provided by KIM project
 * :doc:`kolmogorov/crespi/full <pair_kolmogorov_crespi_full>` - Kolmogorov-Crespi (KC) potential with no simplifications
 * :doc:`kolmogorov/crespi/z <pair_kolmogorov_crespi_z>` - Kolmogorov-Crespi (KC) potential with normals along z-axis
-* :doc:`lambda/zone <pair_lambda_zone>` - transition zone of an :doc:`adaptive-precision interatomic potential <Howto_apip>`
-* :doc:`lambda_input <pair_lambda_input>` - constant as input for the precision calculation of an :doc:`adaptive-precision interatomic potential (APIP) <Howto_apip>`
-* :doc:`lambda_input/csp <pair_lambda_input>` - CSP as input for the precision calculation of an :doc:`adaptive-precision interatomic potential (APIP) <Howto_apip>`
+* :doc:`lambda/input/apip <pair_lambda_input_apip>` - constant as input for the precision calculation of an :doc:`adaptive-precision interatomic potential (APIP) <Howto_apip>`
+* :doc:`lambda/input/csp/apip <pair_lambda_input_apip>` - CSP as input for the precision calculation of an :doc:`adaptive-precision interatomic potential (APIP) <Howto_apip>`
+* :doc:`lambda/zone/apip <pair_lambda_zone_apip>` - transition zone of an :doc:`adaptive-precision interatomic potential <Howto_apip>`
 * :doc:`lcbop <pair_lcbop>` - long-range bond-order potential (LCBOP)
 * :doc:`lebedeva/z <pair_lebedeva_z>` - Lebedeva interlayer potential for graphene with normals along z-axis
 * :doc:`lennard/mdf <pair_mdf>` - LJ potential in A/B form with a taper function
@@ -335,8 +335,8 @@ accelerated styles exist.
 * :doc:`pace <pair_pace>` - Atomic Cluster Expansion (ACE) machine-learning potential
 * :doc:`pace/extrapolation <pair_pace>` - Atomic Cluster Expansion (ACE) machine-learning potential with extrapolation grades
 * :doc:`pace/apip <pair_pace_apip>` - :doc:`adaptive-precision <Howto_apip>` version of ACE, used as precise potential
-* :doc:`pace/apip/fast <pair_pace_apip>` - :doc:`adaptive-precision <Howto_apip>` version of ACE, used as fast potential
-* :doc:`pace/apip/precise <pair_pace_apip>` - :doc:`adaptive-precision <Howto_apip>` version of ACE, used as precise potential
+* :doc:`pace/fast/apip <pair_pace_apip>` - :doc:`adaptive-precision <Howto_apip>` version of ACE, used as fast potential
+* :doc:`pace/precise/apip <pair_pace_apip>` - :doc:`adaptive-precision <Howto_apip>` version of ACE, used as precise potential
 * :doc:`pedone <pair_pedone>` - Pedone (PMMCS) potential (non-Coulomb part)
 * :doc:`pod <pair_pod>` - Proper orthogonal decomposition (POD) machine-learning potential
 * :doc:`peri/eps <pair_peri>` - Peridynamic EPS potential

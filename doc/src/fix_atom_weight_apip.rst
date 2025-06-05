@@ -1,6 +1,6 @@
-.. index:: fix apip_atom_weight
+.. index:: fix atom_weight/apip
 
-fix apip_atom_weight command
+fix atom_weight/apip command
 ============================
 
 Syntax
@@ -8,15 +8,15 @@ Syntax
 
 .. code-block:: LAMMPS
 
-   fix ID group-ID apip_atom_weight nevery fast_potential precise_potential lambda_input lambda group_lambda_input [no_rescale]
+   fix ID group-ID atom_weight/apip nevery fast_potential precise_potential lambda_input lambda_zone group_lambda_input [no_rescale]
 
 * ID, group-ID are documented in :doc:`fix <fix>` command
-* apip_atom_weight = style name of this fix command
+* atom_weight/apip = style name of this fix command
 * nevery = perform load calculation every this many steps
 * fast_potential = *eam* or *ace* for time measurements of the corresponding pair_style or float for constant time
 * precise_potential = *ace* for a time measurement of the pair_style pace/apip or float for constant time
-* lambda_input = *lambda_input* for a time measurement of pair_style lambda_input or float for constant time
-* lambda = *lambda/zone* for a time measurement of pair_style lambda/zone or float for constant time
+* lambda_input = *lambda/input* for a time measurement of pair_style lambda/input/apip or float for constant time
+* lambda_zone = *lambda/zone* for a time measurement of pair_style lambda/zone/apip or float for constant time
 * group_lambda_input = group-ID of the group for which lambda_input is computed
 * no_rescale = do not rescale the work per processor to the measured total force-computation time
 
@@ -25,9 +25,9 @@ Examples
 
 .. code-block:: LAMMPS
 
-   fix 2 all apip_atom_weight 50 eam ace lambda_input lambda/zone all
-   fix 2 all apip_atom_weight 50 1e-05 0.0004 4e-06 4e-06 all
-   fix 2 all apip_atom_weight 50 ace ace 4e-06 4e-06 all no_rescale
+   fix 2 all atom_weight/apip 50 eam ace lambda/input lambda/zone all
+   fix 2 all atom_weight/apip 50 1e-05 0.0004 4e-06 4e-06 all
+   fix 2 all atom_weight/apip 50 ace ace 4e-06 4e-06 all no_rescale
 
 Description
 """""""""""
@@ -44,10 +44,10 @@ and :doc:`pace/apip <pair_pace_apip>` is calculated only
 for a subset of atoms.
 The switching parameter that determines per atom, which potential energy is
 used, can be also calculated by
-:doc:`pair_style lambda_input <pair_lambda_input>`.
+:doc:`pair_style lambda/input/apip <pair_lambda_input_apip>`.
 A spatial switching zone, that ensures a smooth transition between two
 different interatomic potentials, can be calculated by
-:doc:`pair_style lambda/zone <pair_lambda_zone>`.
+:doc:`pair_style lambda/zone/apip <pair_lambda_zone_apip>`.
 Thus, there are up to four force-subroutines, that are computed only for a
 subset of atoms and combined via the pair_style :doc:`hybrid/overlay <pair_hybrid>`.
 For all four force-subroutines, the average work per atom is be measured
@@ -66,7 +66,7 @@ as input for :doc:`fix balance <fix_balance>`:
 .. code-block:: LAMMPS
 
    variable nevery equal 10
-   fix weight_atom all apip_atom_weight ${nevery} eam ace lambda_input lambda/zone all
+   fix weight_atom all atom_weight/apip ${nevery} eam ace lambda/input lambda/zone all
    variable myweight atom f_weight_atom
    fix balance all balance ${nevery} 1.1 rcb weight var myweight
 
@@ -94,8 +94,8 @@ values in the vector are as follows:
 
   #. average compute time for one atom using the fast pair_style
   #. average compute time for one atom using the precise pair_style
-  #. average compute time of lambda_input for one atom
-  #. average compute time of lambda/zone for one atom
+  #. average compute time of lambda/input/apip for one atom
+  #. average compute time of lambda/zone/apip for one atom
 
 The compute times are computed as average of all processors that
 measured at least one computation of the corresponding style.
@@ -124,10 +124,10 @@ Related commands
 """"""""""""""""
 
 :doc:`fix balance <fix_balance>`,
-:doc:`fix lambda <fix_lambda>`,
-:doc:`fix lambda_thermostat <fix_lambda_thermostat>`,
-:doc:`pair_style lambda/zone <pair_lambda_zone>`,
-:doc:`pair_style lambda_input  <pair_lambda_input>`,
+:doc:`fix lambda/apip <fix_lambda_apip>`,
+:doc:`fix lambda_thermostat/apip <fix_lambda_thermostat_apip>`,
+:doc:`pair_style lambda/zone/apip <pair_lambda_zone_apip>`,
+:doc:`pair_style lambda/input/apip  <pair_lambda_input_apip>`,
 :doc:`pair_style eam/apip <pair_eam_apip>`,
 :doc:`pair_style pace/apip  <pair_pace_apip>`,
 
