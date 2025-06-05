@@ -413,6 +413,10 @@ int FixNeighborSwap::attempt_swap()
   // pick a random atom i
 
   int i = pick_i_swap_atom();
+  if (i < 0) return 0;
+
+  // get global id and position of atom i
+  // get_global_i(i);
 
   // build nearest-neighbor list based on atom i
 
@@ -541,9 +545,8 @@ int FixNeighborSwap::pick_i_swap_atom()
     i = local_swap_iatom_list[iwhichlocal];
     MPI_Allreduce(&id[i], &id_center, 1, MPI_INT, MPI_MAX, world);
   } else {
-    id_center = -1;
+    return -1;
   }
-  return i;
 }
 
 /* ----------------------------------------------------------------------
