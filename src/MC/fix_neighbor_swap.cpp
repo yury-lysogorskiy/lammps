@@ -69,7 +69,7 @@ static const char cite_fix_neighbor_swap[] =
 
 FixNeighborSwap::FixNeighborSwap(LAMMPS *lmp, int narg, char **arg) :
     Fix(lmp, narg, arg), region(nullptr), idregion(nullptr), type_list(nullptr), qtype(nullptr),
-    c_voro(nullptr), voro_neighbor_list(nullptr), sqrt_mass_ratio(nullptr),
+    id_voro(nullptr), c_voro(nullptr), voro_neighbor_list(nullptr), sqrt_mass_ratio(nullptr),
     local_swap_iatom_list(nullptr), random_equal(nullptr), c_pe(nullptr)
 {
   if (narg < 10) utils::missing_cmd_args(FLERR, "fix neighbor/swap", error);
@@ -95,13 +95,13 @@ FixNeighborSwap::FixNeighborSwap(LAMMPS *lmp, int narg, char **arg) :
 
   // Voro compute check
 
-  int icompute = modify->find_compute(utils::strdup(arg[8]));
-  if (icompute < 0) error->all(FLERR, "Could not find neighbor compute ID");
-  c_voro = modify->compute[icompute];
+  id_voro = utils::strdup(arg[8]);
+  c_voro = modify->get_compute_by_id(id_voro);
+  if (!c_voro) error->all(FLERR, 8, "Could not find voronoi compute ID {}", id_voro);
   if (c_voro->local_flag == 0)
-    error->all(FLERR, "Neighbor compute does not compute local info");
+    error->all(FLERR, 8, "Voronoi compute {} does not compute local info", id_voro);
   if (c_voro->size_local_cols != 3)
-    error->all(FLERR, "Neighbor compute does not give i, j, size as expected");
+    error->all(FLERR, "Voronoi compute {} does not give i, j, size as expected", id_voro);
 
   if (nevery <= 0) error->all(FLERR, "Illegal fix neighbor/swap command nevery value");
   if (ncycles < 0) error->all(FLERR, "Illegal fix neighbor/swap command ncycles value");
@@ -160,6 +160,7 @@ FixNeighborSwap::~FixNeighborSwap()
   memory->destroy(local_swap_probability);
   memory->destroy(local_swap_type_list);
   delete[] idregion;
+  delete[] id_voro;
   delete random_equal;
 }
 
@@ -247,6 +248,11 @@ int FixNeighborSwap::setmask()
 void FixNeighborSwap::init()
 {
   c_pe = modify->get_compute_by_id("thermo_pe");
+  if (!c_pe) error->all(FLERR, Error::NOLASTLINE, "Could not find 'thermo_pe' compute");
+
+  c_voro = modify->get_compute_by_id(id_voro);
+  if (!c_voro)
+    error->all(FLERR, Error::NOLASTLINE, "Could not find voronoi compute ID {}", id_voro);
 
   int *type = atom->type;
 

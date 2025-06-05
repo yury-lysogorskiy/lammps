@@ -81,8 +81,8 @@ class FixNeighborSwap : public Fix {
 
   class RanPark *random_equal;
 
-  class Compute *c_voro;
-  class Compute *c_pe;
+  char *id_voro;
+  class Compute *c_voro, *c_pe;
 
   void options(int, char **);
   int attempt_swap();
