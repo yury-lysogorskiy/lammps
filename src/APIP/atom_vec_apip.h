@@ -34,8 +34,8 @@ class AtomVecApip : public AtomVec {
   void data_atom_post(int) override;
 
  protected:
-  double *apip_lambda, *apip_lambda_input, *apip_lambda_const, *apip_lambda_input_ta, *apip_e_fast, *apip_e_precise,
-      **apip_f_const_lambda, **apip_f_dyn_lambda;
+  double *apip_lambda, *apip_lambda_input, *apip_lambda_const, *apip_lambda_input_ta, *apip_e_fast,
+      *apip_e_precise, **apip_f_const_lambda, **apip_f_dyn_lambda;
   int *apip_lambda_required;
 };
 

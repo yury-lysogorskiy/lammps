@@ -25,8 +25,8 @@ AtomVecApip::AtomVecApip(LAMMPS *lmp) : AtomVec(lmp)
   mass_type = PER_TYPE;
   forceclearflag = 1;
 
-  double *apip_lambda, *apip_lambda_input, *apip_lambda_input_ta, *apip_lambda_const, *apip_e_fast, *apip_e_precise,
-      **apip_f_const_lambda, **apip_f_dyn_lambda;
+  double *apip_lambda, *apip_lambda_input, *apip_lambda_input_ta, *apip_lambda_const, *apip_e_fast,
+      *apip_e_precise, **apip_f_const_lambda, **apip_f_dyn_lambda;
   int *apip_lambda_required;
   atom->apip_lambda_flag = 1;
   atom->apip_lambda_input_flag = 1;
@@ -44,17 +44,23 @@ AtomVecApip::AtomVecApip(LAMMPS *lmp) : AtomVec(lmp)
   // except: fields_data_atom & fields_data_vel must match data file
 
   // The full list of fields is in atom_vec.cpp
-  fields_copy = {"apip_lambda", "apip_lambda_required", "apip_lambda_input", "apip_lambda_input_ta", "apip_lambda_const"};
-  fields_comm = {"apip_lambda", "apip_lambda_required", "apip_lambda_input_ta", "apip_lambda_const"};
+  fields_copy = {"apip_lambda", "apip_lambda_required", "apip_lambda_input", "apip_lambda_input_ta",
+                 "apip_lambda_const"};
+  fields_comm = {"apip_lambda", "apip_lambda_required", "apip_lambda_input_ta",
+                 "apip_lambda_const"};
   fields_comm_vel = {};
-  fields_border = {"apip_lambda", "apip_lambda_required", "apip_lambda_input_ta", "apip_lambda_const"};
+  fields_border = {"apip_lambda", "apip_lambda_required", "apip_lambda_input_ta",
+                   "apip_lambda_const"};
   fields_border_vel = {};
-  fields_exchange = {"apip_lambda", "apip_lambda_required", "apip_lambda_input_ta", "apip_lambda_const"};
-  fields_restart = {"apip_lambda", "apip_lambda_required", "apip_lambda_input", "apip_lambda_input_ta", "apip_lambda_const"};
+  fields_exchange = {"apip_lambda", "apip_lambda_required", "apip_lambda_input_ta",
+                     "apip_lambda_const"};
+  fields_restart = {"apip_lambda", "apip_lambda_required", "apip_lambda_input",
+                    "apip_lambda_input_ta", "apip_lambda_const"};
   fields_create = {};
   fields_grow = {
-      "apip_lambda",   "apip_lambda_required", "apip_lambda_input",   "apip_lambda_input_ta", "apip_lambda_const",
-      "apip_e_fast", "apip_e_precise",       "apip_f_const_lambda", "apip_f_dyn_lambda"};    // allocates memory
+      "apip_lambda",          "apip_lambda_required", "apip_lambda_input",
+      "apip_lambda_input_ta", "apip_lambda_const",    "apip_e_fast",
+      "apip_e_precise",       "apip_f_const_lambda",  "apip_f_dyn_lambda"};    // allocates memory
   fields_reverse = {"apip_f_const_lambda",
                     "apip_f_dyn_lambda"};    // communication of force after calculation
   fields_data_atom = {"id", "type", "x"};

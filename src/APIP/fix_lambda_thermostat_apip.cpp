@@ -60,7 +60,8 @@ FixLambdaThermostatAPIP::FixLambdaThermostatAPIP(LAMMPS *lmp, int narg, char **a
   for (int iarg = 3; iarg < narg; iarg++) {
 
     if (strcmp(arg[iarg], "seed") == 0) {
-      if (iarg + 1 >= narg) error->all(FLERR, "fix lambda_thermostat/apip: seed requires one argument");
+      if (iarg + 1 >= narg)
+        error->all(FLERR, "fix lambda_thermostat/apip: seed requires one argument");
       seed = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
       if (seed <= 0) { error->all(FLERR, "fix lambda_thermostat/apip seed <= 0"); }
       iarg++;
@@ -124,7 +125,8 @@ FixLambdaThermostatAPIP::FixLambdaThermostatAPIP(LAMMPS *lmp, int narg, char **a
     // zero the array since a variable may access it before first run
 
     nmax_stats = atom->nmax;
-    memory->create(peratom_stats, nmax_stats, size_peratom_cols, "lambda_thermostat/apip:peratom_stats");
+    memory->create(peratom_stats, nmax_stats, size_peratom_cols,
+                   "lambda_thermostat/apip:peratom_stats");
     array_atom = peratom_stats;
 
     int nlocal = atom->nlocal;
@@ -173,7 +175,8 @@ void FixLambdaThermostatAPIP::init()
   int counter = 0;
   for (int i = 0; i < modify->nfix; i++)
     if (strcmp(modify->fix[i]->style, "lambda_thermostat/apip") == 0) counter++;
-  if (counter > 1) error->all(FLERR, "fix lambda_thermostat/apip: more than one fix lambda_thermostat/apip");
+  if (counter > 1)
+    error->all(FLERR, "fix lambda_thermostat/apip: more than one fix lambda_thermostat/apip");
 
   // local neighbor list
   // create pages if first time or if neighbor pgsize/oneatom has changed
@@ -308,7 +311,8 @@ void FixLambdaThermostatAPIP::init_peratom_stats()
   if (atom->nmax > nmax_stats) {
     memory->destroy(peratom_stats);
     nmax_stats = atom->nmax;
-    memory->create(peratom_stats, nmax_stats, size_peratom_cols, "lambda_thermostat/apip:peratom_stats");
+    memory->create(peratom_stats, nmax_stats, size_peratom_cols,
+                   "lambda_thermostat/apip:peratom_stats");
     array_atom = peratom_stats;
   }
 
@@ -472,7 +476,8 @@ void FixLambdaThermostatAPIP::apply_thermostat()
     // rescale velocities relative to centre of mass velocity
     const int n_ngh = MIN(rescaling_N_neighbours, jnum);
     if (n_ngh < 2)
-      error->one(FLERR, "fix lambda_thermostat/apip: rescaling not possible for local ngh list size {}",
+      error->one(FLERR,
+                 "fix lambda_thermostat/apip: rescaling not possible for local ngh list size {}",
                  jnum);
     // 1. calculate centre of mass velocity
 

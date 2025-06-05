@@ -154,7 +154,9 @@ FixLambdaAPIP::FixLambdaAPIP(LAMMPS *lmp, int narg, char **arg) :
   if (!atom->apip_lambda_const_flag) {
     error->all(FLERR, "fix lambda requires atomic style with lambda_const.");
   }
-  if (!atom->apip_lambda_flag) { error->all(FLERR, "fix lambda requires atomic style with lambda."); }
+  if (!atom->apip_lambda_flag) {
+    error->all(FLERR, "fix lambda requires atomic style with lambda.");
+  }
   if (!atom->apip_lambda_input_flag) {
     error->all(FLERR, "fix lambda requires atomic style with lambda_input.");
   }
@@ -243,9 +245,9 @@ void FixLambdaAPIP::init()
 
   // warn if there is no fix lambda_thermostat/apip
   if (comm->me == 0 && modify->get_fix_by_style("lambda_thermostat/apip").size() == 0)
-    error->warning(
-        FLERR,
-        "The energy is not conserved when lambda changes as fix lambda_thermostat/apip is not used.");
+    error->warning(FLERR,
+                   "The energy is not conserved when lambda changes as fix lambda_thermostat/apip "
+                   "is not used.");
 
   Pair *pair_tmp;
   // lambda_input
