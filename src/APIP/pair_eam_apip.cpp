@@ -166,18 +166,18 @@ void PairEAMapip::compute(int eflag, int vflag)
 
   double **x = atom->x;
   double **f = atom->f;
-  double *lambda = atom->lambda;
-  int *lambda_required = atom->lambda_required;
+  double *lambda = atom->apip_lambda;
+  int *lambda_required = atom->apip_lambda_required;
 
   double **f_const_lambda = nullptr;
   double **f_dyn_lambda = nullptr;
   double *e_simple = nullptr;
   double *lambda_const = nullptr;
   if (lambda_thermostat) {
-    f_const_lambda = atom->f_const_lambda;
-    f_dyn_lambda = atom->f_dyn_lambda;
-    e_simple = atom->e_simple;
-    lambda_const = atom->lambda_const;
+    f_const_lambda = atom->apip_f_const_lambda;
+    f_dyn_lambda = atom->apip_f_dyn_lambda;
+    e_simple = atom->apip_e_fast;
+    lambda_const = atom->apip_lambda_const;
   }
   int *type = atom->type;
   int nlocal = atom->nlocal;
@@ -279,20 +279,20 @@ void PairEAMapip::compute(int eflag, int vflag)
     // The calculation of distances is probably not worth the compute time.
     // lambda_required is used to compute the weight of atoms for load balancing.
     // -> store information about required calculations
-    if (lambda_required[i] & LambdaRequired::NO_SIMPLE)
+    if (lambda_required[i] & ApipLambdaRequired::NO_SIMPLE)
       continue;
-    else if (!(lambda_required[i] & LambdaRequired::SIMPLE)) {
+    else if (!(lambda_required[i] & ApipLambdaRequired::SIMPLE)) {
       // neither SIMPLE nor NO_SIMPLE set
 
       // check own atom
       if (lambda[i] != 0 || (lambda_thermostat && lambda_const[i] != 0)) {
         // set own atom
-        lambda_required[i] |= LambdaRequired::SIMPLE;
+        lambda_required[i] |= ApipLambdaRequired::SIMPLE;
         // set neighbour list
         for (jj = 0; jj < jnum; jj++) {
           j = jlist[jj];
           j &= NEIGHMASK;
-          if (j < nlocal) lambda_required[j] |= LambdaRequired::SIMPLE;
+          if (j < nlocal) lambda_required[j] |= ApipLambdaRequired::SIMPLE;
         }
       } else {
         // check neighbour list
@@ -300,17 +300,17 @@ void PairEAMapip::compute(int eflag, int vflag)
           j = jlist[jj];
           j &= NEIGHMASK;
           if (lambda[j] != 0 || (lambda_thermostat && lambda_const[j] != 0)) {
-            lambda_required[i] |= LambdaRequired::SIMPLE;
+            lambda_required[i] |= ApipLambdaRequired::SIMPLE;
             // set lambda also for non-ghost j
-            if (j < nlocal) lambda_required[j] |= LambdaRequired::SIMPLE;
+            if (j < nlocal) lambda_required[j] |= ApipLambdaRequired::SIMPLE;
             break;
           }
         }
       }
       // SIMPLE not set -> set NO_SIMPLE
-      if (!(lambda_required[i] & LambdaRequired::SIMPLE)) {
+      if (!(lambda_required[i] & ApipLambdaRequired::SIMPLE)) {
         // go to next atom
-        lambda_required[i] |= LambdaRequired::NO_SIMPLE;
+        lambda_required[i] |= ApipLambdaRequired::NO_SIMPLE;
         continue;
       }
     }
@@ -516,10 +516,10 @@ void PairEAMapip::coeff(int narg, char **arg)
 void PairEAMapip::init_style()
 {
   // convert read-in file(s) to arrays and spline them
-  if (!atom->lambda_flag)
+  if (!atom->apip_lambda_flag)
     error->all(FLERR, "Pair style eam/apip requires an atom style with lambda");
   if (force->newton_pair == 0) error->all(FLERR, "Pair style eam/apip requires newton pair on");
-  if (!atom->lambda_required_flag)
+  if (!atom->apip_lambda_required_flag)
     error->all(FLERR, "pair style eam/apip requires an atom style with lambda_required.");
 
   file2array();
@@ -568,19 +568,19 @@ void PairEAMapip::setup()
     lambda_thermostat = false;
   } else {
     lambda_thermostat = true;
-    if (!atom->lambda_const_flag)
+    if (!atom->apip_lambda_const_flag)
       error->all(
           FLERR,
           "Pair style pace/apip requires an atom style with lambda_const for a local thermostat.");
-    if (!atom->e_simple_flag)
+    if (!atom->apip_e_fast_flag)
       error->all(
           FLERR,
           "Pair style pace/apip requires an atom style with e_simple for a local thermostat.");
-    if (!atom->f_const_lambda_flag)
+    if (!atom->apip_f_const_lambda_flag)
       error->all(FLERR,
                  "Pair style pace/apip requires an atom style with f_const_lambda for a local "
                  "thermostat.");
-    if (!atom->f_dyn_lambda_flag)
+    if (!atom->apip_f_dyn_lambda_flag)
       error->all(FLERR,
                  "Pair style pace/apip requires an atom style with f_const_lambda for a local "
                  "thermostat.");

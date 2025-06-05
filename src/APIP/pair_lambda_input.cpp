@@ -135,7 +135,7 @@ void PairLambdaInput::settings(int narg, char **arg)
 
 void PairLambdaInput::init_style()
 {
-  if (!atom->lambda_input_flag)
+  if (!atom->apip_lambda_input_flag)
     error->all(FLERR, "pair_lambda input requires an atom style with lambda_input");
 
   // find fix lambda
@@ -165,7 +165,7 @@ double PairLambdaInput::init_one(int i, int j)
 }
 
 /**
-  * Compute lambda_input and write it to atom->lambda_input.
+  * Compute lambda_input and write it to atom->apip_lambda_input.
   * Count the number of computations and measure the compute time for
   * fix apip_atom_weight.
   */
@@ -178,7 +178,7 @@ int PairLambdaInput::calculate_lambda_input()
   inum = list->inum;
   ilist = list->ilist;
 
-  double *lambda_input = atom->lambda_input;
+  double *lambda_input = atom->apip_lambda_input;
 
   for (ii = 0; ii < inum; ii++) {
     i = ilist[ii];

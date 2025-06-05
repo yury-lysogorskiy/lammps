@@ -98,7 +98,7 @@ void PairLambdaInputCsp::settings(int narg, char **arg)
 }
 
 /**
-  * Compute CSP and write it to atom->lambda_input.
+  * Compute CSP and write it to atom->apip_lambda_input.
   * Count the number of computations and measure the compute time for
   * fix apip_atom_weight.
   */
@@ -123,7 +123,7 @@ int PairLambdaInputCsp::calculate_lambda_input()
   auto pairs = new double[npairs];
 
   double **x = atom->x;
-  double *lambda_input = atom->lambda_input;
+  double *lambda_input = atom->apip_lambda_input;
 
   for (ii = 0; ii < inum; ii++) {
     i = ilist[ii];

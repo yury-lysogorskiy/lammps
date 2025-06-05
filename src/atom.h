@@ -179,8 +179,8 @@ class Atom : protected Pointers {
 
   // APIP package
 
-  double *lambda, *lambda_input, *lambda_input_ta, *e_simple, *e_complex, **f_const_lambda, **f_dyn_lambda, *lambda_const;
-  int *lambda_required;
+  double *apip_lambda, *apip_lambda_input, *apip_lambda_input_ta, *apip_e_fast, *apip_e_precise, **apip_f_const_lambda, **apip_f_dyn_lambda, *apip_lambda_const;
+  int *apip_lambda_required;
 
   // end of customization section
   // --------------------------------------------------------------------
@@ -232,7 +232,7 @@ class Atom : protected Pointers {
 
   // APIP package
 
-  int lambda_flag, e_simple_flag, e_complex_flag, lambda_input_flag, lambda_input_ta_flag, lambda_required_flag, f_const_lambda_flag, f_dyn_lambda_flag, lambda_const_flag;
+  int apip_lambda_flag, apip_e_fast_flag, apip_e_precise_flag, apip_lambda_input_flag, apip_lambda_input_ta_flag, apip_lambda_required_flag, apip_f_const_lambda_flag, apip_f_dyn_lambda_flag, apip_lambda_const_flag;
 
   // end of customization section
   // --------------------------------------------------------------------

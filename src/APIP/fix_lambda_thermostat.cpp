@@ -86,22 +86,22 @@ FixLambdaThermostat::FixLambdaThermostat(LAMMPS *lmp, int narg, char **arg) :
 
   // error checks
 
-  if (!atom->e_simple_flag) {
+  if (!atom->apip_e_fast_flag) {
     error->all(FLERR, "fix lambda_thermostat requires atomic style with e_simple.");
   }
-  if (!atom->e_complex_flag) {
+  if (!atom->apip_e_precise_flag) {
     error->all(FLERR, "fix lambda_thermostat requires atomic style with e_complex.");
   }
-  if (!atom->lambda_const_flag) {
+  if (!atom->apip_lambda_const_flag) {
     error->all(FLERR, "fix lambda_thermostat requires atomic style with lambda_const.");
   }
-  if (!atom->lambda_flag) {
+  if (!atom->apip_lambda_flag) {
     error->all(FLERR, "fix lambda_thermostat requires atomic style with lambda.");
   }
-  if (!atom->f_const_lambda_flag) {
+  if (!atom->apip_f_const_lambda_flag) {
     error->all(FLERR, "fix lambda_thermostat requires atomic style with f_const_lambda.");
   }
-  if (!atom->f_dyn_lambda_flag) {
+  if (!atom->apip_f_dyn_lambda_flag) {
     error->all(FLERR, "fix lambda_thermostat requires atomic style with f_dyn_lambda.");
   }
   if (rescaling_N_neighbours <= 1)
@@ -331,12 +331,12 @@ void FixLambdaThermostat::calculate_energy_change()
   int nlocal = atom->nlocal;
   if (igroup == atom->firstgroup) nlocal = atom->nfirst;
 
-  double *e_simple = atom->e_simple;
-  double *e_complex = atom->e_complex;
-  double *lambda_const = atom->lambda_const;
-  double *lambda = atom->lambda;
-  double **f_const_lambda = atom->f_const_lambda;
-  double **f_dyn_lambda = atom->f_dyn_lambda;
+  double *e_simple = atom->apip_e_fast;
+  double *e_complex = atom->apip_e_precise;
+  double *lambda_const = atom->apip_lambda_const;
+  double *lambda = atom->apip_lambda;
+  double **f_const_lambda = atom->apip_f_const_lambda;
+  double **f_dyn_lambda = atom->apip_f_dyn_lambda;
 
   double masstmp, dtfm, changetmp;
 
@@ -417,10 +417,10 @@ void FixLambdaThermostat::apply_thermostat()
   int *type = atom->type;
   int *mask = atom->mask;
 
-  double *e_simple = atom->e_simple;
-  double *e_complex = atom->e_complex;
-  double *lambda_const = atom->lambda_const;
-  double *lambda = atom->lambda;
+  double *e_simple = atom->apip_e_fast;
+  double *e_complex = atom->apip_e_precise;
+  double *lambda_const = atom->apip_lambda_const;
+  double *lambda = atom->apip_lambda;
 
   // calculate local neighbour list without ghost atoms
   local_neighbour_list();

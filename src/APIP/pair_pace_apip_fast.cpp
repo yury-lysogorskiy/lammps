@@ -32,10 +32,10 @@ int PairPACEapipFast::check_abort_condition(double *lambda, double *lambda_const
                                             int *lambda_required, int i)
 {
   if ((lambda[i] == 0) && ((!lambda_thermostat) || (lambda_thermostat && lambda_const[i] == 0))) {
-    lambda_required[i] |= LambdaRequired::NO_SIMPLE;
+    lambda_required[i] |= ApipLambdaRequired::NO_SIMPLE;
     return 1;
   }
-  lambda_required[i] |= LambdaRequired::SIMPLE;
+  lambda_required[i] |= ApipLambdaRequired::SIMPLE;
   return 0;
 }
 
@@ -49,12 +49,12 @@ double PairPACEapipFast::compute_factor_lambda(double lambda)
 }
 
 /**
-  * @return atom->e_simple which is used for a fast ACE potential
+  * @return atom->apip_e_fast which is used for a fast ACE potential
   */
 
 double *PairPACEapipFast::get_e_ref_ptr()
 {
-  return atom->e_simple;
+  return atom->apip_e_fast;
 }
 
 /* ----------------------------------------------------------------------

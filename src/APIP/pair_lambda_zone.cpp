@@ -135,7 +135,7 @@ void PairLambdaZone::settings(int narg, char **arg)
 
 void PairLambdaZone::init_style()
 {
-  if (!atom->lambda_input_ta_flag)
+  if (!atom->apip_lambda_input_ta_flag)
     error->all(FLERR, "pair_lambda_zone requires an atom style with lambda_input_ta");
 
   // find thermo style
@@ -189,7 +189,7 @@ void PairLambdaZone::calculate_lambda()
 
   mask = atom->mask;
   x = atom->x;
-  lambda_input_ta = atom->lambda_input_ta;
+  lambda_input_ta = atom->apip_lambda_input_ta;
 
   nlocal = atom->nlocal;
   nall = nlocal + atom->nghost;

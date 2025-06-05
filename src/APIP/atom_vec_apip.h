@@ -34,14 +34,14 @@ class AtomVecApip : public AtomVec {
   void data_atom_post(int) override;
 
  protected:
-  double *lambda, *lambda_input, *lambda_const, *lambda_input_ta, *e_simple, *e_complex,
-      **f_const_lambda, **f_dyn_lambda;
-  int *lambda_required;
+  double *apip_lambda, *apip_lambda_input, *apip_lambda_const, *apip_lambda_input_ta, *apip_e_fast, *apip_e_precise,
+      **apip_f_const_lambda, **apip_f_dyn_lambda;
+  int *apip_lambda_required;
 };
 
-#ifndef LMP_ATOM_LAMBDA_REQUIRED
-#define LMP_ATOM_LAMBDA_REQUIRED
-namespace LambdaRequired {
+#ifndef LMP_ATOM_APIP_LAMBDA_REQUIRED
+#define LMP_ATOM_APIP_LAMBDA_REQUIRED
+namespace ApipLambdaRequired {
 
   enum {
     UNKNOWN = 0,
@@ -50,7 +50,7 @@ namespace LambdaRequired {
     COMPLEX = 1 << 2,
     NO_COMPLEX = 1 << 3,
   };
-}    // namespace LambdaRequired
+}    // namespace ApipLambdaRequired
 #endif
 
 }    // namespace LAMMPS_NS

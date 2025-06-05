@@ -698,7 +698,7 @@ void Set::command(int narg, char **arg)
       else if (strcmp(arg[iarg+1],"precise") == 0) dvalue = 0;
       else if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1);
       else dvalue = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-      if (!atom->lambda_flag)
+      if (!atom->apip_lambda_flag)
         error->all(FLERR, iarg, "Cannot set attribute {} for atom style {}", arg[iarg],
                    atom->get_style());
       set(APIP_LAMBDA);
@@ -1222,9 +1222,9 @@ void Set::set(int keyword)
       if (dvalue < 0 || dvalue > 1)
         error->one(FLERR, "apip_lambda {} not in [0,1] in set command", dvalue);
 
-      atom->lambda[i] = dvalue;
-      if (atom->lambda_const_flag)
-        atom->lambda_const[i] = dvalue;
+      atom->apip_lambda[i] = dvalue;
+      if (atom->apip_lambda_const_flag)
+        atom->apip_lambda_const[i] = dvalue;
     }
 
     // set value for custom property vector or array

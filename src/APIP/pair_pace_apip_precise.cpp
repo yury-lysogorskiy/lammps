@@ -32,10 +32,10 @@ int PairPACEapipPrecise::check_abort_condition(double *lambda, double *lambda_co
                                                int *lambda_required, int i)
 {
   if ((lambda[i] == 1) && ((!lambda_thermostat) || (lambda_thermostat && lambda_const[i] == 1))) {
-    lambda_required[i] |= LambdaRequired::NO_COMPLEX;
+    lambda_required[i] |= ApipLambdaRequired::NO_COMPLEX;
     return 1;
   }
-  lambda_required[i] |= LambdaRequired::COMPLEX;
+  lambda_required[i] |= ApipLambdaRequired::COMPLEX;
   return 0;
 }
 
@@ -49,12 +49,12 @@ double PairPACEapipPrecise::compute_factor_lambda(double lambda)
 }
 
 /**
-  * @return atom->e_complex which is used for a precise ACE potential
+  * @return atom->apip_e_precise which is used for a precise ACE potential
   */
 
 double *PairPACEapipPrecise::get_e_ref_ptr()
 {
-  return atom->e_complex;
+  return atom->apip_e_precise;
 }
 
 /* ----------------------------------------------------------------------

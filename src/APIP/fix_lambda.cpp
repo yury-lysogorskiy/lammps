@@ -151,11 +151,11 @@ FixLambda::FixLambda(LAMMPS *lmp, int narg, char **arg) :
                    "group_ignore_lambda_input should be used to prevent the calculation of "
                    "lambda_input for atoms that are in the groups group_fast and group_precise.");
 
-  if (!atom->lambda_const_flag) {
+  if (!atom->apip_lambda_const_flag) {
     error->all(FLERR, "fix lambda requires atomic style with lambda_const.");
   }
-  if (!atom->lambda_flag) { error->all(FLERR, "fix lambda requires atomic style with lambda."); }
-  if (!atom->lambda_input_flag) {
+  if (!atom->apip_lambda_flag) { error->all(FLERR, "fix lambda requires atomic style with lambda."); }
+  if (!atom->apip_lambda_input_flag) {
     error->all(FLERR, "fix lambda requires atomic style with lambda_input.");
   }
 
@@ -364,9 +364,9 @@ void FixLambda::post_integrate()
 {
   double *lambda, *lambda_const, *lambda_input_ta;
 
-  lambda = atom->lambda;
-  lambda_const = atom->lambda_const;
-  lambda_input_ta = atom->lambda_input_ta;
+  lambda = atom->apip_lambda;
+  lambda_const = atom->apip_lambda_const;
+  lambda_input_ta = atom->apip_lambda_input_ta;
 
   update_lambda_history();    // update running average of lambda with lambda_input_ta
   get_lambda_average();       // and copy running average to lambda_input_ta
@@ -410,8 +410,8 @@ void FixLambda::comm_forward_lambda()
     double *lambda, *lambda_const;
     int nlocal;
 
-    lambda = atom->lambda;
-    lambda_const = atom->lambda_const;
+    lambda = atom->apip_lambda;
+    lambda_const = atom->apip_lambda_const;
     nlocal = atom->nlocal;
     for (int i = 0; i < nlocal; i++) { lambda_const[i] = lambda[i]; }
   }
@@ -480,7 +480,7 @@ void FixLambda::update_lambda_input_history()
   int *mask;
   int nlocal;
 
-  lambda_input = atom->lambda_input;
+  lambda_input = atom->apip_lambda_input;
   mask = atom->mask;
   lambda_input_history = fixstore->astore;
   nlocal = atom->nlocal;
@@ -540,7 +540,7 @@ void FixLambda::update_lambda_history()
   int *mask;
   int nlocal;
 
-  lambda_input_ta = atom->lambda_input_ta;
+  lambda_input_ta = atom->apip_lambda_input_ta;
   mask = atom->mask;
   lambda_history = fixstore2->astore;
   lambda_input_history = fixstore->astore;
@@ -580,7 +580,7 @@ void FixLambda::get_lambda_average()
   mask = atom->mask;
   nlocal = atom->nlocal;
   lambda_history = fixstore2->astore;
-  lambda_input_ta = atom->lambda_input_ta;
+  lambda_input_ta = atom->apip_lambda_input_ta;
 
   // recalculate history sum to limit floating point issues since only changes of the sum are tracked
   if (history2_last == history2_length - 1) {
@@ -616,7 +616,7 @@ void FixLambda::calculate_lambda_input_ta()
 {
   int i, nlocal;
   int *mask;
-  double *lambda_input_ta = atom->lambda_input_ta;
+  double *lambda_input_ta = atom->apip_lambda_input_ta;
 
   nlocal = atom->nlocal;
   mask = atom->mask;
@@ -665,7 +665,7 @@ double FixLambda::switching_function_poly(double input)
 int FixLambda::pack_forward_comm(int n, int *list, double *buf, int /*pbc_flag*/, int * /*pbc*/)
 {
   int i, j, m;
-  double *lambda_input_ta = atom->lambda_input_ta;
+  double *lambda_input_ta = atom->apip_lambda_input_ta;
   m = 0;
 
   if (comm_forward_flag == FORWARD_TA) {
@@ -676,8 +676,8 @@ int FixLambda::pack_forward_comm(int n, int *list, double *buf, int /*pbc_flag*/
   } else if (comm_forward_flag == FORWARD_MAX) {
     for (i = 0; i < n; i++) {
       j = list[i];
-      buf[m++] = atom->lambda[j];
-      buf[m++] = atom->lambda_const[j];
+      buf[m++] = atom->apip_lambda[j];
+      buf[m++] = atom->apip_lambda_const[j];
     }
   }
 
@@ -691,7 +691,7 @@ int FixLambda::pack_forward_comm(int n, int *list, double *buf, int /*pbc_flag*/
 void FixLambda::unpack_forward_comm(int n, int first, double *buf)
 {
   int i, m, last;
-  double *lambda_input_ta = atom->lambda_input_ta;
+  double *lambda_input_ta = atom->apip_lambda_input_ta;
 
   m = 0;
   last = first + n;
@@ -699,8 +699,8 @@ void FixLambda::unpack_forward_comm(int n, int first, double *buf)
     for (i = first; i < last; i++) { lambda_input_ta[i] = buf[m++]; }
   } else if (comm_forward_flag == FORWARD_MAX) {
     for (i = first; i < last; i++) {
-      atom->lambda[i] = buf[m++];
-      atom->lambda_const[i] = buf[m++];
+      atom->apip_lambda[i] = buf[m++];
+      atom->apip_lambda_const[i] = buf[m++];
     }
   }
 }

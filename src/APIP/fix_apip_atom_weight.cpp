@@ -109,7 +109,7 @@ FixApipAtomWeight::FixApipAtomWeight(LAMMPS *lmp, int narg, char **arg) :
 
   // check arguments
   if (nevery < 1) error->all(FLERR, "apip_atom_weight: nevery > 0 required");
-  if (!atom->lambda_required_flag)
+  if (!atom->apip_lambda_required_flag)
     error->all(FLERR, "apip_atom_weight: atomic style with lambda_required required");
 
   if (time_simple_extract_name || time_complex_extract_name || time_group_extract_name ||
@@ -416,18 +416,18 @@ void FixApipAtomWeight::calc_work_per_particle()
 
   weight = fixstore->vstore;
   mask = atom->mask;
-  lambda_required = atom->lambda_required;
+  lambda_required = atom->apip_lambda_required;
 
   int nlocal = atom->nlocal;
   // assume a homogeneous time per simple and complex particle
   n_simple = n_complex = 0;
   for (int i = 0; i < nlocal; i++) {
     work_atom = 0;
-    if (lambda_required[i] & LambdaRequired::SIMPLE) {
+    if (lambda_required[i] & ApipLambdaRequired::SIMPLE) {
       work_atom += time_simple_atom;
       n_simple++;
     }
-    if (lambda_required[i] & LambdaRequired::COMPLEX) {
+    if (lambda_required[i] & ApipLambdaRequired::COMPLEX) {
       work_atom += time_complex_atom;
       n_complex++;
     }

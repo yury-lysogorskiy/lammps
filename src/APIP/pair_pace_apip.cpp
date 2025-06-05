@@ -142,10 +142,10 @@ int PairPACEapip::check_abort_condition(double *lambda, double *lambda_const, in
                                         int i)
 {
   if ((lambda[i] == 1) && ((!lambda_thermostat) || (lambda_thermostat && lambda_const[i] == 1))) {
-    lambda_required[i] |= LambdaRequired::NO_COMPLEX;
+    lambda_required[i] |= ApipLambdaRequired::NO_COMPLEX;
     return 1;
   }
-  lambda_required[i] |= LambdaRequired::COMPLEX;
+  lambda_required[i] |= ApipLambdaRequired::COMPLEX;
   return 0;
 }
 
@@ -160,13 +160,13 @@ double PairPACEapip::compute_factor_lambda(double lambda)
 }
 
 /**
-  * @return atom->e_complex which is used for a precise ACE potential
+  * @return atom->apip_e_precise which is used for a precise ACE potential
   */
 
 // written by DI. This function is required for the adaptive-precision.
 double *PairPACEapip::get_e_ref_ptr()
 {
-  return atom->e_complex;
+  return atom->apip_e_precise;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -177,18 +177,18 @@ void PairPACEapip::compute(int eflag, int vflag)
   // start of adaptive-precision modifications by DI
   // start timers
   double time_wall_start = platform::walltime();
-  double *lambda = atom->lambda;
-  int *lambda_required = atom->lambda_required;
+  double *lambda = atom->apip_lambda;
+  int *lambda_required = atom->apip_lambda_required;
 
   double **f_const_lambda = nullptr;
   double **f_dyn_lambda = nullptr;
   double *e_ref = nullptr;
   double *lambda_const = nullptr;
   if (lambda_thermostat) {
-    f_const_lambda = atom->f_const_lambda;
-    f_dyn_lambda = atom->f_dyn_lambda;
+    f_const_lambda = atom->apip_f_const_lambda;
+    f_dyn_lambda = atom->apip_f_dyn_lambda;
     e_ref = get_e_ref_ptr();
-    lambda_const = atom->lambda_const;
+    lambda_const = atom->apip_lambda_const;
   }
   int n_computations = 0;
   // end of adaptive-precision modifications by DI
@@ -496,9 +496,9 @@ void PairPACEapip::init_style()
   if (force->newton_pair == 0) error->all(FLERR, "Pair style pace requires newton pair on");
 
   // start of adaptive-precision modifications by DI
-  if (!atom->lambda_required_flag)
+  if (!atom->apip_lambda_required_flag)
     error->all(FLERR, "pair style pace/apip requires an atom style with lambda_required.");
-  if (!atom->lambda_flag)
+  if (!atom->apip_lambda_flag)
     error->all(FLERR, "Pair style pace/apip requires an atom style with lambda");
   // end of adaptive-precision modifications by DI
 
@@ -531,23 +531,23 @@ void PairPACEapip::setup()
     lambda_thermostat = false;
   } else {
     lambda_thermostat = true;
-    if (!atom->lambda_const_flag)
+    if (!atom->apip_lambda_const_flag)
       error->all(
           FLERR,
           "Pair style pace/apip requires an atom style with lambda_const for a local thermostat.");
-    if (!atom->e_simple_flag)
+    if (!atom->apip_e_fast_flag)
       error->all(
           FLERR,
           "Pair style pace/apip requires an atom style with e_simple for a local thermostat.");
-    if (!atom->e_complex_flag)
+    if (!atom->apip_e_precise_flag)
       error->all(
           FLERR,
           "Pair style pace/apip requires an atom style with e_complex for a local thermostat.");
-    if (!atom->f_const_lambda_flag)
+    if (!atom->apip_f_const_lambda_flag)
       error->all(FLERR,
                  "Pair style pace/apip requires an atom style with f_const_lambda for a local "
                  "thermostat.");
-    if (!atom->f_dyn_lambda_flag)
+    if (!atom->apip_f_dyn_lambda_flag)
       error->all(FLERR,
                  "Pair style pace/apip requires an atom style with f_const_lambda for a local "
                  "thermostat.");

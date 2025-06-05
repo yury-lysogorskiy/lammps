@@ -334,19 +334,19 @@ ComputePropertyAtom::ComputePropertyAtom(LAMMPS *lmp, int narg, char **arg) :
     // APIP package
 
     } else if (strcmp(arg[iarg],"apip_lambda") == 0) {
-      if (!atom->lambda_flag)
+      if (!atom->apip_lambda_flag)
         error->all(FLERR,"Compute property/atom {} is not available", arg[iarg]);
       pack_choice[i] = &ComputePropertyAtom::pack_apip_lambda;
     } else if (strcmp(arg[iarg],"apip_lambda_input") == 0) {
-      if (!atom->lambda_input_flag)
+      if (!atom->apip_lambda_input_flag)
         error->all(FLERR,"Compute property/atom {} is not available", arg[iarg]);
       pack_choice[i] = &ComputePropertyAtom::pack_apip_lambda_input;
     } else if (strcmp(arg[iarg],"apip_e_fast") == 0) {
-      if (!atom->e_simple_flag)
+      if (!atom->apip_e_fast_flag)
         error->all(FLERR,"Compute property/atom {} is not available", arg[iarg]);
       pack_choice[i] = &ComputePropertyAtom::pack_apip_e_fast;
     } else if (strcmp(arg[iarg],"apip_e_precise") == 0) {
-      if (!atom->e_complex_flag)
+      if (!atom->apip_e_precise_flag)
         error->all(FLERR,"Compute property/atom {} is not available", arg[iarg]);
       pack_choice[i] = &ComputePropertyAtom::pack_apip_e_precise;
 
@@ -1585,7 +1585,7 @@ void ComputePropertyAtom::pack_tqz(int n)
 
 void ComputePropertyAtom::pack_apip_lambda(int n)
 {
-  double *lambda = atom->lambda;
+  double *lambda = atom->apip_lambda;
   int *mask = atom->mask;
   int nlocal = atom->nlocal;
 
@@ -1600,7 +1600,7 @@ void ComputePropertyAtom::pack_apip_lambda(int n)
 
 void ComputePropertyAtom::pack_apip_lambda_input(int n)
 {
-  double *lambda_input = atom->lambda_input;
+  double *lambda_input = atom->apip_lambda_input;
   int *mask = atom->mask;
   int nlocal = atom->nlocal;
 
@@ -1615,7 +1615,7 @@ void ComputePropertyAtom::pack_apip_lambda_input(int n)
 
 void ComputePropertyAtom::pack_apip_e_fast(int n)
 {
-  double *e_simple = atom->e_simple;
+  double *e_simple = atom->apip_e_fast;
   int *mask = atom->mask;
   int nlocal = atom->nlocal;
 
@@ -1630,7 +1630,7 @@ void ComputePropertyAtom::pack_apip_e_fast(int n)
 
 void ComputePropertyAtom::pack_apip_e_precise(int n)
 {
-  double *e_complex = atom->e_complex;
+  double *e_complex = atom->apip_e_precise;
   int *mask = atom->mask;
   int nlocal = atom->nlocal;
 

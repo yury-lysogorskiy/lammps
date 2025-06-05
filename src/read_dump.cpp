@@ -815,7 +815,7 @@ void ReadDump::process_atoms()
   double **x = atom->x;
   double **v = atom->v;
   double *q = atom->q;
-  double *apip_lambda = atom->lambda;
+  double *apip_lambda = atom->apip_lambda;
   double **f = atom->f;
   tagint *tag = atom->tag;
   imageint *image = atom->image;
@@ -983,7 +983,7 @@ void ReadDump::process_atoms()
     tag = atom->tag;
     v = atom->v;
     q = atom->q;
-    apip_lambda = atom->lambda;
+    apip_lambda = atom->apip_lambda;
     image = atom->image;
 
     // set atom attributes from other dump file fields
@@ -1173,7 +1173,7 @@ int ReadDump::fields_and_keywords(int narg, char **arg)
     if (type < 0) break;
     if (type == Reader::Q && !atom->q_flag)
       error->all(FLERR,"Read dump of charge property that isn't supported by atom style");
-    if (type == Reader::APIP_LAMBDA && !atom->lambda_flag)
+    if (type == Reader::APIP_LAMBDA && !atom->apip_lambda_flag)
       error->all(FLERR,"Read dump of apip_lambda property that isn't supported by atom style");
     fieldtype[nfield++] = type;
     iarg++;
