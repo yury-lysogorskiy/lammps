@@ -20,6 +20,7 @@
 #include "angle.h"
 #include "atom.h"
 #include "bond.h"
+#include "citeme.h"
 #include "comm.h"
 #include "compute.h"
 #include "compute_voronoi_atom.h"
@@ -48,7 +49,7 @@
 using namespace LAMMPS_NS;
 using namespace FixConst;
 
-static const char cite_fix_neighbor_swap_c[] =
+static const char cite_fix_neighbor_swap[] =
     "fix neighbor/swap command: doi:10.1016/j.commatsci.2022.111929\n\n"
     "@Article{Tavenner2023111929,\n"
     " author = {Jacob P. Tavenner and Mikhail I. Mendelev and John W. Lawson},\n"
@@ -58,7 +59,7 @@ static const char cite_fix_neighbor_swap_c[] =
     " year = {2023},\n"
     " volume = {218},\n"
     " pages = {111929}\n"
-    " url = {https://www.sciencedirect.com/science/article/pii/S0927025622006401}\n"
+    " url = {https://dx.doi.org/10.1016/j.commatsci.2022.111929}\n"
     "}\n\n";
 
 /* ---------------------------------------------------------------------- */
@@ -78,6 +79,8 @@ FixNeighborSwap::FixNeighborSwap(LAMMPS *lmp, int narg, char **arg) :
   extvector = 0;
   restart_global = 1;
   time_depend = 1;
+
+  if (lmp->citeme) lmp->citeme->add(cite_fix_neighbor_swap);
 
   // required args
 
