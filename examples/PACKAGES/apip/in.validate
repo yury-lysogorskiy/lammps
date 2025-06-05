@@ -38,11 +38,11 @@ pair_coeff	* * eam/fs/apip ${eamfs_file} Cu
 pair_coeff	* * pace/apip ${ace_file} Cu
 
 # use ACE of adaptive-precision potential
-set		group all lambda precise
+set		group all apip_lambda precise
 run		0
 
 # use EAM of adaptive-precision potential
-set		group all lambda fast
+set		group all apip_lambda fast
 run		0
 
 # Use EAM potential

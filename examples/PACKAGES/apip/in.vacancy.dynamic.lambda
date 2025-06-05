@@ -37,36 +37,38 @@ fix		nve all nve
 
 ## Use adaptive-precision ace-ace potential without lambda_thermostat.
 ## Calculate atomic weight that could be used for load balancing.
-#pair_style	hybrid/overlay pace/apip/fast pace/apip/precise lambda_input/csp ${csp_lattice} cutoff ${csp_cutoff} lambda/zone ${r_sw_hi}
-#pair_coeff	* * pace/apip/fast ${ace_file1} Cu
-#pair_coeff	* * pace/apip/precise ${ace_file2} Cu
-#pair_coeff	* * lambda_input/csp
-#pair_coeff	* * lambda/zone
-#fix		lambda all lambda ${lambda_input_thr_lo} ${lambda_input_thr_hi} time_averaged_zone ${r_sw_lo} ${r_sw_hi} ${lambda_input_histlen} ${lambda_histlen} min_delta_lambda ${min_delta_lambda}
-#fix		weight_atom all apip_atom_weight 100 ace ace lambda_input lambda/zone all
+#pair_style	hybrid/overlay pace/fast/apip pace/precise/apip lambda/input/csp/apip ${csp_lattice} cutoff ${csp_cutoff} lambda/zone/apip ${r_sw_hi}
+#pair_coeff	* * pace/fast/apip ${ace_file1} Cu
+#pair_coeff	* * pace/precise/apip ${ace_file2} Cu
+#pair_coeff	* * lambda/input/csp/apip
+#pair_coeff	* * lambda/zone/apip
+#fix		lambda all lambda/apip ${lambda_input_thr_lo} ${lambda_input_thr_hi} time_averaged_zone ${r_sw_lo} ${r_sw_hi} ${lambda_input_histlen} ${lambda_histlen} min_delta_lambda ${min_delta_lambda}
+#fix		weight_atom all atom_weight/apip 100 ace ace lambda/input lambda/zone all
 
 
 # Use adaptive-precision eam-ace potential without lambda_thermostat.
 # Calculate atomic weight that could be used for load balancing.
-pair_style	hybrid/overlay eam/fs/apip pace/apip lambda_input/csp ${csp_lattice} cutoff ${csp_cutoff} lambda/zone ${r_sw_hi}
+pair_style	hybrid/overlay eam/fs/apip pace/apip lambda/input/csp/apip ${csp_lattice} cutoff ${csp_cutoff} lambda/zone/apip ${r_sw_hi}
 pair_coeff	* * eam/fs/apip ${eamfs_file} Cu
 pair_coeff	* * pace/apip ${ace_file2} Cu
-pair_coeff	* * lambda_input/csp
-pair_coeff	* * lambda/zone
-fix		lambda all lambda ${lambda_input_thr_lo} ${lambda_input_thr_hi} time_averaged_zone ${r_sw_lo} ${r_sw_hi} ${lambda_input_histlen} ${lambda_histlen} min_delta_lambda ${min_delta_lambda}
-fix		weight_atom all apip_atom_weight 100 eam ace lambda_input lambda/zone all
+pair_coeff	* * lambda/input/csp/apip
+pair_coeff	* * lambda/zone/apip
+fix		lambda all lambda/apip ${lambda_input_thr_lo} ${lambda_input_thr_hi} time_averaged_zone ${r_sw_lo} ${r_sw_hi} ${lambda_input_histlen} ${lambda_histlen} min_delta_lambda ${min_delta_lambda}
+fix		weight_atom all atom_weight/apip 100 eam ace lambda/input lambda/zone all
 
 
 ## One can comment out fix lambda_thermostat to see the energy change caused by the neglection of the
 ## gradient of the switching function. This neglection can be compensated by the local thermostat and the
 ## energy can be conserved within numerical precision.
-fix		lambda_thermostat all lambda_thermostat N_rescaling ${N_rescaling} store_atomic_forces 100
+fix		lambda_thermostat all lambda_thermostat/apip N_rescaling ${N_rescaling} store_atomic_forces 100
 
 
 # get statistics about lambda
-variable	flag_simple atom lambda==1
-variable	flag_switch atom lambda<1&&lambda>0
-variable	flag_complex atom lambda==0
+compute		lambda all property/atom apip_lambda
+compute		lambda_input all property/atom apip_lambda_input
+variable	flag_simple atom c_lambda==1
+variable	flag_switch atom c_lambda<1&&c_lambda>0
+variable	flag_complex atom c_lambda==0
 compute		lambda_types all reduce sum v_flag_simple v_flag_switch v_flag_complex
 
 
@@ -76,7 +78,7 @@ thermo		1
 run		100
 
 # dump atoms
-#write_dump	all custom dump/vacancy.dump.* id type x y z fx fy fz lambda lambda_input f_weight_atom f_lambda_thermostat[*]
+#write_dump	all custom dump/vacancy.dump.* id type x y z fx fy fz c_lambda c_lambda_input f_weight_atom f_lambda_thermostat[*]
 
 
 
@@ -85,13 +87,13 @@ run		100
 #write_restart	vacancy_ap.restart
 #clear
 #read_restart	vacancy_ap.restart
-#pair_style	hybrid/overlay eam/fs/apip pace/apip lambda_input/csp fcc cutoff 6.0 lambda/zone 12.0
+#pair_style	hybrid/overlay eam/fs/apip pace/apip lambda/input/csp/apip fcc cutoff 6.0 lambda/zone/apip 12.0
 #pair_coeff	* * eam/fs/apip "Cu_300K_Immel_2023.eam.fs" Cu
 #pair_coeff	* * pace/apip "../../../potentials/Cu-PBE-core-rep.ace" Cu
-#pair_coeff	* * lambda_input/csp
-#pair_coeff	* * lambda/zone
-#fix		lambda all lambda 2.5 3.0 time_averaged_zone 4.0 12.0 110 110 min_delta_lambda $(1/110)
-#fix		lambda_thermostat all lambda_thermostat N_rescaling ${N_rescaling} store_atomic_forces 100
+#pair_coeff	* * lambda/input/csp/apip
+#pair_coeff	* * lambda/zone/apip
+#fix		lambda all lambda/apip 2.5 3.0 time_averaged_zone 4.0 12.0 110 110 min_delta_lambda $(1/110)
+#fix		lambda_thermostat all lambda_thermostat/apip N_rescaling ${N_rescaling} store_atomic_forces 100
 #fix		nve all nve
 #thermo_style	custom step etotal
 #thermo		1

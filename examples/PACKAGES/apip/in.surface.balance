@@ -45,19 +45,21 @@ group		group_ignore_csp region bottom
 
 
 # use adaptive-precision eam-ace potential with lambda_thermostat
-pair_style	hybrid/overlay eam/fs/apip pace/apip lambda_input/csp ${csp_lattice} cutoff ${csp_cutoff} lambda/zone ${r_sw_hi}
+pair_style	hybrid/overlay eam/fs/apip pace/apip lambda/input/csp/apip ${csp_lattice} cutoff ${csp_cutoff} lambda/zone/apip ${r_sw_hi}
 pair_coeff	* * eam/fs/apip ${eamfs_file} Cu
 pair_coeff	* * pace/apip ${ace_file2} Cu
-pair_coeff	* * lambda_input/csp
-pair_coeff	* * lambda/zone
-fix		lambda all lambda ${lambda_input_thr_lo} ${lambda_input_thr_hi} time_averaged_zone ${r_sw_lo} ${r_sw_hi} ${lambda_input_histlen} ${lambda_histlen} min_delta_lambda ${min_delta_lambda} group_ignore_lambda_input group_ignore_csp
-fix		lambda_thermostat all lambda_thermostat N_rescaling ${N_rescaling}
-fix		weight_atom all apip_atom_weight 10 eam ace lambda_input lambda/zone all
+pair_coeff	* * lambda/input/csp/apip
+pair_coeff	* * lambda/zone/apip
+fix		lambda all lambda/apip ${lambda_input_thr_lo} ${lambda_input_thr_hi} time_averaged_zone ${r_sw_lo} ${r_sw_hi} ${lambda_input_histlen} ${lambda_histlen} min_delta_lambda ${min_delta_lambda} group_ignore_lambda_input group_ignore_csp
+fix		lambda_thermostat all lambda_thermostat/apip N_rescaling ${N_rescaling}
+fix		weight_atom all atom_weight/apip 10 eam ace lambda/input lambda/zone all
 
 # store weight in variable
 fix		property_atom all property/atom d_usedweight
 variable	myweight atom f_weight_atom
-#dump		1 all custom 10 dump/surface_ap_balance.dump.* id type x y z lambda lambda_input f_weight_atom proc d_usedweight
+#compute		lambda all property/atom apip_lambda
+#compute		lambda_input all property/atom apip_lambda_input
+#dump		1 all custom 10 dump/surface_ap_balance.dump.* id type x y z c_lambda c_lambda_input f_weight_atom proc d_usedweight
 
 
 ## apply load balancing
