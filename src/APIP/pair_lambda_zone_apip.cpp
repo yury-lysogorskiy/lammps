@@ -14,7 +14,7 @@
    Contributing author: David Immel (d.immel@fz-juelich.de, FZJ, Germany)
 ------------------------------------------------------------------------- */
 
-#include "pair_lambda_zone.h"
+#include "pair_lambda_zone_apip.h"
 
 #include "atom.h"
 #include "error.h"
@@ -27,7 +27,7 @@ using namespace LAMMPS_NS;
 
 /* ---------------------------------------------------------------------- */
 
-PairLambdaZone::PairLambdaZone(LAMMPS *lmp) :
+PairLambdaZoneAPIP::PairLambdaZoneAPIP(LAMMPS *lmp) :
     Pair(lmp), fix_lambda(nullptr), lambda_ta(nullptr), cut(nullptr)
 {
   // set defaults
@@ -43,7 +43,7 @@ PairLambdaZone::PairLambdaZone(LAMMPS *lmp) :
 
 /* ---------------------------------------------------------------------- */
 
-PairLambdaZone::~PairLambdaZone()
+PairLambdaZoneAPIP::~PairLambdaZoneAPIP()
 {
   if (copymode) return;
 
@@ -58,7 +58,7 @@ PairLambdaZone::~PairLambdaZone()
 }
 
 /* ---------------------------------------------------------------------- */
-void PairLambdaZone::coeff(int narg, char **arg)
+void PairLambdaZoneAPIP::coeff(int narg, char **arg)
 {
   if (narg != 2) error->all(FLERR, "Incorrect args for pair coefficients");
   if (!allocated) allocate();
@@ -83,7 +83,7 @@ void PairLambdaZone::coeff(int narg, char **arg)
    allocate all arrays
 ------------------------------------------------------------------------- */
 
-void PairLambdaZone::allocate()
+void PairLambdaZoneAPIP::allocate()
 {
   allocated = 1;
   int n = atom->ntypes + 1;
@@ -98,7 +98,7 @@ void PairLambdaZone::allocate()
 
 /* ---------------------------------------------------------------------- */
 
-void PairLambdaZone::compute(int eflag, int vflag)
+void PairLambdaZoneAPIP::compute(int eflag, int vflag)
 {
   // basic stuff (see pair_zero)
   ev_init(eflag, vflag);
@@ -111,7 +111,7 @@ void PairLambdaZone::compute(int eflag, int vflag)
    global settings
 ------------------------------------------------------------------------- */
 
-void PairLambdaZone::settings(int narg, char **arg)
+void PairLambdaZoneAPIP::settings(int narg, char **arg)
 {
   // parse arguments
   if (narg != 1) error->all(FLERR, "pair_lambda_zone: expected 1 instead of {} arguments", narg);
@@ -133,7 +133,7 @@ void PairLambdaZone::settings(int narg, char **arg)
    init specific to this pair style
 ------------------------------------------------------------------------- */
 
-void PairLambdaZone::init_style()
+void PairLambdaZoneAPIP::init_style()
 {
   if (!atom->apip_lambda_input_ta_flag)
     error->all(FLERR, "pair_lambda_zone requires an atom style with lambda_input_ta");
@@ -165,7 +165,7 @@ void PairLambdaZone::init_style()
    init for one type pair i,j and corresponding j,i
 ------------------------------------------------------------------------- */
 
-double PairLambdaZone::init_one(int i, int j)
+double PairLambdaZoneAPIP::init_one(int i, int j)
 {
   if (setflag[i][j] == 0) { cut[i][j] = mix_distance(cut[i][i], cut[j][j]); }
   return cut[i][j];
@@ -178,7 +178,7 @@ double PairLambdaZone::init_one(int i, int j)
   * output: lambda_input_ta of own particles
   */
 
-void PairLambdaZone::calculate_lambda()
+void PairLambdaZoneAPIP::calculate_lambda()
 {
   double timer_start = platform::walltime();
 
@@ -267,7 +267,7 @@ void PairLambdaZone::calculate_lambda()
 // similar to cutoff_func_poly in ace_radial.cpp
 // compare Phys Rev Mat 6, 013804 (2022) APPENDIX C: RADIAL AND CUTOFF FUNCTIONS 2. Cutoff function
 // the first two derivatives of the switching function lambda vanishes at the boundaries of the switching region
-double PairLambdaZone::switching_function_poly_distance(double input)
+double PairLambdaZoneAPIP::switching_function_poly_distance(double input)
 {
   // calculate lambda
   if (input <= cut_lo) {
@@ -284,7 +284,7 @@ double PairLambdaZone::switching_function_poly_distance(double input)
    set return values for timers and counted particles
 ------------------------------------------------------------------------- */
 
-void PairLambdaZone::calculate_time_per_atom()
+void PairLambdaZoneAPIP::calculate_time_per_atom()
 {
   if (n_calculations > 0)
     time_per_atom = timer / n_calculations;
@@ -298,10 +298,10 @@ void PairLambdaZone::calculate_time_per_atom()
 
 /* ---------------------------------------------------------------------- */
 
-void *PairLambdaZone::extract(const char *str, int &dim)
+void *PairLambdaZoneAPIP::extract(const char *str, int &dim)
 {
   dim = 0;
-  if (strcmp(str, "lambda_zone:time_per_atom") == 0) {
+  if (strcmp(str, "lambda_zone/apip:time_per_atom") == 0) {
     calculate_time_per_atom();
     return (void *) &time_per_atom;
   }

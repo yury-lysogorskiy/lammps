@@ -25,13 +25,13 @@ FixStyle(lambda/apip,FixLambdaAPIP);
 
 #include "fix.h"
 #include "pair_lambda_input.h"
-#include "pair_lambda_zone.h"
+#include "pair_lambda_zone_apip.h"
 
 namespace LAMMPS_NS {
 
 class FixLambdaAPIP : public Fix {
   friend class PairLambdaInput;
-  friend class PairLambdaZone;
+  friend class PairLambdaZoneAPIP;
 
  public:
   FixLambdaAPIP(class LAMMPS *, int, char **);
@@ -54,7 +54,7 @@ class FixLambdaAPIP : public Fix {
   int comm_forward_flag;    // flag that determines which variables are communicated in comm forward
 
   class PairLambdaInput *pair_lambda_input;
-  class PairLambdaZone *pair_lambda_zone;
+  class PairLambdaZoneAPIP *pair_lambda_zone;
 
   double cut_lo;    ///< distance at which the cutoff function of the transition zone decays from 1
   double cut_hi;    ///< distance at which the cutoff function of the transition zone is 0

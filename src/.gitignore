@@ -123,8 +123,8 @@
 /pair_eam_fs_apip.h
 /pair_eam_apip.cpp
 /pair_eam_apip.h
-/pair_lambda_zone.cpp
-/pair_lambda_zone.h
+/pair_lambda_zone_apip.cpp
+/pair_lambda_zone_apip.h
 /pair_pace_apip.cpp
 /pair_pace_apip.h
 /pair_pace_precise_apip.cpp
