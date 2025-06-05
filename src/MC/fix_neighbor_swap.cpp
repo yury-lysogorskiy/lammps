@@ -50,6 +50,7 @@
 using namespace LAMMPS_NS;
 using namespace FixConst;
 using MathExtra::distsq3;
+using MathSpecial::square;
 
 static const char cite_fix_neighbor_swap[] =
     "fix neighbor/swap command: doi:10.1016/j.commatsci.2022.111929\n\n"
@@ -626,9 +627,9 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
             if (rates_flag) {
               local_swap_probability[njswap_local] =
-                  rate_list[type[temp_j] - 1] * exp(-MathSpecial::square(r / r_0));
+                  rate_list[type[temp_j] - 1] * exp(-square(r / r_0));
             } else {
-              local_swap_probability[njswap_local] = exp(-MathSpecial::square(r / r_0));
+              local_swap_probability[njswap_local] = exp(-square(r / r_0));
             }
             local_probability += local_swap_probability[njswap_local];
             local_swap_type_list[njswap_local] = type[temp_j];
@@ -650,9 +651,9 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
                 if (rates_flag) {
                   local_swap_probability[njswap_local] =
-                      rate_list[type[temp_j] - 1] * exp(-MathSpecial::square(r / r_0));
+                      rate_list[type[temp_j] - 1] * exp(-square(r / r_0));
                 } else {
-                  local_swap_probability[njswap_local] = exp(-MathSpecial::square(r / r_0));
+                  local_swap_probability[njswap_local] = exp(-square(r / r_0));
                 }
                 local_probability += local_swap_probability[njswap_local];
 
@@ -680,9 +681,9 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
           if (rates_flag) {
             local_swap_probability[njswap_local] =
-                rate_list[type[temp_j] - 1] * exp(-MathSpecial::square(r / r_0));
+                rate_list[type[temp_j] - 1] * exp(-square(r / r_0));
           } else {
-            local_swap_probability[njswap_local] = exp(-MathSpecial::square(r / r_0));
+            local_swap_probability[njswap_local] = exp(-square(r / r_0));
           }
           local_probability += local_swap_probability[njswap_local];
 
@@ -705,9 +706,9 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
               if (rates_flag) {
                 local_swap_probability[njswap_local] =
-                    rate_list[type[temp_j] - 1] * exp(-MathSpecial::square(r / r_0));
+                    rate_list[type[temp_j] - 1] * exp(-square(r / r_0));
               } else {
-                local_swap_probability[njswap_local] = exp(-MathSpecial::square(r / r_0));
+                local_swap_probability[njswap_local] = exp(-square(r / r_0));
               }
               local_probability += local_swap_probability[njswap_local];
 
