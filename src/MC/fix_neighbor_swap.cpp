@@ -253,8 +253,6 @@ void FixNeighborSwap::init()
   if (!c_voro)
     error->all(FLERR, Error::NOLASTLINE, "Could not find voronoi compute ID {}", id_voro);
 
-  int *type = atom->type;
-
   if (nswaptypes < 2 && !diff_flag)
     error->all(FLERR, "Must specify at least 2 types in fix neighbor/swap command");
 
@@ -269,6 +267,7 @@ void FixNeighborSwap::init()
     if (type_list[iswaptype] <= 0 || type_list[iswaptype] > atom->ntypes)
       error->all(FLERR, "Invalid atom type in fix neighbor/swap command");
 
+  int *type = atom->type;
   if (atom->q_flag) {
     double qmax, qmin;
     int firstall, first;
@@ -379,9 +378,6 @@ void FixNeighborSwap::pre_exchange()
 
 int FixNeighborSwap::attempt_swap()
 {
-  // int nlocal = atom->nlocal;
-  tagint *id = atom->tag;
-
   if (niswap == 0) return 0;
 
   // pre-swap energy
@@ -391,9 +387,6 @@ int FixNeighborSwap::attempt_swap()
   // pick a random atom i
 
   int i = pick_i_swap_atom();
-
-  // get global id and position of atom i
-  // get_global_i(i);
 
   // build nearest-neighbor list based on atom i
 
