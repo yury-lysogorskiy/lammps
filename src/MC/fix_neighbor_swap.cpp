@@ -42,10 +42,10 @@
 #include "region.h"
 #include "update.h"
 
-#include <cctype>
 #include <cfloat>
 #include <cmath>
 #include <cstring>
+#include <unordered_set>
 
 using namespace LAMMPS_NS;
 using namespace FixConst;
@@ -162,6 +162,14 @@ FixNeighborSwap::~FixNeighborSwap()
   delete random_equal;
 }
 
+// helper function: detect known keywords
+static const std::unordered_set<std::string> known_keywords = {"region", "ke", "types", "diff",
+                                                               "rates"};
+static bool is_keyword(const std::string &arg)
+{
+  return known_keywords.find(arg) != known_keywords.end();
+}
+
 /* ----------------------------------------------------------------------
    parse optional parameters at end of input line
 ------------------------------------------------------------------------- */
@@ -193,7 +201,7 @@ void FixNeighborSwap::options(int narg, char **arg)
       iarg++;
       nswaptypes = 0;
       while (iarg < narg) {
-        if (isalpha(arg[iarg][0])) break;
+        if (is_keyword(arg[iarg])) break;
         if (nswaptypes >= atom->ntypes) error->all(FLERR, "Illegal fix neighbor/swap command");
         type_list[nswaptypes] = utils::numeric(FLERR, arg[iarg], false, lmp);
         nswaptypes++;
@@ -211,7 +219,7 @@ void FixNeighborSwap::options(int narg, char **arg)
       iarg++;
       int i = 0;
       while (iarg < narg) {
-        if (isalpha(arg[iarg][0])) break;
+        if (is_keyword(arg[iarg])) break;
         if (i >= atom->ntypes) error->all(FLERR, "Illegal fix neighbor/swap command");
         rate_list[i] = utils::numeric(FLERR, arg[iarg], false, lmp);
         i++;
