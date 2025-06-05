@@ -66,7 +66,7 @@ class FixNeighborSwap : public Fix {
   bool unequal_cutoffs;
 
   int atom_swap_nmax;
-  double beta, r_0;
+  double beta, inv_r_0;
   double local_probability;     // Total swap probability stored on this proc
   double global_probability;    // Total swap probability across all proc
   double prev_probability;      // Swap probability on proc < this proc

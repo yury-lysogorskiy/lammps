@@ -91,7 +91,7 @@ FixNeighborSwap::FixNeighborSwap(LAMMPS *lmp, int narg, char **arg) :
   ncycles = utils::inumeric(FLERR, arg[4], false, lmp);
   seed = utils::inumeric(FLERR, arg[5], false, lmp);
   double temperature = utils::numeric(FLERR, arg[6], false, lmp);
-  r_0 = utils::inumeric(FLERR, arg[7], false, lmp);
+  double r_0 = utils::inumeric(FLERR, arg[7], false, lmp);
 
   // Voro compute check
 
@@ -109,6 +109,7 @@ FixNeighborSwap::FixNeighborSwap(LAMMPS *lmp, int narg, char **arg) :
   if (temperature <= 0.0) error->all(FLERR, "Illegal fix neighbor/swap command temperature value");
 
   beta = 1.0 / (force->boltz * temperature);
+  inv_r_0 =  1.0 / r_0;
 
   memory->create(type_list, atom->ntypes, "neighbor/swap:type_list");
   memory->create(rate_list, atom->ntypes, "neighbor/swap:rate_list");
@@ -635,9 +636,9 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
             if (rates_flag) {
               local_swap_probability[njswap_local] =
-                  rate_list[type[temp_j] - 1] * exp(-square(r / r_0));
+                  rate_list[type[temp_j] - 1] * exp(-square(r * inv_r_0));
             } else {
-              local_swap_probability[njswap_local] = exp(-square(r / r_0));
+              local_swap_probability[njswap_local] = exp(-square(r * inv_r_0));
             }
             local_probability += local_swap_probability[njswap_local];
             local_swap_type_list[njswap_local] = type[temp_j];
@@ -659,9 +660,9 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
                 if (rates_flag) {
                   local_swap_probability[njswap_local] =
-                      rate_list[type[temp_j] - 1] * exp(-square(r / r_0));
+                      rate_list[type[temp_j] - 1] * exp(-square(r * inv_r_0));
                 } else {
-                  local_swap_probability[njswap_local] = exp(-square(r / r_0));
+                  local_swap_probability[njswap_local] = exp(-square(r * inv_r_0));
                 }
                 local_probability += local_swap_probability[njswap_local];
 
@@ -689,9 +690,9 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
           if (rates_flag) {
             local_swap_probability[njswap_local] =
-                rate_list[type[temp_j] - 1] * exp(-square(r / r_0));
+                rate_list[type[temp_j] - 1] * exp(-square(r * inv_r_0));
           } else {
-            local_swap_probability[njswap_local] = exp(-square(r / r_0));
+            local_swap_probability[njswap_local] = exp(-square(r * inv_r_0));
           }
           local_probability += local_swap_probability[njswap_local];
 
@@ -714,9 +715,9 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
               if (rates_flag) {
                 local_swap_probability[njswap_local] =
-                    rate_list[type[temp_j] - 1] * exp(-square(r / r_0));
+                    rate_list[type[temp_j] - 1] * exp(-square(r * inv_r_0));
               } else {
-                local_swap_probability[njswap_local] = exp(-square(r / r_0));
+                local_swap_probability[njswap_local] = exp(-square(r * inv_r_0));
               }
               local_probability += local_swap_probability[njswap_local];
 
