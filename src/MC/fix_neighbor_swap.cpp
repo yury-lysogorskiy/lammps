@@ -544,6 +544,7 @@ double FixNeighborSwap::energy_full()
 int FixNeighborSwap::pick_i_swap_atom()
 {
   tagint *id = atom->tag;
+  // TODO: variable id_center_local is set but not used
   int id_center_local = -1;
   int i = -1;
 
@@ -551,9 +552,12 @@ int FixNeighborSwap::pick_i_swap_atom()
   if ((iwhichglobal >= niswap_before) && (iwhichglobal < niswap_before + niswap_local)) {
     int iwhichlocal = iwhichglobal - niswap_before;
     i = local_swap_iatom_list[iwhichlocal];
+    // TODO: this line has no effect
     id_center_local = id[i];
     MPI_Allreduce(&id[i], &id_center, 1, MPI_INT, MPI_MAX, world);
   } else {
+    // TODO: i == -1 and thus the following line causes a memory access violation
+    // and its result is bogus. i must be: 0 <= i < nlocal
     MPI_Allreduce(&id[i], &id_center, 1, MPI_INT, MPI_MAX, world);
   }
 
@@ -563,6 +567,7 @@ int FixNeighborSwap::pick_i_swap_atom()
 /* ----------------------------------------------------------------------
 ------------------------------------------------------------------------- */
 
+// TODO: parameter i is never used
 int FixNeighborSwap::pick_j_swap_neighbor(int i)
 {
   int j = -1;
@@ -661,7 +666,8 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
             // Get distance if own center atom
             double r = INFINITY;
-            if (i_center >= 0) { double r = sqrt(distsq3(x[temp_j], x[i_center])); }
+            // TODO: this statement has no effect: local declaration of "r" shadows declaration above
+            if (i_center >= 0) { double r = sqrt(distsq3(x[temp_j], x[i_center])); };
 
             // Get local id of ghost center atom when ghost
             for (int i = nlocal; i < nlocal + nghost; i++) {
@@ -685,6 +691,7 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
                 // Calculate distance from i to each j, adjust probability of selection
                 // Get distance if own center atom
                 double r = INFINITY;
+                // TODO: this statement has no effect: local declaration of "r" shadows declaration
                 if (i_center >= 0) { double r = sqrt(distsq3(x[temp_j], x[i_center])); }
 
                 // Get local id of ghost center atom when ghost
@@ -740,6 +747,7 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
               // Calculate distance from i to each j, adjust probability of selection
               // Get distance if own center atom
               double r = INFINITY;
+              // TODO: this statement has no effect: local declaration of "r" shadows declaration above
               if (i_center >= 0) { double r = sqrt(distsq3(x[temp_j], x[i_center])); }
 
               // Get local id of ghost center atom when ghost

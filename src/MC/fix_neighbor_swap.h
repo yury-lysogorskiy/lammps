@@ -88,6 +88,7 @@ class FixNeighborSwap : public Fix {
   int attempt_swap();
   double energy_full();
   int pick_i_swap_atom();
+  // TODO: parameter not used
   int pick_j_swap_neighbor(int);
   void build_i_neighbor_list(int);
   void update_iswap_atoms_list();
