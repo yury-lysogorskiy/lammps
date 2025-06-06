@@ -29,6 +29,7 @@ OPT.
    * :doc:`ave/grid <fix_ave_grid>`
    * :doc:`ave/histo <fix_ave_histo>`
    * :doc:`ave/histo/weight <fix_ave_histo>`
+   * :doc:`ave/moments <fix_ave_moments>`
    * :doc:`ave/time <fix_ave_time>`
    * :doc:`aveforce <fix_aveforce>`
    * :doc:`balance <fix_balance>`
@@ -218,6 +219,7 @@ OPT.
    * :doc:`rigid/small (o) <fix_rigid>`
    * :doc:`rx (k) <fix_rx>`
    * :doc:`saed/vtk <fix_saed_vtk>`
+   * :doc:`set <fix_set>`
    * :doc:`setforce (k) <fix_setforce>`
    * :doc:`setforce/spin <fix_setforce>`
    * :doc:`sgcmc <fix_sgcmc>`

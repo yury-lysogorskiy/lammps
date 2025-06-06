@@ -82,6 +82,7 @@ Alessandro
 Alexey
 ali
 aliceblue
+aliphatic
 Allera
 Allinger
 allocatable
@@ -630,6 +631,7 @@ cp
 cpp
 cpu
 cradius
+Cramer
 createatoms
 createAtoms
 CreateIDs
@@ -670,6 +672,7 @@ cuFFT
 CuH
 Cui
 Cummins
+cumulants
 Cundall
 cundall
 Curk
@@ -1174,6 +1177,7 @@ Fermionic
 Ferrand
 fexternal
 Fexternal
+ffast
 ffield
 ffl
 fflush
@@ -1770,6 +1774,7 @@ jik
 JIK
 jku
 jN
+Joanes
 Joannopoulos
 Jochim
 Jonsson
@@ -1814,6 +1819,7 @@ Karniadakis
 Karplus
 Karttunen
 kate
+katom
 Katsnelson
 Katsura
 Kaufmann
@@ -2192,6 +2198,7 @@ Materias
 mathbf
 mathjax
 matlab
+Matom
 Matous
 matplotlib
 Matsubara
@@ -2701,6 +2708,7 @@ Nprocs
 npt
 nr
 Nr
+Nrecent
 Nrecompute
 Nrepeat
 nreset
@@ -2779,6 +2787,7 @@ ocl
 octahedral
 octants
 Odegard
+Og
 Ohara
 O'Hearn
 ohenrich
@@ -3361,6 +3370,7 @@ Rmin
 RMS
 rmsd
 rnage
+rnflag
 rng
 rNEMD
 ro
@@ -3416,6 +3426,7 @@ ry
 Ryckaert
 Rycroft
 Rydbergs
+Ryzen
 rz
 Rz
 Sabry
@@ -3835,6 +3846,7 @@ Thiaville
 Thibaudeau
 Thijsse
 Thirumalai
+Threadripper
 threebody
 thrid
 ThunderX
