@@ -597,6 +597,7 @@ void Variable::set(int narg, char **arg)
       num[nvar] = 2;
       which[nvar] = 1;
       pad[nvar] = 0;
+      pyindex[nvar] = -1;
       data[nvar] = new char *[num[nvar]];
       data[nvar][0] = utils::strdup(arg[2]);
       data[nvar][1] = new char[VALUELENGTH];
@@ -960,8 +961,10 @@ void Variable::python_command(int narg, char **arg)
 int Variable::equalstyle(int ivar)
 {
   if (style[ivar] == EQUAL || style[ivar] == TIMER || style[ivar] == INTERNAL) return 1;
-  if ((style[ivar] == PYTHON) && (python->function_match(data[ivar][0], names[ivar], 1, error) >= 0))
-    return 1;
+  if (style[ivar] == PYTHON) {
+    pyindex[ivar] = python->function_match(data[ivar][0], names[ivar], 1, error);
+    if (pyindex[ivar] >= 0) return 1;
+  }
 
   return 0;
 }
