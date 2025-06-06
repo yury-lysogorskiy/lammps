@@ -92,28 +92,26 @@ Description
 
 The *python* command interfaces LAMMPS with an embedded Python
 interpreter and enables executing arbitrary python code in that
-interpreter.  This can be done immediately, by using *mode* =
-*source*.  Or execution can be deferred, by registering a Python
-function for later execution, by using *mode* = *name* of a Python
-function.
+interpreter.  This can be done immediately, by using *mode* = *source*.
+Or execution can be deferred, by registering a Python function for later
+execution, by using *mode* = *name* of a Python function.
 
-Later execution can be triggered in one of two ways.  One is to use
-the python command again with its *invoke* keyword.  The other is to
-trigger the evaluation of a python-style, equal-style, vector-style,
-or atom-style variable.  A python-style variable invokes its
-associated Python function; its return value becomes the value of the
-python-style variable.  Equal-, vector-, and atom-style variables can
-use a Python function wrapper in their formulas which encodes the
-Python function name, and specifies arguments to pass to the function.
+Later execution can be triggered in one of two ways.  One is to use the
+python command again with its *invoke* keyword.  The other is to trigger
+the evaluation of a python-style, equal-style, vector-style, or
+atom-style variable.  A python-style variable invokes its associated
+Python function; its return value becomes the value of the python-style
+variable.  Equal-, vector-, and atom-style variables can use a Python
+function wrapper in their formulas which encodes the Python function
+name, and specifies arguments to pass to the function.
 
-Note that python-style, equal-style, vectir-style, and atom-style
-variables can be used in many different ways within LAMMPS.  They can
-be evaulated directly in an input script, effectively replacing the
+Note that python-style, equal-style, vector-style, and atom-style
+variables can be used in many different ways within LAMMPS.  They can be
+evaluated directly in an input script, effectively replacing the
 variable with its value.  Or they can be passed to various commands as
 arguments, so that the variable is evaluated multiple times during a
-simulation run.  See the :doc:`variable <variable>` command doc page
-for more details on variable styles which enable Python function
-evaluation.
+simulation run.  See the :doc:`variable <variable>` command doc page for
+more details on variable styles which enable Python function evaluation.
 
 The Python code for the function can be included directly in the input
 script or in a separate Python file.  The function can be standard
@@ -219,21 +217,20 @@ Python function defined by this command, by including a Python function
 wrapper with arguments in its formula.  Each of the arguments must be
 specified as an internal-style variable via the *input* keyword.
 
-In brief, the syntax for a Python function wrapper in a variable
-formula is py_varname(arg1,arg2,...argN), where "varname" is the name
-of a python-style variable associated with a Python function defined
-by this command.  One or more arguments to the function wrapper can
-themselves be sub-formulas which the variable command will evaluate
-and pass as arguments to the Python function.  This is done by
-assigning the numeric result for each argument to an internal-style
-variable; thus the *input* keyword must specify the arguments as
-internal-style variables and their format (see below) as "f" for
-floating point.  This is because LAMMPS variable formulas are
-calculated with floating point arithmetic (any integer values are
-converted to floating point).  Note that the Python function can also
-have additional inputs, also specified by the *input* keyword, which
-are NOT arguments in the Python function wrapper.  See the example
-below for the "mixedargs" Python function.
+In brief, the syntax for a Python function wrapper in a variable formula
+is ``py_varname(arg1,arg2,...argN)``, where "varname" is the name of a
+python-style variable associated with a Python function defined by this
+command.  One or more arguments to the function wrapper can themselves
+be sub-formulas which the variable command will evaluate and pass as
+arguments to the Python function.  This is done by assigning the numeric
+result for each argument to an internal-style variable; thus the *input*
+keyword must specify the arguments as internal-style variables and their
+format (see below) as "f" for floating point.  This is because LAMMPS
+variable formulas are calculated with floating point arithmetic (any
+integer values are converted to floating point).  Note that the Python
+function can also have additional inputs, also specified by the *input*
+keyword, which are NOT arguments in the Python function wrapper.  See
+the example below for the ``mixedargs`` Python function.
 
 See the :doc:`variable <variable>` command doc page for full details
 on formula syntax including for Python function wrappers.  Examples
@@ -561,11 +558,11 @@ simulation run at each time step using the :doc:`fix python/invoke
 ----------
 
 A Python function can also be invoked within the formula for an
-equal-style, vector-style, or atom-style varaible.  This means the
+equal-style, vector-style, or atom-style variable.  This means the
 Python function will be invoked whenever the variable is invoked.  In
-the case of a vector-style variable, the Python function can be
-invoked once per element of the global vector.  In the case of an
-atom-style variable, the Python function can be invoked once per atom.
+the case of a vector-style variable, the Python function can be invoked
+once per element of the global vector.  In the case of an atom-style
+variable, the Python function can be invoked once per atom.
 
 Here are three simple examples using equal-, vector-, and atom-style
 variables to trigger execution of a Python function:
@@ -574,15 +571,15 @@ variables to trigger execution of a Python function:
 
    variable        foo python truncate
    python          truncate return v_foo input 1 iv_arg format fi here """
-def truncate(x):
-  return int(x)
-"""
+   def truncate(x):
+     return int(x)
+   """
    variable        ptrunc equal py_foo(press)
    print           "TRUNCATED pressure = ${ptrunc}"
 
-The Python "truncate" function simply converts a floating-point value
+The Python ``truncate`` function simply converts a floating-point value
 to an integer value.  When the LAMMPS print command evaluates the
-equal-style "ptrunc" variable, the current thermodynamic pressure is
+equal-style ``ptrunc`` variable, the current thermodynamic pressure is
 passed to the Python function.  The truncated value is output to the
 screen and logfile by the print command.  Note that the *input*
 keyword for the *python* command, specifies an internal-style variable
@@ -590,7 +587,7 @@ named "arg" as iv_arg which is required to invoke the Python function
 from a Python function wrapper.
 
 The last 2 lines can be replaced by these to define a vector-style
-variable which invokes the same Python "truncate" function:
+variable which invokes the same Python ``truncate`` function:
 
 .. code-block:: LAMMPS
 
@@ -599,15 +596,15 @@ variable which invokes the same Python "truncate" function:
   variable        ketrunc vector py_foo(v_ke)
   thermo_style    custom step temp epair v_ketrunc[*6]
 
-The vector-style variable "ketrunc" invokes the Python "truncate"
-function on each of the 6 components of the global kinetic energy
-tensor calculated by the :doc:`compute ke <compute_ke>` command.  The
-6 truncated values will be printed with thermo output to the screen
-and log file.
+The vector-style variable ``ketrunc`` invokes the Python ``truncate``
+function on each of the 6 components of the global kinetic energy tensor
+calculated by the :doc:`compute ke <compute_ke>` command.  The 6
+truncated values will be printed with thermo output to the screen and
+log file.
 
-Or the last 2 lines of the equal-style variable example can be
-replaced by these to define atom-style variables which invoke the same
-Python "truncate" function:
+Or the last 2 lines of the equal-style variable example can be replaced
+by these to define atom-style variables which invoke the same Python
+``truncate`` function:
 
 .. code-block:: LAMMPS
 
@@ -617,48 +614,48 @@ Python "truncate" function:
    dump            1 all custom 100 tmp.dump id x y z v_xtrunc v_ytrunc v_ztrunc
 
 When the dump command invokes the 3 atom-style variables, their
-arguments x,y,z to the Python function wrapper are the current
-per-atom coordinates of each atom.  The Python "truncate" function is
-thus invoked 3 times for each atom, and the truncated coordinate
-values for each atom are written to the dump file.
+arguments x,y,z to the Python function wrapper are the current per-atom
+coordinates of each atom.  The Python ``truncate`` function is thus
+invoked 3 times for each atom, and the truncated coordinate values for
+each atom are written to the dump file.
 
-Note that when using a Python function wrapper in a variable,
-arguments can be passed to the Python function either from the
-varaible formula or by *input* keyword to the *python command.  For
-example, consider these (made up) commands:
+Note that when using a Python function wrapper in a variable, arguments
+can be passed to the Python function either from the variable formula or
+by *input* keyword to the :doc:`python command <python>`.  For example,
+consider these (made up) commands:
 
 .. code-block:: LAMMPS
 
    variable        foo python mixedargs
    python          mixedargs return v_foo input 6 7.5 v_myValue iv_arg1 iv_argy iv_argz v_flag &
                    format fffffsf here """
-def mixedargs(a,b,x,y,z,flag):
-  ...
-  return result
-"""
+   def mixedargs(a,b,x,y,z,flag):
+     ...
+     return result
+   """
    variable        flag string optionABC
    variable        myValue equal "2.0*temp*c_pe"
    compute         pe all pe
    compute         peatom all pe/atom
    variable        field atom py_foo(x+3.0,sqrt(y),(z-zlo)*c_peatom)
 
-They define a Python "mixedargs" function with 6 arguments.  Three of
-them are internal-style variables, which the variable formula
-calculates as numeric values for each atom and passes to the function.
-In this example, these arguments are themselves small formulas
-containing the x,y,z coordinates of each atom as well as a per-atom
-compute (c_peratom) and thermodynamic keyword (zlo).
+They define a Python ``mixedargs`` function with 6 arguments.  Three of
+them are internal-style variables, which the variable formula calculates
+as numeric values for each atom and passes to the function.  In this
+example, these arguments are themselves small formulas containing the
+x,y,z coordinates of each atom as well as a per-atom compute (c_peratom)
+and thermodynamic keyword (zlo).
 
-The other three arguements (7.5,v_myValue,v_flag) are defined by the
-*python* command.  The first and last are constant values (7.5 and the
-optionABC string).  The second argument (myValue) is the result of an
-equal-style variable formula which accesses the system temperature and
-potential energy.
+The other three arguments ``(7.5,v_myValue,v_flag)`` are defined by the
+*python* command.  The first and last are constant values ("7.5" and the
+``optionABC`` string).  The second argument (``myValue``) is the result
+of an equal-style variable formula which accesses the system temperature
+and potential energy.
 
-The "result" returned by each invocation of the Python "mixedargs"
-function becomes the per-atom value in the atom-style "field"
-variable, which could be output to a dump file or used elsewhere in
-the input script.
+The "result" returned by each invocation of the Python ``mixedargs``
+function becomes the per-atom value in the atom-style "field" variable,
+which could be output to a dump file or used elsewhere in the input
+script.
 
 ----------
 
@@ -767,8 +764,8 @@ and global variables will become invisible.
 Related commands
 """"""""""""""""
 
-:doc:`shell <shell>`, :doc:`variable <variable>`, :doc:`fix
-     python/invoke <fix_python_invoke>`
+:doc:`shell <shell>`, :doc:`variable <variable>`,
+:doc:`fix python/invoke <fix_python_invoke>`
 
 Default
 """""""
