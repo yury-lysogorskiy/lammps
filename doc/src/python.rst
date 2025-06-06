@@ -28,7 +28,8 @@ Syntax
 
      one or more keywords with/without arguments must be appended
      keyword = *invoke* or *input* or *return* or *format* or *length* or *file* or *here* or *exists*
-       *invoke* arg = none = invoke the previously-defined Python function
+       *invoke* arg = invoke the previously-defined Python function
+           logreturn = log return value of the invoked python function, if defined (optional)
        *input* args = N i1 i2 ... iN
          N = # of inputs to function
          i1,...,iN = value, SELF, or LAMMPS variable name
@@ -58,7 +59,7 @@ Examples
 .. code-block:: LAMMPS
 
    python pForce input 2 v_x 20.0 return v_f format fff file force.py
-   python pForce invoke
+   python pForce invoke logreturn
 
    python factorial input 1 myN return v_fac format ii here """
    def factorial(n):
@@ -165,18 +166,19 @@ that will be registered with LAMMPS for future execution.  The function
 may already be defined (see *exists* keyword) or must be defined using
 the *file* or *here* keywords as explained below.
 
-If the *invoke* keyword is used, no other keywords can be used, and a
-previous *python* command must have registered the Python function
-referenced by this command.  This invokes the Python function with the
-previously defined arguments and the return value is processed as
-explained below.  You can invoke a registered function as many times
-as you wish in your input script.
-
-NOTE for Richard: As indicated with a NOTE in python_impl.cpp, I don't
-think there is any access to a value returned by invoking a Py
-function in this way.  If that is correct, I think this should be
-clarified in the doc page, with a better explanation of the utility of
-using the *invoke* keyword.
+If the *invoke* keyword is used, only the optional *logreturn* keyword
+can be used.  A previous *python* command must have registered the
+Python function referenced by this command.  The command invokes the
+Python function with the previously defined arguments.  A return value
+of the Python function will be ignored unless the Python function is
+linked to a :doc:`python style variable <variable>` with the *return*
+keyword.  This return value can be logged to the screen and logfile by
+adding the *logreturn* keyword to the *invoke* command.  In that case a
+message with the name of the python command and the return value is
+printed.  Return values of python functions are otherwise only
+accessible when the function is invoked indirectly by expanding a
+:doc:`python style variable <variable>`.  You can invoke a registered
+function as many times as you wish in your input script.
 
 The *input* keyword defines how many arguments *N* the Python function
 expects.  If it takes no arguments, then the *input* keyword should
@@ -213,10 +215,9 @@ defined, this command creates an :doc:`internal-style variable
 
 An internal-style variable must be used when an equal-style,
 vector-style, or atom-style variable triggers the invocation of the
-Python function defined by this command, by including a Python
-function wrapper with arguments in its formula.  Each of the arguments
-must be specified as an internal-style variable via the *input*
-keyword.
+Python function defined by this command, by including a Python function
+wrapper with arguments in its formula.  Each of the arguments must be
+specified as an internal-style variable via the *input* keyword.
 
 In brief, the syntax for a Python function wrapper in a variable
 formula is py_varname(arg1,arg2,...argN), where "varname" is the name
@@ -246,6 +247,9 @@ value.  The specified *varReturn* is of the form v_name, where "name"
 is the name of a python-style LAMMPS variable, defined by the
 :doc:`variable <variable>` command.  The Python function can return a
 numeric or string value, as specified by the *format* keyword.
+This return value is *only* accessible when expanding the python-style
+variable.  When the *invoke* keyword is used, the return value of
+the python function is ignored.
 
 ----------
 

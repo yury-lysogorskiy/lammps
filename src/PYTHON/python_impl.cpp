@@ -17,6 +17,7 @@
 
 #include "python_impl.h"
 
+#include "comm.h"
 #include "error.h"
 #include "input.h"
 #include "memory.h"
@@ -166,9 +167,9 @@ void PythonImpl::command(int narg, char **arg)
 {
   if (narg < 2) utils::missing_cmd_args(FLERR, "python", error);
 
-  // if invoke is only keyword, invoke the previously defined function
+  // if invoke keyword is used, invoke the previously defined function
 
-  if (narg == 2 && strcmp(arg[1], "invoke") == 0) {
+  if (strcmp(arg[1], "invoke") == 0) {
     int ifunc = find(arg[0]);
     if (ifunc < 0)
       error->all(FLERR, Error::ARGZERO, "Python invoke of unknown function: {}", arg[0]);
@@ -183,17 +184,17 @@ void PythonImpl::command(int narg, char **arg)
             arg[0], pfuncs[ifunc].ovarname, pfuncs[ifunc].name);
     }
 
-    // NOTE to Richard - if this function returns a value,
-    //   I don't believe it will be accessible to the input script
-    //   b/c that only occurs if Variable::retreive() or Variable::compute_equal() is called
-    //   so if a Python function with a return is invoked this way,
-    //     it might be better to issue an error or warning ?
-    //     i.e. it only make sense to call a setup-style kind of Python function this way
-    //          one with no return value
-    //   it also means there is no need to call Variable::pythonstyle() here
-    //     or even define the pythonstyle() method in Variable ?
+    bool logreturn = false;
+    if (narg == 3 && strcmp(arg[2], "logreturn") == 0) logreturn = true;
+
+    char *str = nullptr;
+    if (logreturn && pfuncs[ifunc].noutput) str = new char[Variable::VALUELENGTH];
 
     invoke_function(ifunc, str, nullptr);
+    if (logreturn && str && (comm->me == 0))
+      utils::logmesg(lmp, "Invoked python function {} returned {}\n", arg[0], str);
+
+    delete[] str;
     return;
   }
 
@@ -427,16 +428,14 @@ void PythonImpl::invoke_function(int ifunc, char *result, double *dvalue)
   if (pfuncs[ifunc].noutput) {
     int otype = pfuncs[ifunc].otype;
     if (otype == INT) {
-      if (dvalue)
-        *dvalue = (double) PY_INT_AS_LONG(pValue);
-      else {
+      if (dvalue) *dvalue = (double) PY_INT_AS_LONG(pValue);
+      if (result) {
         auto value = fmt::format("{}", PY_INT_AS_LONG(pValue));
         strncpy(result, value.c_str(), Variable::VALUELENGTH - 1);
       }
     } else if (otype == DOUBLE) {
-      if (dvalue)
-        *dvalue = PyFloat_AsDouble(pValue);
-      else {
+      if (dvalue) *dvalue = PyFloat_AsDouble(pValue);
+      if (result) {
         auto value = fmt::format("{:.15g}", PyFloat_AsDouble(pValue));
         strncpy(result, value.c_str(), Variable::VALUELENGTH - 1);
       }
@@ -444,10 +443,10 @@ void PythonImpl::invoke_function(int ifunc, char *result, double *dvalue)
       const char *pystr = PyUnicode_AsUTF8(pValue);
       if (pfuncs[ifunc].longstr)
         strncpy(pfuncs[ifunc].longstr, pystr, pfuncs[ifunc].length_longstr);
-      else
-        strncpy(result, pystr, Variable::VALUELENGTH - 1);
+      if (result) strncpy(result, pystr, Variable::VALUELENGTH - 1);
     }
   }
+
   Py_CLEAR(pValue);
 }
 
