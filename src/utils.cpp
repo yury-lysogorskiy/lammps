@@ -274,6 +274,11 @@ void utils::print(FILE *fp, const std::string &mesg)
   fputs(mesg.c_str(), fp);
 }
 
+void utils::print(const std::string &mesg)
+{
+  fputs(mesg.c_str(), stdout);
+}
+
 void utils::fmtargs_print(FILE *fp, fmt::string_view format, fmt::format_args args)
 {
   print(fp, fmt::vformat(format, args));
