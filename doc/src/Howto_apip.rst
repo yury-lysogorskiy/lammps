@@ -135,7 +135,7 @@ Example
 
          # calculate lambda somehow
          variable lambda atom ...
-         set group all apip_lambda v_lambda
+         set group all apip/lambda v_lambda
 
          fix 4 all atom_weight/apip 100 eam ace lambda/input lambda/zone all
 
