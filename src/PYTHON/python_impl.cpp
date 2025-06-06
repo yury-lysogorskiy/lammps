@@ -187,14 +187,11 @@ void PythonImpl::command(int narg, char **arg)
     bool logreturn = false;
     if (narg == 3 && strcmp(arg[2], "logreturn") == 0) logreturn = true;
 
-    char *str = nullptr;
-    if (logreturn && pfuncs[ifunc].noutput) str = new char[Variable::VALUELENGTH];
-
     invoke_function(ifunc, str, nullptr);
+
     if (logreturn && str && (comm->me == 0))
       utils::logmesg(lmp, "Invoked python function {} returned {}\n", arg[0], str);
 
-    delete[] str;
     return;
   }
 
