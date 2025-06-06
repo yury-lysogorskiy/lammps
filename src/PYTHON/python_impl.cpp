@@ -483,7 +483,7 @@ int PythonImpl::function_match(const char *name, const char *varname, int numeri
                "Python function {} for variable {} does not return a value", name, varname);
   if (strcmp(pfuncs[ifunc].ovarname, varname) != 0)
     error->all(FLERR, Error::NOLASTLINE,
-               "Python function {} and variable {} do not not link to each other", name, varname);
+               "Python function {} and variable {} do not link to each other", name, varname);
   if (numeric && pfuncs[ifunc].otype == STRING)
     error->all(FLERR, Error::NOLASTLINE, "Python function {} for variable {} returns a string",
                name, varname);
@@ -526,8 +526,9 @@ int PythonImpl::wrapper_match(const char *name, const char *varname, int narg, i
   for (int i = 0; i < pfuncs[ifunc].ninput; i++) {
     if (pfuncs[ifunc].ivarflag[i] == INTERNALVAR) {
       int ivar = input->variable->find(pfuncs[ifunc].svalue[i]);
-      error->all(FLERR, Error::NOLASTLINE, "Python function {} cannot find internal variable {}",
-                 name, pfuncs[ifunc].svalue[i]);
+      if (ivar < 0)
+        error->all(FLERR, Error::NOLASTLINE, "Python function {} cannot find internal variable {}",
+                   name, pfuncs[ifunc].svalue[i]);
       pfuncs[ifunc].internal_var[i] = ivar;
       argvars[j++] = ivar;
     }
