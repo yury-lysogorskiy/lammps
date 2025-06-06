@@ -14,9 +14,8 @@
 #include "lmppython.h"
 #if defined(LMP_PYTHON)
 #include "python_impl.h"
-#else
-#include "error.h"
 #endif
+#include "error.h"
 
 using namespace LAMMPS_NS;
 
@@ -43,7 +42,7 @@ void Python::init()
 #if defined(LMP_PYTHON)
   if (!impl) impl = new PythonImpl(lmp);
 #else
-  error->all(FLERR, "Python support missing! Compile with PYTHON package installed!");
+  error->all(FLERR, Error::NOLASTLINE, "Python support missing! Compile with PYTHON package installed!");
 #endif
 }
 
@@ -83,19 +82,19 @@ int Python::find(const char *name)
 
 /* ------------------------------------------------------------------ */
 
-int Python::function_match(const char *name, const char *varname, int numeric)
+int Python::function_match(const char *name, const char *varname, int numeric, Error *errptr)
 {
   init();
-  return impl->function_match(name, varname, numeric);
+  return impl->function_match(name, varname, numeric, errptr);
 }
 
 /* ------------------------------------------------------------------ */
 
-int Python::wrapper_match(const char *name, const char *varname,
-                          int narg, int *argvars)
+int Python::wrapper_match(const char *name, const char *varname, int narg, int *argvars,
+                          Error *errptr)
 {
   init();
-  return impl->wrapper_match(name, varname, narg, argvars);
+  return impl->wrapper_match(name, varname, narg, argvars, errptr);
 }
 
 /* ------------------------------------------------------------------ */

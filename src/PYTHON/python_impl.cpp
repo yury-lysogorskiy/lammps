@@ -451,16 +451,23 @@ int PythonImpl::find(const char *name)
    ensure a string is returned only if retrieve() is the caller
 --------------------------------------------------------------------- */
 
-int PythonImpl::function_match(const char *name, const char *varname, int numeric)
+int PythonImpl::function_match(const char *name, const char *varname, int numeric, Error *error)
 {
-  // NOTE to Richard - any reason not to put error messages here instead of in Variable class ?
-  //   error messages appear 3x in Variable
-
   int ifunc = find(name);
-  if (ifunc < 0) return -1;
-  if (pfuncs[ifunc].noutput == 0) return -2;
-  if (strcmp(pfuncs[ifunc].ovarname, varname) != 0) return -3;
-  if (numeric && pfuncs[ifunc].otype == STRING) return -4;
+
+  if (ifunc < 0)
+    error->all(FLERR, Error::NOLASTLINE, "Python function {} specified by variable {} not found",
+               name, varname);
+  if (pfuncs[ifunc].noutput == 0)
+    error->all(FLERR, Error::NOLASTLINE,
+               "Python function {} for variable {} does not return a value", name, varname);
+  if (strcmp(pfuncs[ifunc].ovarname, varname) != 0)
+    error->all(FLERR, Error::NOLASTLINE,
+               "Python function {} and variable {} do not not link to each other", name, varname);
+  if (numeric && pfuncs[ifunc].otype == STRING)
+    error->all(FLERR, Error::NOLASTLINE, "Python function {} for variable {} returns a string",
+               name, varname);
+
   return ifunc;
 }
 
@@ -477,18 +484,18 @@ int PythonImpl::function_match(const char *name, const char *varname, int numeri
      other classes avoid this issue by setting variable indices in their init() method
 --------------------------------------------------------------------- */
 
-int PythonImpl::wrapper_match(const char *name, const char *varname, int narg, int *argvars)
+int PythonImpl::wrapper_match(const char *name, const char *varname, int narg, int *argvars,
+                              Error *error)
 {
-  // NOTE to Richard - any reason not to put 2 extra error messages here instead of in Variable class ?
-  //   only this class knows the name of the missing internal var, so can generate better error message
-
-  int ifunc = function_match(name, varname, 1);
+  int ifunc = function_match(name, varname, 1, error);
   if (ifunc < 0) return ifunc;
 
   int internal_count = 0;
   for (int i = 0; i < pfuncs[ifunc].ninput; i++)
     if (pfuncs[ifunc].ivarflag[i] == INTERNALVAR) internal_count++;
-  if (internal_count != narg) return -5;
+  if (internal_count != narg)
+    error->all(FLERR, Error::NOLASTLINE,
+               "Python function {} does not use {} internal variable args", name, narg);
 
   // set argvars of internal-style variables for use by Variable class
   //   in Python wrapper functions
@@ -496,13 +503,15 @@ int PythonImpl::wrapper_match(const char *name, const char *varname, int narg, i
   //   so that invoke_function() is as fast as possible for args which are internal-style vars
 
   int j = 0;
-  for (int i = 0; i < pfuncs[ifunc].ninput; i++)
+  for (int i = 0; i < pfuncs[ifunc].ninput; i++) {
     if (pfuncs[ifunc].ivarflag[i] == INTERNALVAR) {
       int ivar = input->variable->find(pfuncs[ifunc].svalue[i]);
-      if (ivar < 0) return -6;
+      error->all(FLERR, Error::NOLASTLINE, "Python function {} cannot find internal variable {}",
+                 name, pfuncs[ifunc].svalue[i]);
       pfuncs[ifunc].internal_var[i] = ivar;
       argvars[j++] = ivar;
     }
+  }
 
   return ifunc;
 }
