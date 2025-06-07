@@ -80,6 +80,8 @@ KokkosLMP::KokkosLMP(LAMMPS *lmp, int narg, char **arg) : Pointers(lmp)
 
   threads_per_atom = 1;
   threads_per_atom_set = 0;
+  pair_team_size = 128;
+  pair_team_size_set = 0;
 
   int iarg = 0;
   while (iarg < narg) {
@@ -546,6 +548,11 @@ void KokkosLMP::accelerator(int narg, char **arg)
       if (iarg+2 > narg) error->all(FLERR,"Illegal package kokkos command");
       threads_per_atom = utils::inumeric(FLERR, arg[iarg+1], false, lmp);
       threads_per_atom_set = 1;
+      iarg += 2;
+    } else if (strcmp(arg[iarg],"pair/team/size") == 0) {
+      if (iarg+2 > narg) error->all(FLERR,"Illegal package kokkos command");
+      pair_team_size = utils::inumeric(FLERR, arg[iarg+1], false, lmp);
+      pair_team_size_set = 1;
       iarg += 2;
     } else error->all(FLERR,"Illegal package kokkos command");
   }

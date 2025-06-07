@@ -57,6 +57,8 @@ class KokkosLMP : protected Pointers {
   double binsize;
   int threads_per_atom;
   int threads_per_atom_set;
+  int pair_team_size;
+  int pair_team_size_set;
 
   static int is_finalized;
   static int init_ngpus;
