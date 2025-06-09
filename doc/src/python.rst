@@ -187,18 +187,18 @@ is allowed since their operations are mutually exclusive.
 
 If the *invoke* keyword is used, no other keywords can be used.  A
 previous *python* command must have registered the Python function
-referenced by this command.  The *invoke* keyword invokes the Python
-function with the previously defined arguments.  A return value of the
-Python function will be ignored unless the Python function is linked
-to a :doc:`python style variable <variable>` with the *return*
+referenced by this command, which can then be invoked multiple times
+in an input script via the *invoke* keyword.  Each invocation passes
+current values for arguments to the Python function.  A return value
+of the Python function will be ignored unless the Python function is
+linked to a :doc:`python style variable <variable>` with the *return*
 keyword.  This return value can be logged to the screen and logfile by
 adding the optional *logreturn* argument to the *invoke* keyword.  In
 that case a message with the name of the python command and the return
 value is printed.  Note that return values of python functions are
 otherwise *only* accessible when the function is invoked indirectly by
 expanding a :doc:`python style variable <variable>`, as described
-below.  A registered function can be invoked as many times as you wish
-in your input script.
+below.
 
 The *file* keyword gives the name of a file containing Python code,
 which should end with a ".py" suffix.  The code will be immediately
