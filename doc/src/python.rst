@@ -17,9 +17,9 @@ Syntax
   .. parsed-literal::
 
      keyword = *here* or name of a *Python file*
-       *here* arg = one or more lines of Python code
-                    must be a single argument, typically enclosed between triple quotes
-                    the in-lined Python code will be executed immediately
+       *here* arg = inline
+         inline = one or more lines of Python code which will be executed immediately
+                  must be a single argument, typically enclosed between triple quotes
        *Python file* = name of a file with Python code which will be executed immediately
 
 * if *mode* is *name* of a Python function:
@@ -28,8 +28,9 @@ Syntax
 
      one or more keywords with/without arguments must be appended
      keyword = *invoke* or *input* or *return* or *format* or *length* or *file* or *here* or *exists*
-       *invoke* arg = invoke the previously-defined Python function
-           logreturn = log return value of the invoked python function, if defined (optional)
+       *invoke* arg = logreturn (optional)
+         invoke the previously-defined Python function
+         if logreturn is specified, print the return value of the invoked function to the screen and logfile
        *input* args = N i1 i2 ... iN
          N = # of inputs to function
          i1,...,iN = value, SELF, or LAMMPS variable name
@@ -96,31 +97,49 @@ interpreter.  This can be done immediately, by using *mode* = *source*.
 Or execution can be deferred, by registering a Python function for later
 execution, by using *mode* = *name* of a Python function.
 
-Later execution can be triggered in one of two ways.  One is to use the
-python command again with its *invoke* keyword.  The other is to trigger
-the evaluation of a python-style, equal-style, vector-style, or
-atom-style variable.  A python-style variable invokes its associated
-Python function; its return value becomes the value of the python-style
-variable.  Equal-, vector-, and atom-style variables can use a Python
-function wrapper in their formulas which encodes the Python function
-name, and specifies arguments to pass to the function.
+Later execution can be triggered in one of two ways.  One is to use
+the python command again with its *invoke* keyword.  The other is to
+trigger the evaluation of a python-style, equal-style, vector-style,
+or atom-style variable.  A python-style variable invokes its
+associated Python function; its return value becomes the value of the
+python-style variable.  Equal-, vector-, and atom-style variables can
+use a Python function wrapper in their formulas which encodes the
+python-style variable name, and specifies arguments (which themselves
+can be numeric formulas) to pass to the Python function associated
+with the python-style variable.
+
+As explained on the :doc:`variable <variable>` doc page, the
+definition of a python-style va riable associates a Python function
+name with the variable.  Its specification must match the *mode*
+argument of the *python* command for the Python function name.  For
+example these two commands would be consistent:
+
+.. code-block:: LAMMPS
+
+   variable foo python myMultiply
+   python myMultiply return v_foo format f file funcs.py
+
+The two commands can appear in either order in the input script so
+long as both are specified before the Python function is invoked for
+the first time.
 
 Note that python-style, equal-style, vector-style, and atom-style
-variables can be used in many different ways within LAMMPS.  They can be
-evaluated directly in an input script, effectively replacing the
+variables can be used in many different ways within LAMMPS.  They can
+be evaluated directly in an input script, effectively replacing the
 variable with its value.  Or they can be passed to various commands as
 arguments, so that the variable is evaluated multiple times during a
-simulation run.  See the :doc:`variable <variable>` command doc page for
-more details on variable styles which enable Python function evaluation.
+simulation run.  See the :doc:`variable <variable>` command doc page
+for more details on variable styles which enable Python function
+evaluation.
 
-The Python code for the function can be included directly in the input
-script or in a separate Python file.  The function can be standard
-Python code or it can make "callbacks" to LAMMPS through its library
-interface to query or set internal values within LAMMPS.  This is a
-powerful mechanism for performing complex operations in a LAMMPS input
-script that are not possible with the simple input script and variable
-syntax which LAMMPS defines.  Thus your input script can operate more
-like a true programming language.
+The Python code for a Python function can be included directly in the
+input script or in a separate Python file.  The function can be
+standard Python code or it can make "callbacks" to LAMMPS through its
+library interface to query or set internal values within LAMMPS.  This
+is a powerful mechanism for performing complex operations in a LAMMPS
+input script that are not possible with the simple input script and
+variable syntax which LAMMPS defines.  Thus your input script can
+operate more like a true programming language.
 
 Use of this command requires building LAMMPS with the PYTHON package
 which links to the Python library so that the Python interpreter is
@@ -133,50 +152,90 @@ illustrates use of the python command.
 
 ----------
 
-The first argument is the *mode* setting, which is either *source* or
-the *name* of a Python function.
+The first argument to the *python* command is the *mode* setting,
+which is either *source* or the *name* of a Python function.
 
 .. versionchanged:: 22Dec2022
 
 If *source* is used, it is followed by either the *here* keyword or a
 file name containing Python code.  The *here* keyword is followed by a
-string containing python commands, either on a single line enclosed in
-quotes, or as multiple lines enclosed in triple quotes.  In either
-case, the in-line code or file contents are passed to the python
-interpreter and executed immediately.  The code will be loaded into
-and run in the "main" module of the Python interpreter.  This allows
-running arbitrary Python code at any time while processing the SPARTA
-input file.  This can be used to pre-load Python modules, initialize
-global variables, define functions or classes, or perform operations
-using the Python programming language.  The Python code will be
-executed in parallel on all the MPI processes being used to run
-LAMMPS.  Note that no arguments can be passed to the executed Python
-code.
+single *inline* argument which is a string containing one or more
+python commands.  The string can either be on the same line as the
+*python* command, enclosed in quotes, or it can be multiple lines
+enclosed in triple quotes.
+
+In either case, the in-line code or the file contents are passed to
+the python interpreter and executed immediately.  The code will be
+loaded into and run in the "main" module of the Python interpreter.
+This allows running arbitrary Python code at any time while processing
+the LAMMPS input file.  This can be used to pre-load Python modules,
+initialize global variables, define functions or classes, or perform
+operations using the Python programming language.  The Python code
+will be executed in parallel on all the MPI processes being used to
+run LAMMPS.  Note that no arguments can be passed to the executed
+Python code.
 
 If the *mode* setting is the *name* of a Python function, then it will
-be registered with SPARTA for future execution (or already be defined,
-see the *exists* keyword).  One or more keywords must follow the
-*mode* function name.  One of the keywords must be *invoke*, *file*,
-*here*, or *exists*.
+be registered with LAMMPS for future execution (or can already be
+defined, see the *exists* keyword).  One or more keywords must follow
+the *mode* function name.  One of the keywords must be *invoke*,
+*file*, *here*, or *exists*, which specifies what Python code to load
+into the Python interpreter.  Note that only one of those 4 keywords
+is allowed since their operations are mutually exclusive.
 
-In all other cases, the first argument is the name of a Python function
-that will be registered with LAMMPS for future execution.  The function
-may already be defined (see *exists* keyword) or must be defined using
-the *file* or *here* keywords as explained below.
+----------
 
-If the *invoke* keyword is used, only the optional *logreturn* keyword
-can be used.  A previous *python* command must have registered the
-Python function referenced by this command.  The command invokes the
-Python function with the previously defined arguments.  A return value
-of the Python function will be ignored unless the Python function is
-linked to a :doc:`python style variable <variable>` with the *return*
+If the *invoke* keyword is used, no other keywords can be used.  A
+previous *python* command must have registered the Python function
+referenced by this command.  The *invoke* keyword invokes the Python
+function with the previously defined arguments.  A return value of the
+Python function will be ignored unless the Python function is linked
+to a :doc:`python style variable <variable>` with the *return*
 keyword.  This return value can be logged to the screen and logfile by
-adding the *logreturn* keyword to the *invoke* command.  In that case a
-message with the name of the python command and the return value is
-printed.  Return values of python functions are otherwise only
-accessible when the function is invoked indirectly by expanding a
-:doc:`python style variable <variable>`.  You can invoke a registered
-function as many times as you wish in your input script.
+adding the optional *logreturn* argument to the *invoke* keyword.  In
+that case a message with the name of the python command and the return
+value is printed.  Note that return values of python functions are
+otherwise *only* accessible when the function is invoked indirectly by
+expanding a :doc:`python style variable <variable>`, as described
+below.  A registered function can be invoked as many times as you wish
+in your input script.
+
+The *file* keyword gives the name of a file containing Python code,
+which should end with a ".py" suffix.  The code will be immediately
+loaded into and run in the "main" module of the Python interpreter.
+The Python code will be executed in parallel on all MPI processes.
+Note that Python code which contains a function definition does NOT
+"execute" the function when it is run; it simply defines the function
+so that it can be invoked later.
+
+The *here* keyword does the same thing, except that the Python code
+follows as a single argument to the *here* keyword.  This can be done
+using triple quotes as delimiters, as in the examples above and below.
+This allows Python code to be listed verbatim in your input script,
+with proper indentation, blank lines, and comments, as desired.  See
+the :doc:`Commands parse <Commands_parse>` doc page, for an
+explanation of how triple quotes can be used as part of input script
+syntax.
+
+The *exists* keyword takes no argument.  It simply means that Python
+code containing the needed Python function has already been loaded
+into the LAMMPS Python interpreter, for example by previous *python
+source* command or in a file that was loaded previously with the
+*file* keyword. This allows use of a single file of Python code which
+contains multiple functions, any of which can be used in the same (or
+different) input scripts (see below).
+
+Note that the Python code that is loaded and run by the *file* or
+*here* keyword must contain a function with the specified function
+*name*.  To operate properly when the function is later invoked, the
+code for the function must match the *input* and *return* and *format*
+keywords specified by the python command.  Otherwise Python will
+generate an error.
+
+----------
+
+The other keywords which can be used with the *python* command are
+*input*, *return*, *format*, and *length*.
 
 The *input* keyword defines how many arguments *N* the Python function
 expects.  If it takes no arguments, then the *input* keyword should
@@ -248,23 +307,6 @@ This return value is *only* accessible when expanding the python-style
 variable.  When the *invoke* keyword is used, the return value of
 the python function is ignored.
 
-----------
-
-As explained on the :doc:`variable <variable>` doc page, the
-definition of a python-style variable associates a Python function
-name with the variable.  Its specification must match the *mode*
-argument of the *python* command for the Python function name.  For
-example these two commands would be consistent:
-
-.. code-block:: LAMMPS
-
-   variable foo python myMultiply
-   python myMultiply return v_foo format f file funcs.py
-
-The two commands can appear in either order in the input script so
-long as both are specified before the Python function is invoked for
-the first time.
-
 The *format* keyword must be used if the *input* or *return* keywords
 are used.  It defines an *fstring* with M characters, where M = sum of
 number of inputs and outputs.  The order of characters corresponds to
@@ -287,41 +329,6 @@ value set to a larger number.  LAMMPS will then allocate Nlen+1 space
 to include the string terminator.  If the Python function generates a
 string longer than the default 63 or the specified *Nlen*, it will be
 truncated.
-
-----------
-
-As noted above, either the *invoke*, *file*, *here*, or *exists*
-keyword must be used, but only one of them.  These keywords specify
-what Python code to load into the Python interpreter.  The *file*
-keyword gives the name of a file containing Python code, which should
-end with a ".py" suffix.  The code will be immediately loaded into and
-run in the "main" module of the Python interpreter.  The Python code
-will be executed in parallel on all MPI processes.  Note that Python
-code which contains a function definition does not "execute" the
-function when it is run; it simply defines the function so that it can
-be invoked later.
-
-The *here* keyword does the same thing, except that the Python code
-follows as a single argument to the *here* keyword.  This can be done
-using triple quotes as delimiters, as in the examples above.  This
-allows Python code to be listed verbatim in your input script, with
-proper indentation, blank lines, and comments, as desired.  See the
-:doc:`Commands parse <Commands_parse>` doc page, for an explanation of
-how triple quotes can be used as part of input script syntax.
-
-The *exists* keyword takes no argument.  It means that Python code
-containing the required Python function with the given name has
-already been executed, for example by a *python source* command or in
-the same file that was used previously with the *file* keyword. This
-allows use of a single file of Python code which contains multiple
-functions, any of which can be used in the same (or different) input
-scripts (see below).
-
-Note that the Python code that is loaded and run by the *file* or
-*here* keyword must contain a function with the specified function
-name.  To operate properly when later invoked, the function code must
-match the *input* and *return* and *format* keywords specified by the
-python command.  Otherwise Python will generate an error.
 
 ----------
 
@@ -537,8 +544,9 @@ the value into the LAMMPS command string.
 
 ----------
 
-A Python function can also be invoked during a run, whenever
-an associated python-style variable it is assigned to is evaluated.
+As noted above, a Python function can be invoked during a run,
+whenever an associated python-style variable it is assigned to is
+evaluated.
 
 If the variable is an input argument to another LAMMPS command
 (e.g. :doc:`fix setforce <fix_setforce>`), then the Python function
@@ -557,12 +565,13 @@ simulation run at each time step using the :doc:`fix python/invoke
 
 ----------
 
-A Python function can also be invoked within the formula for an
-equal-style, vector-style, or atom-style variable.  This means the
-Python function will be invoked whenever the variable is invoked.  In
-the case of a vector-style variable, the Python function can be invoked
-once per element of the global vector.  In the case of an atom-style
-variable, the Python function can be invoked once per atom.
+As noted above, a Python function can also be invoked within the
+formula for an equal-style, vector-style, or atom-style variable.
+This means the Python function will be invoked whenever that variable
+is invoked.  In the case of a vector-style variable, the Python
+function can be invoked once per element of the global vector.  In the
+case of an atom-style variable, the Python function can be invoked
+once per atom.
 
 Here are three simple examples using equal-, vector-, and atom-style
 variables to trigger execution of a Python function:
