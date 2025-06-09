@@ -102,7 +102,10 @@ ComputeDihedralLocal::ComputeDihedralLocal(LAMMPS *lmp, int narg, char **arg) :
 
     if (pstr) {
       pvar = input->variable->find(pstr);
-      if (pvar < 0) error->all(FLERR, "Variable name for compute dihedral/local does not exist");
+      if (pvar < 0) {
+        input->variable->internal_create(pstr,0.0);
+        pvar = input->variable->find(pstr);
+      }
       if (!input->variable->internalstyle(pvar))
         error->all(FLERR, "Variable for compute dihedral/local is invalid style");
     }
