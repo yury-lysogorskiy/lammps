@@ -82,6 +82,8 @@ KokkosLMP::KokkosLMP(LAMMPS *lmp, int narg, char **arg) : Pointers(lmp)
   threads_per_atom_set = 0;
   pair_team_size = 128;
   pair_team_size_set = 0;
+  nbin_atoms_per_bin_set = 0;
+  nbin_atoms_per_bin = 16;
 
   int iarg = 0;
   while (iarg < narg) {
