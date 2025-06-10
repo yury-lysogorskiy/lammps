@@ -554,6 +554,11 @@ void KokkosLMP::accelerator(int narg, char **arg)
       pair_team_size = utils::inumeric(FLERR, arg[iarg+1], false, lmp);
       pair_team_size_set = 1;
       iarg += 2;
+    } else if (strcmp(arg[iarg],"nbin/atoms/per/bin") == 0) {
+      if (iarg+2 > narg) error->all(FLERR,"Illegal package kokkos command");
+      nbin_atoms_per_bin = utils::inumeric(FLERR, arg[iarg+1], false, lmp);
+      nbin_atoms_per_bin_set = 1;
+      iarg += 2;
     } else error->all(FLERR,"Illegal package kokkos command");
   }
 
