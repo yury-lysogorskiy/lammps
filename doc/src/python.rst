@@ -109,7 +109,7 @@ can be numeric formulas) to pass to the Python function associated
 with the python-style variable.
 
 As explained on the :doc:`variable <variable>` doc page, the
-definition of a python-style va riable associates a Python function
+definition of a python-style variable associates a Python function
 name with the variable.  Its specification must match the *mode*
 argument of the *python* command for the Python function name.  For
 example these two commands would be consistent:
