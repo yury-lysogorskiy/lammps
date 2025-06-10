@@ -307,7 +307,7 @@ numeric or string value, as specified by the *format* keyword.  This
 return value is *only* accessible when its associated python-style
 variable is evaluated.  When the *invoke* keyword is used, the return
 value of the python function is ignored unless the optional
-{logreturn} argument is specified.
+*logreturn* argument is specified.
 
 The *format* keyword must be used if the *input* or *return* keywords
 are used.  It defines an *fstring* with M characters, where M = sum of
