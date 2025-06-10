@@ -93,9 +93,10 @@ Description
 
 The *python* command interfaces LAMMPS with an embedded Python
 interpreter and enables executing arbitrary python code in that
-interpreter.  This can be done immediately, by using *mode* = *source*.
-Or execution can be deferred, by registering a Python function for later
-execution, by using *mode* = *name* of a Python function.
+interpreter.  This can be done immediately, by using *mode* =
+*source*.  Or execution can be deferred, by registering a Python
+function for later execution, by using *mode* = *name* of a Python
+function.
 
 Later execution can be triggered in one of two ways.  One is to use
 the python command again with its *invoke* keyword.  The other is to
@@ -109,7 +110,7 @@ can be numeric formulas) to pass to the Python function associated
 with the python-style variable.
 
 As explained on the :doc:`variable <variable>` doc page, the
-definition of a python-style va riable associates a Python function
+definition of a python-style variable associates a Python function
 name with the variable.  Its specification must match the *mode*
 argument of the *python* command for the Python function name.  For
 example these two commands would be consistent:
@@ -145,9 +146,9 @@ Use of this command requires building LAMMPS with the PYTHON package
 which links to the Python library so that the Python interpreter is
 embedded in LAMMPS.  More details about this process are given below.
 
-A broader overview of how Python can be used with LAMMPS is given in the
-:doc:`Use Python with LAMMPS <Python_head>` section of the
-documentation.  There also is an ``examples/python`` directory which
+A broader overview of how Python can be used with LAMMPS is given in
+the :doc:`Use Python with LAMMPS <Python_head>` section of the
+documentation.  There is also an ``examples/python`` directory which
 illustrates use of the python command.
 
 ----------
@@ -197,8 +198,8 @@ adding the optional *logreturn* argument to the *invoke* keyword.  In
 that case a message with the name of the python command and the return
 value is printed.  Note that return values of python functions are
 otherwise *only* accessible when the function is invoked indirectly by
-expanding a :doc:`python style variable <variable>`, as described
-below.
+evaluating its associated :doc:`python style variable <variable>`, as
+described below.
 
 The *file* keyword gives the name of a file containing Python code,
 which should end with a ".py" suffix.  The code will be immediately
@@ -302,10 +303,11 @@ The *return* keyword is only needed if the Python function returns a
 value.  The specified *varReturn* is of the form v_name, where "name"
 is the name of a python-style LAMMPS variable, defined by the
 :doc:`variable <variable>` command.  The Python function can return a
-numeric or string value, as specified by the *format* keyword.
-This return value is *only* accessible when expanding the python-style
-variable.  When the *invoke* keyword is used, the return value of
-the python function is ignored.
+numeric or string value, as specified by the *format* keyword.  This
+return value is *only* accessible when its associated python-style
+variable is evaluated.  When the *invoke* keyword is used, the return
+value of the python function is ignored unless the optional
+{logreturn} argument is specified.
 
 The *format* keyword must be used if the *input* or *return* keywords
 are used.  It defines an *fstring* with M characters, where M = sum of
@@ -345,12 +347,12 @@ with the triple-quote parsing that the LAMMPS input script performs.
 All the Python code you specify via one or more python commands is
 loaded into the Python "main" module, i.e. ``__name__ == '__main__'``.
 The code can define global variables, define global functions, define
-classes or execute statements that are outside of function definitions.
-It can contain multiple functions, only one of which matches the *func*
-setting in the python command.  This means you can use the *file*
-keyword once to load several functions, and the *exists* keyword
-thereafter in subsequent python commands to register the other functions
-that were previously loaded with LAMMPS.
+classes or execute statements that are outside of function
+definitions.  It can contain multiple functions, only one of which
+matches the *func* setting in the python command.  This means you can
+use the *file* keyword once to load several functions, and the
+*exists* keyword thereafter in subsequent python commands to register
+the other functions that were previously loaded with LAMMPS.
 
 A Python function you define (or more generally, the code you load)
 can import other Python modules or classes, it can make calls to other
