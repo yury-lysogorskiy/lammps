@@ -651,7 +651,60 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
           id, secfmt[0], secfmt[1]);
     }
   }
+
   // dipoles
+
+  if (muflag) {
+
+    for (int i = 0; i < 4; ++i) secfmt[i] = moldata["dipoles"]["format"][i];
+    if ((secfmt[0] == "atom-id") && (secfmt[1] == "mux") && (secfmt[2] == "muy") &&
+        (secfmt[3] == "muz")) {
+
+      memset(count, 0, natoms * sizeof(count));
+      for (const auto &c : moldata["dipoles"]["data"]) {
+        if (c.size() < 4)
+          error->all(
+              FLERR, Error::NOLASTLINE,
+              "Molecule template {}: missing data in \"dipoles\" section of molecule JSON data: {}",
+              id, to_string(c));
+        if (!c[0].is_number_integer())
+          error->all(
+              FLERR, Error::NOLASTLINE,
+              "Molecule template {}: invalid atom-id in \"dipoles\" section of molecule JSON "
+              "data: {}",
+              id, to_string(c[0]));
+
+        const int iatom = int(c[0]) - 1;
+        if ((iatom < 0) || (iatom >= natoms))
+          error->all(
+              FLERR, Error::NOLASTLINE,
+              "Molecule template {}: invalid atom-id {} in dipoles section of molecule JSON data",
+              id, iatom + 1);
+        count[iatom]++;
+        mu[iatom][0] = c[1];
+        mu[iatom][1] = c[2];
+        mu[iatom][2] = c[3];
+        mu[iatom][0] *= sizescale;
+        mu[iatom][1] *= sizescale;
+        mu[iatom][2] *= sizescale;
+      }
+
+      // checks
+      for (int i = 0; i < natoms; i++) {
+        if (count[i] == 0) {
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: atom {} missing in \"dipoles\" JSON section", id,
+                     i + 1);
+        }
+      }
+    } else {
+      error->all(
+          FLERR, Error::NOLASTLINE,
+          "Molecule template {}: Expected \"dipoles\" format [\"atom-id\",\"mux\",\"muy\",\"muz\"] "
+          "but found [\"{}\",\"{}\",\"{}\",\"{}\"]",
+          id, secfmt[0], secfmt[1], secfmt[2], secfmt[3]);
+    }
+  }
 
   // masses
 
@@ -1590,9 +1643,9 @@ void Molecule::dipoles(char *line)
         error->all(FLERR, fileiarg, "Invalid atom index in Dipoles section of molecule file");
 
       count[iatom]++;
-      mu[iatom][0] = values.next_double();
-      mu[iatom][1] = values.next_double();
-      mu[iatom][2] = values.next_double();
+      mu[iatom][0] = values.next_double() * sizescale;
+      mu[iatom][1] = values.next_double() * sizescale;
+      mu[iatom][2] = values.next_double() * sizescale;
     }
   } catch (TokenizerException &e) {
     error->all(FLERR, fileiarg, "Invalid line in Dipoles section of molecule file: {}\n{}", e.what(), line);

@@ -143,6 +143,29 @@
             },
             "required": ["format", "data"]
         },
+        "dipoles": {
+            "type": "object",
+            "properties": {
+                "format": {
+                    "type": "array",
+                    "const": ["atom-id", "mux", "muy", "muz"]
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "prefixItems": [
+                            {"type": "integer"},
+                            {"type": "number"},
+                            {"type": "number"},
+                            {"type": "number"}
+                        ],
+                        "items": false
+                    }
+                }
+            },
+            "required": ["format", "data"]
+        },
         "diameters": {
             "type": "object",
             "properties": {
