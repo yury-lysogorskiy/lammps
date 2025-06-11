@@ -77,7 +77,7 @@ styles and names.
 
 The *clear* command will unload all currently loaded plugins.
 
-.. versionadded:: TBD
+.. versionadded:: 12Jun2025
 
 The *restore* command will restore all currently loaded plugins.
 This allows to "import" plugins into a different LAMMPS instance.
