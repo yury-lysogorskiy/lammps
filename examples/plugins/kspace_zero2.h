@@ -21,7 +21,6 @@ namespace LAMMPS_NS {
 class KSpaceZero2 : public KSpace {
  public:
   KSpaceZero2(class LAMMPS *);
-  ~KSpaceZero2() override;
 
   void init() override;
   void setup() override;

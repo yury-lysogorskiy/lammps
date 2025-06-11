@@ -41,11 +41,6 @@ KSpaceZero::KSpaceZero(LAMMPS *lmp) : KSpace(lmp)
   spinflag = 1;
 }
 
-KSpaceZero::~KSpaceZero()
-{
-  fprintf(stderr, "In destructor for KSpace zero. This = %p\n", this);
-}
-
 /* ---------------------------------------------------------------------- */
 
 void KSpaceZero::settings(int narg, char **arg)

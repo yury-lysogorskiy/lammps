@@ -15,7 +15,6 @@ using namespace LAMMPS_NS;
 static KSpace *zero2creator(LAMMPS *lmp)
 {
   KSpace *ptr = (KSpace *) new KSpaceZero2(lmp);
-  fprintf(stderr, "Created zero2 instance at %p\n", ptr);
   return ptr;
 }
 

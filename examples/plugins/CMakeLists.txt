@@ -95,7 +95,6 @@ add_library(zero2plugin MODULE zero2plugin.cpp pair_zero2.cpp bond_zero2.cpp
 target_link_libraries(zero2plugin PRIVATE lammps)
 
 add_library(kspaceplugin MODULE kspaceplugin.cpp kspace_zero2.cpp)
-target_include_directories(kspaceplugin PRIVATE "${LAMMPS_HEADER_DIR}/KSPACE")
 target_link_libraries(kspaceplugin PRIVATE lammps)
 
 add_library(runminplugin MODULE runminplugin.cpp min_cg2.cpp verlet2.cpp)

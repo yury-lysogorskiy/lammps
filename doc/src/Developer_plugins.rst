@@ -264,7 +264,7 @@ the plugin will override the existing code.  This can be used to modify
 the behavior of existing styles or to debug new versions of them without
 having to re-compile or re-install all of LAMMPS.
 
-.. versionupdated:: 12Jun2025
+.. versionchanged:: 12Jun2025
 
 When using the :doc:`clear <clear>` command, plugins are not unloaded
 but restored to their respective style maps.  This also applies when
