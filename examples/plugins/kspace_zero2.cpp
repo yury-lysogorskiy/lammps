@@ -94,7 +94,7 @@ void KSpaceZero2::init()
       g_ewald = sqrt(-log(g_ewald)) / cutoff;
   }
 
-  if (comm->me == 0) std::string mesg = fmt::format("  G vector (1/distance) = {:.8g}\n", g_ewald);
+  if (comm->me == 0) utils::logmesg(lmp, "  G vector (1/distance) = {:.8g}\n", g_ewald);
 }
 
 /* ---------------------------------------------------------------------- */
