@@ -347,10 +347,10 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   memory->create(count, natoms, "molecule:count");
 
   // process data sections
-  std::vector<std::string> secfmt;
+  std::vector<std::string> secfmt = {"", "", "", ""};
 
   // coords
-  secfmt = std::vector<std::string>(moldata["coords"]["format"].begin(),moldata["coords"]["format"].end());
+  for (int i = 0; i < 4; ++i) secfmt[i] = moldata["coords"]["format"][i];
   if ((secfmt[0] == "atom-id") && (secfmt[1] == "x") && (secfmt[2] == "y") && (secfmt[3] == "z")) {
 
     memset(count, 0, natoms * sizeof(count));
@@ -370,8 +370,8 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
       if ((iatom < 0) || (iatom >= natoms))
         error->all(
             FLERR, Error::NOLASTLINE,
-            "Molecule template {}: invalid atom index {} in coords section of molecule JSON data",
-            id, iatom + 1);
+            "Molecule template {}: invalid atom-id {} in coords section of molecule JSON data", id,
+            iatom + 1);
       count[iatom]++;
       x[iatom][0] = c[1];
       x[iatom][1] = c[2];
@@ -385,14 +385,14 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
     // checks
     for (int i = 0; i < natoms; i++) {
       if (count[i] == 0) {
-        error->all(FLERR, fileiarg,
+        error->all(FLERR, Error::NOLASTLINE,
                    "Molecule template {}: atom {} missing in \"coords\" JSON section", id, i + 1);
       }
     }
     if (domain->dimension == 2) {
       for (int i = 0; i < natoms; i++) {
         if (x[i][2] != 0.0) {
-          error->all(FLERR, fileiarg,
+          error->all(FLERR, Error::NOLASTLINE,
                      "Molecule template {}: Z coord for atom {} must be 0.0 for 2d-simulation", id,
                      i + 1);
         }
@@ -407,7 +407,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
 
   // types
 
-  secfmt = std::vector<std::string>(moldata["types"]["format"]);
+  for (int i = 0; i < 2; ++i) secfmt[i] = moldata["types"]["format"][i];
   if ((secfmt[0] == "atom-id") && (secfmt[1] == "type")) {
 
     memset(count, 0, natoms * sizeof(count));
@@ -425,7 +425,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
       const int iatom = int(c[0]) - 1;
       if ((iatom < 0) || (iatom >= natoms))
         error->all(FLERR, Error::NOLASTLINE,
-                   "Invalid atom index {} in types section of molecule JSON data", iatom + 1);
+                   "Invalid atom-id {} in types section of molecule JSON data", iatom + 1);
       if (c[1].is_number_integer()) {    // numeric type
         type[iatom] = int(c[1]) + toffset;
       } else {
@@ -460,7 +460,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
 
   if (moleculeflag) {
 
-    secfmt = std::vector<std::string>(moldata["molecules"]["format"]);
+    for (int i = 0; i < 2; ++i) secfmt[i] = moldata["molecules"]["format"][i];
     if ((secfmt[0] == "atom-id") && (secfmt[1] == "molecule-id")) {
 
       memset(count, 0, natoms * sizeof(count));
@@ -479,7 +479,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
         const int iatom = int(c[0]) - 1;
         if ((iatom < 0) || (iatom >= natoms))
           error->all(FLERR, Error::NOLASTLINE,
-                     "Invalid atom index {} in \"molecules\" section of molecule JSON data",
+                     "Invalid atom-id {} in \"molecules\" section of molecule JSON data",
                      iatom + 1);
         if (!c[1].is_number_integer())
           error->all(FLERR, Error::NOLASTLINE,
@@ -515,11 +515,10 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
 
   if (fragmentflag) {
 
-    secfmt = std::vector<std::string>(moldata["fragments"]["format"]);
+    for (int i = 0; i < 2; ++i) secfmt[i] = moldata["fragments"]["format"][i];
     if ((secfmt[0] == "fragment-id") && (secfmt[1] == "atom-id-list")) {
 
       for (int i = 0; i < nfragments; ++i) {
-        utils::print(stderr, "fragment[{}]: {}\n", i, to_string(moldata["fragments"]["data"][i]));
         fragmentnames[i] = to_string(moldata["fragments"]["data"][i][0]);
         for (const auto &c : moldata["fragments"]["data"][i][1]) {
           if (!c.is_number_integer())
@@ -545,9 +544,164 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   }
 
   // charges
+
+  if (qflag) {
+
+    for (int i = 0; i < 2; ++i) secfmt[i] = moldata["charges"]["format"][i];
+    if ((secfmt[0] == "atom-id") && (secfmt[1] == "charge")) {
+
+      memset(count, 0, natoms * sizeof(count));
+      for (const auto &c : moldata["charges"]["data"]) {
+        if (c.size() < 2)
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: missing data in \"charges\" section of molecule JSON "
+                     "data: {}",
+                     id, to_string(c));
+        if (!c[0].is_number_integer())
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid atom-id in \"charges\" section of molecule "
+                     "JSON data: {}",
+                     id, to_string(c[0]));
+
+        const int iatom = int(c[0]) - 1;
+        if ((iatom < 0) || (iatom >= natoms))
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Invalid atom-id {} in \"charges\" section of molecule JSON data", iatom + 1);
+        if (!c[1].is_number())
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid charge in \"charges\" section of "
+                     "molecule JSON data: {}",
+                     id, to_string(c[1]));
+        q[iatom] = double(c[1]);
+        count[iatom]++;
+      }
+      // checks
+      for (int i = 0; i < natoms; i++) {
+        if (count[i] == 0) {
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: atom {} missing in \"charges\" JSON section", id,
+                     i + 1);
+        }
+      }
+    } else {
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Molecule template {}: Expected \"charges\" format [\"atom-id\",\"charge\"] but "
+                 "found [\"{}\",\"{}\"]",
+                 id, secfmt[0], secfmt[1]);
+    }
+  }
+
   // diameters
+
+  if (radiusflag) {
+    maxradius = 0.0;
+    for (int i = 0; i < 2; ++i) secfmt[i] = moldata["diameters"]["format"][i];
+    if ((secfmt[0] == "atom-id") && (secfmt[1] == "diameter")) {
+
+      memset(count, 0, natoms * sizeof(count));
+      for (const auto &c : moldata["diameters"]["data"]) {
+        if (c.size() < 2)
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: missing data in \"diameters\" section of molecule JSON "
+                     "data: {}",
+                     id, to_string(c));
+        if (!c[0].is_number_integer())
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid atom-id in \"diameters\" section of molecule "
+                     "JSON data: {}",
+                     id, to_string(c[0]));
+
+        const int iatom = int(c[0]) - 1;
+        if ((iatom < 0) || (iatom >= natoms))
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Invalid atom-id {} in \"diameters\" section of molecule JSON data",
+                     iatom + 1);
+        if (!c[1].is_number())
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid diameter in \"diameters\" section of "
+                     "molecule JSON data: {}",
+                     id, to_string(c[1]));
+        radius[iatom] = double(c[1]) * sizescale * 0.5;
+        maxradius = MAX(maxradius, radius[iatom]);
+        if (!c[1].is_number())
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid diameter in \"diameters\" section of "
+                     "molecule JSON data: {}",
+                     id, to_string(c[1]));
+        count[iatom]++;
+      }
+      // checks
+      for (int i = 0; i < natoms; i++) {
+        if (count[i] == 0) {
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: atom {} missing in \"diameters\" JSON section", id,
+                     i + 1);
+        }
+        if (radius[i] < 0.0)
+          error->all(
+              FLERR, Error::NOLASTLINE,
+              "Molecule template {}: invalid atom diameter {} for atom {} in molecule JSON data",
+              id, radius[i] * 2.0 / sizescale, i + 1);
+      }
+    } else {
+      error->all(
+          FLERR, Error::NOLASTLINE,
+          "Molecule template {}: Expected \"diameters\" format [\"atom-id\",\"diameter\"] but "
+          "found [\"{}\",\"{}\"]",
+          id, secfmt[0], secfmt[1]);
+    }
+  }
   // dipoles
+
   // masses
+
+  if (rmassflag) {
+    for (int i = 0; i < 2; ++i) secfmt[i] = moldata["masses"]["format"][i];
+    if ((secfmt[0] == "atom-id") && (secfmt[1] == "mass")) {
+
+      memset(count, 0, natoms * sizeof(count));
+      for (const auto &c : moldata["masses"]["data"]) {
+        if (c.size() < 2)
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: missing data in \"masses\" section of molecule JSON "
+                     "data: {}",
+                     id, to_string(c));
+        if (!c[0].is_number_integer())
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid atom-id in \"masses\" section of molecule "
+                     "JSON data: {}",
+                     id, to_string(c[0]));
+
+        const int iatom = int(c[0]) - 1;
+        if ((iatom < 0) || (iatom >= natoms))
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Invalid atom-id {} in \"masses\" section of molecule JSON data", iatom + 1);
+        if (!c[1].is_number())
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid mass in \"masses\" section of "
+                     "molecule JSON data: {}",
+                     id, to_string(c[1]));
+        rmass[iatom] = double(c[1]) * sizescale * sizescale * sizescale;
+        count[iatom]++;
+      }
+      // checks
+      for (int i = 0; i < natoms; i++) {
+        if (count[i] == 0) {
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: atom {} missing in \"masses\" JSON section", id, i + 1);
+        }
+        if (rmass[i] <= 0.0)
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Invalid atom mass {} for atom {} in molecule JSON data",
+                     rmass[i] / sizescale / sizescale / sizescale, i + 1);
+      }
+    } else {
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Molecule template {}: Expected \"masses\" format [\"atom-id\",\"mass\"] but "
+                 "found [\"{}\",\"{}\"]",
+                 id, secfmt[0], secfmt[1]);
+    }
+  }
 
   // bonds
   // angles
@@ -1412,7 +1566,7 @@ void Molecule::diameters(char *line)
     if (count[i] == 0)
       error->all(FLERR, fileiarg, "Atom {} missing in Diameters section of molecule file", i + 1);
     if (radius[i] < 0.0)
-      error->all(FLERR, fileiarg, "Invalid atom diameter {} for atom {} in molecule file", radius[i], i + 1);
+      error->all(FLERR, fileiarg, "Invalid atom diameter {} for atom {} in molecule file", radius[i] * 2.0 / sizescale, i + 1);
   }
 }
 
@@ -1480,7 +1634,8 @@ void Molecule::masses(char *line)
     if (count[i] == 0)
       error->all(FLERR, fileiarg, "Atom {} missing in Masses section of molecule file", i + 1);
     if (rmass[i] <= 0.0)
-      error->all(FLERR, fileiarg, "Invalid atom mass {} for atom {} in molecule file", radius[i], i + 1);
+      error->all(FLERR, fileiarg, "Invalid atom mass {} for atom {} in molecule file", rmass[i] / sizescale / sizescale
+    / sizescale, i + 1);
   }
 }
 
