@@ -412,6 +412,8 @@ void plugin_unload(const char *style, const char *name, LAMMPS *lmp)
 
   } else if (pstyle == "region") {
 
+    // must delete all region instances using this region style
+
     for (auto &iregion : lmp->domain->get_region_by_style(name))
       lmp->domain->delete_region(iregion);
 
