@@ -119,6 +119,10 @@ Syntax
           *on*  = use device acceleration only for pair styles (and host acceleration for others)
         *threads/per/atom* args = Ntpa
           Ntpa = # of threads per atom for multiple GPU threads over the neighbor list per atom
+        *pair/team/size* args = Nteamsize
+          Nteamsize = # of threads per block used for the pair compute kernel
+        *nbin/atoms/per/bin = Natomsperbin
+          Natomsperbin = # of atoms per bin used for neighbor list builds
     *omp* args = Nthreads keyword value ...
       Nthreads = # of OpenMP threads to associate with each MPI process
       zero or more keyword/value pairs may be appended
@@ -618,6 +622,14 @@ The number of lanes per atom must be a power of 2 and currently cannot be
 greater than the SIMD width for the GPU / accelerator.  In the case
 it exceeds the SIMD width, it will automatically be decreased to meet
 the restriction.
+
+The *pair/team/size* keyword sets the number of threads per block for
+the pair force compute kernel.  This keyword is only applicable
+when *neigh/thread* is set to *on*.  The default value of this parameter
+is determined based on the GPU architecture at runtime.
+
+The *nbin/atoms/per/bin* keyword sets the number of atoms per bin
+used for the neighbor list builds on the GPU.  The default value is 16.
 
 ----------
 
