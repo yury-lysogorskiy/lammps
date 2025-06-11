@@ -360,6 +360,12 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
             FLERR, Error::NOLASTLINE,
             "Molecule template {}: missing data in \"coords\" section of molecule JSON data: {}",
             id, to_string(c));
+      if (!c[0].is_number_integer())
+        error->all(
+            FLERR, Error::NOLASTLINE,
+            "Molecule template {}: invalid atom-id in \"coords\" section of molecule JSON data: {}",
+            id, to_string(c[0]));
+
       const int iatom = int(c[0]) - 1;
       if ((iatom < 0) || (iatom >= natoms))
         error->all(
@@ -411,11 +417,16 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
             FLERR, Error::NOLASTLINE,
             "Molecule template {}: missing data in \"types\" section of molecule JSON data: {}", id,
             to_string(c));
+      if (!c[0].is_number_integer())
+        error->all(
+            FLERR, Error::NOLASTLINE,
+            "Molecule template {}: invalid atom-id in \"types\" section of molecule JSON data: {}",
+            id, to_string(c[0]));
       const int iatom = int(c[0]) - 1;
       if ((iatom < 0) || (iatom >= natoms))
         error->all(FLERR, Error::NOLASTLINE,
                    "Invalid atom index {} in types section of molecule JSON data", iatom + 1);
-      if (c[1].is_number()) {    // numeric type
+      if (c[1].is_number_integer()) {    // numeric type
         type[iatom] = int(c[1]) + toffset;
       } else {
         const auto &typestr = std::string(c[1]);
