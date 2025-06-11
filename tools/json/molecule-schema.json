@@ -104,6 +104,24 @@
             },
             "required": ["format", "data"]
         },
+        "fragments": {
+            "type": "object",
+            "properties": {
+                "format": {
+                    "type": "array",
+                    "const": ["fragment-id", "atom-id-list"]
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "type": ["string", "array"],
+                        "minItems": 2,
+                        "maxItems": 2
+                    }
+                }
+            },
+            "required": ["format", "data"]
+        },
         "charges": {
             "type": "object",
             "properties": {

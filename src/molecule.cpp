@@ -455,8 +455,95 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
                "[\"{}\",\"{}\"]",
                id, secfmt[0], secfmt[1]);
   }
+
   // molecules
+
+  if (moleculeflag) {
+
+    secfmt = std::vector<std::string>(moldata["molecules"]["format"]);
+    if ((secfmt[0] == "atom-id") && (secfmt[1] == "molecule-id")) {
+
+      memset(count, 0, natoms * sizeof(count));
+      for (const auto &c : moldata["molecules"]["data"]) {
+        if (c.size() < 2)
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: missing data in \"molecules\" section of molecule JSON "
+                     "data: {}",
+                     id, to_string(c));
+        if (!c[0].is_number_integer())
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid atom-id in \"molecules\" section of molecule "
+                     "JSON data: {}",
+                     id, to_string(c[0]));
+
+        const int iatom = int(c[0]) - 1;
+        if ((iatom < 0) || (iatom >= natoms))
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Invalid atom index {} in \"molecules\" section of molecule JSON data",
+                     iatom + 1);
+        if (!c[1].is_number_integer())
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid molecule-id in \"molecules\" section of "
+                     "molecule JSON data: {}",
+                     id, to_string(c[1]));
+        molecule[iatom] = int(c[1]);
+        if (molecule[iatom] < 0)
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid molecule-id in \"molecules\" section of "
+                     "molecule JSON data: {}",
+                     id, to_string(c[1]));
+        count[iatom]++;
+      }
+      // checks
+      for (int i = 0; i < natoms; i++) {
+        if (count[i] == 0) {
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: atom {} missing in \"molecules\" JSON section", id,
+                     i + 1);
+        }
+      }
+    } else {
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Molecule template {}: Expected \"molecules\" format "
+                 "[\"atom-id\",\"molecule-id\"] but found "
+                 "[\"{}\",\"{}\"]",
+                 id, secfmt[0], secfmt[1]);
+    }
+  }
+
   // fragments
+
+  if (fragmentflag) {
+
+    secfmt = std::vector<std::string>(moldata["fragments"]["format"]);
+    if ((secfmt[0] == "fragment-id") && (secfmt[1] == "atom-id-list")) {
+
+      for (int i = 0; i < nfragments; ++i) {
+        utils::print(stderr, "fragment[{}]: {}\n", i, to_string(moldata["fragments"]["data"][i]));
+        fragmentnames[i] = to_string(moldata["fragments"]["data"][i][0]);
+        for (const auto &c : moldata["fragments"]["data"][i][1]) {
+          if (!c.is_number_integer())
+            error->all(
+                FLERR, Error::NOLASTLINE,
+                "Molecule template {}: invalid atom-id in \"fragments\" section  JSON data: {}", id,
+                to_string(c));
+
+          const int iatom = int(c) - 1;
+          if ((iatom < 0) || (iatom >= natoms))
+            error->all(FLERR, Error::NOLASTLINE,
+                       "Invalid atom id {} in \"fragments\" section of molecule JSON data",
+                       iatom + 1);
+          fragmentmask[i][iatom] = 1;
+        }
+      }
+    } else {
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Molecule template {}: Expected \"fragments\" format "
+                 "[\"fragment-id\",\"atom-id-list\"] but found [\"{}\",\"{}\"]",
+                 id, secfmt[0], secfmt[1]);
+    }
+  }
+
   // charges
   // diameters
   // dipoles
