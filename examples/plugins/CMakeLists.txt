@@ -94,10 +94,14 @@ add_library(zero2plugin MODULE zero2plugin.cpp pair_zero2.cpp bond_zero2.cpp
                                angle_zero2.cpp dihedral_zero2.cpp improper_zero2.cpp)
 target_link_libraries(zero2plugin PRIVATE lammps)
 
+add_library(kspaceplugin MODULE kspaceplugin.cpp kspace_zero2.cpp)
+target_include_directories(kspaceplugin PRIVATE "${LAMMPS_HEADER_DIR}/KSPACE")
+target_link_libraries(kspaceplugin PRIVATE lammps)
+
 add_library(runminplugin MODULE runminplugin.cpp min_cg2.cpp verlet2.cpp)
 target_link_libraries(runminplugin PRIVATE lammps)
 
-set_target_properties(morse2plugin nve2plugin helloplugin zero2plugin runminplugin PROPERTIES PREFIX "" SUFFIX ".so")
+set_target_properties(morse2plugin nve2plugin helloplugin zero2plugin kspaceplugin runminplugin PROPERTIES PREFIX "" SUFFIX ".so")
 
 # MacOS seems to need this
 if(CMAKE_SYSTEM_NAME STREQUAL Darwin)
@@ -108,13 +112,13 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(morse2plugin nve2plugin helloplugin zero2plugin
     PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
   if(CMAKE_CROSSCOMPILING)
-    set_target_properties(morse2plugin nve2plugin helloplugin zero2plugin runminplugin
+    set_target_properties(morse2plugin nve2plugin helloplugin zero2plugin kspaceplugin runminplugin
       PROPERTIES LINK_FLAGS "-Wl,--export-all-symbols")
   endif()
 else()
-  set_target_properties(morse2plugin nve2plugin helloplugin zero2plugin runminplugin PROPERTIES
+  set_target_properties(morse2plugin nve2plugin helloplugin zero2plugin kspaceplugin runminplugin PROPERTIES
     LINK_FLAGS "-rdynamic")
 endif()
 
 add_custom_target(plugins ALL ${CMAKE_COMMAND} -E echo "Building Plugins"
-  DEPENDS morse2plugin nve2plugin helloplugin zero2plugin morse2plugin runminplugin)
+  DEPENDS morse2plugin nve2plugin helloplugin zero2plugin morse2plugin kspaceplugin runminplugin)
