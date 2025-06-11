@@ -350,7 +350,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   std::vector<std::string> secfmt;
 
   // coords
-  secfmt = std::vector<std::string>(moldata["coords"]["format"]);
+  secfmt = std::vector<std::string>(moldata["coords"]["format"].begin(),moldata["coords"]["format"].end());
   if ((secfmt[0] == "atom-id") && (secfmt[1] == "x") && (secfmt[2] == "y") && (secfmt[3] == "z")) {
 
     memset(count, 0, natoms * sizeof(count));
