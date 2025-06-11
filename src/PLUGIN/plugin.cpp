@@ -21,6 +21,7 @@
 #include "force.h"
 #include "input.h"
 #include "modify.h"
+#include "update.h"
 
 #include <cstring>
 #include <list>
@@ -249,6 +250,22 @@ void plugin_register(lammpsplugin_t *plugin, void *ptr)
     }
     (*command_map)[plugin->name] = (Input::CommandCreator) plugin->creator.v1;
 
+  } else if (pstyle == "run") {
+    auto integrate_map = lmp->update->integrate_map;
+    if (integrate_map->find(plugin->name) != integrate_map->end()) {
+      if (lmp->comm->me == 0)
+        lmp->error->warning(FLERR, "Overriding built-in run style {} from plugin", plugin->name);
+    }
+    (*integrate_map)[plugin->name] = (Update::IntegrateCreator) plugin->creator.v2;
+
+  } else if (pstyle == "min") {
+    auto minimize_map = lmp->update->minimize_map;
+    if (minimize_map->find(plugin->name) != minimize_map->end()) {
+      if (lmp->comm->me == 0)
+        lmp->error->warning(FLERR, "Overriding built-in run style {} from plugin", plugin->name);
+    }
+    (*minimize_map)[plugin->name] = (Update::MinimizeCreator) plugin->creator.v1;
+
   } else {
     utils::logmesg(lmp, "Loading plugins for {} styles not yet implemented\n", pstyle);
     pluginlist.pop_back();
@@ -272,7 +289,8 @@ void plugin_unload(const char *style, const char *name, LAMMPS *lmp)
       (strcmp(style, "angle") != 0) && (strcmp(style, "dihedral") != 0) &&
       (strcmp(style, "improper") != 0) && (strcmp(style, "kspace") != 0) &&
       (strcmp(style, "compute") != 0) && (strcmp(style, "fix") != 0) &&
-      (strcmp(style, "region") != 0) && (strcmp(style, "command") != 0)) {
+      (strcmp(style, "region") != 0) && (strcmp(style, "command") != 0) &&
+      (strcmp(style, "run") != 0) && (strcmp(style, "min") != 0)) {
     if (me == 0)
       utils::logmesg(lmp, "Ignoring unload: {} is not a supported plugin style\n", style);
     return;
@@ -395,6 +413,18 @@ void plugin_unload(const char *style, const char *name, LAMMPS *lmp)
     auto command_map = lmp->input->command_map;
     auto found = command_map->find(name);
     if (found != command_map->end()) command_map->erase(name);
+
+  } else if (pstyle == "run") {
+
+    auto integrate_map = lmp->update->integrate_map;
+    auto found = integrate_map->find(name);
+    if (found != integrate_map->end()) integrate_map->erase(name);
+
+  } else if (pstyle == "min") {
+
+    auto minimize_map = lmp->update->minimize_map;
+    auto found = minimize_map->find(name);
+    if (found != minimize_map->end()) minimize_map->erase(name);
   }
 
   // if reference count is down to zero, close DSO handle.
@@ -410,7 +440,7 @@ void plugin_unload(const char *style, const char *name, LAMMPS *lmp)
 
 void plugin_clear(LAMMPS *lmp)
 {
-  verbose = false;
+  verbose = true;
   while (pluginlist.size() > 0) {
     auto p = pluginlist.begin();
     plugin_unload(p->style, p->name, lmp);
