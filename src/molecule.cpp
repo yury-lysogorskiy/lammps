@@ -347,10 +347,11 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   memory->create(count, natoms, "molecule:count");
 
   // process data sections
+  std::vector<std::string> secfmt;
 
   // coords
-  const auto &cfmt = std::vector<std::string>(moldata["coords"]["format"]);
-  if ((cfmt[0] == "atom-id") && (cfmt[1] == "x") && (cfmt[2] == "y") && (cfmt[3] == "z")) {
+  secfmt = std::vector<std::string>(moldata["coords"]["format"]);
+  if ((secfmt[0] == "atom-id") && (secfmt[1] == "x") && (secfmt[2] == "y") && (secfmt[3] == "z")) {
 
     memset(count, 0, natoms * sizeof(count));
     for (const auto &c : moldata["coords"]["data"]) {
@@ -395,13 +396,13 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
     error->all(FLERR, Error::NOLASTLINE,
                "Molecule template {}: Expected \"coords\" format [\"atom-id\",\"x\",\"y\",\"z\"] "
                "but found [\"{}\",\"{}\",\"{}\",\"{}\"]",
-               id, cfmt[0], cfmt[1], cfmt[2], cfmt[3]);
+               id, secfmt[0], secfmt[1], secfmt[2], secfmt[3]);
   }
 
   // types
 
-  const auto &ffmt = std::vector<std::string>(moldata["types"]["format"]);
-  if ((ffmt[0] == "atom-id") && (ffmt[1] == "type")) {
+  secfmt = std::vector<std::string>(moldata["types"]["format"]);
+  if ((secfmt[0] == "atom-id") && (secfmt[1] == "type")) {
 
     memset(count, 0, natoms * sizeof(count));
     for (const auto &c : moldata["types"]["data"]) {
@@ -441,7 +442,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
     error->all(FLERR, Error::NOLASTLINE,
                "Molecule template {}: Expected \"types\" format [\"atom-id\",\"type\"] but found "
                "[\"{}\",\"{}\"]",
-               id, cfmt[0], cfmt[1]);
+               id, secfmt[0], secfmt[1]);
   }
   // molecules
   // fragments
