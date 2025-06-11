@@ -349,7 +349,100 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   // process data sections
 
   // coords
+  const auto &cfmt = std::vector<std::string>(moldata["coords"]["format"]);
+  if ((cfmt[0] == "atom-id") && (cfmt[1] == "x") && (cfmt[2] == "y") && (cfmt[3] == "z")) {
+
+    memset(count, 0, natoms * sizeof(count));
+    for (const auto &c : moldata["coords"]["data"]) {
+      if (c.size() < 4)
+        error->all(
+            FLERR, Error::NOLASTLINE,
+            "Molecule template {}: missing data in \"coords\" section of molecule JSON data: {}",
+            id, to_string(c));
+      const int iatom = int(c[0]) - 1;
+      if ((iatom < 0) || (iatom >= natoms))
+        error->all(
+            FLERR, Error::NOLASTLINE,
+            "Molecule template {}: invalid atom index {} in coords section of molecule JSON data",
+            id, iatom + 1);
+      count[iatom]++;
+      x[iatom][0] = c[1];
+      x[iatom][1] = c[2];
+      x[iatom][2] = c[3];
+
+      x[iatom][0] *= sizescale;
+      x[iatom][1] *= sizescale;
+      x[iatom][2] *= sizescale;
+    }
+
+    // checks
+    for (int i = 0; i < natoms; i++) {
+      if (count[i] == 0) {
+        error->all(FLERR, fileiarg,
+                   "Molecule template {}: atom {} missing in \"coords\" JSON section", id, i + 1);
+      }
+    }
+    if (domain->dimension == 2) {
+      for (int i = 0; i < natoms; i++) {
+        if (x[i][2] != 0.0) {
+          error->all(FLERR, fileiarg,
+                     "Molecule template {}: Z coord for atom {} must be 0.0 for 2d-simulation", id,
+                     i + 1);
+        }
+      }
+    }
+  } else {
+    error->all(FLERR, Error::NOLASTLINE,
+               "Molecule template {}: Expected \"coords\" format [\"atom-id\",\"x\",\"y\",\"z\"] "
+               "but found [\"{}\",\"{}\",\"{}\",\"{}\"]",
+               id, cfmt[0], cfmt[1], cfmt[2], cfmt[3]);
+  }
+
   // types
+
+  const auto &ffmt = std::vector<std::string>(moldata["types"]["format"]);
+  if ((ffmt[0] == "atom-id") && (ffmt[1] == "type")) {
+
+    memset(count, 0, natoms * sizeof(count));
+    for (const auto &c : moldata["types"]["data"]) {
+      if (c.size() < 2)
+        error->all(
+            FLERR, Error::NOLASTLINE,
+            "Molecule template {}: missing data in \"types\" section of molecule JSON data: {}", id,
+            to_string(c));
+      const int iatom = int(c[0]) - 1;
+      if ((iatom < 0) || (iatom >= natoms))
+        error->all(FLERR, Error::NOLASTLINE,
+                   "Invalid atom index {} in types section of molecule JSON data", iatom + 1);
+      if (c[1].is_number()) {    // numeric type
+        type[iatom] = int(c[1]) + toffset;
+      } else {
+        const auto &typestr = std::string(c[1]);
+        if (!atom->labelmapflag)
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid atom type in \"types\" JSON section", id,
+                     typestr);
+        type[iatom] = atom->lmap->find(typestr, Atom::ATOM);
+        if (type[iatom] == -1)
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: Unknown atom type {} in \"types\" JSON section", id,
+                     typestr);
+      }
+      count[iatom]++;
+    }
+    // checks
+    for (int i = 0; i < natoms; i++) {
+      if (count[i] == 0) {
+        error->all(FLERR, Error::NOLASTLINE,
+                   "Molecule template {}: atom {} missing in \"types\" JSON section", id, i + 1);
+      }
+    }
+  } else {
+    error->all(FLERR, Error::NOLASTLINE,
+               "Molecule template {}: Expected \"types\" format [\"atom-id\",\"type\"] but found "
+               "[\"{}\",\"{}\"]",
+               id, cfmt[0], cfmt[1]);
+  }
   // molecules
   // fragments
   // charges
@@ -995,7 +1088,7 @@ void Molecule::coords(char *line)
 
       int iatom = values.next_int() - 1;
       if (iatom < 0 || iatom >= natoms)
-        error->all(FLERR, fileiarg, "Invalid atom index in Coords section of molecule file");
+        error->all(FLERR, fileiarg, "Invalid atom index {} in Coords section of molecule file", iatom);
       count[iatom]++;
       x[iatom][0] = values.next_double();
       x[iatom][1] = values.next_double();
