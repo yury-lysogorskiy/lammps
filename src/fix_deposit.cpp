@@ -868,19 +868,28 @@ void FixDeposit::options(int narg, char **arg)
 
     if (xstr) {
       xvar = input->variable->find(xstr);
-      if (xvar < 0) error->all(FLERR, "Variable {} for fix deposit does not exist", xstr);
+      if (xvar < 0) {
+        input->variable->internal_create(xstr,0.0);
+        xvar = input->variable->find(xstr);
+      }
       if (!input->variable->internalstyle(xvar))
         error->all(FLERR, "Variable for fix deposit is invalid style");
     }
     if (ystr) {
       yvar = input->variable->find(ystr);
-      if (yvar < 0) error->all(FLERR, "Variable {} for fix deposit does not exist", ystr);
+      if (yvar < 0) {
+        input->variable->internal_create(ystr,0.0);
+        yvar = input->variable->find(ystr);
+      }
       if (!input->variable->internalstyle(yvar))
         error->all(FLERR, "Variable for fix deposit is invalid style");
     }
     if (zstr) {
       zvar = input->variable->find(zstr);
-      if (zvar < 0) error->all(FLERR, "Variable {} for fix deposit does not exist", zstr);
+      if (zvar < 0) {
+        input->variable->internal_create(zstr,0.0);
+        zvar = input->variable->find(zstr);
+      }
       if (!input->variable->internalstyle(zvar))
         error->all(FLERR, "Variable for fix deposit is invalid style");
     }
