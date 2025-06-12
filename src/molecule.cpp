@@ -956,8 +956,254 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
       }
     }
   }
+
   // dihedrals
+
+  if (dihedralflag) {
+    int itype;
+    tagint m, atom1, atom2, atom3, atom4;
+    const int newton_bond = force->newton_bond;
+
+    // must loop over data twice: first time to count, second time to apply
+
+    for (int flag = 0; flag < 2; ++flag) {
+      for (int i = 0; i < 5; ++i) secfmt[i] = moldata["dihedrals"]["format"][i];
+      if ((secfmt[0] == "dihedral-type") && (secfmt[1] == "atom1") && (secfmt[2] == "atom2") &&
+          (secfmt[3] == "atom3") && (secfmt[4] == "atom4")) {
+
+        if (flag == 0) {
+          memset(count, 0, natoms * sizeof(int));
+        } else {
+          // must reallocate here in second iteration because dihedral_per_atom was not set for allocate() .
+          memory->destroy(dihedral_type);
+          memory->destroy(dihedral_atom1);
+          memory->destroy(dihedral_atom2);
+          memory->destroy(dihedral_atom3);
+          memory->destroy(dihedral_atom4);
+          memory->create(dihedral_type, natoms, dihedral_per_atom, "molecule:dihedral_type");
+          memory->create(dihedral_atom1, natoms, dihedral_per_atom, "molecule:dihedral_atom1");
+          memory->create(dihedral_atom2, natoms, dihedral_per_atom, "molecule:dihedral_atom2");
+          memory->create(dihedral_atom3, natoms, dihedral_per_atom, "molecule:dihedral_atom3");
+          memory->create(dihedral_atom4, natoms, dihedral_per_atom, "molecule:dihedral_atom4");
+
+          memset(num_dihedral, 0, natoms * sizeof(int));
+        }
+
+        for (int i = 0; i < ndihedrals; ++i) {
+          const auto &item = moldata["dihedrals"]["data"][i];
+          if (item.size() < 4)
+            error->all(FLERR, Error::NOLASTLINE,
+                       "Molecule template {}: invalid format of JSON data for dihedral {}: {}", id,
+                       i + 1, to_string(item));
+
+          if (item[0].is_number_integer()) {    // numeric type
+            itype = int(item[0]) + aoffset;
+          } else {
+            const auto &typestr = std::string(item[0]);
+            if (!atom->labelmapflag)
+              error->all(
+                  FLERR, Error::NOLASTLINE,
+                  "Molecule template {}: invalid dihedral type in \"dihedrals\" JSON section", id,
+                  typestr);
+            itype = atom->lmap->find(typestr, Atom::DIHEDRAL);
+            if (itype == -1)
+              error->all(
+                  FLERR, Error::NOLASTLINE,
+                  "Molecule template {}: Unknown dihedral type {} in \"dihedrals\" JSON section",
+                  id, typestr);
+          }
+
+          atom1 = tagint(item[1]);
+          atom2 = tagint(item[2]);
+          atom3 = tagint(item[3]);
+          atom4 = tagint(item[4]);
+
+          if ((atom1 <= 0) || (atom1 > natoms) || (atom2 <= 0) || (atom2 > natoms) ||
+              (atom3 <= 0) || (atom3 > natoms) || (atom4 <= 0) || (atom4 > natoms) ||
+              (atom1 == atom2) || (atom1 == atom3) || (atom1 == atom4) || (atom2 == atom3) ||
+              (atom2 == atom4) || (atom3 == atom4))
+            error->all(FLERR, Error::NOLASTLINE,
+                       "Molecule template {}: invalid atom ID in dihedral {}: {}", id, i + 1,
+                       to_string(item));
+          if ((itype <= 0) || (domain->box_exist && (itype > atom->ndihedraltypes)))
+            error->all(FLERR, Error::NOLASTLINE,
+                       "Molecule template {}: invalid dihedral type in dihedral {}: {}", id, i + 1,
+                       to_string(item));
+          if (flag == 0) {
+            count[atom1 - 1]++;
+            if (newton_bond == 0) {
+              count[atom2 - 1]++;
+              count[atom3 - 1]++;
+              count[atom4 - 1]++;
+            }
+          } else {
+            m = atom2 - 1;
+            ndihedraltypes = MAX(ndihedraltypes, itype);
+            dihedral_type[m][num_dihedral[m]] = itype;
+            dihedral_atom1[m][num_dihedral[m]] = atom1;
+            dihedral_atom2[m][num_dihedral[m]] = atom2;
+            dihedral_atom3[m][num_dihedral[m]] = atom3;
+            dihedral_atom4[m][num_dihedral[m]] = atom4;
+            num_dihedral[m]++;
+            if (newton_bond == 0) {
+              m = atom1 - 1;
+              dihedral_type[m][num_dihedral[m]] = itype;
+              dihedral_atom1[m][num_dihedral[m]] = atom1;
+              dihedral_atom2[m][num_dihedral[m]] = atom2;
+              dihedral_atom3[m][num_dihedral[m]] = atom3;
+              dihedral_atom4[m][num_dihedral[m]] = atom4;
+              num_dihedral[m]++;
+              m = atom3 - 1;
+              dihedral_type[m][num_dihedral[m]] = itype;
+              dihedral_atom1[m][num_dihedral[m]] = atom1;
+              dihedral_atom2[m][num_dihedral[m]] = atom2;
+              dihedral_atom3[m][num_dihedral[m]] = atom3;
+              dihedral_atom4[m][num_dihedral[m]] = atom4;
+              num_dihedral[m]++;
+              m = atom4 - 1;
+              dihedral_type[m][num_dihedral[m]] = itype;
+              dihedral_atom1[m][num_dihedral[m]] = atom1;
+              dihedral_atom2[m][num_dihedral[m]] = atom2;
+              dihedral_atom3[m][num_dihedral[m]] = atom3;
+              dihedral_atom4[m][num_dihedral[m]] = atom4;
+              num_dihedral[m]++;
+            }
+          }
+        }
+
+        // dihedral_per_atom = max of count vector
+
+        if (flag == 0) {
+          dihedral_per_atom = 0;
+          for (int i = 0; i < natoms; i++) dihedral_per_atom = MAX(dihedral_per_atom, count[i]);
+        }
+      }
+    }
+  }
+
   // impropers
+
+  if (improperflag) {
+    int itype;
+    tagint m, atom1, atom2, atom3, atom4;
+    const int newton_bond = force->newton_bond;
+
+    // must loop over data twice: first time to count, second time to apply
+
+    for (int flag = 0; flag < 2; ++flag) {
+      for (int i = 0; i < 5; ++i) secfmt[i] = moldata["impropers"]["format"][i];
+      if ((secfmt[0] == "improper-type") && (secfmt[1] == "atom1") && (secfmt[2] == "atom2") &&
+          (secfmt[3] == "atom3") && (secfmt[4] == "atom4")) {
+
+        if (flag == 0) {
+          memset(count, 0, natoms * sizeof(int));
+        } else {
+          // must reallocate here in second iteration because improper_per_atom was not set for allocate() .
+          memory->destroy(improper_type);
+          memory->destroy(improper_atom1);
+          memory->destroy(improper_atom2);
+          memory->destroy(improper_atom3);
+          memory->destroy(improper_atom4);
+          memory->create(improper_type, natoms, improper_per_atom, "molecule:improper_type");
+          memory->create(improper_atom1, natoms, improper_per_atom, "molecule:improper_atom1");
+          memory->create(improper_atom2, natoms, improper_per_atom, "molecule:improper_atom2");
+          memory->create(improper_atom3, natoms, improper_per_atom, "molecule:improper_atom3");
+          memory->create(improper_atom4, natoms, improper_per_atom, "molecule:improper_atom4");
+
+          memset(num_improper, 0, natoms * sizeof(int));
+        }
+
+        for (int i = 0; i < nimpropers; ++i) {
+          const auto &item = moldata["impropers"]["data"][i];
+          if (item.size() < 4)
+            error->all(FLERR, Error::NOLASTLINE,
+                       "Molecule template {}: invalid format of JSON data for improper {}: {}", id,
+                       i + 1, to_string(item));
+
+          if (item[0].is_number_integer()) {    // numeric type
+            itype = int(item[0]) + aoffset;
+          } else {
+            const auto &typestr = std::string(item[0]);
+            if (!atom->labelmapflag)
+              error->all(
+                  FLERR, Error::NOLASTLINE,
+                  "Molecule template {}: invalid improper type in \"impropers\" JSON section", id,
+                  typestr);
+            itype = atom->lmap->find(typestr, Atom::IMPROPER);
+            if (itype == -1)
+              error->all(
+                  FLERR, Error::NOLASTLINE,
+                  "Molecule template {}: Unknown improper type {} in \"impropers\" JSON section",
+                  id, typestr);
+          }
+
+          atom1 = tagint(item[1]);
+          atom2 = tagint(item[2]);
+          atom3 = tagint(item[3]);
+          atom4 = tagint(item[4]);
+
+          if ((atom1 <= 0) || (atom1 > natoms) || (atom2 <= 0) || (atom2 > natoms) ||
+              (atom3 <= 0) || (atom3 > natoms) || (atom4 <= 0) || (atom4 > natoms) ||
+              (atom1 == atom2) || (atom1 == atom3) || (atom1 == atom4) || (atom2 == atom3) ||
+              (atom2 == atom4) || (atom3 == atom4))
+            error->all(FLERR, Error::NOLASTLINE,
+                       "Molecule template {}: invalid atom ID in improper {}: {}", id, i + 1,
+                       to_string(item));
+          if ((itype <= 0) || (domain->box_exist && (itype > atom->nimpropertypes)))
+            error->all(FLERR, Error::NOLASTLINE,
+                       "Molecule template {}: invalid improper type in improper {}: {}", id, i + 1,
+                       to_string(item));
+          if (flag == 0) {
+            count[atom1 - 1]++;
+            if (newton_bond == 0) {
+              count[atom2 - 1]++;
+              count[atom3 - 1]++;
+              count[atom4 - 1]++;
+            }
+          } else {
+            m = atom2 - 1;
+            nimpropertypes = MAX(nimpropertypes, itype);
+            improper_type[m][num_improper[m]] = itype;
+            improper_atom1[m][num_improper[m]] = atom1;
+            improper_atom2[m][num_improper[m]] = atom2;
+            improper_atom3[m][num_improper[m]] = atom3;
+            improper_atom4[m][num_improper[m]] = atom4;
+            num_improper[m]++;
+            if (newton_bond == 0) {
+              m = atom1 - 1;
+              improper_type[m][num_improper[m]] = itype;
+              improper_atom1[m][num_improper[m]] = atom1;
+              improper_atom2[m][num_improper[m]] = atom2;
+              improper_atom3[m][num_improper[m]] = atom3;
+              improper_atom4[m][num_improper[m]] = atom4;
+              num_improper[m]++;
+              m = atom3 - 1;
+              improper_type[m][num_improper[m]] = itype;
+              improper_atom1[m][num_improper[m]] = atom1;
+              improper_atom2[m][num_improper[m]] = atom2;
+              improper_atom3[m][num_improper[m]] = atom3;
+              improper_atom4[m][num_improper[m]] = atom4;
+              num_improper[m]++;
+              m = atom4 - 1;
+              improper_type[m][num_improper[m]] = itype;
+              improper_atom1[m][num_improper[m]] = atom1;
+              improper_atom2[m][num_improper[m]] = atom2;
+              improper_atom3[m][num_improper[m]] = atom3;
+              improper_atom4[m][num_improper[m]] = atom4;
+              num_improper[m]++;
+            }
+          }
+        }
+
+        // improper_per_atom = max of count vector
+
+        if (flag == 0) {
+          improper_per_atom = 0;
+          for (int i = 0; i < natoms; i++) improper_per_atom = MAX(improper_per_atom, count[i]);
+        }
+      }
+    }
+  }
 
   // special_bond_counts
   // special_bonds
