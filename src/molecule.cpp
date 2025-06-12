@@ -347,10 +347,10 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   memory->create(count, natoms, "molecule:count");
 
   // process data sections
-  std::vector<std::string> secfmt = {"", "", "", ""};
+  std::vector<std::string> secfmt;
 
   // coords
-  for (int i = 0; i < 4; ++i) secfmt[i] = moldata["coords"]["format"][i];
+  for (int i = 0; i < 4; ++i) secfmt.push_back(moldata["coords"]["format"][i]);
   if ((secfmt[0] == "atom-id") && (secfmt[1] == "x") && (secfmt[2] == "y") && (secfmt[3] == "z")) {
 
     memset(count, 0, natoms * sizeof(int));
@@ -407,7 +407,8 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
 
   // types
 
-  for (int i = 0; i < 2; ++i) secfmt[i] = moldata["types"]["format"][i];
+  secfmt.clear();
+  for (int i = 0; i < 2; ++i) secfmt.push_back(moldata["types"]["format"][i]);
   if ((secfmt[0] == "atom-id") && (secfmt[1] == "type")) {
 
     memset(count, 0, natoms * sizeof(int));
@@ -460,7 +461,8 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
 
   if (moleculeflag) {
 
-    for (int i = 0; i < 2; ++i) secfmt[i] = moldata["molecules"]["format"][i];
+    secfmt.clear();
+    for (int i = 0; i < 2; ++i) secfmt.push_back(moldata["molecules"]["format"][i]);
     if ((secfmt[0] == "atom-id") && (secfmt[1] == "molecule-id")) {
 
       memset(count, 0, natoms * sizeof(int));
@@ -514,8 +516,8 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   // fragments
 
   if (fragmentflag) {
-
-    for (int i = 0; i < 2; ++i) secfmt[i] = moldata["fragments"]["format"][i];
+    secfmt.clear();
+    for (int i = 0; i < 2; ++i) secfmt.push_back(moldata["fragments"]["format"][i]);
     if ((secfmt[0] == "fragment-id") && (secfmt[1] == "atom-id-list")) {
 
       for (int i = 0; i < nfragments; ++i) {
@@ -547,7 +549,8 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
 
   if (qflag) {
 
-    for (int i = 0; i < 2; ++i) secfmt[i] = moldata["charges"]["format"][i];
+    secfmt.clear();
+    for (int i = 0; i < 2; ++i) secfmt.push_back(moldata["charges"]["format"][i]);
     if ((secfmt[0] == "atom-id") && (secfmt[1] == "charge")) {
 
       memset(count, 0, natoms * sizeof(int));
@@ -595,7 +598,8 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
 
   if (radiusflag) {
     maxradius = 0.0;
-    for (int i = 0; i < 2; ++i) secfmt[i] = moldata["diameters"]["format"][i];
+    secfmt.clear();
+    for (int i = 0; i < 2; ++i) secfmt.push_back(moldata["diameters"]["format"][i]);
     if ((secfmt[0] == "atom-id") && (secfmt[1] == "diameter")) {
 
       memset(count, 0, natoms * sizeof(int));
@@ -656,7 +660,8 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
 
   if (muflag) {
 
-    for (int i = 0; i < 4; ++i) secfmt[i] = moldata["dipoles"]["format"][i];
+    secfmt.clear();
+    for (int i = 0; i < 4; ++i) secfmt.push_back(moldata["dipoles"]["format"][i]);
     if ((secfmt[0] == "atom-id") && (secfmt[1] == "mux") && (secfmt[2] == "muy") &&
         (secfmt[3] == "muz")) {
 
@@ -717,7 +722,8 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   // masses
 
   if (rmassflag) {
-    for (int i = 0; i < 2; ++i) secfmt[i] = moldata["masses"]["format"][i];
+    secfmt.clear();
+    for (int i = 0; i < 2; ++i) secfmt.push_back(moldata["masses"]["format"][i]);
     if ((secfmt[0] == "atom-id") && (secfmt[1] == "mass")) {
 
       memset(count, 0, natoms * sizeof(int));
@@ -774,7 +780,8 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
     // must loop over data twice: first time to count, second time to apply
 
     for (int flag = 0; flag < 2; ++flag) {
-      for (int i = 0; i < 3; ++i) secfmt[i] = moldata["bonds"]["format"][i];
+      secfmt.clear();
+      for (int i = 0; i < 3; ++i) secfmt.push_back(moldata["bonds"]["format"][i]);
       if ((secfmt[0] == "bond-type") && (secfmt[1] == "atom1") && (secfmt[2] == "atom2")) {
 
         if (flag == 0) {
@@ -860,7 +867,8 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
     // must loop over data twice: first time to count, second time to apply
 
     for (int flag = 0; flag < 2; ++flag) {
-      for (int i = 0; i < 4; ++i) secfmt[i] = moldata["angles"]["format"][i];
+      secfmt.clear();
+      for (int i = 0; i < 4; ++i) secfmt.push_back(moldata["angles"]["format"][i]);
       if ((secfmt[0] == "angle-type") && (secfmt[1] == "atom1") && (secfmt[2] == "atom2") &&
           (secfmt[3] == "atom3")) {
 
@@ -967,7 +975,8 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
     // must loop over data twice: first time to count, second time to apply
 
     for (int flag = 0; flag < 2; ++flag) {
-      for (int i = 0; i < 5; ++i) secfmt[i] = moldata["dihedrals"]["format"][i];
+      secfmt.clear();
+      for (int i = 0; i < 5; ++i) secfmt.push_back(moldata["dihedrals"]["format"][i]);
       if ((secfmt[0] == "dihedral-type") && (secfmt[1] == "atom1") && (secfmt[2] == "atom2") &&
           (secfmt[3] == "atom3") && (secfmt[4] == "atom4")) {
 
@@ -1091,7 +1100,8 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
     // must loop over data twice: first time to count, second time to apply
 
     for (int flag = 0; flag < 2; ++flag) {
-      for (int i = 0; i < 5; ++i) secfmt[i] = moldata["impropers"]["format"][i];
+      secfmt.clear();
+      for (int i = 0; i < 5; ++i) secfmt.push_back(moldata["impropers"]["format"][i]);
       if ((secfmt[0] == "improper-type") && (secfmt[1] == "atom1") && (secfmt[2] == "atom2") &&
           (secfmt[3] == "atom3") && (secfmt[4] == "atom4")) {
 
