@@ -489,6 +489,29 @@ files even if the LAMMPS sources are not locally available. Example:
 
    check-jsonschema --schemafile https://download.lammps.org/json/molecule-schema.json tip3p.json
 
+JSON file format normalization
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+There are extensions to the strict JSON format that allow for comments
+or ignore additional (dangling) commas. The ``reformat-json.cpp`` tool
+will read JSON files in relaxed format, but write it out in strict format.
+It is also possible to change the level of indentation from -1 (all data
+one long line) to any positive integer value.  The original file will be
+backed up (.bak added to file name) and then overwritten.
+
+Manual compilation (it will be automatically included in the CMake build
+if building tools is requested during CMake configuration):
+
+.. code-block:: sh
+
+   g++ -I <path/to/lammps/src> -o reformat-json reformat-json.cpp
+
+Usage:
+
+.. parsed-literal::
+
+   reformat-json <indent-width> <json-file-1> [<json-file-2> ...]
+
 ----------
 
 .. _kate:

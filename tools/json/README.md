@@ -40,6 +40,22 @@ ok -- validation done
 ```
 Otherwise details about the non-conforming fields are given.
 
+# JSON file format normalization
+
+There are extensions to the strict JSON format that allow for comments
+or ignore additional (dangling) commas. The ``reformat-json.cpp`` tool
+will read JSON files in relaxed format, but write it out in strict format.
+It is also possible to change the level of indentation from -1 (all data
+one long line) to any positive integer value.  The original file will be
+backed up (.bak added to file name) and then overwritten.
+
+Manual compilation (it will be automatically included in the CMake build
+if building tools is requested during CMake configuration):
+
+```bash
+g++ -I <path/to/lammps/src> -o reformat-json reformat-json.cpp
+```
+
 -------
 
 updated by Axel Kohlmeyer, 2025-05-23
