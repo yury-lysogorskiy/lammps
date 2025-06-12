@@ -34,7 +34,7 @@ Syntax
        *ioff* value = Ioff
          Ioff = offset to add to improper types
        *scale* value = sfactor
-         sfactor = scale factor to apply to the size and mass of the molecule
+         sfactor = scale factor to apply to the size, mass, and dipole of the molecule
 
 Examples
 """"""""
@@ -66,7 +66,7 @@ templates include:
 * :doc:`atom_style template <atom_style>`
 
 The ID of a molecule template can only contain alphanumeric characters
-and underscores.
+and underscores, same as other IDs in LAMMPS.
 
 A single template can contain multiple molecules, listed one per file.
 Some of the commands listed above currently use only the first
@@ -75,7 +75,7 @@ contains multiple molecules.  The :doc:`atom_style template
 <atom_style>` command allows multiple-molecule templates to define a
 system with more than one templated molecule.
 
-The molecule file can be either in *native* format or in `JSON format
+The molecule file can be either in a *native* format or in `JSON format
 <https://www.json.org/>`_.  The details of the two formats are described
 below.  When referencing multiple molecule files in a single *molecule*
 command, each of those files may be either format.
@@ -101,31 +101,35 @@ use that attribute (e.g. no bonds).
    labels will determine the actual types directly depending on the
    current :doc:`labelmap <labelmap>` settings.
 
-The *scale* keyword scales the size of the molecule.  This can be
-useful for modeling polydisperse granular rigid bodies.  The scale
-factor is applied to each of these properties in the molecule file, if
-they are defined: the individual particle coordinates (Coords
-section), the individual mass of each particle (Masses section), the
-individual diameters of each particle (Diameters section), the total
-mass of the molecule (header keyword = mass), the center-of-mass of
-the molecule (header keyword = com), and the moments of inertia of the
-molecule (header keyword = inertia).
+The *scale* keyword scales the size of the molecule.  This can be useful
+for modeling polydisperse granular rigid bodies.  The scale factor is
+applied to each of these properties in the molecule file, if they are
+defined: the individual particle coordinates (Coords or "coords"
+section), the individual mass of each particle (Masses or "masses"
+section), the individual diameters of each particle (Diameters or
+"diameters" section), the per-atom dipoles (Dipoles or "dipoles"
+section) the total mass of the molecule (header keyword = mass), the
+center-of-mass of the molecule (header keyword = com), and the moments
+of inertia of the molecule (header keyword = inertia).
 
 .. note::
 
    The molecule command can be used to define molecules with bonds,
-   angles, dihedrals, impropers, or special bond lists of neighbors
+   angles, dihedrals, impropers, and special bond lists of neighbors
    within a molecular topology, so that you can later add the molecules
    to your simulation, via one or more of the commands listed above.
-   Since this topology-related information requires that suitable storage
-   is reserved when LAMMPS creates the simulation box (e.g. when using
-   the :doc:`create_box <create_box>` command or the
-   :doc:`read_data <read_data>` command) suitable space has to be reserved
-   so you do not overflow those pre-allocated data structures when adding
-   molecules later.  Both the :doc:`create_box <create_box>` command and
-   the :doc:`read_data <read_data>` command have "extra" options which
-   ensure space is allocated for storing topology info for molecules that
-   are added later.
+   Since this topology-related information requires that suitable
+   storage is reserved when LAMMPS creates the simulation box (e.g. when
+   using the :doc:`create_box <create_box>` command or the
+   :doc:`read_data <read_data>` command) suitable space has to be
+   reserved at that step so you do not overflow those pre-allocated data
+   structures when adding molecules later.  Both the :doc:`create_box
+   <create_box>` command and the :doc:`read_data <read_data>` command
+   have "extra" options which ensure extra space is allocated for
+   storing topology info for molecules that are added later.  This
+   feature is *not* available for the :doc:`read_restart command
+   <read_restart>`, thus binary restart files need to be converted
+   to data files first.
 
 ----------
 
@@ -133,8 +137,9 @@ Format of a native molecule file
 """"""""""""""""""""""""""""""""
 
 The format of an "native" individual molecule file looks similar but is
-different than that of a data file read by the :doc:`read_data <read_data>`
-commands.  Here is a simple example for a TIP3P water molecule:
+*different* from that of a data file read by the :doc:`read_data
+<read_data>` commands.  Here is a simple example for a TIP3P water
+molecule:
 
 .. code-block::
 
@@ -678,20 +683,23 @@ the file format.
 Format of a JSON molecule file
 """"""""""""""""""""""""""""""
 
-The format of a JSON format individual molecule file must follow
-the `JSON format <https://www.json.org/>`_, which evolved from the
+The format of a JSON format individual molecule file must follow the
+`JSON format <https://www.json.org/>`_, which evolved from the
 JavaScript programming language as a programming-language-neutral data
 interchange language.  The JSON syntax is independent of its content,
 and thus the data in the file must follow suitable conventions to be
-correctly parsed during input.  LAMMPS provides a `JSON schema file
-<https://json-schema.org/>`_ to define those conventions so that files
-can be validated against the requirements.  Validating a particular
-molecule file against this schema ensures that both, the syntax *and*
-the conventions are followed, but it **cannot** check whether the
-file contents are physically meaningful.
+correctly processed.  LAMMPS provides a `JSON schema file
+<https://json-schema.org/>`_ for JSON format molecule files in the
+:ref:`tools/json folder <json>` to represent those conventions.  Using
+the schema file any JSON format molecule files can be validated.
+Validating a particular JSON format molecule file against this schema
+ensures that both, the JSON syntax requirement *and* the LAMMPS
+conventions for molecule templates are followed.  This is a formal check
+only and thus it **cannot** check whether the file contents are
+physically meaningful.
 
 Here is a simple example for the same TIP3P water molecule from above in
-JSON format and also using :doc:`type lables <labelmap>` instead of
+JSON format and also using :doc:`type labels <labelmap>` instead of
 numeric types:
 
 .. code-block:: json
@@ -741,6 +749,12 @@ numeric types:
            ]
        }
    }
+
+Unlike with the native molecule file format, there are no header or body sections, just a list
+of keywords with associated data.  That data is either provided directly following the keyword
+or as a data block.  A data block has to include two keywords, "format" and "data", where the
+former lists the properties that are stored in the "data" lists.  The names and order of entries
+in the "format" list (and thus how the data is interpreted) are currently fixed.
 
 ----------
 
