@@ -6,7 +6,7 @@ Reading data file ...
   40200 atoms
   reading velocities ...
   40200 velocities
-  read_data CPU = 0.965 seconds
+  read_data CPU = 0.134 seconds
 200 atoms in group group_ignore_csp
 ACE version: 2023.11.25
 Recursive evaluator is used by ACE
@@ -17,8 +17,8 @@ Mapping LAMMPS atom type #1(Cu) -> ACE species type #0
 atomic load lambda:
 	fast potential: extract eam/apip:time_per_atom
 	precise potential: extract pace/apip:time_per_atom
-	lambda_input: extract lambda_input:time_per_atom
-	lambda: extract lambda_zone:time_per_atom
+	lambda_input: extract lambda/input/apip:time_per_atom
+	lambda: extract lambda/zone/apip:time_per_atom
 
 CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
 
@@ -45,17 +45,17 @@ Neighbor list info ...
       pair build: trim
       stencil: none
       bin: none
-  (3) pair lambda_input/csp, perpetual, trim from (2)
+  (3) pair lambda/input/csp/apip, perpetual, trim from (2)
       attributes: full, newton on, cut 8
       pair build: trim
       stencil: none
       bin: none
-  (4) pair lambda/zone, perpetual
+  (4) pair lambda/zone/apip, perpetual
       attributes: full, newton on, ghost, cut 14
       pair build: full/bin/ghost
       stencil: full/ghost/bin/3d
       bin: standard
-  (5) fix lambda_thermostat, perpetual, copy from (1)
+  (5) fix lambda_thermostat/apip, perpetual, copy from (1)
       attributes: full, newton on
       pair build: copy
       stencil: none
@@ -67,42 +67,42 @@ Setting up Verlet run ...
 Per MPI rank memory allocation (min/avg/max) = 298.1 | 306.3 | 314.5 Mbytes
    Step       f_balance        S/CPU      f_weight_atom[1] f_weight_atom[2] f_weight_atom[3] f_weight_atom[4]
          0   1              0              0              0              0              0            
-        10   1.0000094      1.6967777      5.4223098e-06  0.00026359839  2.79441e-06    4.7471065e-06
-        20   1.0003659      1.7992475      5.8656846e-06  0.00028206268  3.0201082e-06  4.9997584e-06
-        30   1.0002027      1.6471302      6.9082026e-06  0.00032310724  3.3876639e-06  8.8441387e-06
-        40   1.0001601      2.2370248      6.3666095e-06  0.00031580331  3.3384423e-06  3.9798527e-06
-        50   1.0003448      1.3334761      8.0826418e-06  0.00039576798  4.1750965e-06  7.9019635e-06
-        60   1.0003021      2.0070757      7.987583e-06   0.00038738262  4.1823882e-06  5.120836e-06 
-        70   1.0003852      1.4012708      7.7551177e-06  0.00037121762  4.0443315e-06  7.0812672e-06
-        80   1.0004242      1.4289728      7.6605196e-06  0.0003709174   4.0213518e-06  6.7845259e-06
-        90   1.0001739      2.0361918      8.0591386e-06  0.00038148969  4.0664359e-06  4.8507793e-06
-       100   1.0001211      1.3126409      8.8622006e-06  0.00039010983  4.1181398e-06  1.0057909e-05
-Loop time of 61.1382 on 4 procs for 100 steps with 40200 atoms
+        10   1.000245       0.23168829     2.8965377e-05  0.0016346261   1.8194173e-05  2.8621987e-05
+        20   1.0001156      0.23012235     4.2703387e-05  0.0022174634   2.4522315e-05  4.0198928e-05
+        30   1.0003479      0.24170843     4.2900821e-05  0.0022358654   2.4496934e-05  4.0262644e-05
+        40   1.0000952      0.34743014     4.4687983e-05  0.0022336389   2.4626704e-05  2.8362965e-05
+        50   1.000399       0.23273413     4.4278568e-05  0.0022319529   2.4645291e-05  4.0394287e-05
+        60   1.000137       0.23531789     4.5212176e-05  0.0022671271   2.4758267e-05  4.0607561e-05
+        70   1.0001901      0.34359487     4.5647742e-05  0.0022386998   2.473236e-05   2.8357019e-05
+        80   1.0003173      0.23324348     4.5372627e-05  0.0022272881   2.4704053e-05  4.0760615e-05
+        90   1.0009828      0.2360927      4.5867574e-05  0.0022616272   2.4715122e-05  4.0548519e-05
+       100   1.0005337      0.34332801     4.6171376e-05  0.0022394199   2.4724815e-05  2.8552653e-05
+Loop time of 385.695 on 4 procs for 100 steps with 40200 atoms
 
-Performance: 0.141 ns/day, 169.828 hours/ns, 1.636 timesteps/s, 65.753 katom-step/s
-99.7% CPU use with 4 MPI tasks x no OpenMP threads
+Performance: 0.022 ns/day, 1071.376 hours/ns, 0.259 timesteps/s, 10.423 katom-step/s
+98.9% CPU use with 4 MPI tasks x no OpenMP threads
 
 MPI task timing breakdown:
 Section |  min time  |  avg time  |  max time  |%varavg| %total
 ---------------------------------------------------------------
-Pair    | 12.577     | 23.257     | 45.888     | 274.0 | 38.04
-Neigh   | 3.0492     | 9.3441     | 14.902     | 182.2 | 15.28
-Comm    | 3.5989     | 20.427     | 41.634     | 332.3 | 33.41
-Output  | 0.0056688  | 0.23498    | 0.71828    |  59.6 |  0.38
-Modify  | 0.99534    | 2.2749     | 4.6632     |  96.2 |  3.72
-Other   |            | 5.6        |            |       |  9.16
+Pair    | 80.949     | 145.84     | 287.45     | 683.6 | 37.81
+Neigh   | 21.125     | 61.121     | 98.27      | 452.7 | 15.85
+Comm    | 23.839     | 129.54     | 261.28     | 833.4 | 33.59
+Output  | 0.10319    | 2.5231     | 8.6153     | 222.9 |  0.65
+Modify  | 5.3228     | 13.101     | 29.2       | 267.2 |  3.40
+Other   |            | 33.57      |            |       |  8.70
 
-Nlocal:          10050 ave       17259 max        2078 min
+Nlocal:          10050 ave       16825 max        3772 min
+Histogram: 2 0 0 0 0 0 0 0 0 2
+Nghost:        27618.8 ave       41748 max       12149 min
 Histogram: 1 1 0 0 0 0 0 0 0 2
-Nghost:        27618.8 ave       42609 max        8947 min
-Histogram: 1 0 1 0 0 0 0 0 0 2
 Neighs:              0 ave           0 max           0 min
 Histogram: 4 0 0 0 0 0 0 0 0 0
-FullNghs:  9.49222e+06 ave  1.6261e+07 max 1.71297e+06 min
-Histogram: 1 1 0 0 0 0 0 0 0 2
+FullNghs:  9.49222e+06 ave 1.58445e+07 max   3.337e+06 min
+Histogram: 2 0 0 0 0 0 0 0 0 2
 
 Total # of neighbors = 37968882
 Ave neighs/atom = 944.49955
 Neighbor list builds = 10
 Dangerous builds = 0
-Total wall time: 0:01:05
+Total wall time: 0:06:27

@@ -16,8 +16,8 @@ Mapping LAMMPS atom type #1(Cu) -> ACE species type #0
 atomic load lambda:
 	fast potential: extract eam/apip:time_per_atom
 	precise potential: extract pace/apip:time_per_atom
-	lambda_input: extract lambda_input:time_per_atom
-	lambda: extract lambda_zone:time_per_atom
+	lambda_input: extract lambda/input/apip:time_per_atom
+	lambda: extract lambda/zone/apip:time_per_atom
 
 CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
 
@@ -27,7 +27,7 @@ The log file lists these citations in BibTeX format.
 
 CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
 
-WARNING: The energy is not conserved when lambda changes as fix lambda_thermostat is not used. (../fix_lambda.cpp:247)
+WARNING: The energy is not conserved when lambda changes as fix lambda_thermostat/apip is not used. (../fix_lambda_apip.cpp:248)
 Neighbor list info ...
   update: every = 1 steps, delay = 0 steps, check = yes
   max neighbors/atom: 2000, page size: 100000
@@ -45,12 +45,12 @@ Neighbor list info ...
       pair build: full/bin/atomonly
       stencil: full/bin/3d
       bin: standard
-  (3) pair lambda_input/csp, perpetual, trim from (2)
+  (3) pair lambda/input/csp/apip, perpetual, trim from (2)
       attributes: full, newton on, cut 8
       pair build: trim
       stencil: none
       bin: none
-  (4) pair lambda/zone, perpetual
+  (4) pair lambda/zone/apip, perpetual
       attributes: full, newton on, ghost
       pair build: full/bin/ghost
       stencil: full/ghost/bin/3d
@@ -162,20 +162,20 @@ Per MPI rank memory allocation (min/avg/max) = 49.37 | 49.37 | 49.37 Mbytes
         98  -7409.1229      1993           42             12           
         99  -7409.1235      1993           42             12           
        100  -7409.1206      1993           42             12           
-Loop time of 1.95157 on 1 procs for 100 steps with 2047 atoms
+Loop time of 2.01276 on 1 procs for 100 steps with 2047 atoms
 
-Performance: 4.427 ns/day, 5.421 hours/ns, 51.241 timesteps/s, 104.890 katom-step/s
+Performance: 4.293 ns/day, 5.591 hours/ns, 49.683 timesteps/s, 101.701 katom-step/s
 99.8% CPU use with 1 MPI tasks x no OpenMP threads
 
 MPI task timing breakdown:
 Section |  min time  |  avg time  |  max time  |%varavg| %total
 ---------------------------------------------------------------
-Pair    | 1.9221     | 1.9221     | 1.9221     |   0.0 | 98.49
+Pair    | 1.985      | 1.985      | 1.985      |   0.0 | 98.62
 Neigh   | 0          | 0          | 0          |   0.0 |  0.00
-Comm    | 0.012796   | 0.012796   | 0.012796   |   0.0 |  0.66
-Output  | 0.0093743  | 0.0093743  | 0.0093743  |   0.0 |  0.48
-Modify  | 0.0052476  | 0.0052476  | 0.0052476  |   0.0 |  0.27
-Other   |            | 0.002057   |            |       |  0.11
+Comm    | 0.012367   | 0.012367   | 0.012367   |   0.0 |  0.61
+Output  | 0.0080612  | 0.0080612  | 0.0080612  |   0.0 |  0.40
+Modify  | 0.0053111  | 0.0053111  | 0.0053111  |   0.0 |  0.26
+Other   |            | 0.002      |            |       |  0.10
 
 Nlocal:           2047 ave        2047 max        2047 min
 Histogram: 1 0 0 0 0 0 0 0 0 0

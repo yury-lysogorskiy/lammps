@@ -16,8 +16,8 @@ Mapping LAMMPS atom type #1(Cu) -> ACE species type #0
 atomic load lambda:
 	fast potential: extract eam/apip:time_per_atom
 	precise potential: extract pace/apip:time_per_atom
-	lambda_input: extract lambda_input:time_per_atom
-	lambda: extract lambda_zone:time_per_atom
+	lambda_input: extract lambda/input/apip:time_per_atom
+	lambda: extract lambda/zone/apip:time_per_atom
 
 CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
 
@@ -44,17 +44,17 @@ Neighbor list info ...
       pair build: full/bin/atomonly
       stencil: full/bin/3d
       bin: standard
-  (3) pair lambda_input/csp, perpetual, trim from (2)
+  (3) pair lambda/input/csp/apip, perpetual, trim from (2)
       attributes: full, newton on, cut 8
       pair build: trim
       stencil: none
       bin: none
-  (4) pair lambda/zone, perpetual
+  (4) pair lambda/zone/apip, perpetual
       attributes: full, newton on, ghost
       pair build: full/bin/ghost
       stencil: full/ghost/bin/3d
       bin: standard
-  (5) fix lambda_thermostat, perpetual, copy from (2)
+  (5) fix lambda_thermostat/apip, perpetual, copy from (2)
       attributes: full, newton on
       pair build: copy
       stencil: none
@@ -166,20 +166,20 @@ Per MPI rank memory allocation (min/avg/max) = 52.93 | 52.93 | 52.93 Mbytes
         98  -7408.7651      1993           42             12           
         99  -7408.7651      1993           42             12           
        100  -7408.7651      1993           42             12           
-Loop time of 2.22278 on 1 procs for 100 steps with 2047 atoms
+Loop time of 2.19492 on 1 procs for 100 steps with 2047 atoms
 
-Performance: 3.887 ns/day, 6.174 hours/ns, 44.989 timesteps/s, 92.092 katom-step/s
+Performance: 3.936 ns/day, 6.097 hours/ns, 45.560 timesteps/s, 93.261 katom-step/s
 99.8% CPU use with 1 MPI tasks x no OpenMP threads
 
 MPI task timing breakdown:
 Section |  min time  |  avg time  |  max time  |%varavg| %total
 ---------------------------------------------------------------
-Pair    | 2.0932     | 2.0932     | 2.0932     |   0.0 | 94.17
+Pair    | 2.0683     | 2.0683     | 2.0683     |   0.0 | 94.23
 Neigh   | 0          | 0          | 0          |   0.0 |  0.00
-Comm    | 0.012523   | 0.012523   | 0.012523   |   0.0 |  0.56
-Output  | 0.0093062  | 0.0093062  | 0.0093062  |   0.0 |  0.42
-Modify  | 0.10558    | 0.10558    | 0.10558    |   0.0 |  4.75
-Other   |            | 0.002148   |            |       |  0.10
+Comm    | 0.012156   | 0.012156   | 0.012156   |   0.0 |  0.55
+Output  | 0.0084851  | 0.0084851  | 0.0084851  |   0.0 |  0.39
+Modify  | 0.10386    | 0.10386    | 0.10386    |   0.0 |  4.73
+Other   |            | 0.002096   |            |       |  0.10
 
 Nlocal:           2047 ave        2047 max        2047 min
 Histogram: 1 0 0 0 0 0 0 0 0 0
