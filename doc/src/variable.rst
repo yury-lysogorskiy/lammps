@@ -1223,7 +1223,7 @@ input script:
 .. code-block:: LAMMPS
 
    variable        foo python truncate
-   python          truncate return v_foo input 1 iv_arg format fi here """
+   python          truncate return v_foo input 1 v_arg format fi here """
    def truncate(x):
     return int(x)
    """
