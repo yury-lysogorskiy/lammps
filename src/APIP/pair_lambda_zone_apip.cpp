@@ -18,6 +18,7 @@
 
 #include "atom.h"
 #include "error.h"
+#include "fix.h"
 #include "memory.h"
 #include "modify.h"
 #include "neigh_list.h"
@@ -28,7 +29,7 @@ using namespace LAMMPS_NS;
 /* ---------------------------------------------------------------------- */
 
 PairLambdaZoneAPIP::PairLambdaZoneAPIP(LAMMPS *lmp) :
-    Pair(lmp), fix_lambda(nullptr), lambda_ta(nullptr), cut(nullptr)
+    Pair(lmp), lambda_ta(nullptr), cut(nullptr)
 {
   // set defaults
 
@@ -138,7 +139,8 @@ void PairLambdaZoneAPIP::init_style()
   if (!atom->apip_lambda_input_ta_flag)
     error->all(FLERR, "pair_lambda_zone requires an atom style with lambda_input_ta");
 
-  // find thermo style
+  // find fix lambda/apip
+  class Fix * fix_lambda = nullptr;
   int count = 0;
   for (int i = 0; i < modify->nfix; i++) {
     if (strcmp(modify->fix[i]->style, "lambda/apip") == 0) {

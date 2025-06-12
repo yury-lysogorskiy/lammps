@@ -23,7 +23,6 @@ PairStyle(lambda/zone/apip,PairLambdaZoneAPIP);
 #ifndef LMP_PAIR_LAMBDA_ZONE_APIP_H
 #define LMP_PAIR_LAMBDA_ZONE_APIP_H
 
-#include "fix.h"
 #include "pair.h"
 
 namespace LAMMPS_NS {
@@ -42,8 +41,6 @@ class PairLambdaZoneAPIP : public Pair {
   void *extract(const char *, int &) override;
 
  protected:
-  class Fix *fix_lambda;
-
   // pro forma pair style variables
   double **cut;
 
@@ -57,7 +54,7 @@ class PairLambdaZoneAPIP : public Pair {
   double cut_hi;    ///< distance at which the cutoff function of the transition zone is 0
   double cut_width;           ///< cut_hi - cut_lo
   double cut_hi_sq;           ///< cut_hi_sq * cut_hi_sq
-  double lambda_non_group;    ///< lambda for atoms that are not in the group of this fix
+  double lambda_non_group;    ///< lambda for atoms that are not in the group of the fix
   int groupbit;               ///< group for which lambda is calculated
 
   // variables for calculation
