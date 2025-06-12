@@ -353,7 +353,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   for (int i = 0; i < 4; ++i) secfmt[i] = moldata["coords"]["format"][i];
   if ((secfmt[0] == "atom-id") && (secfmt[1] == "x") && (secfmt[2] == "y") && (secfmt[3] == "z")) {
 
-    memset(count, 0, natoms * sizeof(count));
+    memset(count, 0, natoms * sizeof(int));
     for (const auto &c : moldata["coords"]["data"]) {
       if (c.size() < 4)
         error->all(
@@ -410,7 +410,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   for (int i = 0; i < 2; ++i) secfmt[i] = moldata["types"]["format"][i];
   if ((secfmt[0] == "atom-id") && (secfmt[1] == "type")) {
 
-    memset(count, 0, natoms * sizeof(count));
+    memset(count, 0, natoms * sizeof(int));
     for (const auto &c : moldata["types"]["data"]) {
       if (c.size() < 2)
         error->all(
@@ -463,7 +463,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
     for (int i = 0; i < 2; ++i) secfmt[i] = moldata["molecules"]["format"][i];
     if ((secfmt[0] == "atom-id") && (secfmt[1] == "molecule-id")) {
 
-      memset(count, 0, natoms * sizeof(count));
+      memset(count, 0, natoms * sizeof(int));
       for (const auto &c : moldata["molecules"]["data"]) {
         if (c.size() < 2)
           error->all(FLERR, Error::NOLASTLINE,
@@ -550,7 +550,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
     for (int i = 0; i < 2; ++i) secfmt[i] = moldata["charges"]["format"][i];
     if ((secfmt[0] == "atom-id") && (secfmt[1] == "charge")) {
 
-      memset(count, 0, natoms * sizeof(count));
+      memset(count, 0, natoms * sizeof(int));
       for (const auto &c : moldata["charges"]["data"]) {
         if (c.size() < 2)
           error->all(FLERR, Error::NOLASTLINE,
@@ -598,7 +598,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
     for (int i = 0; i < 2; ++i) secfmt[i] = moldata["diameters"]["format"][i];
     if ((secfmt[0] == "atom-id") && (secfmt[1] == "diameter")) {
 
-      memset(count, 0, natoms * sizeof(count));
+      memset(count, 0, natoms * sizeof(int));
       for (const auto &c : moldata["diameters"]["data"]) {
         if (c.size() < 2)
           error->all(FLERR, Error::NOLASTLINE,
@@ -660,7 +660,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
     if ((secfmt[0] == "atom-id") && (secfmt[1] == "mux") && (secfmt[2] == "muy") &&
         (secfmt[3] == "muz")) {
 
-      memset(count, 0, natoms * sizeof(count));
+      memset(count, 0, natoms * sizeof(int));
       for (const auto &c : moldata["dipoles"]["data"]) {
         if (c.size() < 4)
           error->all(
@@ -712,7 +712,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
     for (int i = 0; i < 2; ++i) secfmt[i] = moldata["masses"]["format"][i];
     if ((secfmt[0] == "atom-id") && (secfmt[1] == "mass")) {
 
-      memset(count, 0, natoms * sizeof(count));
+      memset(count, 0, natoms * sizeof(int));
       for (const auto &c : moldata["masses"]["data"]) {
         if (c.size() < 2)
           error->all(FLERR, Error::NOLASTLINE,
