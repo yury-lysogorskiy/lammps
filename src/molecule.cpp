@@ -1635,7 +1635,7 @@ void Molecule::read(int flag)
   // error checks
 
   if (!has_atoms)
-    error->all(FLERR, fileiarg, "Required \"atoms\" header keyword not found in molecule file.");
+    error->all(FLERR, fileiarg, "Required \"atoms\" header keyword not found in molecule file");
   if (natoms < 1) error->all(FLERR, fileiarg, "No atoms or invalid atom count in molecule file");
   if (nbonds < 0) error->all(FLERR, fileiarg, "Invalid bond count in molecule file");
   if (nangles < 0) error->all(FLERR, fileiarg, "Invalid angle count in molecule file");
