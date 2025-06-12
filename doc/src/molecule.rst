@@ -750,11 +750,116 @@ numeric types:
        }
    }
 
-Unlike with the native molecule file format, there are no header or body sections, just a list
-of keywords with associated data.  That data is either provided directly following the keyword
-or as a data block.  A data block has to include two keywords, "format" and "data", where the
-former lists the properties that are stored in the "data" lists.  The names and order of entries
-in the "format" list (and thus how the data is interpreted) are currently fixed.
+Unlike with the native molecule file format, there are no header or body
+sections, just a list of keywords with associated data.  JSON format
+data is read, parsed, and stored in an internal dictionary data
+structure in one step and thus the order of keywords is not relevant.
+
+Data for keywords is either provided directly following the keyword or
+as a *data block*.  A *data block* is a list that has to include two
+keywords, "format" and "data", where the former lists keywords of the
+properties that are stored in the columns of the "data" lists.  The
+names and order of entries in the "format" list (and thus how the data
+is interpreted) are currently fixed.
+
+Since the length of the various lists can be easily obtained from the
+internal data structure, several header keywords of the "native" molecule
+file are not needed.  On the other hand, some additional keywords are
+required to identify the conventions applied to the generic JSON file
+format.  The structure of the data itself mostly follows what is used
+for the "native" molecule file format.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Keyword
+     - Argument(s)
+     - Required
+     - Description
+   * - application
+     - "LAMMPS"
+     - yes
+     - indicates a LAMMPS JSON file; files from other applications may be accepted in the future
+   * - format
+     - "molecule"
+     - yes
+     - indicates a molecule template file
+   * - revision
+     - an integer
+     - yes
+     - currently 1, to facility backward compatibility on changes to the conventions
+   * - title
+     - a string
+     - no
+     - information about the template which will echoed to the screen and log
+   * - schema
+     - URL as string
+     - no
+     - location of a JSON schema file for validating the molecule file format
+   * - units
+     - a string
+     - no
+     - indicates :doc:`units settings <units>` for this molecule template
+   * - com
+     - list with 3 doubles
+     - no
+     - overrides the auto-computed center-of-mass for the template
+   * - masstotal
+     - double
+     - no
+     - overrides the auto-computed total mass for the template
+   * - inertia
+     - list with 6 doubles
+     - no
+     - overrides the auto-computed moments of inertia
+   * - coords
+     - a data block
+     - yes
+     - contains atom positions with the format "atom-id", "x", "y", "z" (same as Coords)
+   * - types
+     - a data block
+     - yes
+     - assigns atom types to atoms with the format "atom-id", "type" (same as Types)
+   * - molecule
+     - a data block
+     - no
+     - assigns molecule-IDs to atoms with the format "atom-id", "molecule-id" (same as Molecules)
+   * - fragments
+     - a data block
+     - no
+     - assigns atom-ids to fragment-IDs with the format "fragment-id", "atom-id-list" (same as Fragments)
+   * - charges
+     - a data block
+     - no
+     - assigns charges to atoms with the format "atom-id", "charge" (same as Charges)
+   * - dipoles
+     - a data block
+     - no
+     - assigns point dipoles to atoms with the format "atom-id", "mux", "muy", "muz" (same as Dipoles)
+   * - diameters
+     - a data block
+     - no
+     - assigns diameters to atoms with the format "atom-id", "diameter" (same as Diameters)
+   * - masses
+     - a data block
+     - no
+     - assigns per-atom masses to atoms with the format "atom-id", "mass" (same as Masses)
+   * - bonds
+     - a data block
+     - no
+     - defines bonds in the molecule template with the format "bond-type", "atom1", "atom2" (same as Bonds without bond-ID)
+   * - angles
+     - a data block
+     - no
+     - defines angles in the molecule template with the format "angle-type", "atom1", "atom2", "atom3" (same as Angles without angle-ID)
+   * - dihedrals
+     - a data block
+     - no
+     - defines dihedrals in the molecule template with the format "dihedral-type", "atom1", "atom2", "atom3", "atom4" (same as Dihedrals without dihedral-ID)
+   * - impropers
+     - a data block
+     - no
+     - defines impropers in the molecule template with the format "improper-type", "atom1", "atom2", "atom3", "atom4" (same as Impropers without improper-ID)
 
 ----------
 
