@@ -765,7 +765,196 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   }
 
   // bonds
+
+  if (bondflag) {
+    int itype;
+    tagint m, atom1, atom2;
+    const int newton_bond = force->newton_bond;
+
+    // must loop over data twice: first time to count, second time to apply
+
+    for (int flag = 0; flag < 2; ++flag) {
+      for (int i = 0; i < 3; ++i) secfmt[i] = moldata["bonds"]["format"][i];
+      if ((secfmt[0] == "bond-type") && (secfmt[1] == "atom1") && (secfmt[2] == "atom2")) {
+
+        if (flag == 0) {
+          memset(count, 0, natoms * sizeof(int));
+        } else {
+          // must reallocate here in second iteration because bond_per_atom was not set for allocate() .
+          memory->destroy(bond_type);
+          memory->destroy(bond_atom);
+          memory->create(bond_type, natoms, bond_per_atom, "molecule:bond_type");
+          memory->create(bond_atom, natoms, bond_per_atom, "molecule:bond_atom");
+
+          memset(num_bond, 0, natoms * sizeof(int));
+        }
+
+        for (int i = 0; i < nbonds; ++i) {
+          const auto &b = moldata["bonds"]["data"][i];
+          if (b.size() < 3)
+            error->all(FLERR, Error::NOLASTLINE,
+                       "Molecule template {}: invalid format of JSON data for bond {}: {}", id,
+                       i + 1, to_string(b));
+
+          if (b[0].is_number_integer()) {    // numeric type
+            itype = int(b[0]) + boffset;
+          } else {
+            const auto &typestr = std::string(b[0]);
+            if (!atom->labelmapflag)
+              error->all(FLERR, Error::NOLASTLINE,
+                         "Molecule template {}: invalid bond type in \"bonds\" JSON section", id,
+                         typestr);
+            itype = atom->lmap->find(typestr, Atom::BOND);
+            if (itype == -1)
+              error->all(FLERR, Error::NOLASTLINE,
+                         "Molecule template {}: Unknown bond type {} in \"bonds\" JSON section", id,
+                         typestr);
+          }
+
+          atom1 = tagint(b[1]);
+          atom2 = tagint(b[2]);
+          if ((atom1 <= 0) || (atom1 > natoms) || (atom2 <= 0) || (atom2 > natoms) ||
+              (atom1 == atom2))
+            error->all(FLERR, Error::NOLASTLINE,
+                       "Molecule template {}: invalid atom ID in bond {}: {}", id, i + 1,
+                       to_string(b));
+          if ((itype <= 0) || (domain->box_exist && (itype > atom->nbondtypes)))
+            error->all(FLERR, Error::NOLASTLINE,
+                       "Molecule template {}: invalid bond type in bond {}: {}", id, i + 1,
+                       to_string(b));
+          if (flag == 0) {
+            count[atom1 - 1]++;
+            if (newton_bond == 0) count[atom2 - 1]++;
+          } else {
+            m = atom1 - 1;
+            nbondtypes = MAX(nbondtypes, itype);
+            bond_type[m][num_bond[m]] = itype;
+            bond_atom[m][num_bond[m]] = atom2;
+            num_bond[m]++;
+            if (newton_bond == 0) {
+              m = atom2 - 1;
+              bond_type[m][num_bond[m]] = itype;
+              bond_atom[m][num_bond[m]] = atom1;
+              num_bond[m]++;
+            }
+          }
+        }
+
+        // bond_per_atom = max of count vector
+
+        if (flag == 0) {
+          bond_per_atom = 0;
+          for (int i = 0; i < natoms; i++) bond_per_atom = MAX(bond_per_atom, count[i]);
+        }
+      }
+    }
+  }
+
   // angles
+
+  if (angleflag) {
+    int itype;
+    tagint m, atom1, atom2, atom3;
+    const int newton_bond = force->newton_bond;
+
+    // must loop over data twice: first time to count, second time to apply
+
+    for (int flag = 0; flag < 2; ++flag) {
+      for (int i = 0; i < 4; ++i) secfmt[i] = moldata["angles"]["format"][i];
+      if ((secfmt[0] == "angle-type") && (secfmt[1] == "atom1") && (secfmt[2] == "atom2") &&
+          (secfmt[3] == "atom3")) {
+
+        if (flag == 0) {
+          memset(count, 0, natoms * sizeof(int));
+        } else {
+          // must reallocate here in second iteration because angle_per_atom was not set for allocate() .
+          memory->destroy(angle_type);
+          memory->destroy(angle_atom1);
+          memory->destroy(angle_atom2);
+          memory->destroy(angle_atom3);
+          memory->create(angle_type, natoms, angle_per_atom, "molecule:angle_type");
+          memory->create(angle_atom1, natoms, angle_per_atom, "molecule:angle_atom1");
+          memory->create(angle_atom2, natoms, angle_per_atom, "molecule:angle_atom2");
+          memory->create(angle_atom3, natoms, angle_per_atom, "molecule:angle_atom3");
+
+          memset(num_angle, 0, natoms * sizeof(int));
+        }
+
+        for (int i = 0; i < nangles; ++i) {
+          const auto &a = moldata["angles"]["data"][i];
+          if (a.size() < 4)
+            error->all(FLERR, Error::NOLASTLINE,
+                       "Molecule template {}: invalid format of JSON data for angle {}: {}", id,
+                       i + 1, to_string(a));
+
+          if (a[0].is_number_integer()) {    // numeric type
+            itype = int(a[0]) + aoffset;
+          } else {
+            const auto &typestr = std::string(a[0]);
+            if (!atom->labelmapflag)
+              error->all(FLERR, Error::NOLASTLINE,
+                         "Molecule template {}: invalid angle type in \"angles\" JSON section", id,
+                         typestr);
+            itype = atom->lmap->find(typestr, Atom::ANGLE);
+            if (itype == -1)
+              error->all(FLERR, Error::NOLASTLINE,
+                         "Molecule template {}: Unknown angle type {} in \"angles\" JSON section",
+                         id, typestr);
+          }
+
+          atom1 = tagint(a[1]);
+          atom2 = tagint(a[2]);
+          atom3 = tagint(a[3]);
+
+          if ((atom1 <= 0) || (atom1 > natoms) || (atom2 <= 0) || (atom2 > natoms) ||
+              (atom3 <= 0) || (atom3 > natoms) || (atom1 == atom2) || (atom1 == atom3) ||
+              (atom2 == atom3))
+            error->all(FLERR, Error::NOLASTLINE,
+                       "Molecule template {}: invalid atom ID in angle {}: {}", id, i + 1,
+                       to_string(a));
+          if ((itype <= 0) || (domain->box_exist && (itype > atom->nangletypes)))
+            error->all(FLERR, Error::NOLASTLINE,
+                       "Molecule template {}: invalid angle type in angle {}: {}", id, i + 1,
+                       to_string(a));
+          if (flag == 0) {
+            count[atom1 - 1]++;
+            if (newton_bond == 0) {
+              count[atom2 - 1]++;
+              count[atom3 - 1]++;
+            }
+          } else {
+            m = atom2 - 1;
+            nangletypes = MAX(nangletypes, itype);
+            angle_type[m][num_angle[m]] = itype;
+            angle_atom1[m][num_angle[m]] = atom1;
+            angle_atom2[m][num_angle[m]] = atom2;
+            angle_atom3[m][num_angle[m]] = atom3;
+            num_angle[m]++;
+            if (newton_bond == 0) {
+              m = atom1 - 1;
+              angle_type[m][num_angle[m]] = itype;
+              angle_atom1[m][num_angle[m]] = atom1;
+              angle_atom2[m][num_angle[m]] = atom2;
+              angle_atom3[m][num_angle[m]] = atom3;
+              m = atom3 - 1;
+              angle_type[m][num_angle[m]] = itype;
+              angle_atom1[m][num_angle[m]] = atom1;
+              angle_atom2[m][num_angle[m]] = atom2;
+              angle_atom3[m][num_angle[m]] = atom3;
+              num_angle[m]++;
+            }
+          }
+        }
+
+        // angle_per_atom = max of count vector
+
+        if (flag == 0) {
+          angle_per_atom = 0;
+          for (int i = 0; i < natoms; i++) angle_per_atom = MAX(angle_per_atom, count[i]);
+        }
+      }
+    }
+  }
   // dihedrals
   // impropers
 
