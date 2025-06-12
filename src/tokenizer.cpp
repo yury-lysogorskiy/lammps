@@ -371,7 +371,7 @@ double ValueTokenizer::next_double()
     char *end;
     auto val = std::strtod(current.c_str(), &end);
     // return value of denormal
-    if ((val != 0.0) && (val > -HUGE_VAL) && (val < HUGE_VAL)) return val;
+    if ((val > -HUGE_VAL) && (val < HUGE_VAL)) return val;
     throw InvalidFloatException(current);
   } catch (std::invalid_argument const &) {
     throw InvalidFloatException(current);

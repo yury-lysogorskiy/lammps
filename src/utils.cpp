@@ -557,7 +557,7 @@ double utils::numeric(const char *file, int line, const std::string &str, bool d
     char *end;
     rv = std::strtod(buf.c_str(), &end);
     // return value if denormal
-    if ((rv != 0.0) && (rv > -HUGE_VAL) && (rv < HUGE_VAL)) return rv;
+    if ((rv > -HUGE_VAL) && (rv < HUGE_VAL)) return rv;
 
     msg = fmt::format("Floating point number {} in input script or data file is out of range", buf);
     if (do_abort)
