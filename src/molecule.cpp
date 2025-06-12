@@ -697,6 +697,14 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
                      i + 1);
         }
       }
+      if (domain->dimension == 2) {
+        for (int i = 0; i < natoms; i++)
+          if (mu[i][2] != 0.0)
+            error->all(FLERR, Error::NOLASTLINE,
+                       "Molecule template {}: dipole moment z-component in JSON data for atom {} "
+                       "must be 0.0 for 2d-simulation",
+                       id, i + 1);
+      }
     } else {
       error->all(
           FLERR, Error::NOLASTLINE,
@@ -1654,6 +1662,12 @@ void Molecule::dipoles(char *line)
   for (int i = 0; i < natoms; i++) {
     if (count[i] == 0)
       error->all(FLERR, fileiarg, "Atom {} missing in Dipoles section of molecule file", i + 1);
+  }
+  if (domain->dimension == 2) {
+    for (int i = 0; i < natoms; i++)
+      if (mu[i][2] != 0.0)
+        error->all(FLERR, fileiarg, "Dipole moment z-component in JSON data for atom {} "
+                   "must be 0.0 for 2d-simulation", id, i + 1);
   }
 }
 
