@@ -790,16 +790,16 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
         }
 
         for (int i = 0; i < nbonds; ++i) {
-          const auto &b = moldata["bonds"]["data"][i];
-          if (b.size() < 3)
+          const auto &item = moldata["bonds"]["data"][i];
+          if (item.size() < 3)
             error->all(FLERR, Error::NOLASTLINE,
                        "Molecule template {}: invalid format of JSON data for bond {}: {}", id,
-                       i + 1, to_string(b));
+                       i + 1, to_string(item));
 
-          if (b[0].is_number_integer()) {    // numeric type
-            itype = int(b[0]) + boffset;
+          if (item[0].is_number_integer()) {    // numeric type
+            itype = int(item[0]) + boffset;
           } else {
-            const auto &typestr = std::string(b[0]);
+            const auto &typestr = std::string(item[0]);
             if (!atom->labelmapflag)
               error->all(FLERR, Error::NOLASTLINE,
                          "Molecule template {}: invalid bond type in \"bonds\" JSON section", id,
@@ -811,17 +811,17 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
                          typestr);
           }
 
-          atom1 = tagint(b[1]);
-          atom2 = tagint(b[2]);
+          atom1 = tagint(item[1]);
+          atom2 = tagint(item[2]);
           if ((atom1 <= 0) || (atom1 > natoms) || (atom2 <= 0) || (atom2 > natoms) ||
               (atom1 == atom2))
             error->all(FLERR, Error::NOLASTLINE,
                        "Molecule template {}: invalid atom ID in bond {}: {}", id, i + 1,
-                       to_string(b));
+                       to_string(item));
           if ((itype <= 0) || (domain->box_exist && (itype > atom->nbondtypes)))
             error->all(FLERR, Error::NOLASTLINE,
                        "Molecule template {}: invalid bond type in bond {}: {}", id, i + 1,
-                       to_string(b));
+                       to_string(item));
           if (flag == 0) {
             count[atom1 - 1]++;
             if (newton_bond == 0) count[atom2 - 1]++;
@@ -881,16 +881,16 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
         }
 
         for (int i = 0; i < nangles; ++i) {
-          const auto &a = moldata["angles"]["data"][i];
-          if (a.size() < 4)
+          const auto &item = moldata["angles"]["data"][i];
+          if (item.size() < 4)
             error->all(FLERR, Error::NOLASTLINE,
                        "Molecule template {}: invalid format of JSON data for angle {}: {}", id,
-                       i + 1, to_string(a));
+                       i + 1, to_string(item));
 
-          if (a[0].is_number_integer()) {    // numeric type
-            itype = int(a[0]) + aoffset;
+          if (item[0].is_number_integer()) {    // numeric type
+            itype = int(item[0]) + aoffset;
           } else {
-            const auto &typestr = std::string(a[0]);
+            const auto &typestr = std::string(item[0]);
             if (!atom->labelmapflag)
               error->all(FLERR, Error::NOLASTLINE,
                          "Molecule template {}: invalid angle type in \"angles\" JSON section", id,
@@ -902,20 +902,20 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
                          id, typestr);
           }
 
-          atom1 = tagint(a[1]);
-          atom2 = tagint(a[2]);
-          atom3 = tagint(a[3]);
+          atom1 = tagint(item[1]);
+          atom2 = tagint(item[2]);
+          atom3 = tagint(item[3]);
 
           if ((atom1 <= 0) || (atom1 > natoms) || (atom2 <= 0) || (atom2 > natoms) ||
               (atom3 <= 0) || (atom3 > natoms) || (atom1 == atom2) || (atom1 == atom3) ||
               (atom2 == atom3))
             error->all(FLERR, Error::NOLASTLINE,
                        "Molecule template {}: invalid atom ID in angle {}: {}", id, i + 1,
-                       to_string(a));
+                       to_string(item));
           if ((itype <= 0) || (domain->box_exist && (itype > atom->nangletypes)))
             error->all(FLERR, Error::NOLASTLINE,
                        "Molecule template {}: invalid angle type in angle {}: {}", id, i + 1,
-                       to_string(a));
+                       to_string(item));
           if (flag == 0) {
             count[atom1 - 1]++;
             if (newton_bond == 0) {
@@ -936,6 +936,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
               angle_atom1[m][num_angle[m]] = atom1;
               angle_atom2[m][num_angle[m]] = atom2;
               angle_atom3[m][num_angle[m]] = atom3;
+              num_angle[m]++;
               m = atom3 - 1;
               angle_type[m][num_angle[m]] = itype;
               angle_atom1[m][num_angle[m]] = atom1;
