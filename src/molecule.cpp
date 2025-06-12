@@ -1542,6 +1542,7 @@ void Molecule::read(int flag)
   // read header lines
   // skip blank lines or lines that start with "#"
   // stop when read an unrecognized line
+  bool has_atoms = false;
 
   while (true) {
 
@@ -1561,6 +1562,7 @@ void Molecule::read(int flag)
       if (values.matches("^\\s*\\d+\\s+atoms")) {
         natoms = values.next_int();
         nwant = 2;
+        has_atoms = true;
       } else if (values.matches("^\\s*\\d+\\s+bonds")) {
         nbonds = values.next_int();
         nwant = 2;
@@ -1632,6 +1634,8 @@ void Molecule::read(int flag)
 
   // error checks
 
+  if (!has_atoms)
+    error->all(FLERR, fileiarg, "Required \"atoms\" header keyword not found in molecule file.");
   if (natoms < 1) error->all(FLERR, fileiarg, "No atoms or invalid atom count in molecule file");
   if (nbonds < 0) error->all(FLERR, fileiarg, "Invalid bond count in molecule file");
   if (nangles < 0) error->all(FLERR, fileiarg, "Invalid angle count in molecule file");
