@@ -814,7 +814,7 @@ for the "native" molecule file format.
      - overrides the auto-computed moments of inertia
    * - coords
      - a data block
-     - yes
+     - no
      - contains atom positions with the format "atom-id", "x", "y", "z" (same as Coords)
    * - types
      - a data block

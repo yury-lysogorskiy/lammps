@@ -280,8 +280,8 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
     error->all(FLERR, Error::NOLASTLINE, "Found {} instead of {} data entries for '{}'", sizevar, \
                sizecheck, #field);
 
-  JSON_INIT_FIELD(coords, natoms, xflag, true, 0);
-  JSON_INIT_FIELD(types, dummyvar, typeflag, true, natoms);
+  JSON_INIT_FIELD(types, natoms, typeflag, true, 0);
+  JSON_INIT_FIELD(coords, dummyvar, xflag, false, natoms);
   JSON_INIT_FIELD(molecules, dummyvar, moleculeflag, false, natoms);
   JSON_INIT_FIELD(fragments, nfragments, fragmentflag, false, 0);
   JSON_INIT_FIELD(charges, dummyvar, qflag, false, natoms);

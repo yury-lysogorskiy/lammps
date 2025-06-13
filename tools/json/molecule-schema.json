@@ -302,5 +302,5 @@
             "required": ["format", "data"]
         }
     },
-    "required": ["application", "format", "revision", "coords", "types"]
+    "required": ["application", "format", "revision", "types"]
 }
