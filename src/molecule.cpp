@@ -222,25 +222,36 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   std::string val;
   if (moldata.contains("application")) {
     if (moldata["application"] != "LAMMPS")
-      error->all(FLERR, Error::NOLASTLINE, "JSON data is for incompatible application: {}",
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Molecule template {}: JSON data is for incompatible application: {}", id,
                  std::string(moldata["application"]));
   } else {
-    error->all(FLERR, Error::NOLASTLINE, "JSON data does not contain required 'application' field");
+    error->all(FLERR, Error::NOLASTLINE,
+               "Molecule template {}: JSON data does not contain required 'application' field", id);
   }
   if (moldata.contains("format")) {
     if (moldata["format"] != "molecule")
-      error->all(FLERR, Error::NOLASTLINE, "JSON data is not for a molecule: {}",
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Molecule template {}: JSON data is not for a molecule: {}", id,
                  std::string(moldata["format"]));
   } else {
-    error->all(FLERR, Error::NOLASTLINE, "JSON data does not contain required 'format' field");
+    error->all(FLERR, Error::NOLASTLINE,
+               "Molecule template {}: JSON data does not contain required 'format' field", id);
   }
   if (moldata.contains("revision")) {
     int rev = moldata["revision"];
     if ((rev < 1) || (rev > 1))
-      error->all(FLERR, Error::NOLASTLINE, "JSON molecule data with unsupported revision {}", rev);
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Molecule template {}: JSON molecule data with unsupported revision {}", id, rev);
   } else {
-    error->all(FLERR, Error::NOLASTLINE, "JSON data does not contain required 'revision' field");
+    error->all(FLERR, Error::NOLASTLINE,
+               "Molecule template {}: JSON data does not contain required 'revision' field", id);
   }
+
+  // length of types data list determines the number of atoms in the template and is thus required
+  if (!moldata.contains("types"))
+    error->all(FLERR, Error::NOLASTLINE,
+               "Molecule template {}: JSON data does not contain required 'types' field", id);
 
   // optional fields
 
@@ -268,29 +279,37 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
 
   int dummyvar;
 
-#define JSON_INIT_FIELD(field, sizevar, flagvar, required, sizecheck)                             \
-  if (moldata.contains(#field)) {                                                                 \
-    sizevar = 0;                                                                                  \
-    flagvar = 0;                                                                                  \
-    if (!moldata[#field].contains("format"))                                                      \
-      error->all(FLERR, Error::NOLASTLINE,                                                        \
-                 "JSON molecule data does not contain required 'format' field for '{}'", #field); \
-    if (moldata[#field].contains("data")) {                                                       \
-      flagvar = 1;                                                                                \
-      sizevar = moldata[#field]["data"].size();                                                   \
-    } else {                                                                                      \
-      error->all(FLERR, Error::NOLASTLINE,                                                        \
-                 "JSON molecule data does not contain required 'data' field for '{}'", #field);   \
-    }                                                                                             \
-    if (sizevar < 1)                                                                              \
-      error->all(FLERR, Error::NOLASTLINE, "No {} in JSON data for molecule", #field);            \
-  } else {                                                                                        \
-    if (required)                                                                                 \
-      error->all(FLERR, Error::NOLASTLINE,                                                        \
-                 "JSON data for molecule does not contain required '{}' field", #field);          \
-  }                                                                                               \
-  if (sizecheck && (sizecheck != sizevar))                                                        \
-    error->all(FLERR, Error::NOLASTLINE, "Found {} instead of {} data entries for '{}'", sizevar, \
+#define JSON_INIT_FIELD(field, sizevar, flagvar, required, sizecheck)                              \
+  if (moldata.contains(#field)) {                                                                  \
+    sizevar = 0;                                                                                   \
+    flagvar = 0;                                                                                   \
+    if (!moldata[#field].contains("format"))                                                       \
+      error->all(FLERR, Error::NOLASTLINE,                                                         \
+                 "Molecule template {}: JSON molecule data does not contain required 'format' "    \
+                 "field for '{}'",                                                                 \
+                 id, #field);                                                                      \
+    if (moldata[#field].contains("data")) {                                                        \
+      flagvar = 1;                                                                                 \
+      sizevar = moldata[#field]["data"].size();                                                    \
+    } else {                                                                                       \
+      error->all(FLERR, Error::NOLASTLINE,                                                         \
+                 "Molecule template {}: JSON molecule data does not contain required 'data' "      \
+                 "field for '{}'",                                                                 \
+                 id, #field);                                                                      \
+    }                                                                                              \
+    if (sizevar < 1)                                                                               \
+      error->all(FLERR, Error::NOLASTLINE,                                                         \
+                 "Molecule template {}: No {} entries in JSON data for molecule", id, #field);     \
+  } else {                                                                                         \
+    if (required)                                                                                  \
+      error->all(                                                                                  \
+          FLERR, Error::NOLASTLINE,                                                                \
+          "Molecule template {}: JSON data for molecule does not contain required '{}' field", id, \
+          #field);                                                                                 \
+  }                                                                                                \
+  if (sizecheck && (sizecheck != sizevar))                                                         \
+    error->all(FLERR, Error::NOLASTLINE,                                                           \
+               "Molecule template {}: Found {} instead of {} data entries for '{}'", id, sizevar,  \
                sizecheck, #field);
 
   JSON_INIT_FIELD(types, natoms, typeflag, true, 0);
@@ -340,7 +359,8 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
     const double scale5 = powint(sizescale, 5);
     avec_body = dynamic_cast<AtomVecBody *>(atom->style_match("body"));
     if (!avec_body)
-      error->all(FLERR, Error::NOLASTLINE, "JSON molecule data requires atom style body");
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Molecule template {}: JSON molecule data requires atom style body", id);
     nibody = moldata["body"][0];
     ndbody = moldata["body"][1];
   }
@@ -349,7 +369,8 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
 
   if ((domain->dimension == 2) && (com[2] != 0.0))
     error->all(FLERR, Error::NOLASTLINE,
-               "Molecule data z center-of-mass must be 0.0 for 2d systems");
+               "Molecule template {}: Molecule data z center-of-mass must be 0.0 for 2d systems",
+               id);
 
   // allocate required storage
 
@@ -363,62 +384,65 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   std::vector<std::string> secfmt;
 
   // coords
-  for (int i = 0; i < 4; ++i) secfmt.push_back(moldata["coords"]["format"][i]);
-  if ((secfmt[0] == "atom-id") && (secfmt[1] == "x") && (secfmt[2] == "y") && (secfmt[3] == "z")) {
+  if (xflag) {
+    for (int i = 0; i < 4; ++i) secfmt.push_back(moldata["coords"]["format"][i]);
+    if ((secfmt[0] == "atom-id") && (secfmt[1] == "x") && (secfmt[2] == "y") &&
+        (secfmt[3] == "z")) {
 
-    memset(count, 0, natoms * sizeof(int));
-    for (const auto &c : moldata["coords"]["data"]) {
-      if (c.size() < 4)
-        error->all(
-            FLERR, Error::NOLASTLINE,
-            "Molecule template {}: missing data in \"coords\" section of molecule JSON data: {}",
-            id, to_string(c));
-      if (!c[0].is_number_integer())
-        error->all(
-            FLERR, Error::NOLASTLINE,
-            "Molecule template {}: invalid atom-id in \"coords\" section of molecule JSON data: {}",
-            id, to_string(c[0]));
-
-      const int iatom = int(c[0]) - 1;
-      if ((iatom < 0) || (iatom >= natoms))
-        error->all(
-            FLERR, Error::NOLASTLINE,
-            "Molecule template {}: invalid atom-id {} in coords section of molecule JSON data", id,
-            iatom + 1);
-      count[iatom]++;
-      x[iatom][0] = c[1];
-      x[iatom][1] = c[2];
-      x[iatom][2] = c[3];
-
-      x[iatom][0] *= sizescale;
-      x[iatom][1] *= sizescale;
-      x[iatom][2] *= sizescale;
-    }
-
-    // checks
-    for (int i = 0; i < natoms; i++) {
-      if (count[i] == 0) {
-        error->all(FLERR, Error::NOLASTLINE,
-                   "Molecule template {}: atom {} missing in \"coords\" JSON section", id, i + 1);
-      }
-    }
-    if (domain->dimension == 2) {
-      for (int i = 0; i < natoms; i++) {
-        if (x[i][2] != 0.0) {
+      memset(count, 0, natoms * sizeof(int));
+      for (const auto &c : moldata["coords"]["data"]) {
+        if (c.size() < 4)
+          error->all(
+              FLERR, Error::NOLASTLINE,
+              "Molecule template {}: missing data in \"coords\" section of molecule JSON data: {}",
+              id, to_string(c));
+        if (!c[0].is_number_integer())
           error->all(FLERR, Error::NOLASTLINE,
-                     "Molecule template {}: Z coord for atom {} must be 0.0 for 2d-simulation", id,
-                     i + 1);
+                     "Molecule template {}: invalid atom-id in \"coords\" section of molecule JSON "
+                     "data: {}",
+                     id, to_string(c[0]));
+
+        const int iatom = int(c[0]) - 1;
+        if ((iatom < 0) || (iatom >= natoms))
+          error->all(
+              FLERR, Error::NOLASTLINE,
+              "Molecule template {}: invalid atom-id {} in coords section of molecule JSON data",
+              id, iatom + 1);
+        count[iatom]++;
+        x[iatom][0] = c[1];
+        x[iatom][1] = c[2];
+        x[iatom][2] = c[3];
+
+        x[iatom][0] *= sizescale;
+        x[iatom][1] *= sizescale;
+        x[iatom][2] *= sizescale;
+      }
+
+      // checks
+      for (int i = 0; i < natoms; i++) {
+        if (count[i] == 0) {
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: atom {} missing in \"coords\" JSON section", id, i + 1);
         }
       }
+      if (domain->dimension == 2) {
+        for (int i = 0; i < natoms; i++) {
+          if (x[i][2] != 0.0) {
+            error->all(FLERR, Error::NOLASTLINE,
+                       "Molecule template {}: Z coord for atom {} must be 0.0 for 2d-simulation",
+                       id, i + 1);
+          }
+        }
+      }
+    } else {
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Molecule template {}: Expected \"coords\" format [\"atom-id\",\"x\",\"y\",\"z\"] "
+                 "but found [\"{}\",\"{}\",\"{}\",\"{}\"]",
+                 id, secfmt[0], secfmt[1], secfmt[2], secfmt[3]);
     }
-  } else {
-    error->all(FLERR, Error::NOLASTLINE,
-               "Molecule template {}: Expected \"coords\" format [\"atom-id\",\"x\",\"y\",\"z\"] "
-               "but found [\"{}\",\"{}\",\"{}\",\"{}\"]",
-               id, secfmt[0], secfmt[1], secfmt[2], secfmt[3]);
   }
 
-  // types
+  // types (is a required section and we tested for it above)
 
   secfmt.clear();
   for (int i = 0; i < 2; ++i) secfmt.push_back(moldata["types"]["format"][i]);
@@ -438,8 +462,10 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
             id, to_string(c[0]));
       const int iatom = int(c[0]) - 1;
       if ((iatom < 0) || (iatom >= natoms))
-        error->all(FLERR, Error::NOLASTLINE,
-                   "Invalid atom-id {} in types section of molecule JSON data", iatom + 1);
+        error->all(
+            FLERR, Error::NOLASTLINE,
+            "Molecule template {}: invalid atom-id {} in types section of molecule JSON data", id,
+            iatom + 1);
       if (c[1].is_number_integer()) {    // numeric type
         type[iatom] = int(c[1]) + toffset;
       } else {
