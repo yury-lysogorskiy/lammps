@@ -232,6 +232,7 @@ Bagi
 Bagnold
 Baig
 Bajaj
+bak
 Bal
 balancer
 Balankura
@@ -3134,6 +3135,7 @@ Pxy
 pxz
 py
 Py
+pyargs
 pydir
 pylammps
 PyLammps
@@ -4077,6 +4079,7 @@ Vaiwala
 valent
 Valeriu
 valgrind
+validator
 Valone
 valuev
 Valuev
@@ -4086,6 +4089,7 @@ Vanduyfhuys
 varargs
 varavg
 variational
+varname
 Varshalovich
 Varshney
 vashishta

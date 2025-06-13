@@ -2141,7 +2141,7 @@ int Atom::shape_consistency(int itype, double &shapex, double &shapey, double &s
 }
 
 /* ----------------------------------------------------------------------
-   add a new molecule template = set of molecules
+   add a new molecule template = set of molecules from the "molecule" command
 ------------------------------------------------------------------------- */
 
 void Atom::add_molecule(int narg, char **arg)
@@ -2160,13 +2160,34 @@ void Atom::add_molecule(int narg, char **arg)
   while (true) {
     molecules = (Molecule **)
       memory->srealloc(molecules,(nmolecule+1)*sizeof(Molecule *), "atom::molecules");
-    molecules[nmolecule] = new Molecule(lmp,narg,arg,index);
+    molecules[nmolecule] = new Molecule(lmp);
+    molecules[nmolecule]->command(narg,arg,index);
     molecules[nmolecule]->nset = 0;
     molecules[nmolecule-ifile+1]->nset++;
     nmolecule++;
     if (molecules[nmolecule-1]->last) break;
     ifile++;
   }
+}
+
+/* ----------------------------------------------------------------------
+   add a new molecule template from a JSON object
+------------------------------------------------------------------------- */
+
+void Atom::add_molecule(const std::string &id, const json &moldata)
+{
+  if (id.empty()) error->all(FLERR, "Must provide molecule ID");
+
+  if (find_molecule(id.c_str()) >= 0)
+    error->all(FLERR, Error::NOLASTLINE, "Reuse of molecule template ID {}", id);
+
+  molecules = (Molecule **)
+    memory->srealloc(molecules,(nmolecule+1)*sizeof(Molecule *), "atom::molecules");
+  molecules[nmolecule] = new Molecule(lmp);
+  molecules[nmolecule]->from_json(id, moldata);
+  molecules[nmolecule]->nset = 1;
+  molecules[nmolecule]->last = 1;
+  nmolecule++;
 }
 
 /* ----------------------------------------------------------------------
