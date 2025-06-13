@@ -32,7 +32,6 @@ for file in *.cpp *.h; do
   test -f ${file} && action $file
 done
 
-
 # edit 2 Makefile.package files to include/exclude package info
 
 if (test $1 = 1) then
@@ -54,20 +53,12 @@ include ..\/..\/lib\/pace\/Makefile.lammps
 
 elif (test $1 = 0) then
 
-  # The APIP package depends also on the pace library.
-  # Remove in Makefiles only if there are no remaining includes from APIP.
-  # grep searches also in kspace.cpp and thus returns no error.
-  if (test $(grep '#include "ace' ../*pace*.cpp | wc -l) = 0) then
+  if (test -e ../Makefile.package) then
+    sed -i -e 's/[^ \t]*pace[^ \t]* //' ../Makefile.package
+  fi
 
-    # update Makefiles
-    if (test -e ../Makefile.package) then
-      sed -i -e 's/[^ \t]*pace[^ \t]* //' ../Makefile.package
-    fi
-
-    if (test -e ../Makefile.package.settings) then
-      sed -i -e '/^[ \t]*include.*pace.*$/d' ../Makefile.package.settings
-    fi
-
+  if (test -e ../Makefile.package.settings) then
+    sed -i -e '/^[ \t]*include.*pace.*$/d' ../Makefile.package.settings
   fi
 
 fi

@@ -26,48 +26,15 @@ action () {
   fi
 }
 
-# all package files with no dependencies
-
-for file in *.cpp *.h; do
-  test -f ${file} && action $file
-done
-
-
-# edit 2 Makefile.package files to include/exclude package info
+# some styles in APIP have depend on the ML-PACE package
 
 if (test $1 = 1) then
-
-  if (test -e ../Makefile.package) then
-    sed -i -e 's/[^ \t]*pace[^ \t]* //' ../Makefile.package
-    sed -i -e 's|^PKG_SYSINC =[ \t]*|&$(pace_SYSINC) |' ../Makefile.package
-    sed -i -e 's|^PKG_SYSLIB =[ \t]*|&$(pace_SYSLIB) |' ../Makefile.package
-    sed -i -e 's|^PKG_SYSPATH =[ \t]*|&$(pace_SYSPATH) |' ../Makefile.package
+  if (test ! -e ../pair_pace.cpp) then
+    echo "Must install ML-PACE package with APIP package"
+    exit 1
   fi
-
-  if (test -e ../Makefile.package.settings) then
-    sed -i -e '/^[ \t]*include.*pace.*$/d' ../Makefile.package.settings
-    # multiline form needed for BSD sed on Macs
-    sed -i -e '4 i \
-include ..\/..\/lib\/pace\/Makefile.lammps
-' ../Makefile.package.settings
-  fi
-
-elif (test $1 = 0) then
-
-  # The ML-PACE package depends also on the pace library.
-  # Remove in Makefiles only if there are no remaining includes from ML-PACE.
-  # grep searches also in kspace.cpp and thus returns no error.
-  if (test $(grep '#include "ace' ../*pace*.cpp | wc -l) = 0) then
-
-    # update Makefiles
-    if (test -e ../Makefile.package) then
-      sed -i -e 's/[^ \t]*pace[^ \t]* //' ../Makefile.package
-    fi
-
-    if (test -e ../Makefile.package.settings) then
-      sed -i -e '/^[ \t]*include.*pace.*$/d' ../Makefile.package.settings
-    fi
-
-  fi
-
 fi
+
+for file in *.cpp *.h; do
+    action ${file}
+done
