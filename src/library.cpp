@@ -405,7 +405,7 @@ void lammps_kokkos_finalize()
  *
 \verbatim embed:rst
 
-.. versionadded:: TBD
+.. versionadded:: 12Jun2025
 
 This function clears the list of all loaded plugins and closes the
 corresponding DSO handles and releases the imported executable code.

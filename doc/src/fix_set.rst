@@ -27,6 +27,8 @@ Examples
 Description
 """""""""""
 
+.. versionadded:: 12Jun2025
+
 Reset one or more properties of one or more atoms once every *Nfreq*
 steps during a simulation.
 
