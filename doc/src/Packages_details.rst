@@ -206,6 +206,9 @@ is coupled to a precise interatomic potential, such as ACE.
 This package provides the required pair_styles and fixes to run an efficient,
 energy-conserving adaptive-precision simulation.
 
+In the context of this package, precision refers to the accuracy of an interatomic
+potential.
+
 .. _immel2025_doi: https://doi.org/10.1063/5.0245877
 
 **Authors:**

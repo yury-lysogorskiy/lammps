@@ -1,8 +1,32 @@
 Adaptive-precision interatomic potentials (APIP)
 ================================================
 
-The :ref:`APIP package <PKG-APIP>` allows to use adaptive-precision potentials
-according to :ref:`(Immel) <Immel2025_1>`.
+The :ref:`PKG-APIP <PKG-APIP>` enables use of adaptive-precision potentials
+as described in :ref:`(Immel) <Immel2025_1>`.
+In the context of this package, precision refers to the accuracy of an interatomic
+potential.
+
+Modern machine-learning (ML) potentials translate the accuracy of DFT
+simulations into MD simulations, i.e., ML potentials are more accurate
+compared to traditional empirical potentials.
+However, this accuracy comes at a cost: there is a considerable performance
+gap between the evaluation of classical and ML potentials, e.g., the force
+calculation of a classical EAM potential is 100-1000 times faster compared
+to the ML-based ACE method.
+The evaluation time difference results in a conflict between large time and
+length scales on the one hand and accuracy on the other.
+This conflict is resolved by an APIP model for simulations, in which the highest precision
+is required only locally but not globally.
+
+An APIP model uses a precise but
+expensive ML potential only for a subset of atoms, while a fast
+potential is used for the remaining atoms.
+Whether the precise or the fast potential is used is determined
+by a continuous switching parameter :math:`\lambda_i` that can be defined for each
+atom :math:`i`.
+The switching parameter can be adjusted dynamically during a simulation or
+kept constant as explained below.
+
 The potential energy :math:`E_i` of an atom :math:`i` described by an
 adaptive-precision
 interatomic potential is given by :ref:`(Immel) <Immel2025_1>`
@@ -85,7 +109,8 @@ Example
 
    .. tab:: dynamic switching parameter
 
-      The affected parts of a LAMMPS script can look as follows:
+      Lines like these would appear in the input script:
+
 
       .. code-block:: LAMMPS
 
@@ -122,7 +147,7 @@ Example
 
    .. tab:: constant switching parameter
 
-      The affected parts of a LAMMPS script can look as follows:
+      Lines like these would appear in the input script:
 
       .. code-block:: LAMMPS
 
