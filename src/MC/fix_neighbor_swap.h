@@ -17,8 +17,8 @@ FixStyle(neighbor/swap,FixNeighborSwap);
 // clang-format on
 #else
 
-#ifndef LMP_FIX_NEIGH_SWAP_H
-#define LMP_FIX_NEIGH_SWAP_H
+#ifndef LMP_FIX_NEIGHBOR_SWAP_H
+#define LMP_FIX_NEIGHBOR_SWAP_H
 
 #include "fix.h"
 
