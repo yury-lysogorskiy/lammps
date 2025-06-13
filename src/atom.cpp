@@ -221,6 +221,7 @@ Atom::Atom(LAMMPS *_lmp) : Pointers(_lmp), atom_style(nullptr), avec(nullptr), a
   area = ed = em = epsilon = curvature = q_scaled = nullptr;
 
   // APIP package
+
   apip_lambda_const = apip_lambda = apip_lambda_input = apip_lambda_input_ta = apip_e_fast = apip_e_precise = nullptr;
   apip_lambda_required = nullptr;
   apip_f_const_lambda = apip_f_dyn_lambda = nullptr;
@@ -581,6 +582,7 @@ void Atom::peratom_create()
   add_peratom("q_scaled",&q_scaled,DOUBLE,0);
 
   // APIP package
+
   add_peratom("apip_lambda",&apip_lambda,DOUBLE,0);
   add_peratom("apip_lambda_required",&apip_lambda_required,INT,0);
   add_peratom("apip_lambda_input",&apip_lambda_input,DOUBLE,0);
@@ -3354,7 +3356,7 @@ int Atom::extract_datatype(const char *name)
   if (strcmp(name,"curvature") == 0) return LAMMPS_DOUBLE;
   if (strcmp(name,"q_unscaled") == 0) return LAMMPS_DOUBLE;
 
-  // PACE package
+  // APIP package
 
   if (strcmp(name,"apip_lambda") == 0) return LAMMPS_DOUBLE;
   if (strcmp(name,"apip_lambda_required") == 0) return LAMMPS_INT;
@@ -3503,6 +3505,7 @@ int Atom::extract_size(const char *name, int type)
       if (strcmp(name, "smd_stress") == 0) return 6;
 
       // APIP package
+
       if (strcmp(name, "apip_lambda") == 0) return nlocal;
       if (strcmp(name, "apip_lambda_required") == 0) return nlocal;
       if (strcmp(name, "apip_lambda_input") == 0) return nlocal;
@@ -3512,7 +3515,6 @@ int Atom::extract_size(const char *name, int type)
       if (strcmp(name, "apip_lambda_const") == 0) return nlocal;
       if (strcmp(name, "apip_f_const_lambda") == 0) return nall;
       if (strcmp(name, "apip_f_dyn_lambda") == 0) return nall;
-
     }
 
     // custom arrays
