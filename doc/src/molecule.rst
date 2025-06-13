@@ -683,6 +683,8 @@ the file format.
 Format of a JSON molecule file
 """"""""""""""""""""""""""""""
 
+.. versionadded:: 12Jun2025
+
 The format of a JSON format individual molecule file must follow the
 `JSON format <https://www.json.org/>`_, which evolved from the
 JavaScript programming language as a programming-language-neutral data

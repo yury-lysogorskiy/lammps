@@ -396,7 +396,7 @@ correct number of particles are inserted, in a perfectly random
 fashion.  Which lattice sites are selected will change with the number
 of processors used.
 
-.. versionadded:: TBD
+.. versionadded:: 12Jun2025
 
 The *group* keyword adds the newly created atoms to the named
 :doc:`group <group>`.  If the group does not yet exist it will be
