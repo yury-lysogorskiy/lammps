@@ -1295,21 +1295,9 @@ at: `https://github.com/ICAMS/lammps-user-pace/ <https://github.com/ICAMS/lammps
 
    .. tab:: Traditional make
 
-      You can download and build the ML-PACE library
-      in one step from the ``lammps/src`` dir, using these commands,
-      which invoke the ``lib/pace/Install.py`` script.
-
-      .. code-block:: bash
-
-         # print help message
-         make lib-pace
-
-         # download and build the default version in lib/pace
-         make lib-pace args="-b"
-
-      You should not need to edit the ``lib/pace/Makefile.lammps`` file.
-
-      The APIP package itself is activated with ``make yes-APIP``.
+      You need to install the ML-PACE package *first* and follow
+      the instructions :ref:`here <ml-pace>` before installing
+      the APIP package.
 
 ----------
 

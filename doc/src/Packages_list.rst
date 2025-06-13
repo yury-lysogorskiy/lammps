@@ -41,7 +41,7 @@ whether an extra library is needed to build and use the package:
    * - :ref:`APIP <PKG-APIP>`
      - adaptive-precision interatomic potentials
      - :doc:`Howto APIP <Howto_apip>`
-     - ``PACKAGES/APIP``
+     - ``PACKAGES/apip``
      - ext
    * - :ref:`ASPHERE <PKG-ASPHERE>`
      - aspherical particle models

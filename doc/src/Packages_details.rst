@@ -202,8 +202,7 @@ large-scale atomistic simulations", J. Chem. Phys. 162, 114119 (2025)
 `link <immel2025_doi_>`_
 
 Adaptive-precision means, that a fast interatomic potential, such as EAM,
-is coupled to a
-precise interatomic potential, such as ACE.
+is coupled to a precise interatomic potential, such as ACE.
 This package provides the required pair_styles and fixes to run an efficient,
 energy-conserving adaptive-precision simulation.
 
