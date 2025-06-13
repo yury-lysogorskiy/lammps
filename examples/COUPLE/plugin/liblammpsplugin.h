@@ -134,6 +134,7 @@ struct _liblammpsplugin {
   void (*mpi_finalize)();
   void (*kokkos_finalize)();
   void (*python_finalize)();
+  void (*plugin_finalize)();
 
   void (*error)(void *, int, const char *);
   char *(*expand)(void *, const char *);

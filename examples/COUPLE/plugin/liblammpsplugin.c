@@ -79,6 +79,7 @@ liblammpsplugin_t *liblammpsplugin_load(const char *lib)
   ADDSYM(mpi_finalize);
   ADDSYM(kokkos_finalize);
   ADDSYM(python_finalize);
+  ADDSYM(plugin_finalize);
 
   ADDSYM(error);
   ADDSYM(expand);

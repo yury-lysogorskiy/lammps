@@ -357,7 +357,8 @@ completed and then MPI is cleanly shut down.  After calling this
 function no more MPI calls may be made.
 
 *See also*
-   :cpp:func:`lammps_kokkos_finalize`, :cpp:func:`lammps_python_finalize`
+   :cpp:func:`lammps_kokkos_finalize`, :cpp:func:`lammps_python_finalize`,
+   :cpp:func:`lammps_plugin_finalize`
 \endverbatim */
 
 void lammps_mpi_finalize()
@@ -389,12 +390,42 @@ closed (to release associated resources).
 After calling this function no Kokkos functionality may be used.
 
 *See also*
-   :cpp:func:`lammps_mpi_finalize`, :cpp:func:`lammps_python_finalize`
+   :cpp:func:`lammps_mpi_finalize`, :cpp:func:`lammps_python_finalize`,
+   :cpp:func:`lammps_plugin_finalize`
 \endverbatim */
 
 void lammps_kokkos_finalize()
 {
   KokkosLMP::finalize();
+}
+
+/* ---------------------------------------------------------------------- */
+
+/** Unload all plugins and release the corresponding DSO handles
+ *
+\verbatim embed:rst
+
+.. versionadded:: 12Jun2025
+
+This function clears the list of all loaded plugins and closes the
+corresponding DSO handles and releases the imported executable code.
+
+However, this is **not** done when a LAMMPS instance is deleted because
+plugins and their shared objects are global properties.
+
+This function can be called to explicitly clear out all loaded plugins
+in case it is safe to do so.
+
+*See also*
+   :cpp:func:`lammps_mpi_finalize`, :cpp:func:`lammps_kokkos_finalize`,
+   :cpp:func:`lammps_python_finalize`
+\endverbatim */
+
+void lammps_plugin_finalize()
+{
+#if defined(LMP_PLUGIN)
+  plugin_finalize();
+#endif
 }
 
 /* ---------------------------------------------------------------------- */
@@ -425,14 +456,14 @@ This function can be called to explicitly clear the Python
 environment in case it is safe to do so.
 
 *See also*
-   :cpp:func:`lammps_mpi_finalize`, :cpp:func:`lammps_kokkos_finalize`
+   :cpp:func:`lammps_mpi_finalize`, :cpp:func:`lammps_kokkos_finalize`,
+   :cpp:func:`lammps_plugin_finalize`
 \endverbatim */
 
 void lammps_python_finalize()
 {
   Python::finalize();
 }
-
 
 /* ---------------------------------------------------------------------- */
 

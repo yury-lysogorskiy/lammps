@@ -615,7 +615,7 @@ This change is **required** or else the code will not compile.
 FLERR as first argument to minimum image functions in Domain class
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. versionchanged:: TBD
+.. versionchanged:: 12Jun2025
 
 The ``Domain::minimum_image()`` and ``Domain::minimum_image_big()``
 functions were changed to take the ``FLERR`` macros as first argument.

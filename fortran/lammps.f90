@@ -408,6 +408,12 @@ MODULE LIBLAMMPS
     SUBROUTINE lammps_kokkos_finalize() BIND(C)
     END SUBROUTINE lammps_kokkos_finalize
 
+    SUBROUTINE lammps_python_finalize() BIND(C)
+    END SUBROUTINE lammps_python_finalize
+
+    SUBROUTINE lammps_plugin_finalize() BIND(C)
+    END SUBROUTINE lammps_plugin_finalize
+
     SUBROUTINE lammps_error(handle, error_type, error_text) BIND(C)
       IMPORT :: c_ptr, c_int
       IMPLICIT NONE
@@ -1135,7 +1141,7 @@ CONTAINS
     SIZE_IMAGEINT = lmp_extract_setting(lmp_open, 'imageint')
   END FUNCTION lmp_open
 
-  ! Combined Fortran wrapper around lammps_close() and lammps_mpi_finalize()
+  ! Combined Fortran wrapper around lammps_close() and lammps_*_finalize()
   SUBROUTINE lmp_close(self, finalize)
     CLASS(lammps), INTENT(IN) :: self
     LOGICAL, INTENT(IN), OPTIONAL :: finalize
@@ -1146,6 +1152,8 @@ CONTAINS
       IF (finalize) THEN
         CALL lammps_kokkos_finalize()
         CALL lammps_mpi_finalize()
+        CALL lammps_python_finalize()
+        CALL lammps_plugin_finalize()
       END IF
     END IF
   END SUBROUTINE lmp_close
