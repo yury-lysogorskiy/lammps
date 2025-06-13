@@ -390,13 +390,10 @@ void CreateAtoms::command(int narg, char **arg)
     if (!input->variable->equalstyle(vvar))
       error->all(FLERR, Error::NOLASTLINE, "Variable {} for create_atoms is invalid style", vstr);
 
-#define SETUP_XYZ_VAR(str,var)                                          \
+#define SETUP_XYZ_VAR(str, var)                                         \
     if (str) {                                                          \
       var = input->variable->find(str);                                 \
-      if (var < 0) {                                                    \
-        input->variable->internal_create(str, 0.0);                     \
-        var = input->variable->find(str);                               \
-      }                                                                 \
+      if (var < 0) var = input->variable->internal_create(str, 0.0);    \
       if (!input->variable->internalstyle(var))                         \
         error->all(FLERR, Error::NOLASTLINE,                            \
                    "Variable {} for create_atoms is invalid style", str); \

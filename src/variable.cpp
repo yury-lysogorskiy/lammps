@@ -1316,7 +1316,7 @@ void Variable::internal_set(int ivar, double value)
    create an INTERNAL style variable with name, set to value
 ------------------------------------------------------------------------- */
 
-void Variable::internal_create(char *name, double value)
+int Variable::internal_create(char *name, double value)
 {
   if (find(name) >= 0)
     error->all(FLERR,"Creation of internal-style variable {} which already exists", name);
@@ -1334,6 +1334,7 @@ void Variable::internal_create(char *name, double value)
     error->all(FLERR, "Variable name '{}' must have only letters, numbers, or underscores", name);
   names[nvar] = utils::strdup(name);
   nvar++;
+  return nvar - 1;
 }
 
 /* ----------------------------------------------------------------------
