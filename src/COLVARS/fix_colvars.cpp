@@ -129,7 +129,7 @@ FixColvars::FixColvars(LAMMPS *lmp, int narg, char **arg) :
 
   if (comm->me == 0) {
 #ifdef LAMMPS_BIGBIG
-    utils::logmesg(lmp, "colvars: Warning: cannot handle atom ids > 2147483647\n");
+    error->warning(FLERR, "colvars: cannot handle atom ids > 2147483647\n");
 #endif
     proxy = new colvarproxy_lammps(lmp);
     proxy->init();
@@ -267,6 +267,7 @@ void FixColvars::init()
   if (init_flag) return;
   init_flag = 1;
 
+#if defined(COLVARS_MPI)
   if (universe->nworlds > 1) {
     // create inter root communicator
     int color = 1;
@@ -275,9 +276,10 @@ void FixColvars::init()
     }
     MPI_Comm_split(universe->uworld, color, universe->iworld, &root2root);
     if (me == 0) {
-      proxy->set_replicas_communicator(root2root);
+      proxy->set_replicas_mpi_communicator(root2root);
     }
   }
+#endif
 }
 
 

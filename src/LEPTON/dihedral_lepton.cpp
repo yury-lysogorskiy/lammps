@@ -407,7 +407,7 @@ void DihedralLepton::coeff(int narg, char **arg)
     count++;
   }
 
-  if (count == 0) error->all(FLERR, "Incorrect args for dihedral coefficients");
+  if (count == 0) error->all(FLERR, "Incorrect args for dihedral coefficients" + utils::errorurl(21));
 }
 
 /* ----------------------------------------------------------------------
@@ -508,9 +508,9 @@ double DihedralLepton::get_phi(double const *x1,    //array holding x,y,z coords
   }
 
   //Consider periodic boundary conditions:
-  domain->minimum_image(vb12[0], vb12[1], vb12[2]);
-  domain->minimum_image(vb23[0], vb23[1], vb23[2]);
-  domain->minimum_image(vb34[0], vb34[1], vb34[2]);
+  domain->minimum_image(FLERR, vb12[0], vb12[1], vb12[2]);
+  domain->minimum_image(FLERR, vb23[0], vb23[1], vb23[2]);
+  domain->minimum_image(FLERR, vb34[0], vb34[1], vb34[2]);
 
   //--- Compute the normal to the planes formed by atoms 1,2,3 and 2,3,4 ---
 

@@ -24,6 +24,7 @@
 #include "domain.h"
 #include "error.h"
 #include "force.h"
+#include "info.h"
 #include "kspace.h"
 #include "math_const.h"
 #include "math_special.h"
@@ -88,6 +89,8 @@ Pair::Pair(LAMMPS *lmp) :
   ewaldflag = pppmflag = msmflag = dispersionflag = tip4pflag = dipoleflag = spinflag = 0;
   reinitflag = 1;
   centroidstressflag = CENTROID_SAME;
+
+  atomic_energy_enable = 0;
 
   // pair_modify settings
 
@@ -247,10 +250,15 @@ void Pair::init()
   // I,I coeffs must be set
   // init_one() will check if I,J is set explicitly or inferred by mixing
 
-  if (!allocated) error->all(FLERR,"All pair coeffs are not set");
-
-  for (i = 1; i <= atom->ntypes; i++)
-    if (setflag[i][i] == 0) error->all(FLERR,"All pair coeffs are not set");
+  if (!allocated) {
+    error->all(FLERR, Error::NOLASTLINE,
+               "All pair coeffs are not set. Status:\n" + Info::get_pair_coeff_status(lmp));
+  } else {
+    for (i = 1; i <= atom->ntypes; i++)
+      if (setflag[i][i] == 0)
+        error->all(FLERR, Error::NOLASTLINE,
+                   "All pair coeffs are not set. Status:\n" + Info::get_pair_coeff_status(lmp));
+  }
 
   // style-specific initialization
 
@@ -710,10 +718,11 @@ double Pair::mix_energy(double eps1, double eps2, double sig1, double sig2)
     return sqrt(eps1*eps2);
   else if (mix_flag == ARITHMETIC)
     return sqrt(eps1*eps2);
-  else if (mix_flag == SIXTHPOWER)
-    return (2.0 * sqrt(eps1*eps2) * powint(sig1, 3) * powint(sig2, 3)
-            / (powint(sig1, 6) + powint(sig2, 6)));
-  else did_mix = false;
+  else if (mix_flag == SIXTHPOWER) {
+    if ((sig1 != 0.0) && (sig2 != 0.0))
+      return (2.0 * sqrt(eps1*eps2) * powint(sig1, 3) * powint(sig2, 3)
+              / (powint(sig1, 6) + powint(sig2, 6)));
+  } else did_mix = false;
   return 0.0;
 }
 
@@ -734,9 +743,9 @@ double Pair::mix_distance(double sig1, double sig2)
 
 /* ---------------------------------------------------------------------- */
 
-void Pair::compute_dummy(int eflag, int vflag)
+void Pair::compute_dummy(int eflag, int vflag, int alloc)
 {
-  ev_init(eflag,vflag);
+  ev_init(eflag,vflag,alloc);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -864,7 +873,7 @@ void Pair::map_element2type(int narg, char **arg, bool update_setflag)
       }
     }
 
-    if (count == 0) error->all(FLERR,"Incorrect args for pair coefficients");
+    if (count == 0) error->all(FLERR,"Incorrect args for pair coefficients" + utils::errorurl(21));
   }
 }
 
@@ -1842,7 +1851,7 @@ void Pair::write_file(int narg, char **arg)
       utils::logmesg(lmp,"Creating table file {} with DATE: {}\n",
                      table_file, utils::current_date());
       fp = fopen(table_file.c_str(),"w");
-      if (fp) fmt::print(fp,"# DATE: {} UNITS: {} Created by pair_write\n",
+      if (fp) utils::print(fp,"# DATE: {} UNITS: {} Created by pair_write\n",
                          utils::current_date(), update->unit_style);
     }
     if (fp == nullptr)

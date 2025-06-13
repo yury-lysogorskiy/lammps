@@ -46,6 +46,7 @@
     <keyword>Physics</keyword>
     <keyword>Editor</keyword>
     <keyword>N-body</keyword>
+    <keyword>Simulation</keyword>
   </keywords>
 
   <provides>
@@ -54,8 +55,39 @@
   </provides>
 
   <releases>
+    <release version="1.6.14" timestamp="1747828753">
+      <description>
+        Must set en_US.UTF-8 locale on macOS since it lacks support for C.UTF-8
+      </description>
+    </release>
+    <release version="1.6.13" timestamp="1743734509">
+      <description>
+        Change working directory to user's home dir if initial directory is "/" or the Application folder
+        Add preferences option to set https proxy, if not already set via environment variable
+        Add option to visualize molecules defined through the molecule command
+        Add text fields for editing plot title and axis labels for charts
+        Add option to automatically open tutorial websites (enabled by default)
+        Add citation reminder comment to empty documents and the About dialog currently pointing to arXiv.
+        Add preferences tab for charts to set default for title, plot colors, smooth/raw plot, smooth params
+        Highlight error URLs with pointers to additional explanations in log window
+        Double-click on highlighted URL opens it in web browser. Also available via context menu.
+      </description>
+    </release>
+    <release version="1.6.12" timestamp="1734890080">
+      <description>
+        Update Tutorial menu entries to cover all 8 tutorials
+        Highlight warnings and error messages in Output window
+        Make Tutorial wizards more compact
+        Include download and compilation of WHAM software from Alan Grossfield
+        Add entry to Run menu to restart the LAMMPS instance
+        Use mutex to avoid corruption of thermo data
+      </description>
+    </release>
     <release version="1.6.11" timestamp="1725080055">
       <description>
+        Move cursor to end of log buffer before inserting new text
+        Remove empirical filter to remove outliers from corrupted data
+        Change tutorial download URL to tutorial website
       </description>
     </release>
     <release version="1.6.10" timestamp="1724585189">

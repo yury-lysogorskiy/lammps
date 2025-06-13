@@ -208,14 +208,14 @@ FixDeposit::FixDeposit(LAMMPS *lmp, int narg, char **arg) :
 FixDeposit::~FixDeposit()
 {
   delete random;
-  delete [] molfrac;
-  delete [] idrigid;
-  delete [] idshake;
-  delete [] idregion;
-  delete [] vstr;
-  delete [] xstr;
-  delete [] ystr;
-  delete [] zstr;
+  delete[] molfrac;
+  delete[] idrigid;
+  delete[] idshake;
+  delete[] idregion;
+  delete[] vstr;
+  delete[] xstr;
+  delete[] ystr;
+  delete[] zstr;
   memory->destroy(coords);
   memory->destroy(imageflags);
 }
@@ -401,7 +401,7 @@ void FixDeposit::pre_exchange()
           delx = coord[0] - x[i][0];
           dely = coord[1] - x[i][1];
           delz = 0.0;
-          domain->minimum_image(delx,dely,delz);
+          domain->minimum_image(FLERR, delx,dely,delz);
           if (dimension == 2) rsq = delx*delx;
           else rsq = delx*delx + dely*dely;
           if (rsq > deltasq) continue;
@@ -476,7 +476,7 @@ void FixDeposit::pre_exchange()
         delx = coords[m][0] - x[i][0];
         dely = coords[m][1] - x[i][1];
         delz = coords[m][2] - x[i][2];
-        domain->minimum_image(delx,dely,delz);
+        domain->minimum_image(FLERR, delx,dely,delz);
         rsq = delx*delx + dely*dely + delz*delz;
         if (rsq < nearsq) flag = 1;
       }
@@ -737,7 +737,7 @@ void FixDeposit::options(int narg, char **arg)
       mode = MOLECULE;
       onemols = &atom->molecules[imol];
       nmol = onemols[0]->nset;
-      delete [] molfrac;
+      delete[] molfrac;
       molfrac = new double[nmol];
       molfrac[0] = 1.0/nmol;
       for (int i = 1; i < nmol-1; i++) molfrac[i] = molfrac[i-1] + 1.0/nmol;
@@ -755,13 +755,13 @@ void FixDeposit::options(int narg, char **arg)
       iarg += nmol+1;
     } else if (strcmp(arg[iarg],"rigid") == 0) {
       if (iarg+2 > narg) error->all(FLERR,"Illegal fix deposit command");
-      delete [] idrigid;
+      delete[] idrigid;
       idrigid = utils::strdup(arg[iarg+1]);
       rigidflag = 1;
       iarg += 2;
     } else if (strcmp(arg[iarg],"shake") == 0) {
       if (iarg+2 > narg) error->all(FLERR,"Illegal fix deposit command");
-      delete [] idshake;
+      delete[] idshake;
       idshake = utils::strdup(arg[iarg+1]);
       shakeflag = 1;
       iarg += 2;
@@ -868,19 +868,28 @@ void FixDeposit::options(int narg, char **arg)
 
     if (xstr) {
       xvar = input->variable->find(xstr);
-      if (xvar < 0) error->all(FLERR, "Variable {} for fix deposit does not exist", xstr);
+      if (xvar < 0) {
+        input->variable->internal_create(xstr,0.0);
+        xvar = input->variable->find(xstr);
+      }
       if (!input->variable->internalstyle(xvar))
         error->all(FLERR, "Variable for fix deposit is invalid style");
     }
     if (ystr) {
       yvar = input->variable->find(ystr);
-      if (yvar < 0) error->all(FLERR, "Variable {} for fix deposit does not exist", ystr);
+      if (yvar < 0) {
+        input->variable->internal_create(ystr,0.0);
+        yvar = input->variable->find(ystr);
+      }
       if (!input->variable->internalstyle(yvar))
         error->all(FLERR, "Variable for fix deposit is invalid style");
     }
     if (zstr) {
       zvar = input->variable->find(zstr);
-      if (zvar < 0) error->all(FLERR, "Variable {} for fix deposit does not exist", zstr);
+      if (zvar < 0) {
+        input->variable->internal_create(zstr,0.0);
+        zvar = input->variable->find(zstr);
+      }
       if (!input->variable->internalstyle(zvar))
         error->all(FLERR, "Variable for fix deposit is invalid style");
     }
