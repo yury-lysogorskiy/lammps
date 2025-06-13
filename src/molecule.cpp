@@ -244,10 +244,23 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
 
   // optional fields
 
-  if (moldata.contains("units") && (comm->me == 0)) {
-    if (std::string(moldata["units"]) != update->unit_style)
-      error->warning(FLERR, "Inconsistent units in JSON molecule data: current = {}, JSON = {}",
-                     update->unit_style, std::string(moldata["units"]));
+  // check for compatible units
+
+  if (moldata.contains("units")) {
+    bool incompatible_units = true;
+    auto jsonunits = std::string(moldata["units"]);
+    auto lammpsunits = std::string(update->unit_style);
+    if ((jsonunits == "real") || (jsonunits == "metal")) {
+      if ((lammpsunits == "real") || (lammpsunits == "metal")) incompatible_units = false;
+    } else if (jsonunits == lammpsunits) {
+      incompatible_units = false;
+    }
+
+    if (incompatible_units)
+      error->all(
+          FLERR, Error::NOLASTLINE,
+          "Molecule template {}: Incompatible units in JSON molecule data: current = {}, JSON = {}",
+          id, lammpsunits, jsonunits);
   }
   if (moldata.contains("title")) title = moldata["title"];
 
