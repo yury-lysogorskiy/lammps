@@ -1,0 +1,154 @@
+LAMMPS (2 Apr 2025 - Development - patch_2Apr2025-384-g88bc7dc720-modified)
+  using 1 OpenMP thread(s) per MPI task
+# May 2025
+# Test script for MD-KMC accelerated diffusion testing in LAMMPS
+# Created by Jacob Tavenner, Baylor University
+
+# Initiation -------------------------------------
+units		metal
+dimension	3
+boundary	p p p
+atom_style	atomic
+
+# Atom Definition --------------------------------
+lattice	fcc 3.762
+Lattice spacing in x,y,z = 3.762 3.762 3.762
+region		whole block 0 1 0 1 0 1
+create_box	2 whole
+Created orthogonal box = (0 0 0) to (3.762 3.762 3.762)
+  1 by 2 by 2 MPI processor grid
+create_atoms	1 region whole
+Created 4 atoms
+  using lattice units in orthogonal box = (0 0 0) to (3.762 3.762 3.762)
+  create_atoms CPU = 0.000 seconds
+
+replicate 6 16 6
+Replication is creating a 6x16x6 = 576 times larger system...
+  orthogonal box = (0 0 0) to (22.572 60.192 22.572)
+  1 by 4 by 1 MPI processor grid
+  2304 atoms
+  replicate CPU = 0.000 seconds
+
+region      puck block INF INF 7 9 INF INF
+set         region puck type 2
+Setting atom values ...
+  360 settings made for type
+
+# Force Fields -----------------------------------
+pair_style	meam
+pair_coeff	* * library_2nn.meam Mo Co Ni V Fe Al Cr MoCoNiVFeAlCr_2nn.meam Ni Cr
+Reading MEAM library file library_2nn.meam with DATE: 2024-08-08
+Reading MEAM potential file MoCoNiVFeAlCr_2nn.meam with DATE: 2024-08-08
+
+# Settings ---------------------------------------
+timestep	0.002
+thermo		100
+
+# Computations -----------------------------------
+compute		voroN all voronoi/atom neighbors yes
+
+run		0
+WARNING: No fixes with time integration, atoms won't move
+For more information see https://docs.lammps.org/err0028 (src/verlet.cpp:60)
+Neighbor list info ...
+  update: every = 1 steps, delay = 0 steps, check = yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 6.8
+  ghost atom cutoff = 6.8
+  binsize = 3.4, bins = 7 18 7
+  2 neighbor lists, perpetual/occasional/extra = 2 0 0
+  (1) pair meam, perpetual
+      attributes: full, newton on
+      pair build: full/bin/atomonly
+      stencil: full/bin/3d
+      bin: standard
+  (2) pair meam, perpetual, half/full from (1)
+      attributes: half, newton on
+      pair build: halffull/newton
+      stencil: none
+      bin: none
+Per MPI rank memory allocation (min/avg/max) = 9.636 | 9.636 | 9.636 Mbytes
+   Step          Temp          E_pair         E_mol          TotEng         Press     
+         0   0             -9674.3728      0             -9674.3728     -212400.94    
+Loop time of 1.422e-06 on 4 procs for 0 steps with 2304 atoms
+
+35.2% CPU use with 4 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0          | 0          | 0          |   0.0 |  0.00
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0          | 0          | 0          |   0.0 |  0.00
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 1.422e-06  |            |       |100.00
+
+Nlocal:            576 ave         576 max         576 min
+Histogram: 4 0 0 0 0 0 0 0 0 0
+Nghost:           2131 ave        2131 max        2131 min
+Histogram: 4 0 0 0 0 0 0 0 0 0
+Neighs:          24768 ave       24768 max       24768 min
+Histogram: 4 0 0 0 0 0 0 0 0 0
+FullNghs:        49536 ave       49536 max       49536 min
+Histogram: 4 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 198144
+Ave neighs/atom = 86
+Neighbor list builds = 0
+Dangerous builds = 0
+thermo_style	custom step temp press pxx pyy pzz lx ly lz vol pe
+
+# Execution --------------------------------------
+
+velocity    all create 2400 908124
+fix         temp all npt temp 1000 1000 1000 aniso 0 0 1
+fix         mc all neighbor/swap 50 12 1340723 1000 3 voroN diff 2
+thermo_style	custom step temp press pxx pyy pzz lx ly lz vol pe f_mc[*]
+#dump		dump2 all custom 5000 dump.edge-3_Ni-Cr.* id type x y z c_eng c_csym
+
+run 1000
+Per MPI rank memory allocation (min/avg/max) = 9.636 | 9.636 | 9.636 Mbytes
+   Step          Temp          Press           Pxx            Pyy            Pzz             Lx             Ly             Lz           Volume         PotEng        f_mc[1]        f_mc[2]    
+         0   2400          -187517.52     -187403.09     -187750.05     -187399.42      22.572         60.192         22.572         30667.534     -9674.3728      0              0            
+       100   1668.8754      13300.763      12419.304      15568.772      11914.212      21.636248      57.724775      21.647685      27036.823     -9594.7526      24             23           
+       200   1584.9699     -5686.0414     -4741.8496     -5914.7681     -6401.5064      21.729384      58.060532      21.730736      27415.923     -9571.0639      48             46           
+       300   1582.0473      2806.2983      3413.4122      2716.0124      2289.4702      21.6679        58.033587      21.694744      27280.402     -9570.5549      72             69           
+       400   1582.5825      845.29268     -849.61221      2123.5339      1261.9563      21.676298      58.14253       21.656418      27293.905     -9570.7948      96             93           
+       500   1591.7285     -501.17955      1151.9743     -1719.3712     -936.14174      21.696367      58.157211      21.648308      27315.839     -9573.5089      120            116          
+       600   1610.708      -821.74669     -1002.4957      291.88502     -1754.6294      21.730338      58.008213      21.661226      27304.8       -9579.5573      144            138          
+       700   1598.5176     -590.00633     -1844.42        408.97706     -334.57602      21.712908      57.96131       21.698129      27307.281     -9575.8973      168            162          
+       800   1584.3478      330.16711      666.88818      74.698331      248.91482      21.650908      58.045055      21.719838      27295.933     -9571.9268      192            186          
+       900   1557.9946      1471.1207      2124.6512      1526.9937      761.71731      21.645578      58.156083      21.681637      27293.323     -9564.4385      216            207          
+      1000   1582.5312      379.57005     -602.96446      2696.737      -955.06238      21.655418      58.231248      21.649581      27300.598     -9571.9879      240            227          
+Loop time of 9.1632 on 4 procs for 1000 steps with 2304 atoms
+
+Performance: 18.858 ns/day, 1.273 hours/ns, 109.132 timesteps/s, 251.440 katom-step/s
+98.5% CPU use with 4 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 7.867      | 7.9923     | 8.1311     |   4.3 | 87.22
+Neigh   | 0.054997   | 0.057518   | 0.060145   |   1.0 |  0.63
+Comm    | 0.017529   | 0.14801    | 0.27408    |  29.5 |  1.62
+Output  | 0.00015963 | 0.00017216 | 0.00020869 |   0.0 |  0.00
+Modify  | 0.95227    | 0.96325    | 0.9917     |   1.7 | 10.51
+Other   |            | 0.001983   |            |       |  0.02
+
+Nlocal:            576 ave         609 max         540 min
+Histogram: 2 0 0 0 0 0 0 0 0 2
+Nghost:         2161.5 ave        2173 max        2151 min
+Histogram: 1 0 1 0 0 0 1 0 0 1
+Neighs:        32450.2 ave       35422 max       29271 min
+Histogram: 2 0 0 0 0 0 0 0 0 2
+FullNghs:      64900.5 ave       70800 max       58684 min
+Histogram: 2 0 0 0 0 0 0 0 0 2
+
+Total # of neighbors = 259602
+Ave neighs/atom = 112.67448
+Neighbor list builds = 62
+Dangerous builds = 0
+
+#write_data	pulse_center.data
+Total wall time: 0:00:09
