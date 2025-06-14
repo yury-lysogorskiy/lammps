@@ -320,6 +320,11 @@ class lammps(object):
       [c_void_p,c_char_p,c_int,c_int,c_int,POINTER(c_int),c_void_p]
     self.lib.lammps_scatter_subset.restype = None
 
+    self.lib.lammps_create_atoms.argtypes = \
+      [c_void_p, c_int, POINTER(self.c_tagint), POINTER(c_int), POINTER(c_double),
+       POINTER(c_double), POINTER(c_double), POINTER(self.c_imageint), c_int]
+    self.lib.lammps_create_atoms.retype = c_int
+
 
     self.lib.lammps_find_pair_neighlist.argtypes = [c_void_p, c_char_p, c_int, c_int, c_int]
     self.lib.lammps_find_pair_neighlist.restype  = c_int
