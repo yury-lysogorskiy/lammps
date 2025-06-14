@@ -323,7 +323,7 @@ class lammps(object):
     self.lib.lammps_create_atoms.argtypes = \
       [c_void_p, c_int, POINTER(self.c_tagint), POINTER(c_int), POINTER(c_double),
        POINTER(c_double), POINTER(c_double), POINTER(self.c_imageint), c_int]
-    self.lib.lammps_create_atoms.retype = c_int
+    self.lib.lammps_create_atoms.restype = c_int
 
     self.lib.lammps_create_molecule.argtypes = [c_void_p, c_char_p, c_char_p]
     self.lib.lammps_create_molecule.restype = None

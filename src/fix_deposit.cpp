@@ -870,7 +870,7 @@ void FixDeposit::options(int narg, char **arg)
     if (str) {                                                          \
       var = input->variable->find(str);                                 \
       if (var < 0) var = input->variable->internal_create(str, 0.0);    \
-      if (!input->variable->internalstyle(xvar))                        \
+      if (!input->variable->internalstyle(var))                         \
         error->all(FLERR, "Variable {} for fix deposit is invalid style", str); \
     }                                                                   \
 
