@@ -307,7 +307,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
           "Molecule template {}: JSON data for molecule does not contain required '{}' field", id, \
           #field);                                                                                 \
   }                                                                                                \
-  if (sizecheck && (sizecheck != sizevar))                                                         \
+  if (flagvar && sizecheck && (sizecheck != sizevar))                                                         \
     error->all(FLERR, Error::NOLASTLINE,                                                           \
                "Molecule template {}: Found {} instead of {} data entries for '{}'", id, sizevar,  \
                sizecheck, #field);
