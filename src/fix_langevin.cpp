@@ -170,6 +170,9 @@ FixLangevin::FixLangevin(LAMMPS *lmp, int narg, char **arg) :
   // no need to set peratom_flag, b/c data is for internal use only
 
   if (gjfflag) {
+    if (comm->me == 0)
+      error->warning(FLERR, "The GJF formulation in fix {} is deprecated and will be removed soon. "
+                     "\nPlease use fix gjf instead: https://docs.lammps.org/fix_gjf.html", style);
     FixLangevin::grow_arrays(atom->nmax);
     atom->add_callback(Atom::GROW);
 
@@ -191,6 +194,8 @@ FixLangevin::FixLangevin(LAMMPS *lmp, int narg, char **arg) :
 
 FixLangevin::~FixLangevin()
 {
+  if (copymode) return;
+
   delete random;
   delete[] tstr;
   delete[] gfactor1;
@@ -509,7 +514,7 @@ void FixLangevin::post_force(int /*vflag*/)
             else          post_force_templated<1,0,0,0,0,0>();
   else
     if (gjfflag)
-      if (tallyflag  || osflag)
+      if (tallyflag || osflag)
         if (tbiasflag == BIAS)
           if (rmass)
             if (zeroflag) post_force_templated<0,1,1,1,1,1>();

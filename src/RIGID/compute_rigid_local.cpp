@@ -15,12 +15,14 @@
 #include "compute_rigid_local.h"
 
 #include "atom.h"
-#include "update.h"
 #include "domain.h"
+#include "error.h"
 #include "modify.h"
 #include "fix_rigid_small.h"
 #include "memory.h"
-#include "error.h"
+#include "update.h"
+
+#include <cstring>
 
 #include <cstring>
 
@@ -100,8 +102,8 @@ ComputeRigidLocal::~ComputeRigidLocal()
 {
   memory->destroy(vlocal);
   memory->destroy(alocal);
-  delete [] idrigid;
-  delete [] rstyle;
+  delete[] idrigid;
+  delete[] rstyle;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -110,16 +112,11 @@ void ComputeRigidLocal::init()
 {
   // set fixrigid
 
-  int ifix = modify->find_fix(idrigid);
-  if (ifix < 0)
-    error->all(FLERR,"FixRigidSmall ID for compute rigid/local does not exist");
-  fixrigid = dynamic_cast<FixRigidSmall *>(modify->fix[ifix]);
-
-  int flag = 0;
-  if (strstr(fixrigid->style,"rigid/") == nullptr) flag = 1;
-  if (strstr(fixrigid->style,"/small") == nullptr) flag = 1;
-  if (flag)
-    error->all(FLERR,"Compute rigid/local does not use fix rigid/small fix");
+  auto ifix = modify->get_fix_by_id(idrigid);
+  if (!ifix) error->all(FLERR,"FixRigidSmall ID {} for compute rigid/local does not exist", idrigid);
+  fixrigid = dynamic_cast<FixRigidSmall *>(ifix);
+  if (!fixrigid)
+    error->all(FLERR,"Fix ID {} for compute rigid/local does not point to fix rigid/small", idrigid);
 
   // do initial memory allocation so that memory_usage() is correct
 

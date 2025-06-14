@@ -58,12 +58,6 @@ FixACKS2ReaxFFKokkos(LAMMPS *lmp, int narg, char **arg) :
   allocated_flag = 0;
   nprev = 4;
 
-  memory->destroy(s_hist);
-  memory->destroy(s_hist_X);
-  memory->destroy(s_hist_last);
-  grow_arrays(atom->nmax);
-  memoryKK->create_kokkos(k_s_hist_last,s_hist_last,2,nprev,"acks2/reax:s_hist_last");
-  d_s_hist_last = k_s_hist_last.template view<DeviceType>();
   buf = new double[2*nprev];
   prev_last_rows_rank = 0;
 
@@ -83,6 +77,19 @@ FixACKS2ReaxFFKokkos<DeviceType>::~FixACKS2ReaxFFKokkos()
   delete [] buf;
 
   deallocate_array();
+}
+
+/* ---------------------------------------------------------------------- */
+
+template<class DeviceType>
+void FixACKS2ReaxFFKokkos<DeviceType>::post_constructor()
+{
+  memory->destroy(s_hist);
+  grow_arrays(atom->nmax);
+  memoryKK->create_kokkos(k_s_hist_last,s_hist_last,2,nprev,"acks2/reax:s_hist_last");
+  d_s_hist_last = k_s_hist_last.template view<DeviceType>();
+
+  pertype_parameters(pertype_option);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -225,7 +232,8 @@ void FixACKS2ReaxFFKokkos<DeviceType>::pre_force(int /*vflag*/)
 
   allocate_array();
 
-  if (!allocated_flag || last_allocate < neighbor->lastcall) {
+  if (!allocated_flag || last_allocate < neighbor->lastcall
+      || nlocal_last_allocate != nlocal) {
 
     // get max number of neighbor
 
@@ -281,6 +289,7 @@ void FixACKS2ReaxFFKokkos<DeviceType>::pre_force(int /*vflag*/)
     prev_last_rows_rank = last_rows_rank;
 
     last_allocate = update->ntimestep;
+    nlocal_last_allocate = nlocal;
   }
 
   // compute_H
@@ -430,8 +439,6 @@ void FixACKS2ReaxFFKokkos<DeviceType>::num_neigh_item(int ii, bigint &totneigh) 
 template<class DeviceType>
 void FixACKS2ReaxFFKokkos<DeviceType>::allocate_matrix()
 {
-  nmax = atom->nmax;
-
   // determine the total space for the H matrix
 
   m_cap_big = 0;
@@ -456,15 +463,15 @@ void FixACKS2ReaxFFKokkos<DeviceType>::allocate_matrix()
 
   // H matrix
 
-  d_firstnbr = typename AT::t_bigint_1d("acks2/kk:firstnbr",nmax);
-  d_numnbrs = typename AT::t_int_1d("acks2/kk:numnbrs",nmax);
+  d_firstnbr = typename AT::t_bigint_1d("acks2/kk:firstnbr",nlocal);
+  d_numnbrs = typename AT::t_int_1d("acks2/kk:numnbrs",nlocal);
   d_jlist = typename AT::t_int_1d("acks2/kk:jlist",m_cap_big);
   d_val = typename AT::t_ffloat_1d("acks2/kk:val",m_cap_big);
 
   // X matrix
 
-  d_firstnbr_X = typename AT::t_bigint_1d("acks2/kk:firstnbr_X",nmax);
-  d_numnbrs_X = typename AT::t_int_1d("acks2/kk:numnbrs_X",nmax);
+  d_firstnbr_X = typename AT::t_bigint_1d("acks2/kk:firstnbr_X",nlocal);
+  d_numnbrs_X = typename AT::t_int_1d("acks2/kk:numnbrs_X",nlocal);
   d_jlist_X = typename AT::t_int_1d("acks2/kk:jlist_X",m_cap_big);
   d_val_X = typename AT::t_ffloat_1d("acks2/kk:val_X",m_cap_big);
 }

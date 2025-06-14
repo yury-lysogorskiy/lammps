@@ -208,6 +208,7 @@ accelerated styles exist.
 * :doc:`ave/grid <fix_ave_grid>` - compute per-grid time-averaged quantities
 * :doc:`ave/histo <fix_ave_histo>` - compute/output time-averaged histograms
 * :doc:`ave/histo/weight <fix_ave_histo>` - weighted version of fix ave/histo
+* :doc:`ave/moments <fix_ave_moments>` - compute moments of scalar quantities
 * :doc:`ave/time <fix_ave_time>` - compute/output global time-averaged quantities
 * :doc:`aveforce <fix_aveforce>` - add an averaged force to each atom
 * :doc:`balance <fix_balance>` - perform dynamic load-balancing
@@ -256,6 +257,7 @@ accelerated styles exist.
 * :doc:`flow/gauss <fix_flow_gauss>` - Gaussian dynamics for constant mass flux
 * :doc:`freeze <fix_freeze>` - freeze atoms in a granular simulation
 * :doc:`gcmc <fix_gcmc>` - grand canonical insertions/deletions
+* :doc:`gjf <fix_gjf>` - statistically correct Langevin temperature control using the GJ methods
 * :doc:`gld <fix_gld>` - generalized Langevin dynamics integrator
 * :doc:`gle <fix_gle>` - generalized Langevin equation thermostat
 * :doc:`gravity <fix_gravity>` - add gravity to atoms in a granular simulation
@@ -342,6 +344,8 @@ accelerated styles exist.
 * :doc:`phonon <fix_phonon>` - calculate dynamical matrix from MD simulations
 * :doc:`pimd/langevin <fix_pimd>` - Feynman path-integral molecular dynamics with stochastic thermostat
 * :doc:`pimd/nvt <fix_pimd>` - Feynman path-integral molecular dynamics with Nose-Hoover thermostat
+* :doc:`pimd/langevin/bosonic <fix_pimd>` - Bosonic Feynman path-integral molecular dynamics for with stochastic thermostat
+* :doc:`pimd/nvt/bosonic <fix_pimd>` - Bosonic Feynman path-integral molecular dynamics with Nose-Hoover thermostat
 * :doc:`planeforce <fix_planeforce>` - constrain atoms to move in a plane
 * :doc:`plumed <fix_plumed>` - wrapper on PLUMED free energy library
 * :doc:`poems <fix_poems>` - constrain clusters of atoms to move as coupled rigid bodies
@@ -364,6 +368,7 @@ accelerated styles exist.
 * :doc:`qeq/fire <fix_qeq>` - charge equilibration via FIRE minimizer
 * :doc:`qeq/point <fix_qeq>` - charge equilibration via point method
 * :doc:`qeq/reaxff <fix_qeq_reaxff>` - charge equilibration for ReaxFF potential
+* :doc:`qeq/rel/reaxff <fix_qeq_rel_reaxff>` - charge equilibration for ReaxFF potential with alternate efield implementation
 * :doc:`qeq/shielded <fix_qeq>` - charge equilibration via shielded method
 * :doc:`qeq/slater <fix_qeq>` - charge equilibration via Slater method
 * :doc:`qmmm <fix_qmmm>` - functionality to enable a quantum mechanics/molecular mechanics coupling
@@ -393,6 +398,7 @@ accelerated styles exist.
 * :doc:`rigid/small <fix_rigid>` - constrain many small clusters of atoms to move as a rigid body with NVE integration
 * :doc:`rx <fix_rx>` - solve reaction kinetic ODEs for a defined reaction set
 * :doc:`saed/vtk <fix_saed_vtk>` - time-average the intensities from :doc:`compute saed <compute_saed>`
+* :doc:`set <fix_set>` - reset an atom property via an atom-style variable every N steps
 * :doc:`setforce <fix_setforce>` - set the force on each atom
 * :doc:`setforce/spin <fix_setforce>` - set magnetic precession vectors on each atom
 * :doc:`sgcmc <fix_sgcmc>` - fix for hybrid semi-grand canonical MD/MC simulations

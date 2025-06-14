@@ -85,7 +85,8 @@ protected:
     void setFont(const QFont &newfont);
     QWizardPage *tutorial_intro(const int ntutorial, const QString &infotext);
     QWizardPage *tutorial_directory(const int ntutorial);
-    void setup_tutorial(int ntutorial, const QString &dir, bool purgedir, bool getsolution);
+    void setup_tutorial(int ntutorial, const QString &dir, bool purgedir, bool getsolution,
+                        bool openwebpage);
     void purge_inspect_list();
     bool eventFilter(QObject *watched, QEvent *event) override;
 
@@ -111,6 +112,7 @@ private slots:
     void findandreplace();
     void run_buffer() { do_run(true); }
     void run_file() { do_run(false); }
+    void restart_lammps() { lammps.close(); };
 
     void edit_variables();
     void render_image();
@@ -183,6 +185,7 @@ class TutorialWizard : public QWizard {
 public:
     TutorialWizard(int ntutorial, QWidget *parent = nullptr);
     void accept() override;
+
 private:
     int _ntutorial;
 };
