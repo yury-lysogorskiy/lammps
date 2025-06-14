@@ -277,12 +277,12 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
 
   // determine and check sizes
 
-  int dummyvar;
+  int dummyvar = 0;
 
 #define JSON_INIT_FIELD(field, sizevar, flagvar, required, sizecheck)                              \
+  sizevar = 0;                                                                                     \
+  flagvar = 0;                                                                                     \
   if (moldata.contains(#field)) {                                                                  \
-    sizevar = 0;                                                                                   \
-    flagvar = 0;                                                                                   \
     if (!moldata[#field].contains("format"))                                                       \
       error->all(FLERR, Error::NOLASTLINE,                                                         \
                  "Molecule template {}: JSON molecule data does not contain required 'format' "    \
