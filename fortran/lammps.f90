@@ -197,6 +197,8 @@ MODULE LIBLAMMPS
     PROCEDURE, PRIVATE :: lmp_create_atoms_bigbig
     GENERIC   :: create_atoms           => lmp_create_atoms_int, &
                                            lmp_create_atoms_bigbig
+    PROCEDURE :: create_molecule        => lmp_create_molecule
+
     PROCEDURE :: find_pair_neighlist         => lmp_find_pair_neighlist
     PROCEDURE :: find_fix_neighlist          => lmp_find_fix_neighlist
     PROCEDURE :: find_compute_neighlist      => lmp_find_compute_neighlist
@@ -761,6 +763,12 @@ MODULE LIBLAMMPS
       INTEGER(c_int), VALUE :: n, bexpand
       INTEGER(c_int) :: lammps_create_atoms
     END FUNCTION lammps_create_atoms
+
+    SUBROUTINE lammps_create_molecule(handle, id, jsonstr) BIND(C)
+      IMPORT :: c_ptr
+      IMPLICIT NONE
+      TYPE(c_ptr), VALUE :: handle, id, jsonstr
+    END SUBROUTINE lammps_create_molecule
 
     FUNCTION lammps_find_pair_neighlist(handle, style, exact, nsub, reqid) &
     BIND(C)
@@ -2880,6 +2888,19 @@ CONTAINS
         'atoms created /= atoms asked to create [Fortran/create_atoms]')
     END IF
   END SUBROUTINE lmp_create_atoms_bigbig
+
+  ! equivalent function to lammps_create_molecule
+  SUBROUTINE lmp_create_molecule(self, id, jsonstr)
+    CLASS(lammps), INTENT(IN) :: self
+    CHARACTER(LEN=*), INTENT(IN) :: id, jsonstr
+    TYPE(c_ptr) :: Cid, Cjsonstr
+
+    Cid = f2c_string(id)
+    Cjsonstr = f2c_string(jsonstr)
+    CALL lammps_create_molecule(self%handle, Cid, Cjsonstr)
+    CALL lammps_free(Cid)
+    CALL lammps_free(Cjsonstr)
+  END SUBROUTINE lmp_create_molecule
 
   ! equivalent function to lammps_find_pair_neighlist
   INTEGER(c_int) FUNCTION lmp_find_pair_neighlist(self, style, exact, nsub, &

@@ -207,6 +207,7 @@ struct _liblammpsplugin {
   int (*create_atoms)(void *, int, const int64_t *, const int *, const double *, const double *,
                       const int64_t *, int);
 #endif
+  int (*create_molecule)(void *, const char *, const char *);
 
   int (*find_pair_neighlist)(void *, const char *, int, int, int);
   int (*find_fix_neighlist)(void *, const char *, int);

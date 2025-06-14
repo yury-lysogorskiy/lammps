@@ -36,6 +36,7 @@
 #include "group.h"
 #include "info.h"
 #include "input.h"
+#include "json.h"
 #include "lattice.h"
 #include "lmppython.h"
 #include "memory.h"
@@ -6198,6 +6199,50 @@ int lammps_create_atoms(void *handle, int n, const tagint *id, const int *type,
   }
   END_CAPTURE;
   return (int) lmp->atom->natoms - natoms_prev;
+}
+
+/* ---------------------------------------------------------------------- */
+
+/** Create new molecule template from JSON data provided as C-style string
+ *
+\verbatim embed:rst
+
+.. versionadded:: TBD
+
+This function creates a new molecule template similar to the
+:doc:`molecule command <molecule>`, but uses JSON data passed
+as a C-style string instead of reading it from a file.
+
+\endverbatim
+ *
+ * \param  handle   pointer to a previously created LAMMPS instance
+ * \param  id       molecule-ID
+ * \param  json     molecule data in JSON format as C-style string */
+
+void lammps_create_molecule(void *handle, const char *id, const char *jsonstr)
+{
+  auto *lmp = (LAMMPS *) handle;
+  if (!lmp || !lmp->atom || !lmp->comm || !lmp->domain || !lmp->error) {
+    const auto mesg = fmt::format("ERROR: {}(): Invalid LAMMPS handle\n", FNERR);
+    STORE_ERROR_MESSAGE(lmp, mesg);
+    return;
+  }
+  if (!id || !jsonstr) {
+    const auto mesg = fmt::format("ERROR: {}(): Non-NULL arguments required\n", FNERR);
+    STORE_ERROR_MESSAGE(lmp, mesg);
+    return;
+  }
+
+  BEGIN_CAPTURE
+  {
+    try {
+      auto jsondata = json::parse(jsonstr);
+      lmp->atom->add_molecule(id, jsondata);
+    } catch (std::exception &e) {
+      STORE_ERROR_MESSAGE(lmp, e.what());
+    }
+  }
+  END_CAPTURE;
 }
 
 // ----------------------------------------------------------------------
