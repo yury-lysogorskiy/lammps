@@ -1277,7 +1277,9 @@ If LAMMPS was compiled with MPI_STUBS, this function returns -1.
 int lammps_get_mpi_comm(void *handle)
 {
 #ifdef MPI_STUBS
-  const auto mesg = fmt::format("ERROR: {}(): Invalid LAMMPS handle\n", FNERR);
+  LAMMPS *lmp = nullptr;
+  const auto mesg = fmt::format("ERROR: {}(): No MPI communicator conversion possible "
+                                "with MPI STUBS\n", FNERR);
   STORE_ERROR_MESSAGE(lmp, mesg);
   return -1;
 #else
