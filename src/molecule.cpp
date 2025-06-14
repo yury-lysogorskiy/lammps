@@ -3095,6 +3095,15 @@ void Molecule::initialize()
   nbondtypes = nangletypes = ndihedraltypes = nimpropertypes = 0;
   nibody = ndbody = 0;
   nfragments = 0;
+  masstotal = 0.0;
+  maxradius = 0.0;
+  molradius = 0.0;
+  comatom = 0;
+  maxextent = 0.0;
+
+  nset = 0;
+  last = 0;
+  fileiarg = 0;
 
   bond_per_atom = angle_per_atom = dihedral_per_atom = improper_per_atom = 0;
   maxspecial = 0;
