@@ -25,7 +25,7 @@ Syntax
          history_len_lambda_input = number of time steps for which lambda_input is averaged
          history_len_lambda = number of time steps for which the switching parameter is averaged
        *min_delta_lambda* args = delta
-         delta = value below which changes of the switching parameter are neglegted (>= 0)
+         delta = value below which changes of the switching parameter are neglected (>= 0)
        *lambda_non_group* args = lambda_ng
          lambda_ng = *precise* or *fast* or float
            *precise* = assign a constant switching parameter of 0 to atoms, that are not in the group specified by group-ID

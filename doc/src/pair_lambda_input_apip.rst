@@ -39,9 +39,9 @@ Syntax
   .. parsed-literal::
 
        *cutoff* args = cutoff
-         cutoff = distance in which neighbouring atoms are considered (> 0)
+         cutoff = distance in which neighboring atoms are considered (> 0)
        *N_buffer* args = N_buffer
-         N_buffer = numer of additional neighbours, which are included in the j-j+N/2 calculation
+         N_buffer = number of additional neighbors, which are included in the j-j+N/2 calculation
 
 Examples
 """"""""
