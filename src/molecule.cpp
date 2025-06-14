@@ -483,10 +483,17 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
       count[iatom]++;
     }
     // checks
+    ntypes = 0;
     for (int i = 0; i < natoms; i++) {
       if (count[i] == 0) {
         error->all(FLERR, Error::NOLASTLINE,
                    "Molecule template {}: atom {} missing in \"types\" JSON section", id, i + 1);
+      }
+      for (int i = 0; i < natoms; i++) {
+        if ((type[i] <= 0) || (domain->box_exist && (type[i] > atom->ntypes)))
+          error->all(FLERR, fileiarg, "Invalid atom type {} for atom {} in molecule file", type[i],
+                     i + 1);
+        ntypes = MAX(ntypes, type[i]);
       }
     }
   } else {
