@@ -15,6 +15,7 @@ if(NOT PKG_RIGID)
   set_property(GLOBAL PROPERTY FIX "${LAMMPS_FIX_HEADERS}")
   get_target_property(LAMMPS_SOURCES lammps SOURCES)
   list(REMOVE_ITEM LAMMPS_SOURCES ${LAMMPS_SOURCE_DIR}/MC/fix_hmc.cpp)
+endif()
 
 # fix neighbor/swap may only be installed if also the VORONOI package is installed
 if(NOT PKG_VORONOI)
