@@ -4238,6 +4238,8 @@ void FixBondReact::CreateAtoms(char *line, int myrxn)
   }
   if (twomol->xflag == 0)
     error->one(FLERR,"Fix bond/react: 'Coords' section required in post-reaction template when creating new atoms");
+  if (atom->rmass_flag && !twomol->rmassflag)
+    error->one(FLERR, "Fix bond/react: 'Masses' section required in post-reaction template when creating new atoms if per-atom masses are defined.");
 }
 
 void FixBondReact::CustomCharges(int ifragment, int myrxn)
