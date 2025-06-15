@@ -356,7 +356,6 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
 
   if (moldata.contains("body") && (moldata["body"].size() == 2)) {
     bodyflag = 1;
-    const double scale5 = powint(sizescale, 5);
     avec_body = dynamic_cast<AtomVecBody *>(atom->style_match("body"));
     if (!avec_body)
       error->all(FLERR, Error::NOLASTLINE,
@@ -2709,7 +2708,6 @@ void Molecule::special_generate()
   if (newton_bond) {
     for (int i = 0; i < natoms; i++) {
       for (int j = 0; j < num_bond[i]; j++) {
-        atom1 = i;
         atom2 = bond_atom[i][j] - 1;
         nspecial[i][0]++;
         nspecial[atom2][0]++;
