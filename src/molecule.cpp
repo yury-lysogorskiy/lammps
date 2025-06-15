@@ -307,7 +307,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
           "Molecule template {}: JSON data for molecule does not contain required '{}' field", id, \
           #field);                                                                                 \
   }                                                                                                \
-  if (flagvar && sizecheck && (sizecheck != sizevar))                                                         \
+  if (flagvar && sizecheck && (sizecheck != sizevar))                                              \
     error->all(FLERR, Error::NOLASTLINE,                                                           \
                "Molecule template {}: Found {} instead of {} data entries for '{}'", id, sizevar,  \
                sizecheck, #field);
@@ -1574,7 +1574,7 @@ void Molecule::read(int flag)
     // check for units keyword in first line and print warning on mismatch
 
     auto units = Tokenizer(utils::strfind(line, "units = \\w+")).as_vector();
-    if (units.size() > 2) {
+    if ((flag == 0) && (units.size() > 2)) {
       if (units[2] != update->unit_style)
         error->warning(FLERR, "Inconsistent units in data file: current = {}, data file = {}",
                        update->unit_style, units[2]);
