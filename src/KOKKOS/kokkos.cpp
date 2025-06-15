@@ -84,6 +84,10 @@ KokkosLMP::KokkosLMP(LAMMPS *lmp, int narg, char **arg) : Pointers(lmp)
   pair_team_size_set = 0;
   nbin_atoms_per_bin_set = 0;
   nbin_atoms_per_bin = 16;
+  nbor_block_size = 128;
+  nbor_block_size_set = 0;
+  bond_block_size = 128;
+  bond_block_size_set = 0;
 
   int iarg = 0;
   while (iarg < narg) {
@@ -560,6 +564,16 @@ void KokkosLMP::accelerator(int narg, char **arg)
       if (iarg+2 > narg) error->all(FLERR,"Illegal package kokkos command");
       nbin_atoms_per_bin = utils::inumeric(FLERR, arg[iarg+1], false, lmp);
       nbin_atoms_per_bin_set = 1;
+      iarg += 2;
+    } else if (strcmp(arg[iarg],"nbor/block/size") == 0) {
+      if (iarg+2 > narg) error->all(FLERR,"Illegal package kokkos command");
+      nbor_block_size = utils::inumeric(FLERR, arg[iarg+1], false, lmp);
+      nbor_block_size_set = 1;
+      iarg += 2;
+    } else if (strcmp(arg[iarg],"bond/block/size") == 0) {
+      if (iarg+2 > narg) error->all(FLERR,"Illegal package kokkos command");
+      bond_block_size = utils::inumeric(FLERR, arg[iarg+1], false, lmp);
+      bond_block_size_set = 1;
       iarg += 2;
     } else error->all(FLERR,"Illegal package kokkos command");
   }
