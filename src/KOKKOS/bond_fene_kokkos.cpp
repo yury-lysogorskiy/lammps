@@ -122,7 +122,7 @@ void BondFENEKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
       ellse
         Kokkos::parallel_for(Kokkos::RangePolicy<DeviceType, TagBondFENECompute<1,0> >(0,nbondlist),*this);
     } else {
-      if (bond_blocksize) 
+      if (bond_blocksize)
         Kokkos::parallel_for(Kokkos::RangePolicy<DeviceType, TagBondFENECompute<0,0> >(0,nbondlist,Kokkos::ChunkSize(bond_blocksize)),*this);
       else
         Kokkos::parallel_for(Kokkos::RangePolicy<DeviceType, TagBondFENECompute<0,0> >(0,nbondlist),*this);

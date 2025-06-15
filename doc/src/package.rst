@@ -126,7 +126,7 @@ Syntax
         *nbor/block/size = blocksize
           blocksize = # of GPU threads per block for the flat neighbor build method
         *bond/block/size = blocksize
-          blocksize = # of GPU threads per block for the bond force computation 
+          blocksize = # of GPU threads per block for the bond force computation
     *omp* args = Nthreads keyword value ...
       Nthreads = # of OpenMP threads to associate with each MPI process
       zero or more keyword/value pairs may be appended
@@ -646,7 +646,7 @@ each thread finds the neighbor list of an atom).  If not specified, then
 the GPU threads are assigned to the bins.
 
 The *bond/block/size* keyword sets the number of GPU threads per block
-used for launching the bond force kernel on the GPU.  The default value 
+used for launching the bond force kernel on the GPU.  The default value
 of this parameter is determined based on the GPU architecture at runtime.
 
 ----------
