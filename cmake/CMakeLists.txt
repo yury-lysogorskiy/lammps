@@ -277,6 +277,7 @@ option(CMAKE_VERBOSE_MAKEFILE "Generate verbose Makefiles" OFF)
 set(STANDARD_PACKAGES
   ADIOS
   AMOEBA
+  APIP
   ASPHERE
   ATC
   AWPMD
@@ -476,6 +477,7 @@ pkg_depends(ELECTRODE KSPACE)
 pkg_depends(EXTRA-MOLECULE MOLECULE)
 pkg_depends(MESONT MOLECULE)
 pkg_depends(RHEO BPM)
+pkg_depends(APIP ML-PACE)
 
 # detect if we may enable OpenMP support by default
 set(BUILD_OMP_DEFAULT OFF)

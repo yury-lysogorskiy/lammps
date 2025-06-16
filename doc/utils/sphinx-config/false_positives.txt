@@ -135,6 +135,8 @@ anton
 Antonelli
 anysize
 api
+apip
+APIP
 apolar
 Apoorva
 Appl
@@ -654,6 +656,7 @@ CSiC
 csld
 cslib
 CSlib
+csp
 cstdio
 cstdlib
 cstring
@@ -1384,6 +1387,7 @@ gmres
 gname
 gneb
 GNEB
+Godehard
 Goerigk
 Goga
 Goldfarb
@@ -1619,6 +1623,7 @@ Imageint
 Imagemagick
 imagename
 imd
+Immel
 Impey
 impl
 improperlist
@@ -3847,6 +3852,7 @@ Thiaville
 Thibaudeau
 Thijsse
 Thirumalai
+thr
 Threadripper
 threebody
 thrid

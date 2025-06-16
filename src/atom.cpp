@@ -220,6 +220,12 @@ Atom::Atom(LAMMPS *_lmp) : Pointers(_lmp), atom_style(nullptr), avec(nullptr), a
 
   area = ed = em = epsilon = curvature = q_scaled = nullptr;
 
+  // APIP package
+
+  apip_lambda_const = apip_lambda = apip_lambda_input = apip_lambda_input_ta = apip_e_fast = apip_e_precise = nullptr;
+  apip_lambda_required = nullptr;
+  apip_f_const_lambda = apip_f_dyn_lambda = nullptr;
+
   // end of customization section
   // --------------------------------------------------------------------
 
@@ -575,6 +581,18 @@ void Atom::peratom_create()
   add_peratom("curvature",&curvature,DOUBLE,0);
   add_peratom("q_scaled",&q_scaled,DOUBLE,0);
 
+  // APIP package
+
+  add_peratom("apip_lambda",&apip_lambda,DOUBLE,0);
+  add_peratom("apip_lambda_required",&apip_lambda_required,INT,0);
+  add_peratom("apip_lambda_input",&apip_lambda_input,DOUBLE,0);
+  add_peratom("apip_lambda_input_ta",&apip_lambda_input_ta,DOUBLE,0);
+  add_peratom("apip_e_fast",&apip_e_fast,DOUBLE,0);
+  add_peratom("apip_e_precise",&apip_e_precise,DOUBLE,0);
+  add_peratom("apip_lambda_const",&apip_lambda_const,DOUBLE,0);
+  add_peratom("apip_f_const_lambda",&apip_f_const_lambda,DOUBLE,3,1);
+  add_peratom("apip_f_dyn_lambda",&apip_f_dyn_lambda,DOUBLE,3,1);
+
   // end of customization section
   // --------------------------------------------------------------------
 }
@@ -658,6 +676,7 @@ void Atom::set_atomflag_defaults()
   contact_radius_flag = smd_data_9_flag = smd_stress_flag = 0;
   eff_plastic_strain_flag = eff_plastic_strain_rate_flag = 0;
   nspecial15_flag = 0;
+  apip_lambda_flag = apip_e_fast_flag = apip_e_precise_flag = apip_lambda_input_flag = apip_lambda_input_ta_flag = apip_lambda_required_flag = apip_f_const_lambda_flag = apip_f_dyn_lambda_flag = apip_lambda_const_flag = 0;
 
   pdscale = 1.0;
 }
@@ -3167,6 +3186,18 @@ void *Atom::extract(const char *name)
   if (strcmp(name,"curvature") == 0) return (void *) curvature;
   if (strcmp(name,"q_scaled") == 0) return (void *) q_scaled;
 
+  // APIP package
+
+  if (strcmp(name,"apip_lambda") == 0) return (void *) apip_lambda;
+  if (strcmp(name,"apip_lambda_required") == 0) return (void *) apip_lambda_required;
+  if (strcmp(name,"apip_lambda_input") == 0) return (void *) apip_lambda_input;
+  if (strcmp(name,"apip_lambda_input_ta") == 0) return (void *) apip_lambda_input_ta;
+  if (strcmp(name,"apip_e_fast") == 0) return (void *) apip_e_fast;
+  if (strcmp(name,"apip_e_precise") == 0) return (void *) apip_e_precise;
+  if (strcmp(name,"apip_f_const_lambda") == 0) return (void *) apip_f_const_lambda;
+  if (strcmp(name,"apip_f_dyn_lambda") == 0) return (void *) apip_f_dyn_lambda;
+  if (strcmp(name,"apip_lambda_const") == 0) return (void *) apip_lambda_const;
+
   // end of customization section
   // --------------------------------------------------------------------
 
@@ -3325,6 +3356,17 @@ int Atom::extract_datatype(const char *name)
   if (strcmp(name,"curvature") == 0) return LAMMPS_DOUBLE;
   if (strcmp(name,"q_unscaled") == 0) return LAMMPS_DOUBLE;
 
+  // APIP package
+
+  if (strcmp(name,"apip_lambda") == 0) return LAMMPS_DOUBLE;
+  if (strcmp(name,"apip_lambda_required") == 0) return LAMMPS_INT;
+  if (strcmp(name,"apip_lambda_input") == 0) return LAMMPS_DOUBLE;
+  if (strcmp(name,"apip_lambda_input_ta") == 0) return LAMMPS_DOUBLE;
+  if (strcmp(name,"apip_e_fast") == 0) return LAMMPS_DOUBLE;
+  if (strcmp(name,"apip_e_precise") == 0) return LAMMPS_DOUBLE;
+  if (strcmp(name,"apip_lambda_const") == 0) return LAMMPS_DOUBLE;
+  if (strcmp(name,"apip_f_const_lambda") == 0) return LAMMPS_DOUBLE_2D;
+  if (strcmp(name,"apip_f_dyn_lambda") == 0) return LAMMPS_DOUBLE_2D;
   // end of customization section
   // --------------------------------------------------------------------
 
@@ -3461,6 +3503,18 @@ int Atom::extract_size(const char *name, int type)
 
       if (strcmp(name, "smd_data_9") == 0) return 9;
       if (strcmp(name, "smd_stress") == 0) return 6;
+
+      // APIP package
+
+      if (strcmp(name, "apip_lambda") == 0) return nlocal;
+      if (strcmp(name, "apip_lambda_required") == 0) return nlocal;
+      if (strcmp(name, "apip_lambda_input") == 0) return nlocal;
+      if (strcmp(name, "apip_lambda_input_ta") == 0) return nlocal;
+      if (strcmp(name, "apip_e_fast") == 0) return nlocal;
+      if (strcmp(name, "apip_e_precise") == 0) return nlocal;
+      if (strcmp(name, "apip_lambda_const") == 0) return nlocal;
+      if (strcmp(name, "apip_f_const_lambda") == 0) return nall;
+      if (strcmp(name, "apip_f_dyn_lambda") == 0) return nall;
     }
 
     // custom arrays
