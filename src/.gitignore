@@ -1601,6 +1601,8 @@
 /compute_pressure_alchemy.h
 /atom_vec_smd.cpp
 /atom_vec_smd.h
+/bosonic_exchange.cpp
+/bosonic_exchange.h
 /compute_saed.cpp
 /compute_saed.h
 /compute_saed_consts.h
@@ -1657,6 +1659,8 @@
 /fix_atom_swap.h
 /fix_ave_spatial_sphere.cpp
 /fix_ave_spatial_sphere.h
+/fix_ave_momentum.cpp
+/fix_ave_momentum.h
 /fix_drude.cpp
 /fix_drude.h
 /fix_drude_transform.cpp
