@@ -3109,7 +3109,7 @@ void FixBondReact::update_everything()
         update_num_mega++;
       }
       MPI_Allreduce(MPI_IN_PLACE, &noccur[0], nreacts, MPI_INT, MPI_SUM, world);
-      reaction_count_total[rxnID] += noccur[rxnID];
+      for (rxnID = 0; rxnID < nreacts; rxnID++) reaction_count_total[rxnID] += noccur[rxnID];
     } else if (pass == 1) {
       for (int i = 0; i < global_megasize; i++) {
         rxnID = (int) global_mega_glove[0][i];
@@ -4238,6 +4238,8 @@ void FixBondReact::CreateAtoms(char *line, int myrxn)
   }
   if (twomol->xflag == 0)
     error->one(FLERR,"Fix bond/react: 'Coords' section required in post-reaction template when creating new atoms");
+  if (atom->rmass_flag && !twomol->rmassflag)
+    error->one(FLERR, "Fix bond/react: 'Masses' section required in post-reaction template when creating new atoms if per-atom masses are defined.");
 }
 
 void FixBondReact::CustomCharges(int ifragment, int myrxn)

@@ -85,14 +85,24 @@ void PairMLIAPKokkos<DeviceType>::compute(int eflag, int vflag)
     error->all(FLERR, "Incompatible model and descriptor element count");
 
   ev_init(eflag, vflag, 0);
-  if (eflag_atom && (int)k_eatom.h_view.extent(0) < maxeatom) {
-    memoryKK->destroy_kokkos(k_eatom,eatom);
-    memoryKK->create_kokkos(k_eatom,eatom,maxeatom,"pair:eatom");
+  if (eflag_atom) {
+    if ((int)k_eatom.h_view.extent(0) < maxeatom) {
+      memoryKK->destroy_kokkos(k_eatom,eatom);
+      memoryKK->create_kokkos(k_eatom,eatom,maxeatom,"pair:eatom");
+    } else {
+      Kokkos::deep_copy(k_eatom.d_view,0);
+      k_eatom.modify<DeviceType>();
+    }
   }
 
-  if (vflag_atom && (int)k_vatom.h_view.extent(0) < maxeatom) {
-    memoryKK->destroy_kokkos(k_vatom,vatom);
-    memoryKK->create_kokkos(k_vatom,vatom,maxeatom,6,"pair:eatom");
+  if (vflag_atom) {
+    if ((int)k_vatom.h_view.extent(0) < maxeatom) {
+      memoryKK->destroy_kokkos(k_vatom,vatom);
+      memoryKK->create_kokkos(k_vatom,vatom,maxeatom,6,"pair:eatom");
+    } else {
+      Kokkos::deep_copy(k_vatom.d_view,0);
+      k_vatom.modify<DeviceType>();
+    }
   }
 
   data->generate_neighdata(list, eflag, vflag);
