@@ -129,6 +129,7 @@ FixPour::FixPour(LAMMPS *lmp, int narg, char **arg) :
     for (int i = 0; i < nmol; i++) {
       if (onemols[i]->xflag == 0) error->all(FLERR, "Fix pour molecule must have coordinates");
       if (onemols[i]->typeflag == 0) error->all(FLERR, "Fix pour molecule must have atom types");
+      if (onemols[i]->natoms <= 0) error->all(FLERR, "Fix pour molecule must have atoms");
       if (ntype + onemols[i]->ntypes <= 0 || ntype + onemols[i]->ntypes > atom->ntypes)
         error->all(FLERR, "Invalid atom type in fix pour mol command");
 

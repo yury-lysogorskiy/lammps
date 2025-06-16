@@ -658,7 +658,7 @@ void Set::setrandom(int keyword, Action *action)
     bigint allcount;
     MPI_Allreduce(&bcount,&allcount,1,MPI_LMP_BIGINT,MPI_SUM,world);
 
-    bigint nsubset;
+    bigint nsubset = 0;
     if (keyword == TYPE_RATIO) {
       double fraction = action->dvalue1;
       nsubset = static_cast<bigint> (fraction * allcount);
@@ -2328,8 +2328,6 @@ void Set::process_spin_electron(int &iarg, int narg, char **arg, Action *action)
 void Set::invoke_spin_electron(Action *action)
 {
   int nlocal = atom->nlocal;
-  int *spin = atom->spin;
-
   int varflag = action->varflag;
   int ispin;
   if (!action->varflag1) ispin = action->ivalue1;
@@ -2457,8 +2455,6 @@ void Set::process_tri(int &iarg, int narg, char **arg, Action *action)
 void Set::invoke_tri(Action *action)
 {
   int nlocal = atom->nlocal;
-  int *tri = atom->tri;
-
   auto avec_tri = dynamic_cast<AtomVecTri *>(atom->style_match("tri"));
 
   int varflag = action->varflag;
@@ -2510,16 +2506,16 @@ void Set::invoke_type(Action *action)
   int *type = atom->type;
 
   int varflag = action->varflag;
-  int itype;
+  int itype = 0;
   if (!action->varflag1) itype = action->ivalue1;
 
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
 
-    if (action->varflag) {
+    if (varflag) {
       itype = static_cast<int> (vec1[i]);
       if (itype <= 0 || itype > atom->ntypes)
-        error->one(FLERR,"Invalid atom type in set command");
+        error->one(FLERR, Error::NOLASTLINE, "Invalid atom type in set command");
     }
 
     type[i] = itype;

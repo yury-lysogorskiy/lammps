@@ -819,7 +819,6 @@ int FixPIMDNVT::pack_exchange(int i, double *buf)
   memcpy(buf + offset, nhc_eta_dotdot[pos], nhc_size_one_1);
   offset += nhc_offset_one_1;
   memcpy(buf + offset, nhc_eta_mass[pos], nhc_size_one_1);
-  offset += nhc_offset_one_1;
 
   return size_peratom_cols;
 }
@@ -838,7 +837,6 @@ int FixPIMDNVT::unpack_exchange(int nlocal, double *buf)
   memcpy(nhc_eta_dotdot[pos], buf + offset, nhc_size_one_1);
   offset += nhc_offset_one_1;
   memcpy(nhc_eta_mass[pos], buf + offset, nhc_size_one_1);
-  offset += nhc_offset_one_1;
 
   return size_peratom_cols;
 }
@@ -859,7 +857,6 @@ int FixPIMDNVT::pack_restart(int i, double *buf)
   memcpy(buf + offset, nhc_eta_dotdot[pos], nhc_size_one_1);
   offset += nhc_offset_one_1;
   memcpy(buf + offset, nhc_eta_mass[pos], nhc_size_one_1);
-  offset += nhc_offset_one_1;
 
   return size_peratom_cols + 1;
 }
@@ -886,7 +883,6 @@ void FixPIMDNVT::unpack_restart(int nlocal, int nth)
   memcpy(nhc_eta_dotdot[pos], extra[nlocal] + m, nhc_size_one_1);
   m += nhc_offset_one_1;
   memcpy(nhc_eta_mass[pos], extra[nlocal] + m, nhc_size_one_1);
-  m += nhc_offset_one_1;
 
   nhc_ready = true;
 }

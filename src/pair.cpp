@@ -1840,9 +1840,8 @@ void Pair::write_file(int narg, char **arg)
     if (platform::file_is_readable(table_file)) {
       std::string units = utils::get_potential_units(table_file, "table");
       if (!units.empty() && (units != update->unit_style)) {
-        error->one(FLERR,"Trying to append to a table file "
-                                     "with UNITS: {} while units are {}",
-                                     units, update->unit_style);
+        error->one(FLERR,"Trying to append to a table file with UNITS: {} while units are {}",
+                   units, update->unit_style);
       }
       std::string date = utils::get_potential_date(table_file, "table");
       utils::logmesg(lmp,"Appending to table file {} with DATE: {}\n", table_file, date);
@@ -1854,14 +1853,16 @@ void Pair::write_file(int narg, char **arg)
       if (fp) utils::print(fp,"# DATE: {} UNITS: {} Created by pair_write\n",
                          utils::current_date(), update->unit_style);
     }
-    if (fp == nullptr)
+    if (fp) {
+      fprintf(fp, "# Pair potential %s for atom types %d %d: i,r,energy,force\n",
+              force->pair_style, itype, jtype);
+      if (style == RLINEAR)
+        fprintf(fp, "\n%s\nN %d R %.15g %.15g\n\n", arg[7], n, inner, outer);
+      if (style == RSQ)
+        fprintf(fp, "\n%s\nN %d RSQ %.15g %.15g\n\n", arg[7], n, inner, outer);
+    } else {
       error->one(FLERR,"Cannot open pair_write file {}: {}",table_file, utils::getsyserror());
-    fprintf(fp, "# Pair potential %s for atom types %d %d: i,r,energy,force\n",
-            force->pair_style, itype, jtype);
-    if (style == RLINEAR)
-      fprintf(fp, "\n%s\nN %d R %.15g %.15g\n\n", arg[7], n, inner, outer);
-    if (style == RSQ)
-      fprintf(fp, "\n%s\nN %d RSQ %.15g %.15g\n\n", arg[7], n, inner, outer);
+    }
   }
 
   // initialize potentials before evaluating pair potential

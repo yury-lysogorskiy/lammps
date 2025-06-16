@@ -50,6 +50,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.imgmath',
     'sphinx.ext.autodoc',
+    'sphinx_toolbox.collapse',
     'lammps_theme',
     'sphinxcontrib.jquery',
     'sphinxfortran.fortran_domain',

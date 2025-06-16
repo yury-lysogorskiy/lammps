@@ -53,7 +53,7 @@ else()
       add_library(yaml-cpp::yaml-cpp ALIAS yaml-cpp)
     endif()
 
-    add_subdirectory(${lib-pace} build-pace)
+    add_subdirectory(${lib-pace} build-pace EXCLUDE_FROM_ALL)
     set_target_properties(pace PROPERTIES CXX_EXTENSIONS ON OUTPUT_NAME lammps_pace${LAMMPS_MACHINE})
 
     if(CMAKE_PROJECT_NAME STREQUAL "lammps")

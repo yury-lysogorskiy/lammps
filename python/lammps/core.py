@@ -320,6 +320,13 @@ class lammps(object):
       [c_void_p,c_char_p,c_int,c_int,c_int,POINTER(c_int),c_void_p]
     self.lib.lammps_scatter_subset.restype = None
 
+    self.lib.lammps_create_atoms.argtypes = \
+      [c_void_p, c_int, POINTER(self.c_tagint), POINTER(c_int), POINTER(c_double),
+       POINTER(c_double), POINTER(c_double), POINTER(self.c_imageint), c_int]
+    self.lib.lammps_create_atoms.restype = c_int
+
+    self.lib.lammps_create_molecule.argtypes = [c_void_p, c_char_p, c_char_p]
+    self.lib.lammps_create_molecule.restype = None
 
     self.lib.lammps_find_pair_neighlist.argtypes = [c_void_p, c_char_p, c_int, c_int, c_int]
     self.lib.lammps_find_pair_neighlist.restype  = c_int
@@ -2093,6 +2100,28 @@ class lammps(object):
                                      POINTER(self.c_imageint*n), c_int]
     with ExceptionCheck(self):
       return self.lib.lammps_create_atoms(self.lmp, n, id_lmp, type_lmp, x_lmp, v_lmp, img_lmp, se_lmp)
+
+  # -------------------------------------------------------------------------
+
+  def create_molecule(self, id, jsonstr):
+    """ Create new molecule template from string with JSON data
+
+    .. versionadded:: TBD
+
+    This is a wrapper around the :cpp:func:`lammps_create_molecule` function
+    of the library interface.
+
+    :param id: molecule-id of the new molecule template
+    :type name: string
+    :param jsonstr: JSON data defining a new molecule template
+    :type jsonstr: string
+    """
+    if id: newid = id.encode()
+    else: newid = None
+    if id: newjsonstr = jsonstr.encode()
+    else: newjsonstr = None
+    with ExceptionCheck(self):
+      self.lib.lammps_create_molecule(self.lmp, newid, newjsonstr)
 
   # -------------------------------------------------------------------------
 
