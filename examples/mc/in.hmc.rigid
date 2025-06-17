@@ -4,7 +4,7 @@ units           real
 boundary        p p p
 atom_style      full
 
-read_data       data.hmc_spce
+read_data       data.hmc.spce
 replicate       4 4 4
 
 mass            1 15.9994
