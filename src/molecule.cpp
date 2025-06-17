@@ -2992,6 +2992,7 @@ void Molecule::special_generate()
 
 void Molecule::shakeflag_read(char *line)
 {
+  for (int i = 0; i < natoms; i++) count[i] = 0;
   try {
     for (int i = 0; i < natoms; i++) {
       readline(line);
@@ -3025,6 +3026,7 @@ void Molecule::shakeflag_read(char *line)
 void Molecule::shakeatom_read(char *line)
 {
   int nmatch = 0, nwant = 0;
+  for (int i = 0; i < natoms; i++) count[i] = 0;
   try {
     for (int i = 0; i < natoms; i++) {
       readline(line);
@@ -3079,6 +3081,7 @@ void Molecule::shakeatom_read(char *line)
         throw TokenizerException(
           fmt::format("Unexpected number of atom-ids ({} vs {}) for atom {} in Shake Atoms "
                       "section of molecule file", nmatch, nwant, iatom + 1), "");
+      count[iatom]++;
     }
   } catch (TokenizerException &e) {
     error->all(FLERR, fileiarg, "Invalid Shake Atoms section in molecule file: {}", e.what());
@@ -3090,6 +3093,8 @@ void Molecule::shakeatom_read(char *line)
     for (int j = 0; j < m; j++)
       if (shake_atom[i][j] <= 0 || shake_atom[i][j] > natoms)
         error->all(FLERR, fileiarg, "Invalid shake atom in molecule file");
+    if (count[i] == 0)
+      error->all(FLERR, fileiarg, "Atom {} missing in Shake Atoms section of molecule file", i + 1);
   }
 }
 
@@ -3100,6 +3105,7 @@ void Molecule::shakeatom_read(char *line)
 void Molecule::shaketype_read(char *line)
 {
   int nmatch = 0, nwant = 0;
+  for (int i = 0; i < natoms; i++) count[i] = 0;
   for (int i = 0; i < natoms; i++) {
     readline(line);
     auto values = Tokenizer(utils::trim(line)).as_vector();
@@ -3110,22 +3116,26 @@ void Molecule::shaketype_read(char *line)
         break;
       }
     }
+    int iatom = utils::inumeric(FLERR, values[0], false, lmp) - 1;
+    if ((iatom < 0) || (iatom >= natoms))
+      error->all(FLERR, fileiarg, "Invalid atom-id {} in Skake Bond Types section of molecule file",
+                 iatom + 1);
     char *subst;
-    switch (shake_flag[i]) {
+    switch (shake_flag[iatom]) {
       case 1:
         subst = utils::expand_type(FLERR, values[1], Atom::BOND, lmp);
         if (subst) values[1] = subst;
-        shake_type[i][0] = utils::inumeric(FLERR, values[1], false, lmp) + ((subst) ? 0 : boffset);
+        shake_type[iatom][0] = utils::inumeric(FLERR, values[1], false, lmp) + ((subst) ? 0 : boffset);
         delete[] subst;
 
         subst = utils::expand_type(FLERR, values[2], Atom::BOND, lmp);
         if (subst) values[2] = subst;
-        shake_type[i][1] = utils::inumeric(FLERR, values[2], false, lmp) + ((subst) ? 0 : boffset);
+        shake_type[iatom][1] = utils::inumeric(FLERR, values[2], false, lmp) + ((subst) ? 0 : boffset);
         delete[] subst;
 
         subst = utils::expand_type(FLERR, values[3], Atom::ANGLE, lmp);
         if (subst) values[3] = subst;
-        shake_type[i][2] = utils::inumeric(FLERR, values[3], false, lmp) + ((subst) ? 0 : aoffset);
+        shake_type[iatom][2] = utils::inumeric(FLERR, values[3], false, lmp) + ((subst) ? 0 : aoffset);
         delete[] subst;
 
         nwant = 4;
@@ -3134,7 +3144,7 @@ void Molecule::shaketype_read(char *line)
       case 2:
         subst = utils::expand_type(FLERR, values[1], Atom::BOND, lmp);
         if (subst) values[1] = subst;
-        shake_type[i][0] = utils::inumeric(FLERR, values[1], false, lmp) + ((subst) ? 0 : boffset);
+        shake_type[iatom][0] = utils::inumeric(FLERR, values[1], false, lmp) + ((subst) ? 0 : boffset);
         delete[] subst;
 
         nwant = 2;
@@ -3143,12 +3153,12 @@ void Molecule::shaketype_read(char *line)
       case 3:
         subst = utils::expand_type(FLERR, values[1], Atom::BOND, lmp);
         if (subst) values[1] = subst;
-        shake_type[i][0] = utils::inumeric(FLERR, values[1], false, lmp) + ((subst) ? 0 : boffset);
+        shake_type[iatom][0] = utils::inumeric(FLERR, values[1], false, lmp) + ((subst) ? 0 : boffset);
         delete[] subst;
 
         subst = utils::expand_type(FLERR, values[1], Atom::BOND, lmp);
         if (subst) values[1] = subst;
-        shake_type[i][1] = utils::inumeric(FLERR, values[2], false, lmp) + ((subst) ? 0 : boffset);
+        shake_type[iatom][1] = utils::inumeric(FLERR, values[2], false, lmp) + ((subst) ? 0 : boffset);
         delete[] subst;
 
         nwant = 3;
@@ -3157,17 +3167,17 @@ void Molecule::shaketype_read(char *line)
       case 4:
         subst = utils::expand_type(FLERR, values[1], Atom::BOND, lmp);
         if (subst) values[1] = subst;
-        shake_type[i][0] = utils::inumeric(FLERR, values[1], false, lmp) + ((subst) ? 0 : boffset);
+        shake_type[iatom][0] = utils::inumeric(FLERR, values[1], false, lmp) + ((subst) ? 0 : boffset);
         delete[] subst;
 
         subst = utils::expand_type(FLERR, values[1], Atom::BOND, lmp);
         if (subst) values[1] = subst;
-        shake_type[i][1] = utils::inumeric(FLERR, values[2], false, lmp) + ((subst) ? 0 : boffset);
+        shake_type[iatom][1] = utils::inumeric(FLERR, values[2], false, lmp) + ((subst) ? 0 : boffset);
         delete[] subst;
 
         subst = utils::expand_type(FLERR, values[1], Atom::BOND, lmp);
         if (subst) values[1] = subst;
-        shake_type[i][2] = utils::inumeric(FLERR, values[3], false, lmp) + ((subst) ? 0 : boffset);
+        shake_type[iatom][2] = utils::inumeric(FLERR, values[3], false, lmp) + ((subst) ? 0 : boffset);
         delete[] subst;
 
         nwant = 4;
@@ -3181,6 +3191,7 @@ void Molecule::shaketype_read(char *line)
         error->all(FLERR, fileiarg, "Invalid shake type values in molecule file");
     }
     if (nmatch != nwant) error->all(FLERR, fileiarg, "Invalid shake type data in molecule file");
+    count[iatom]++;
   }
 
   for (int i = 0; i < natoms; i++) {
@@ -3190,6 +3201,8 @@ void Molecule::shaketype_read(char *line)
       if (shake_type[i][j] <= 0) error->all(FLERR, fileiarg, "Invalid shake bond type in molecule file");
     if (shake_flag[i] == 1)
       if (shake_type[i][2] <= 0) error->all(FLERR, fileiarg, "Invalid shake angle type in molecule file");
+    if (count[i] == 0)
+      error->all(FLERR, fileiarg, "Atom {} missing in Shake Bond Types section of molecule file", i + 1);
   }
 }
 
