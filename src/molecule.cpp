@@ -327,6 +327,91 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
 
 #undef JSON_INIT_FIELD
 
+  // shake is nested
+
+  if (moldata.contains("shake")) {
+    shakeflag = shakeflagflag = shaketypeflag = shakeatomflag = 0;
+    const auto &shakedata = moldata["shake"];
+
+    if (shakedata.contains("flags")) {
+      if (!shakedata["flags"].contains("format"))
+        error->all(FLERR, Error::NOLASTLINE,
+                   "Molecule template {}: JSON molecule data does not contain required 'format' "
+                   "field for 'shake:flags'",
+                   id);
+      if (shakedata["flags"].contains("data")) {
+        shakeflagflag = 1;
+        if (shakedata["flags"]["data"].size() != natoms)
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: Found {} instead of {} data entries for 'shake:flags'",
+                     id, shakedata["flags"]["data"].size(), natoms);
+      } else {
+        error->all(FLERR, Error::NOLASTLINE,
+                   "Molecule template {}: JSON molecule data does not contain required 'data' "
+                   "field for 'shake:flags'",
+                   id);
+      }
+    } else {
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Molecule template {}: JSON molecule data does not contain required 'flags' "
+                 "field for 'shake'",
+                 id);
+    }
+
+    if (shakedata.contains("atoms")) {
+      if (!shakedata["atoms"].contains("format"))
+        error->all(FLERR, Error::NOLASTLINE,
+                   "Molecule template {}: JSON molecule data does not contain required 'format' "
+                   "field for 'shake:atoms'",
+                   id);
+      if (shakedata["atoms"].contains("data")) {
+        shakeatomflag = 1;
+        tag_require = 1;
+        if (shakedata["atoms"]["data"].size() != natoms)
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: Found {} instead of {} data entries for 'shake:atoms'",
+                     id, shakedata["atoms"]["data"].size(), natoms);
+      } else {
+        error->all(FLERR, Error::NOLASTLINE,
+                   "Molecule template {}: JSON molecule data does not contain required 'data' "
+                   "field for 'shake:atoms'",
+                   id);
+      }
+    } else {
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Molecule template {}: JSON molecule data does not contain required 'atoms' "
+                 "field for 'shake'",
+                 id);
+    }
+
+    if (shakedata.contains("types")) {
+      if (!shakedata["types"].contains("format"))
+        error->all(FLERR, Error::NOLASTLINE,
+                   "Molecule template {}: JSON molecule data does not contain required 'format' "
+                   "field for 'shake:types'",
+                   id);
+      if (shakedata["types"].contains("data")) {
+        shaketypeflag = 1;
+        tag_require = 1;
+        if (shakedata["types"]["data"].size() != natoms)
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: Found {} instead of {} data entries for 'shake:types'",
+                     id, shakedata["types"]["data"].size(), natoms);
+      } else {
+        error->all(FLERR, Error::NOLASTLINE,
+                   "Molecule template {}: JSON molecule data does not contain required 'data' "
+                   "field for 'shake:types'",
+                   id);
+      }
+    } else {
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Molecule template {}: JSON molecule data does not contain required 'types' "
+                 "field for 'shake'",
+                 id);
+    }
+    if (shakeflagflag && shakeatomflag && shaketypeflag) shakeflag = 1;
+  }
+
   if ((nbonds > 0) || (nangles > 0) || (ndihedrals > 0) || (nimpropers > 0)) tag_require = 1;
 
   // extract global properties, if present
@@ -1264,8 +1349,120 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   // special_bonds
 
   // shake_flags
+
+  if (shakeflagflag) {
+    const auto &shakedata = moldata["shake"]["flags"];
+    secfmt.clear();
+    for (int i = 0; i < 2; ++i) secfmt.push_back(shakedata["format"][i]);
+    if ((secfmt[0] == "atom-id") && (secfmt[1] == "flag")) {
+
+      for (int i = 0; i < natoms; i++) shake_flag[i] = -1;
+      memset(count, 0, natoms * sizeof(int));
+      for (const auto &c : shakedata["data"]) {
+        if (c.size() < 2)
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: missing data in \"shake:flags\" section of molecule "
+                     "JSON data: {}",
+                     id, to_string(c));
+        if (!c[0].is_number_integer())
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid atom-id in \"shake:flags\" section of molecule "
+                     "JSON data: {}",
+                     id, to_string(c[0]));
+
+        const int iatom = int(c[0]) - 1;
+        if ((iatom < 0) || (iatom >= natoms))
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid atom-id {} in \"shake:flags\" section of "
+                     "molecule JSON data",
+                     id, iatom + 1);
+        if (!c[1].is_number_integer())
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid flag in \"shake:flags\" section of "
+                     "molecule JSON data: {}",
+                     id, to_string(c[1]));
+        shake_flag[iatom] = int(c[1]);
+        count[iatom]++;
+      }
+      // checks
+      for (int i = 0; i < natoms; i++) {
+        if (count[i] == 0) {
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: atom {} missing in \"shake:flags\" JSON section", id,
+                     i + 1);
+        }
+        if ((shake_flag[i] < 0) || (shake_flag[i] > 4))
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid flag value {} in \"shake:flags\" section of "
+                     "molecule JSON data",
+                     id, shake_flag[i]);
+      }
+    } else {
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Molecule template {}: Expected \"shake:flags\" format [\"atom-id\",\"mass\"] but "
+                 "found [\"{}\",\"{}\"]",
+                 id, secfmt[0], secfmt[1]);
+    }
+  }
+
   // shake_atoms
+
+  if (shakeatomflag) {
+    const auto &shakedata = moldata["shake"]["atoms"];
+    secfmt.clear();
+    for (int i = 0; i < 2; ++i) secfmt.push_back(shakedata["format"][i]);
+    if ((secfmt[0] == "atom-id") && (secfmt[1] == "atom-id-list")) {
+
+      for (int i = 0; i < natoms; i++) shake_flag[i] = -1;
+      memset(count, 0, natoms * sizeof(int));
+      for (const auto &c : shakedata["data"]) {
+        if (c.size() < 2)
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: missing data in \"shake:flags\" section of molecule "
+                     "JSON data: {}",
+                     id, to_string(c));
+        if (!c[0].is_number_integer())
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid atom-id in \"shake:flags\" section of molecule "
+                     "JSON data: {}",
+                     id, to_string(c[0]));
+
+        const int iatom = int(c[0]) - 1;
+        if ((iatom < 0) || (iatom >= natoms))
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid atom-id {} in \"shake:flags\" section of "
+                     "molecule JSON data",
+                     id, iatom + 1);
+        if (!c[1].is_number_integer())
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid flag in \"shake:flags\" section of "
+                     "molecule JSON data: {}",
+                     id, to_string(c[1]));
+        shake_flag[iatom] = int(c[1]);
+        count[iatom]++;
+      }
+      // checks
+      for (int i = 0; i < natoms; i++) {
+        if (count[i] == 0) {
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: atom {} missing in \"shake:flags\" JSON section", id,
+                     i + 1);
+        }
+        if ((shake_flag[i] < 0) || (shake_flag[i] > 4))
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid flag value {} in \"shake:flags\" section of "
+                     "molecule JSON data",
+                     id, shake_flag[i]);
+      }
+    } else {
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Molecule template {}: Expected \"shake:flags\" format [\"atom-id\",\"mass\"] but "
+                 "found [\"{}\",\"{}\"]",
+                 id, secfmt[0], secfmt[1]);
+    }
+  }
   // shake_bond_types
+  if (shaketypeflag) {}
 
   // body_integers
   // body_doubles
@@ -2803,16 +3000,22 @@ void Molecule::shakeflag_read(char *line)
 
       if (values.count() != 2) error->all(FLERR, fileiarg, "Invalid Shake Flags section in molecule file");
 
-      values.next_int();
-      shake_flag[i] = values.next_int();
+      int iatom = values.next_int() - 1;
+      if (iatom < 0 || iatom >= natoms)
+        error->all(FLERR, fileiarg, "Invalid atom index in Shake Flags section of molecule file");
+      count[iatom]++;
+      shake_flag[iatom] = values.next_int();
     }
   } catch (TokenizerException &e) {
     error->all(FLERR, fileiarg, "Invalid Shake Flags section in molecule file: {}", e.what());
   }
 
-  for (int i = 0; i < natoms; i++)
+  for (int i = 0; i < natoms; i++) {
     if (shake_flag[i] < 0 || shake_flag[i] > 4)
       error->all(FLERR, fileiarg, "Invalid shake flag in molecule file");
+    if (count[i] == 0)
+      error->all(FLERR, fileiarg, "Atom {} missing in Shake Flags section of molecule file", i + 1);
+  }
 }
 
 /* ----------------------------------------------------------------------
@@ -2828,54 +3031,57 @@ void Molecule::shakeatom_read(char *line)
 
       ValueTokenizer values(utils::trim_comment(line));
       nmatch = values.count();
+      int iatom = values.next_int() - 1;
+      if ((iatom < 0) || (iatom >= natoms))
+        throw TokenizerException(fmt::format("Invalid atom-id {} in Shake Atoms section of "
+                                             "molecule file", iatom + 1), "");
 
-      switch (shake_flag[i]) {
+      switch (shake_flag[iatom]) {
         case 1:
-          values.next_int();
-          shake_atom[i][0] = values.next_tagint();
-          shake_atom[i][1] = values.next_tagint();
-          shake_atom[i][2] = values.next_tagint();
+          shake_atom[iatom][0] = values.next_tagint();
+          shake_atom[iatom][1] = values.next_tagint();
+          shake_atom[iatom][2] = values.next_tagint();
           nwant = 4;
           break;
 
         case 2:
-          values.next_int();
-          shake_atom[i][0] = values.next_tagint();
-          shake_atom[i][1] = values.next_tagint();
+          shake_atom[iatom][0] = values.next_tagint();
+          shake_atom[iatom][1] = values.next_tagint();
           nwant = 3;
           break;
 
         case 3:
-          values.next_int();
-          shake_atom[i][0] = values.next_tagint();
-          shake_atom[i][1] = values.next_tagint();
-          shake_atom[i][2] = values.next_tagint();
+          shake_atom[iatom][0] = values.next_tagint();
+          shake_atom[iatom][1] = values.next_tagint();
+          shake_atom[iatom][2] = values.next_tagint();
           nwant = 4;
           break;
 
         case 4:
-          values.next_int();
-          shake_atom[i][0] = values.next_tagint();
-          shake_atom[i][1] = values.next_tagint();
-          shake_atom[i][2] = values.next_tagint();
-          shake_atom[i][3] = values.next_tagint();
+          shake_atom[iatom][0] = values.next_tagint();
+          shake_atom[iatom][1] = values.next_tagint();
+          shake_atom[iatom][2] = values.next_tagint();
+          shake_atom[iatom][3] = values.next_tagint();
           nwant = 5;
           break;
 
         case 0:
-          values.next_int();
           nwant = 1;
           break;
 
         default:
-          error->all(FLERR, fileiarg, "Invalid shake atom in molecule file");
+        throw TokenizerException(
+          fmt::format("Unexpected Shake flag {} for atom {} in Shake flags "
+                      "section of molecule file", shake_flag[iatom], iatom + 1), "");
       }
 
-      if (nmatch != nwant) error->all(FLERR, fileiarg, "Invalid shake atom in molecule file");
+      if (nmatch != nwant)
+        throw TokenizerException(
+          fmt::format("Unexpected number of atom-ids ({} vs {}) for atom {} in Shake Atoms "
+                      "section of molecule file", nmatch, nwant, iatom + 1), "");
     }
-
   } catch (TokenizerException &e) {
-    error->all(FLERR, fileiarg, "Invalid shake atom in molecule file: {}", e.what());
+    error->all(FLERR, fileiarg, "Invalid Shake Atoms section in molecule file: {}", e.what());
   }
 
   for (int i = 0; i < natoms; i++) {
