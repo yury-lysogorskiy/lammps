@@ -2803,22 +2803,16 @@ void Molecule::shakeflag_read(char *line)
 
       if (values.count() != 2) error->all(FLERR, fileiarg, "Invalid Shake Flags section in molecule file");
 
-      int iatom = values.next_int() - 1;
-      if (iatom < 0 || iatom >= natoms)
-        error->all(FLERR, fileiarg, "Invalid atom index in Shake Flags section of molecule file");
-      count[iatom]++;
-      shake_flag[iatom] = values.next_int();
+      values.next_int();
+      shake_flag[i] = values.next_int();
     }
   } catch (TokenizerException &e) {
     error->all(FLERR, fileiarg, "Invalid Shake Flags section in molecule file: {}", e.what());
   }
 
-  for (int i = 0; i < natoms; i++) {
+  for (int i = 0; i < natoms; i++)
     if (shake_flag[i] < 0 || shake_flag[i] > 4)
       error->all(FLERR, fileiarg, "Invalid shake flag in molecule file");
-    if (count[i] == 0)
-      error->all(FLERR, fileiarg, "Atom {} missing in Shake Flags section of molecule file", i + 1);
-  }
 }
 
 /* ----------------------------------------------------------------------
@@ -2834,57 +2828,54 @@ void Molecule::shakeatom_read(char *line)
 
       ValueTokenizer values(utils::trim_comment(line));
       nmatch = values.count();
-      int iatom = values.next_int() - 1;
-      if ((iatom < 0) || (iatom >= natoms))
-        throw TokenizerException(fmt::format("Invalid atom-id {} in Shake Atoms section of "
-                                             "molecule file", iatom + 1), "");
 
-      switch (shake_flag[iatom]) {
+      switch (shake_flag[i]) {
         case 1:
-          shake_atom[iatom][0] = values.next_tagint();
-          shake_atom[iatom][1] = values.next_tagint();
-          shake_atom[iatom][2] = values.next_tagint();
+          values.next_int();
+          shake_atom[i][0] = values.next_tagint();
+          shake_atom[i][1] = values.next_tagint();
+          shake_atom[i][2] = values.next_tagint();
           nwant = 4;
           break;
 
         case 2:
-          shake_atom[iatom][0] = values.next_tagint();
-          shake_atom[iatom][1] = values.next_tagint();
+          values.next_int();
+          shake_atom[i][0] = values.next_tagint();
+          shake_atom[i][1] = values.next_tagint();
           nwant = 3;
           break;
 
         case 3:
-          shake_atom[iatom][0] = values.next_tagint();
-          shake_atom[iatom][1] = values.next_tagint();
-          shake_atom[iatom][2] = values.next_tagint();
+          values.next_int();
+          shake_atom[i][0] = values.next_tagint();
+          shake_atom[i][1] = values.next_tagint();
+          shake_atom[i][2] = values.next_tagint();
           nwant = 4;
           break;
 
         case 4:
-          shake_atom[iatom][0] = values.next_tagint();
-          shake_atom[iatom][1] = values.next_tagint();
-          shake_atom[iatom][2] = values.next_tagint();
-          shake_atom[iatom][3] = values.next_tagint();
+          values.next_int();
+          shake_atom[i][0] = values.next_tagint();
+          shake_atom[i][1] = values.next_tagint();
+          shake_atom[i][2] = values.next_tagint();
+          shake_atom[i][3] = values.next_tagint();
           nwant = 5;
           break;
 
         case 0:
+          values.next_int();
           nwant = 1;
           break;
 
         default:
-        throw TokenizerException(
-          fmt::format("Unexpected Shake flag {} for atom {} in Shake flags "
-                      "section of molecule file", shake_flag[iatom], iatom + 1), "");
+          error->all(FLERR, fileiarg, "Invalid shake atom in molecule file");
       }
 
-      if (nmatch != nwant)
-        throw TokenizerException(
-          fmt::format("Unexpected number of atom-ids ({} vs {}) for atom {} in Shake Atoms "
-                      "section of molecule file", nmatch, nwant, iatom + 1), "");
+      if (nmatch != nwant) error->all(FLERR, fileiarg, "Invalid shake atom in molecule file");
     }
+
   } catch (TokenizerException &e) {
-    error->all(FLERR, fileiarg, "Invalid Shake Atoms section in molecule file: {}", e.what());
+    error->all(FLERR, fileiarg, "Invalid shake atom in molecule file: {}", e.what());
   }
 
   for (int i = 0; i < natoms; i++) {

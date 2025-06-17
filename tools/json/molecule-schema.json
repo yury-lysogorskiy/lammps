@@ -300,6 +300,67 @@
                 }
             },
             "required": ["format", "data"]
+        },
+        "shake": {
+            "type": "object",
+            "properties": {
+                "flags" : {
+                    "type": "object",
+                    "properties": {
+                        "format": {
+                            "type": "array",
+                            "const": ["atom-id", "flag"]
+                        },
+                        "data": {
+                            "type": "array",
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "type": "integer"
+                                },
+                                "minItems": 2,
+                                "maxItems": 2
+                            }
+                        }
+                    },
+                    "required": ["format", "data"]
+                },
+                "atoms" : {
+                    "type": "object",
+                    "properties": {
+                        "format": {
+                            "type": "array",
+                            "const": ["atom-id", "atom-id-list"]
+                        },
+                        "data": {
+                            "type": "array",
+                            "items": {
+                                "type": ["integer", "array"],
+                                "minItems": 1
+                            }
+                        }
+                    },
+                    "required": ["format", "data"]
+                },
+                "types" : {
+                    "type": "object",
+                    "properties": {
+                        "format": {
+                            "type": "array",
+                            "const": ["atom-id", "bond-type-list"]
+                        },
+                        "data": {
+                            "type": "array",
+                            "items": {
+                                "type": ["integer", "array"],
+                                "minItems": 1
+                            }
+                        }
+                    },
+                    "required": ["format", "data"]
+                }
+            },
+            "required": ["flags", "atoms", "types"]
         }
     },
     "required": ["application", "format", "revision", "types"]
