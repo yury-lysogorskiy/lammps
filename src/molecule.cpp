@@ -277,12 +277,12 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
 
   // determine and check sizes
 
-  int dummyvar;
+  int dummyvar = 0;
 
 #define JSON_INIT_FIELD(field, sizevar, flagvar, required, sizecheck)                              \
+  sizevar = 0;                                                                                     \
+  flagvar = 0;                                                                                     \
   if (moldata.contains(#field)) {                                                                  \
-    sizevar = 0;                                                                                   \
-    flagvar = 0;                                                                                   \
     if (!moldata[#field].contains("format"))                                                       \
       error->all(FLERR, Error::NOLASTLINE,                                                         \
                  "Molecule template {}: JSON molecule data does not contain required 'format' "    \
@@ -307,7 +307,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
           "Molecule template {}: JSON data for molecule does not contain required '{}' field", id, \
           #field);                                                                                 \
   }                                                                                                \
-  if (sizecheck && (sizecheck != sizevar))                                                         \
+  if (flagvar && sizecheck && (sizecheck != sizevar))                                              \
     error->all(FLERR, Error::NOLASTLINE,                                                           \
                "Molecule template {}: Found {} instead of {} data entries for '{}'", id, sizevar,  \
                sizecheck, #field);
@@ -356,7 +356,6 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
 
   if (moldata.contains("body") && (moldata["body"].size() == 2)) {
     bodyflag = 1;
-    const double scale5 = powint(sizescale, 5);
     avec_body = dynamic_cast<AtomVecBody *>(atom->style_match("body"));
     if (!avec_body)
       error->all(FLERR, Error::NOLASTLINE,
@@ -483,10 +482,17 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
       count[iatom]++;
     }
     // checks
+    ntypes = 0;
     for (int i = 0; i < natoms; i++) {
       if (count[i] == 0) {
         error->all(FLERR, Error::NOLASTLINE,
                    "Molecule template {}: atom {} missing in \"types\" JSON section", id, i + 1);
+      }
+      for (int i = 0; i < natoms; i++) {
+        if ((type[i] <= 0) || (domain->box_exist && (type[i] > atom->ntypes)))
+          error->all(FLERR, fileiarg, "Invalid atom type {} for atom {} in molecule file", type[i],
+                     i + 1);
+        ntypes = MAX(ntypes, type[i]);
       }
     }
   } else {
@@ -1567,7 +1573,7 @@ void Molecule::read(int flag)
     // check for units keyword in first line and print warning on mismatch
 
     auto units = Tokenizer(utils::strfind(line, "units = \\w+")).as_vector();
-    if (units.size() > 2) {
+    if ((flag == 0) && (units.size() > 2)) {
       if (units[2] != update->unit_style)
         error->warning(FLERR, "Inconsistent units in data file: current = {}, data file = {}",
                        update->unit_style, units[2]);
@@ -2702,7 +2708,6 @@ void Molecule::special_generate()
   if (newton_bond) {
     for (int i = 0; i < natoms; i++) {
       for (int j = 0; j < num_bond[i]; j++) {
-        atom1 = i;
         atom2 = bond_atom[i][j] - 1;
         nspecial[i][0]++;
         nspecial[atom2][0]++;
@@ -3095,6 +3100,15 @@ void Molecule::initialize()
   nbondtypes = nangletypes = ndihedraltypes = nimpropertypes = 0;
   nibody = ndbody = 0;
   nfragments = 0;
+  masstotal = 0.0;
+  maxradius = 0.0;
+  molradius = 0.0;
+  comatom = 0;
+  maxextent = 0.0;
+
+  nset = 0;
+  last = 0;
+  fileiarg = 0;
 
   bond_per_atom = angle_per_atom = dihedral_per_atom = improper_per_atom = 0;
   maxspecial = 0;

@@ -13,6 +13,7 @@
 
 #include "helpers.h"
 
+#include <QApplication>
 #include <QBrush>
 #include <QColor>
 #include <QDir>
@@ -21,6 +22,7 @@
 #include <QPalette>
 #include <QProcess>
 #include <QStringList>
+#include <QWidget>
 
 // duplicate string, STL version
 char *mystrdup(const std::string &text)
@@ -40,6 +42,15 @@ char *mystrdup(const char *text)
 char *mystrdup(const QString &text)
 {
     return mystrdup(text.toStdString());
+}
+
+// get pointer to LAMMPS-GUI main widget
+
+QWidget *get_main_widget()
+{
+    for (QWidget *widget : QApplication::topLevelWidgets())
+        if (widget->objectName() == "LammpsGui") return widget;
+    return nullptr;
 }
 
 // find if executable is in path

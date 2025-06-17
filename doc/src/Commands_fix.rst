@@ -22,6 +22,7 @@ OPT.
    * :doc:`append/atoms <fix_append_atoms>`
    * :doc:`atc <fix_atc>`
    * :doc:`atom/swap <fix_atom_swap>`
+   * :doc:`atom_weight/apip <fix_atom_weight_apip>`
    * :doc:`ave/atom <fix_ave_atom>`
    * :doc:`ave/chunk <fix_ave_chunk>`
    * :doc:`ave/correlate <fix_ave_correlate>`
@@ -92,6 +93,8 @@ OPT.
    * :doc:`imd <fix_imd>`
    * :doc:`indent <fix_indent>`
    * :doc:`ipi <fix_ipi>`
+   * :doc:`lambda/apip <fix_lambda_apip>`
+   * :doc:`lambda_thermostat/apip <fix_lambda_thermostat_apip>`
    * :doc:`langevin (k) <fix_langevin>`
    * :doc:`langevin/drude <fix_langevin_drude>`
    * :doc:`langevin/eff <fix_langevin_eff>`

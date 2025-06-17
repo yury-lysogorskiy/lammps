@@ -46,7 +46,7 @@ enum{SETCOMMAND,FIXSET};         // also used in FixSet class
 
 enum{ATOM_SELECT,MOL_SELECT,TYPE_SELECT,GROUP_SELECT,REGION_SELECT};
 
-enum{ANGLE,ANGMOM,BOND,CC,CHARGE,DENSITY,DIAMETER,DIHEDRAL,DIPOLE,
+enum{ANGLE,ANGMOM,APIP_LAMBDA,BOND,CC,CHARGE,DENSITY,DIAMETER,DIHEDRAL,DIPOLE,
   DIPOLE_RANDOM,DPD_THETA,EDPD_CV,EDPD_TEMP,EPSILON,IMAGE,IMPROPER,LENGTH,
   MASS,MOLECULE,OMEGA,QUAT,QUAT_RANDOM,RADIUS_ELECTRON,SHAPE,
   SMD_CONTACT_RADIUS,SMD_MASS_DENSITY,SPH_CV,SPH_E,SPH_RHO,
@@ -208,6 +208,10 @@ void Set::process_args(int caller_flag, int narg, char **arg)
       action->keyword = ANGMOM;
       process_angmom(iarg,narg,arg,action);
       invoke_choice[naction++] = &Set::invoke_angmom;
+    } else if (strcmp(arg[iarg],"apip/lambda") == 0) {
+      action->keyword = APIP_LAMBDA;
+      process_apip_lambda(iarg,narg,arg,action);
+      invoke_choice[naction++] = &Set::invoke_apip_lambda;
     } else if (strcmp(arg[iarg],"bond") == 0) {
       action->keyword = BOND;
       process_bond(iarg,narg,arg,action);
@@ -658,7 +662,7 @@ void Set::setrandom(int keyword, Action *action)
     bigint allcount;
     MPI_Allreduce(&bcount,&allcount,1,MPI_LMP_BIGINT,MPI_SUM,world);
 
-    bigint nsubset;
+    bigint nsubset = 0;
     if (keyword == TYPE_RATIO) {
       double fraction = action->dvalue1;
       nsubset = static_cast<bigint> (fraction * allcount);
@@ -1061,6 +1065,43 @@ void Set::invoke_angmom(Action *action)
     angmom[i][0] = xvalue;
     angmom[i][1] = yvalue;
     angmom[i][2] = zvalue;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+
+void Set::process_apip_lambda(int &iarg, int narg, char **arg, Action *action)
+{
+  if (!atom->apip_lambda_flag)
+    error->all(FLERR,"Cannot set attribute {} for atom style {}", arg[iarg], atom->get_style());
+  if (iarg+2 > narg) utils::missing_cmd_args(FLERR, "set apip/lambda", error);
+
+  if (strcmp(arg[iarg+1],"fast") == 0) action->dvalue1 = 1;
+  else if (strcmp(arg[iarg+1],"precise") == 0) action->dvalue1 = 0;
+  else if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
+  else action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
+
+  iarg += 2;
+}
+
+void Set::invoke_apip_lambda(Action *action)
+{
+  int nlocal = atom->nlocal;
+  double *apip_lambda = atom->apip_lambda;
+
+  if (action->varflag1) {
+    for(int i = 0; i < nlocal; i++) {
+      if (!select[i]) continue;
+      if (vec1[i] < 0 || vec1[i] > 1) error->one(FLERR,"apip/lambda {} not in [0,1]", vec1[i]);
+      apip_lambda[i] = vec1[i];
+    }
+  } else {
+    double lambda = action->dvalue1;
+    if (lambda < 0 || lambda > 1) error->all(FLERR,"apip/lambda {} not in [0,1]", lambda);
+    for(int i = 0; i < nlocal; i++) {
+      if (!select[i]) continue;
+      apip_lambda[i] = lambda;
+    }
   }
 }
 
@@ -2328,8 +2369,6 @@ void Set::process_spin_electron(int &iarg, int narg, char **arg, Action *action)
 void Set::invoke_spin_electron(Action *action)
 {
   int nlocal = atom->nlocal;
-  int *spin = atom->spin;
-
   int varflag = action->varflag;
   int ispin;
   if (!action->varflag1) ispin = action->ivalue1;
@@ -2457,8 +2496,6 @@ void Set::process_tri(int &iarg, int narg, char **arg, Action *action)
 void Set::invoke_tri(Action *action)
 {
   int nlocal = atom->nlocal;
-  int *tri = atom->tri;
-
   auto avec_tri = dynamic_cast<AtomVecTri *>(atom->style_match("tri"));
 
   int varflag = action->varflag;
@@ -2510,16 +2547,16 @@ void Set::invoke_type(Action *action)
   int *type = atom->type;
 
   int varflag = action->varflag;
-  int itype;
+  int itype = 0;
   if (!action->varflag1) itype = action->ivalue1;
 
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
 
-    if (action->varflag) {
+    if (varflag) {
       itype = static_cast<int> (vec1[i]);
       if (itype <= 0 || itype > atom->ntypes)
-        error->one(FLERR,"Invalid atom type in set command");
+        error->one(FLERR, Error::NOLASTLINE, "Invalid atom type in set command");
     }
 
     type[i] = itype;

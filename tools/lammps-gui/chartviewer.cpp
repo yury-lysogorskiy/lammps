@@ -13,6 +13,7 @@
 
 #include "chartviewer.h"
 
+#include "helpers.h"
 #include "lammpsgui.h"
 
 #include <QAction>
@@ -221,9 +222,7 @@ void ChartWindow::add_data(int step, double data, int index)
 
 void ChartWindow::quit()
 {
-    LammpsGui *main = nullptr;
-    for (QWidget *widget : QApplication::topLevelWidgets())
-        if (widget->objectName() == "LammpsGui") main = dynamic_cast<LammpsGui *>(widget);
+    auto *main = dynamic_cast<LammpsGui *>(get_main_widget());
     if (main) main->quit();
 }
 
@@ -238,9 +237,7 @@ void ChartWindow::reset_zoom()
 
 void ChartWindow::stop_run()
 {
-    LammpsGui *main = nullptr;
-    for (QWidget *widget : QApplication::topLevelWidgets())
-        if (widget->objectName() == "LammpsGui") main = dynamic_cast<LammpsGui *>(widget);
+    auto *main = dynamic_cast<LammpsGui *>(get_main_widget());
     if (main) main->stop_run();
 }
 
