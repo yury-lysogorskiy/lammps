@@ -128,7 +128,8 @@ void ComputeMSD::init()
   // set fix which stores reference atom coords
 
   fix = dynamic_cast<FixStoreAtom *>(modify->get_fix_by_id(id_fix));
-  if (!fix) error->all(FLERR, "Could not find compute msd fix with ID {}", id_fix);
+  if (!fix)
+    error->all(FLERR, Error::NOLASTLINE, "Could not find compute msd fix with ID {}", id_fix);
 
   // nmsd = # of atoms in group
 
@@ -140,6 +141,12 @@ void ComputeMSD::init()
 
 void ComputeMSD::compute_vector()
 {
+  // check that nmsd is unchanged
+
+  int newnmsd = group->count(igroup);
+  if (newnmsd != nmsd)
+    error->all(FLERR, Error::NOLASTLINE, "Number of atoms in compute msd group must not change.");
+
   invoked_vector = update->ntimestep;
 
   // cm = current center of mass
