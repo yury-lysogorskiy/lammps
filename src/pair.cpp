@@ -980,7 +980,6 @@ void Pair::ev_setup(int eflag, int vflag, int alloc)
       cvatom[i][6] = 0.0;
       cvatom[i][7] = 0.0;
       cvatom[i][8] = 0.0;
-      cvatom[i][9] = 0.0;
     }
   }
 
