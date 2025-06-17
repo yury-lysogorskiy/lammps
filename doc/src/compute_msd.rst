@@ -111,7 +111,10 @@ distance\ :math:`^2` :doc:`units <units>`.
 Restrictions
 """"""""""""
 
-Compute *msd* cannot be used with a dynamic group.
+Compute *msd* cannot be used with a dynamic group and the number of
+atoms in the compute group must not be changed by some fixes like,
+for example, :doc:`fix deposit <fix_deposit>` or
+:doc:`fix evaporate <fix_evaporate>`.
 
 Related commands
 """"""""""""""""
