@@ -15,6 +15,7 @@ from .pylammps import *                 # lgtm [py/polluting-import]
 
 # convert installed module string version to numeric version
 def get_version_number():
+  """Extract LAMMPS version string and convert to number"""
   # pylint: disable=C0415
   import time
   from os import path
