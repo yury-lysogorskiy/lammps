@@ -54,10 +54,6 @@ using namespace FixConst;
 #define BUFFACTOR 1.5
 #define BUFEXTRA 1024
 
-static constexpr double EPSILON = 1.0e-7;
-
-enum { ATOMS, VCM_OMEGA, XCM, ITENSOR, ROTATION, FORCE_TORQUE };
-
 /* ---------------------------------------------------------------------- */
 
 FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
@@ -85,7 +81,7 @@ FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
 
   mom_flag = 1;
   resample_on_accept_flag = 0;
-  rigid_flag = false;
+  flag_rigid = 0;
 
   int iarg = 6;
   while (iarg < narg) {
@@ -105,14 +101,15 @@ FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
       if (!fix_rigid)
         error->all(FLERR, "Fix ID {} for compute rigid/local does not point to fix rigid/small",
             arg[iarg + 1]);
-      rigid_flag = true;
+      flag_rigid = 1;
       iarg += 2;
     } else {
       error->all(FLERR, "Unknown fix hmc keyword {}", arg[iarg]);
     }
   }
 
-  // initialize RNG with a different seed for each process
+  // random = different RNG on each processor
+  // random_equal = same RNL on each processor
   
   random = new RanPark(lmp, seed + comm->me);
   for (int i = 0; i < 100; i++) random->uniform();
@@ -148,8 +145,8 @@ FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
   
   nattempts = 0;
   naccepts = 0;
-  DeltaPE = 0;
-  DeltaKE = 0;
+  DeltaPE = 0.0;
+  DeltaKE = 0.0;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -269,7 +266,7 @@ void FixHMC::setup_arrays_and_pointers()
   // set maximum number of per-atom variables in forward comm
   //   when dealing with rigid bodies
   
-  if (rigid_flag) comm_forward = 12;
+  if (flag_rigid) comm_forward = 12;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -299,14 +296,14 @@ void FixHMC::init()
   // check whether there are subsequent fixes with active virial_flag
   
   int past_this_fix = false;
-  int past_rigid = !rigid_flag;
+  int past_rigid = !flag_rigid;
   for (const auto &ifix : modify->get_fix_list()) {
     if (past_this_fix && past_rigid && ifix->virial_global_flag) {
       if (comm->me == 0) utils::logmesg(lmp, "Fix {} defined after fix hmc.\n", ifix->style);
       error->all(FLERR, "Fix hmc cannot precede fixes that contribute to the system pressure");
     }
     if (!strcmp(ifix->id, id)) past_this_fix = true;
-     if (rigid_flag && !strcmp(ifix->id, fix_rigid->id)) past_rigid = true;
+    if (flag_rigid && !strcmp(ifix->id, fix_rigid->id)) past_rigid = true;
   }
 
   if (!first_init_complete) {
@@ -341,7 +338,7 @@ void FixHMC::init()
 }
 
 /* ----------------------------------------------------------------------
-   Initialize MC move, save current state, and activate computes
+   initialize MC move, save current state, and activate computes
 ------------------------------------------------------------------------- */
 
 void FixHMC::setup(int vflag)
@@ -350,11 +347,11 @@ void FixHMC::setup(int vflag)
     
     // initialize fix rigid first to avoid saving uninitialized state
     
-    if (rigid_flag) fix_rigid->setup(vflag);
+    if (flag_rigid) fix_rigid->setup(vflag);
 
     // compute properties of initial state
 
-    if (rigid_flag) {
+    if (flag_rigid) {
       rigid_body_random_velocities();
     } else {
       random_velocities();
@@ -417,9 +414,13 @@ void FixHMC::end_of_step()
   }
 
   // for accept: update potential energy and save current state
-  // for reject: restore saved state, exchange, and
-  //   enforce check_distance/reneighboring on next step
-
+  // for reject: restore saved state and trigger reneighboring on next step
+  //   this will perform an exchange() and borders() to re-acquire ghost atoms
+  // NOTE: assumption here for rejection
+  //   after N steps an exchange() operation on next timestep will
+  //   migrate atoms with old coords back to their original owning procs
+  //   if this does not work, atoms will be lost
+  
   if (accept) {
     naccepts++;
     PE = newPE;
@@ -432,7 +433,7 @@ void FixHMC::end_of_step()
   // choose new velocities and compute kinetic energy
   
   if (!accept || resample_on_accept_flag) {
-    if (rigid_flag)
+    if (flag_rigid)
       rigid_body_random_velocities();
     else
       random_velocities();
@@ -556,15 +557,16 @@ void FixHMC::restore_saved_state()
   atom->avec->clear_bonus();
   atom->nlocal = 0;
 
-  // unpack exchange
+  // unpack exchange buffer
+  // this will restore atoms with coords an other properties from N steps ago
+  // NOTE: atoms will not be re-assigned to correct procs until reneighboring on next step
+  //       likewise ghost atoms will not be re-created until reneighboring on next step
   
   int m = 0;
   while (m < nstore) {
     m += avec->unpack_exchange(&buf_store[m]);
   }
 
-  // NOTE: still no ghost atoms ?
-  
   // reinit atom_map
   
   if (atom->map_style != Atom::MAP_NONE) {
@@ -621,7 +623,7 @@ void FixHMC::random_velocities()
 }
 
 /* ----------------------------------------------------------------------
-
+   randomize VCMs of rigid bodies and their associated atoms
 ------------------------------------------------------------------------- */
 
 void FixHMC::rigid_body_random_velocities()

@@ -12,6 +12,7 @@ mass            2 1.00784
 
 neighbor        2.0 bin
 neigh_modify    every 2 delay 4 check yes
+#neigh_modify    every 1 delay 0 check yes
 
 pair_style      lj/cut/coul/long 9.0
 pair_modify     tail yes mix arithmetic
@@ -32,8 +33,10 @@ timestep        1
 
 thermo          50
 # dump myDump all atom 50 dumps/water_v_dump*.dump
-fix             2 all hmc 100 654123 300.0 rigid
 
-thermo_style custom step temp pe ke etotal # f_2 f_2[*]
+fix             1 all rigid/small molecule
+fix             2 all hmc 100 654123 300.0 rigid 1
+
+thermo_style custom step temp pe ke etotal f_2 f_2[*]
 
 run             5000

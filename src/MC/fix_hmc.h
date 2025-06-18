@@ -48,7 +48,7 @@ class FixHMC : public Fix {
   int nstore, maxstore, bufextra;
   double *buf_store;
 
-  int resample_on_accept_flag, mom_flag;
+  int resample_on_accept_flag, mom_flag, flag_rigid;
   int first_init_complete, first_setup_complete;
 
   class FixRigidSmall *fix_rigid;

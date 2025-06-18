@@ -64,6 +64,8 @@ FixRigidSmall::FixRigidSmall(LAMMPS *lmp, int narg, char **arg) :
 {
   int i;
 
+  if (comm->me == 0) utils::logmesg(lmp,"Fix rigid/small setup ...\n");
+
   scalar_flag = 1;
   extscalar = 0;
   global_freq = 1;
@@ -2735,10 +2737,14 @@ void FixRigidSmall::write_restart_file(const char *file)
 
 
 /* ----------------------------------------------------------------------
-   randomize velocities with respect to a given temperature
+   randomize rigid body VCMs with respect to a given temperature KT
+     and adjust velocities of individual particles accordingly
+   mom_flag enforces zeroing of linear momentum for overall system
+   called by fix hmc command
 ------------------------------------------------------------------------- */
 
-void FixRigidSmall::resample_momenta(int groupbit, int mom_flag, class RanPark * random, double KT) {
+void FixRigidSmall::resample_momenta(int groupbit, int mom_flag, class RanPark *random, double KT)
+{
   int nlocal = nlocal_body;
   int ntotal = nghost_body;
   int *mask = atom->mask;
@@ -2776,11 +2782,13 @@ void FixRigidSmall::resample_momenta(int groupbit, int mom_flag, class RanPark *
     }
   }
 
-  // Forward communicate vcm and omega to ghost bodies:
+  // forward communicate vcm and omega to ghost bodies
+  
   commflag = FINAL;
   comm->forward_comm(this, 10);
 
-  // Compute angular momenta of rigid bodies:
+  // compute angular momenta of rigid bodies
+  
   for (int ibody = 0; ibody < ntotal; ibody++) {
     b = &body[ibody];
     MathExtra::omega_to_angmom(b->omega, b->ex_space, b->ey_space, b->ez_space, b->inertia,
@@ -2793,7 +2801,8 @@ void FixRigidSmall::resample_momenta(int groupbit, int mom_flag, class RanPark *
     b->conjqm[3] *= 2.0;
   }
 
-  // Compute velocities of individual atoms:
+  // reset velocities of individual atoms
+  
   set_v();
 }
 

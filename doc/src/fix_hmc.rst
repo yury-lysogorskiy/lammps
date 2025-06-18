@@ -1,127 +1,189 @@
-| .. index:: fix hmc
+.. index:: fix hmc
 
-| fix hmc command
-| ===============
+fix hmc command
+===============
 
-| Syntax
-| """"""
-| .. code-block:: LAMMPS
+Syntax
+""""""
+.. code-block:: LAMMPS
 
-|    fix ID group-ID hmc N seed temp integrator keyword values ...
+   fix ID group-ID hmc N seed T keyword values ...
 
-| * ID, group-ID are documented in :doc:`fix <fix>` command
-| * hmc = style name of this fix command
-| * N = invoke a Monto Carlo step every N steps
-| * seed = random # seed (positive integer)
-| * temp = temperature for assigning velocities
-| * integrator = *flexible* (for nve) or *rigid* (for rigid/small)
-| * one or more keyword/value pairs may be appended
+* ID, group-ID are documented in :doc:`fix <fix>` command
+* hmc = style name of this fix command
+* N = invoke a Monto Carlo step every N steps
+* seed = random # seed (positive integer)
+* T = temperature for assigning velocities
+* one or more keyword/value pairs may be appended
 
-|   .. parsed-literal::
+  .. parsed-literal::
 
-|      keyword = *rigid* or *mom* or *resample*
-|        *mom* value = *yes* or *no*
-|        *resample* value = *yes* or *no*
+     keyword = *rigid* or *resample* or *mom*
+       *rigid* value = rigidID
+          rigidID = ID of :doc:`fix rigid/small <fix_rigid>` command
+       *resample* value = *yes* or *no*
+       *mom* value = *yes* or *no*
 
-| Examples
-| """"""""
+Examples
+""""""""
 
-| .. code-block:: LAMMPS
+.. code-block:: LAMMPS
 
-|    fix 1 all hmc 10 123 500 flexible
-|    fix hmc_water all hmc 100 123 298.15 rigid
-|    fix 2 all hmc 10 12345 300 flexible mom no resample yes
+   fix 1 all hmc 10 123 500 flexible
+   fix hmc_water all hmc 100 123 298.15 rigid
+   fix 2 all hmc 10 12345 300 flexible mom no resample yes
 
-| Description
-| """""""""""
+Description
+"""""""""""
 
-| .. versionadded:: TBD
+.. versionadded:: TBD
 
-| This fix implements the so-called hybrid or Hamiltonian Monte Carlo
-| (HMC) algorithm.  The basic idea is
+This fix implements the hybrid or Hamiltonian Monte Carlo (HMC)
+algorithm.  The basic idea is to use molecular dynamics (MD) to
+generate trial MC "moves" which are then accepted or rejected via the
+Metropolis criterion.  In this context, an MC "move" is the new
+configuration of particles after *N* MD steps, i.e. all the particles
+in the system have moved to new positions.  The group assigned to this
+fix has no meaning and is ignored.
 
+The details of the HMC algorithm for a repeating series of $N$ MD
+steps are as follows:
 
-| in line with the following order of steps:
+(1) The configuration of the system is stored along with its current
+energy.  This includes all particle positions and velocities and other
+per-atom properties (e.g. dipole orientation vector for particles with
+dipole moments).
 
-| The new particle configuration (positions and velocities) is calculated
-| by invoking the velocity-Verlet time integration algorithm.
-| Before these configuration changes are performed, the proposed change
-| in the Hamiltonian, :math:`\Delta{H}` is calculated following the equation:
+(2) The system is time integrated in the NVE ensemble for the
+specified *N* MD steps and the new energy is calculated.  The new
+configuration is the trial "move" to accept or reject.
 
-| .. math::
+(3) The energy change :math:`\Delta{H}` in the Hamiltonian of the
+system due to the "move" is calulated by the following equation:
 
-|    \Delta{H} = H(q',p') -  H(q,p)
+.. math::
 
-| This new proposed configuration is then accepted/rejected according to
-| the Metropolis criterion with probability:
+   \Delta{H} = H(q',p') -  H(q,p)
 
-| .. math::
+The new configuration is then accepted/rejected according to the
+Metropolis criterion with probability:
 
-|    p^{acc} = min(1,e^{\frac{-\Delta{H}}{k_B T}})
+.. math::
 
-| Upon acceptance, the new proposed particle configuration positions and
-| velocities are updated. Upon rejection, the old particle configuration
-| is kept, and particle momenta (and therefore velocities) are randomly
-| resampled from a normal distribution:
+   p^{acc} = min(1,e^{\frac{-\Delta{H}}{k_B T}})
 
-| .. math::
+where *T* is the specified temperature.
 
-|    p_{x,y,z} = \textbf{N}(0,1) \sqrt{\frac{k_B T}{2 m^2}}
+(4) If accepted, the new configuration becomes the starting point for
+the next trial MC "move".
 
-| The algorithm then continues, proposing a new configuration of particles
-| and velocities N integration steps later.
+(5) If rejected, the old configuration (from *N* steps ago) is
+restored and new momenta (velocities) are assigned to each particle,
+by randomly resampling from a normal distribution at the specified
+temperature $T$ using the following equation:
 
-| Typically, HMC is run with a larger timestep than would be used for
-| traditional molecular dynamics (MD).  The timestep provides control
-| over the acceptance ratio. A larger timestep will lead to larger and
-| more extreme MC moves which are less likely to be accepted.
+.. math::
 
-| This fix is not designed to be used with anything but an NVE
-| simulation.  Only atom-specific data are restored on MC move
-| rejection, so anything which adds or remove atoms, changes the box
-| size, or has some external state not dependent on atomic data will
-| have undefined behavior.
+   p_{x,y,z} = \textbf{N}(0,1) \sqrt{\frac{k_B T}{2 m^2}}
 
-| The group assigned to this fix has no meaning is ignored.
+The velocity-modified "old" configuration becomes the starting point
+for the next trial MC "move".
 
-| NOTE: mention adds several new computes
-| when how do those computes get triggered ?
-| why does global virial need to be stored with state ?
-|   is it simply for output at end of step
-|   will thermo output at end-of-step be correct ?
-| no references in the text
+.. note::
 
-| ----------
+   Typically HMC is run with a larger timestep than would be used for
+   traditional MD, which enables generation of new conformations which
+   MD would not normally generate as quickly.  The timestep size may
+   also affect the acceptance ratio.  A larger timestep will lead to
+   larger and more extreme MC moves which are less likely to be
+   accepted.
 
-| The keyword/value options are used in the following ways.
+.. note::
 
-| The *mom* keyword sets the linear momentum of the ensemble of
-particles.  If mom = yes, the linear momentum of the ensemble of
-velocities is zeroed. If mom = no, the linear momentum of the ensemble
-of velocities is not zeroed.
-
-The *resample* keyword decides whether velocities are resampled upon
-acceptance.  If resample = yes, velocities are resampled upon
-acceptance. If resample = no, velocities are not resampled upon
-acceptance.
+   This fix is designed to be used only for constant NVE simulations.
+   No thermostat or barostat should be used, though LAMMPS does not
+   check for this.  A :doc:`fix nve <fix nve>` command must be defined
+   to perform time integration for the MD portion of the algorithm.
+   See the explanation of the *rigid* keyword below for an exception
+   when rigid bodies are defined.  Also note that only per-atom data
+   is restored on MC move rejection, so anything which adds or remove
+   particles, changes the box size, or has some external state not
+   dependent on per-atom data will have undefined behavior.
 
 ----------
 
-Ouput info
-""""""""""
+The keyword/value options are as follows:
 
-This fix computes a global scalar and global vector of length 5, which
-can be accessed by various :doc:`output commands <Howto_output>`.  The
-scalar is the fraction of attempted MC moves which have been accepted.
-The vector stores the following quantities:
+The *rigid* keyword enables use of HMC for systems containing a
+collection of small rigid bodies, with or without solvent (atomic
+fluid or non-rigid molecular fluid).
 
-* 1 = number of accepted moves
-* 2 = number of rejected moves
-* 3 = change in potential energy
-* 4 = change in kinetic energy
-* 5 = change in total energy (kinetic + potential energy)
+The *rigidID* value should be the ID of a :doc:`fix rigid/small
+<fix_rigid>` or :doc:`fix rigid/nve/small <fix_rigid>` command which
+defines the rigid bodies.  Its integrator will be used during the MD
+timesteps.  If there are additional particles in the system,
+e.g. solvent, they should be time-integrated by a :doc:`fix nve <fix
+nve>` command as explained above.
 
-These values are calculated once every N timesteps
+The *resample* keyword determines whether velocities are also
+resampled upon acceptance in step (4) above, in addition to step (5).
+If *resample* = *yes*, velocities are resampled upon acceptance.  If
+*resample* = *no* (default), velocities are not resampled upon
+acceptance.
+
+The *mom* keyword sets the linear momentum of the ensemble of
+particles each time velocities are reset in steps (4 or 5) above.  If
+*mom* = *yes* (default), the linear momentum of the ensemble of
+velocities is zeroed. If *mom* = *no*, the linear momentum of the
+ensemble of velocities is not zeroed.
+
+----------
+
+   
+This fix creates several additional computes for monitoring the energy
+and virial of the system and storing/restoring the system state.  This
+is done internally, as if these commands had been issued, where ID is
+the ID of this fix:
+
+.. code-block:: LAMMPS
+
+   compute hmc_ke_ID all ke
+   compute hmc_pe_ID all pe
+   compute hmc_peatom_ID all pe/atom
+   compute hmc_oress_ID all pressure NULL virial
+   compute hmc_pressatom_ID all stress/atom NULL virial
+
+The output of these computes can be accessed by the input script,
+along with the other outputs described in the next section.
+   
+----------
+
+Restart, fix_modify, output, run start/stop, minimize info
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+No information about this fix is written to :doc:`binary restart files
+<restart>`.  None of the :doc:`fix_modify <fix_modify>` options are
+relevant to this fix.
+
+This fix calculates a global scalar and global vector of length 5,
+which can be accessed by various :doc:`output commands
+<Howto_output>`.  The scalar is the fraction (0-1) of attempted MC
+moves which have been accepted.  The vector stores the following
+quantities:
+
+* 1 = cumulative number of accepted moves
+* 2 = cumulative number of rejected moves
+* 3 = change in potential energy for last trial move
+* 4 = change in kinetic energy for last trial move
+* 5 = change in total energy (kinetic + potential energy) for last trial move
+
+These values are updated once every *N* timesteps.  The scalar and
+cummulative counts are "intensive"; the three energies are "extensive"
+and are in energy :doc:`units <units>`.
+
+No parameter of this fix can be used with the *start/stop* keywords of
+the :doc:`run <run>` command.  This fix is not invoked during
+:doc:`energy minimization <minimize>`.
 
 Restrictions
 """"""""""""
@@ -140,7 +202,7 @@ Related commands
 Default
 """""""
 
-The option defaults are mom = yes, resample = no.
+The option defaults are resample = no and mom = yes.
 
 ----------
 
