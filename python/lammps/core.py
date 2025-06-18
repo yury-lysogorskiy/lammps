@@ -87,9 +87,9 @@ class command_wrapper:
         args = list(args)
         args[0] = lammps(ptr=args[0])
         x(*args)
-        setattr(__main__, func_name, handler)
-        return func_name
-      return x
+      setattr(__main__, func_name, handler)
+      return func_name
+    return x
 
   def __getattr__(self, name):
     """
@@ -112,7 +112,7 @@ class command_wrapper:
       # Python 3.6+ maintains ordering of kwarg keys
       for kw, arg in kwargs.items():
         cmd_args.append(kw)
-        if isinstance(arg,bool):
+        if isinstance(arg, bool):
           cmd_args.append("true" if arg else "false")
         else:
           cmd_args.append(str(self._wrap_args(arg)))
