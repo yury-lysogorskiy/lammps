@@ -109,7 +109,7 @@ FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
   }
 
   // random = different RNG on each processor
-  // random_equal = same RNL on each processor
+  // random_equal = same RNG on each processor
 
   random = new RanPark(lmp, seed + comm->me);
   for (int i = 0; i < 100; i++) random->uniform();
@@ -417,8 +417,8 @@ void FixHMC::end_of_step()
   // for reject: restore saved state and trigger reneighboring on next step
   //   this will perform an exchange() and borders() to re-acquire ghost atoms
   // NOTE: assumption here for rejection
-  //   after N steps an exchange() operation on next timestep will
-  //   migrate atoms with old coords back to their original owning procs
+  //   after N steps an exchange() operation on next timestep will be able to
+  //     migrate atoms with old coords back to their original owning procs
   //   if this does not work, atoms will be lost
 
   if (accept) {
@@ -558,7 +558,7 @@ void FixHMC::restore_saved_state()
   atom->nlocal = 0;
 
   // unpack exchange buffer
-  // this will restore atoms with coords an other properties from N steps ago
+  // this will restore atoms with coords and other properties from N steps ago
   // NOTE: atoms will not be re-assigned to correct procs until reneighboring on next step
   //       likewise ghost atoms will not be re-created until reneighboring on next step
 
