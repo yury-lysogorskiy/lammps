@@ -1407,62 +1407,177 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
 
   // shake_atoms
 
+#define APPLY_SHAKE_ATOMS(ncols)                                                          \
+  if (c[1].size() != ncols)                                                               \
+    error->all(FLERR, Error::NOLASTLINE,                                                  \
+               "Molecule template {}: invalid number of items for atom-id {} in \"shake:" \
+               "atoms\" section of molecue JSON data ({} vs {})",                         \
+               id, iatom + 1, c[1].size(), ncols);                                        \
+  for (int i = 0; i < ncols; ++i) {                                                       \
+    if (!c[1][i].is_number_integer())                                                     \
+      error->all(FLERR, Error::NOLASTLINE,                                                \
+                 "Molecule template {}: invalid atom-id {} in atom-id-list for atom {} "  \
+                 "in \"shake:atoms\" section of molecule JSON data",                      \
+                 id, to_string(c[1][i]), iatom + 1);                                      \
+    shake_atom[iatom][i] = int(c[1][i]);                                                  \
+  }
+
   if (shakeatomflag) {
     const auto &shakedata = moldata["shake"]["atoms"];
     secfmt.clear();
     for (int i = 0; i < 2; ++i) secfmt.push_back(shakedata["format"][i]);
     if ((secfmt[0] == "atom-id") && (secfmt[1] == "atom-id-list")) {
 
-      for (int i = 0; i < natoms; i++) shake_flag[i] = -1;
       memset(count, 0, natoms * sizeof(int));
       for (const auto &c : shakedata["data"]) {
         if (c.size() < 2)
           error->all(FLERR, Error::NOLASTLINE,
-                     "Molecule template {}: missing data in \"shake:flags\" section of molecule "
+                     "Molecule template {}: missing data in \"shake:atoms\" section of molecule "
                      "JSON data: {}",
                      id, to_string(c));
         if (!c[0].is_number_integer())
           error->all(FLERR, Error::NOLASTLINE,
-                     "Molecule template {}: invalid atom-id in \"shake:flags\" section of molecule "
+                     "Molecule template {}: invalid atom-id in \"shake:atoms\" section of molecule "
                      "JSON data: {}",
                      id, to_string(c[0]));
 
         const int iatom = int(c[0]) - 1;
         if ((iatom < 0) || (iatom >= natoms))
           error->all(FLERR, Error::NOLASTLINE,
-                     "Molecule template {}: invalid atom-id {} in \"shake:flags\" section of "
+                     "Molecule template {}: invalid atom-id {} in \"shake:atoms\" section of "
                      "molecule JSON data",
                      id, iatom + 1);
-        if (!c[1].is_number_integer())
-          error->all(FLERR, Error::NOLASTLINE,
-                     "Molecule template {}: invalid flag in \"shake:flags\" section of "
-                     "molecule JSON data: {}",
-                     id, to_string(c[1]));
-        shake_flag[iatom] = int(c[1]);
+
+        switch (shake_flag[iatom]) {
+          case 1:
+            APPLY_SHAKE_ATOMS(3);
+            break;
+          case 2:
+            APPLY_SHAKE_ATOMS(2);
+            break;
+          case 3:
+            APPLY_SHAKE_ATOMS(3);
+            break;
+          case 4:
+            APPLY_SHAKE_ATOMS(4);
+            break;
+          case 0:
+            APPLY_SHAKE_ATOMS(0);
+            break;
+          default:
+            error->all(FLERR, Error::NOLASTLINE,
+                       "Molecule template {}: Unsupported Shake flag {} for "
+                       " atom {} in \"shake:atoms\" section of molecule JSON data",
+                       id, shake_flag[iatom], iatom + 1);
+        }
         count[iatom]++;
       }
       // checks
       for (int i = 0; i < natoms; i++) {
-        if (count[i] == 0) {
+        if (count[i] == 0)
           error->all(FLERR, Error::NOLASTLINE,
-                     "Molecule template {}: atom {} missing in \"shake:flags\" JSON section", id,
+                     "Molecule template {}: atom {} missing in \"shake:atoms\" JSON section", id,
                      i + 1);
-        }
-        if ((shake_flag[i] < 0) || (shake_flag[i] > 4))
-          error->all(FLERR, Error::NOLASTLINE,
-                     "Molecule template {}: invalid flag value {} in \"shake:flags\" section of "
-                     "molecule JSON data",
-                     id, shake_flag[i]);
       }
     } else {
       error->all(FLERR, Error::NOLASTLINE,
-                 "Molecule template {}: Expected \"shake:flags\" format [\"atom-id\",\"mass\"] but "
-                 "found [\"{}\",\"{}\"]",
+                 "Molecule template {}: Expected \"shake:atoms\" format "
+                 "[\"atom-id\",\"atom-id-list\"] but found [\"{}\",\"{}\"]",
                  id, secfmt[0], secfmt[1]);
     }
   }
+#undef APPLY_SHAKE_ATOMS
+
   // shake_bond_types
-  if (shaketypeflag) {}
+
+#define SET_SHAKE_TYPE(type, idx, ncols, offset)                                          \
+  if (c[1].size() < ncols)                                                                \
+    error->all(FLERR, Error::NOLASTLINE,                                                  \
+               "Molecule template {}: invalid number of items for atom-id {} in \"shake:" \
+               "types\" section of molecue JSON data ({} vs {})",                         \
+               id, iatom + 1, c[1].size(), ncols);                                        \
+  if (c[1][idx].is_number_integer()) {                                                    \
+    shake_type[iatom][idx] = int(c[1][idx]) + offset;                                     \
+  } else {                                                                                \
+    char *subst = utils::expand_type(FLERR, c[1][idx], type, lmp);                        \
+    if (subst) {                                                                          \
+      shake_type[iatom][idx] = utils::inumeric(FLERR, subst, false, lmp);                 \
+      delete[] subst;                                                                     \
+    }                                                                                     \
+  }
+
+  if (shaketypeflag) {
+    const auto &shakedata = moldata["shake"]["types"];
+    secfmt.clear();
+    for (int i = 0; i < 2; ++i) secfmt.push_back(shakedata["format"][i]);
+    if ((secfmt[0] == "atom-id") && (secfmt[1] == "type-list")) {
+
+      memset(count, 0, natoms * sizeof(int));
+      for (const auto &c : shakedata["data"]) {
+        if (c.size() < 2)
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: missing data in \"shake:types\" section of molecule "
+                     "JSON data: {}",
+                     id, to_string(c));
+        if (!c[0].is_number_integer())
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid atom-id in \"shake:types\" section of molecule "
+                     "JSON data: {}",
+                     id, to_string(c[0]));
+
+        const int iatom = int(c[0]) - 1;
+        if ((iatom < 0) || (iatom >= natoms))
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid atom-id {} in \"shake:types\" section of "
+                     "molecule JSON data",
+                     id, iatom + 1);
+
+        switch (shake_flag[iatom]) {
+          case 1:
+            SET_SHAKE_TYPE(Atom::BOND, 0, 3, boffset);
+            SET_SHAKE_TYPE(Atom::BOND, 1, 3, boffset);
+            SET_SHAKE_TYPE(Atom::ANGLE, 2, 3, aoffset);
+            break;
+          case 2:
+            SET_SHAKE_TYPE(Atom::BOND, 0, 2, boffset);
+            SET_SHAKE_TYPE(Atom::BOND, 1, 2, boffset);
+            break;
+          case 3:
+            SET_SHAKE_TYPE(Atom::BOND, 0, 3, boffset);
+            SET_SHAKE_TYPE(Atom::BOND, 1, 3, boffset);
+            SET_SHAKE_TYPE(Atom::BOND, 2, 3, boffset);
+            break;
+          case 4:
+            SET_SHAKE_TYPE(Atom::BOND, 0, 4, boffset);
+            SET_SHAKE_TYPE(Atom::BOND, 1, 4, boffset);
+            SET_SHAKE_TYPE(Atom::BOND, 2, 4, boffset);
+            SET_SHAKE_TYPE(Atom::BOND, 3, 4, boffset);
+            break;
+          case 0:
+            break;
+          default:
+            error->all(FLERR, Error::NOLASTLINE,
+                       "Molecule template {}: Unsupported Shake flag {} for "
+                       " atom {} in \"shake:atoms\" section of molecule JSON data",
+                       id, shake_flag[iatom], iatom + 1);
+        }
+        count[iatom]++;
+      }
+      // checks
+      for (int i = 0; i < natoms; i++) {
+        if (count[i] == 0)
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: atom {} missing in \"shake:atoms\" JSON section", id,
+                     i + 1);
+      }
+    } else {
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Molecule template {}: Expected \"shake:atoms\" format "
+                 "[\"atom-id\",\"atom-id-list\"] but found [\"{}\",\"{}\"]",
+                 id, secfmt[0], secfmt[1]);
+    }
+  }
+#undef SET_SHAKE_TYPE
 
   // body_integers
   // body_doubles
@@ -3147,7 +3262,12 @@ void Molecule::shaketype_read(char *line)
         shake_type[iatom][0] = utils::inumeric(FLERR, values[1], false, lmp) + ((subst) ? 0 : boffset);
         delete[] subst;
 
-        nwant = 2;
+        subst = utils::expand_type(FLERR, values[2], Atom::BOND, lmp);
+        if (subst) values[2] = subst;
+        shake_type[iatom][1] = utils::inumeric(FLERR, values[2], false, lmp) + ((subst) ? 0 : boffset);
+        delete[] subst;
+
+        nwant = 3;
         break;
 
       case 3:
@@ -3156,12 +3276,17 @@ void Molecule::shaketype_read(char *line)
         shake_type[iatom][0] = utils::inumeric(FLERR, values[1], false, lmp) + ((subst) ? 0 : boffset);
         delete[] subst;
 
-        subst = utils::expand_type(FLERR, values[1], Atom::BOND, lmp);
-        if (subst) values[1] = subst;
+        subst = utils::expand_type(FLERR, values[2], Atom::BOND, lmp);
+        if (subst) values[2] = subst;
         shake_type[iatom][1] = utils::inumeric(FLERR, values[2], false, lmp) + ((subst) ? 0 : boffset);
         delete[] subst;
 
-        nwant = 3;
+        subst = utils::expand_type(FLERR, values[1], Atom::BOND, lmp);
+        if (subst) values[3] = subst;
+        shake_type[iatom][2] = utils::inumeric(FLERR, values[3], false, lmp) + ((subst) ? 0 : boffset);
+        delete[] subst;
+
+        nwant = 4;
         break;
 
       case 4:
@@ -3170,17 +3295,22 @@ void Molecule::shaketype_read(char *line)
         shake_type[iatom][0] = utils::inumeric(FLERR, values[1], false, lmp) + ((subst) ? 0 : boffset);
         delete[] subst;
 
-        subst = utils::expand_type(FLERR, values[1], Atom::BOND, lmp);
-        if (subst) values[1] = subst;
+        subst = utils::expand_type(FLERR, values[2], Atom::BOND, lmp);
+        if (subst) values[2] = subst;
         shake_type[iatom][1] = utils::inumeric(FLERR, values[2], false, lmp) + ((subst) ? 0 : boffset);
         delete[] subst;
 
-        subst = utils::expand_type(FLERR, values[1], Atom::BOND, lmp);
-        if (subst) values[1] = subst;
+        subst = utils::expand_type(FLERR, values[3], Atom::BOND, lmp);
+        if (subst) values[3] = subst;
         shake_type[iatom][2] = utils::inumeric(FLERR, values[3], false, lmp) + ((subst) ? 0 : boffset);
         delete[] subst;
 
-        nwant = 4;
+        subst = utils::expand_type(FLERR, values[4], Atom::BOND, lmp);
+        if (subst) values[4] = subst;
+        shake_type[iatom][3] = utils::inumeric(FLERR, values[4], false, lmp) + ((subst) ? 0 : boffset);
+        delete[] subst;
+
+        nwant = 5;
         break;
 
       case 0:

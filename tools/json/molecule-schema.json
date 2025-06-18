@@ -347,7 +347,7 @@
                     "properties": {
                         "format": {
                             "type": "array",
-                            "const": ["atom-id", "bond-type-list"]
+                            "const": ["atom-id", "type-list"]
                         },
                         "data": {
                             "type": "array",
