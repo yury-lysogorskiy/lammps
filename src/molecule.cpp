@@ -1539,19 +1539,16 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
             SET_SHAKE_TYPE(Atom::ANGLE, 2, 3, aoffset);
             break;
           case 2:
+            SET_SHAKE_TYPE(Atom::BOND, 0, 1, boffset);
+            break;
+          case 3:
             SET_SHAKE_TYPE(Atom::BOND, 0, 2, boffset);
             SET_SHAKE_TYPE(Atom::BOND, 1, 2, boffset);
             break;
-          case 3:
+          case 4:
             SET_SHAKE_TYPE(Atom::BOND, 0, 3, boffset);
             SET_SHAKE_TYPE(Atom::BOND, 1, 3, boffset);
             SET_SHAKE_TYPE(Atom::BOND, 2, 3, boffset);
-            break;
-          case 4:
-            SET_SHAKE_TYPE(Atom::BOND, 0, 4, boffset);
-            SET_SHAKE_TYPE(Atom::BOND, 1, 4, boffset);
-            SET_SHAKE_TYPE(Atom::BOND, 2, 4, boffset);
-            SET_SHAKE_TYPE(Atom::BOND, 3, 4, boffset);
             break;
           case 0:
             break;
@@ -3262,12 +3259,7 @@ void Molecule::shaketype_read(char *line)
         shake_type[iatom][0] = utils::inumeric(FLERR, values[1], false, lmp) + ((subst) ? 0 : boffset);
         delete[] subst;
 
-        subst = utils::expand_type(FLERR, values[2], Atom::BOND, lmp);
-        if (subst) values[2] = subst;
-        shake_type[iatom][1] = utils::inumeric(FLERR, values[2], false, lmp) + ((subst) ? 0 : boffset);
-        delete[] subst;
-
-        nwant = 3;
+        nwant = 2;
         break;
 
       case 3:
@@ -3281,12 +3273,7 @@ void Molecule::shaketype_read(char *line)
         shake_type[iatom][1] = utils::inumeric(FLERR, values[2], false, lmp) + ((subst) ? 0 : boffset);
         delete[] subst;
 
-        subst = utils::expand_type(FLERR, values[1], Atom::BOND, lmp);
-        if (subst) values[3] = subst;
-        shake_type[iatom][2] = utils::inumeric(FLERR, values[3], false, lmp) + ((subst) ? 0 : boffset);
-        delete[] subst;
-
-        nwant = 4;
+        nwant = 3;
         break;
 
       case 4:
@@ -3305,12 +3292,7 @@ void Molecule::shaketype_read(char *line)
         shake_type[iatom][2] = utils::inumeric(FLERR, values[3], false, lmp) + ((subst) ? 0 : boffset);
         delete[] subst;
 
-        subst = utils::expand_type(FLERR, values[4], Atom::BOND, lmp);
-        if (subst) values[4] = subst;
-        shake_type[iatom][3] = utils::inumeric(FLERR, values[4], false, lmp) + ((subst) ? 0 : boffset);
-        delete[] subst;
-
-        nwant = 5;
+        nwant = 4;
         break;
 
       case 0:
