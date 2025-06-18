@@ -1555,7 +1555,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
           default:
             error->all(FLERR, Error::NOLASTLINE,
                        "Molecule template {}: Unsupported Shake flag {} for "
-                       " atom {} in \"shake:atoms\" section of molecule JSON data",
+                       " atom {} in \"shake:types\" section of molecule JSON data",
                        id, shake_flag[iatom], iatom + 1);
         }
         count[iatom]++;
@@ -1564,13 +1564,13 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
       for (int i = 0; i < natoms; i++) {
         if (count[i] == 0)
           error->all(FLERR, Error::NOLASTLINE,
-                     "Molecule template {}: atom {} missing in \"shake:atoms\" JSON section", id,
+                     "Molecule template {}: atom {} missing in \"shake:types\" JSON section", id,
                      i + 1);
       }
     } else {
       error->all(FLERR, Error::NOLASTLINE,
-                 "Molecule template {}: Expected \"shake:atoms\" format "
-                 "[\"atom-id\",\"atom-id-list\"] but found [\"{}\",\"{}\"]",
+                 "Molecule template {}: Expected \"shake:types\" format "
+                 "[\"atom-id\",\"type-list\"] but found [\"{}\",\"{}\"]",
                  id, secfmt[0], secfmt[1]);
     }
   }
