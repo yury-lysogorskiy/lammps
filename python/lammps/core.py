@@ -90,7 +90,6 @@ class command_wrapper:
         setattr(__main__, func_name, handler)
         return func_name
       return x
-    return None
 
   def __getattr__(self, name):
     """
