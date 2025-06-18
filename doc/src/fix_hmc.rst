@@ -102,7 +102,7 @@ for the next trial MC "move".
 
    This fix is designed to be used only for constant NVE simulations.
    No thermostat or barostat should be used, though LAMMPS does not
-   check for this.  A :doc:`fix nve <fix nve>` command must be defined
+   check for this.  A :doc:`fix nve <fix_nve>` command must be defined
    to perform time integration for the MD portion of the algorithm.
    See the explanation of the *rigid* keyword below for an exception
    when rigid bodies are defined.  Also note that only per-atom data
@@ -122,8 +122,8 @@ The *rigidID* value should be the ID of a :doc:`fix rigid/small
 <fix_rigid>` or :doc:`fix rigid/nve/small <fix_rigid>` command which
 defines the rigid bodies.  Its integrator will be used during the MD
 timesteps.  If there are additional particles in the system,
-e.g. solvent, they should be time-integrated by a :doc:`fix nve <fix
-nve>` command as explained above.
+e.g. solvent, they should be time-integrated by a :doc:`fix nve
+<fix_nve>` command as explained above.
 
 The *resample* keyword determines whether velocities are also
 resampled upon acceptance in step (4) above, in addition to step (5).
@@ -139,7 +139,7 @@ ensemble of velocities is not zeroed.
 
 ----------
 
-   
+
 This fix creates several additional computes for monitoring the energy
 and virial of the system and storing/restoring the system state.  This
 is done internally, as if these commands had been issued, where ID is
@@ -155,7 +155,7 @@ the ID of this fix:
 
 The output of these computes can be accessed by the input script,
 along with the other outputs described in the next section.
-   
+
 ----------
 
 Restart, fix_modify, output, run start/stop, minimize info
@@ -196,8 +196,8 @@ more info.
 Related commands
 """"""""""""""""
 
-:doc:`fix nvt <fix_nh>`, :doc:`fix gcmc <fix_gcmc>`, :doc:`fix tfmc
-     <fix_tfmc>`
+:doc:`fix nvt <fix_nh>`, :doc:`fix gcmc <fix_gcmc>`,
+:doc:`fix tfmc <fix_tfmc>`
 
 Default
 """""""

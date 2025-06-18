@@ -2783,12 +2783,12 @@ void FixRigidSmall::resample_momenta(int groupbit, int mom_flag, class RanPark *
   }
 
   // forward communicate vcm and omega to ghost bodies
-  
+
   commflag = FINAL;
   comm->forward_comm(this, 10);
 
   // compute angular momenta of rigid bodies
-  
+
   for (int ibody = 0; ibody < ntotal; ibody++) {
     b = &body[ibody];
     MathExtra::omega_to_angmom(b->omega, b->ex_space, b->ey_space, b->ez_space, b->inertia,
@@ -2802,7 +2802,7 @@ void FixRigidSmall::resample_momenta(int groupbit, int mom_flag, class RanPark *
   }
 
   // reset velocities of individual atoms
-  
+
   set_v();
 }
 

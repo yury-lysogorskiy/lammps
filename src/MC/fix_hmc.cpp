@@ -70,7 +70,7 @@ FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
   nevery = utils::numeric(FLERR, arg[3], false, lmp);
   int seed = utils::numeric(FLERR, arg[4], false, lmp);
   double temp = utils::numeric(FLERR, arg[5], false, lmp);
-  
+
   if (seed <= 0) error->all(FLERR, "Fix hmc seed must be > 0");
   if (temp <= 0) error->all(FLERR, "Fix hmc temperature must be > 0.0");
 
@@ -110,13 +110,13 @@ FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
 
   // random = different RNG on each processor
   // random_equal = same RNL on each processor
-  
+
   random = new RanPark(lmp, seed + comm->me);
   for (int i = 0; i < 100; i++) random->uniform();
   random_equal = new RanPark(lmp, seed);
 
   // register callback
-  
+
   atom->add_callback(0);
 
   // add new computes for global and per-atom properties
@@ -137,12 +137,12 @@ FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
   size_vector = 5;
   force_reneighbor = 1;
   next_reneighbor = -1;
-  
+
   first_init_complete = false;
   first_setup_complete = false;
 
   // initializations
-  
+
   nattempts = 0;
   naccepts = 0;
   DeltaPE = 0.0;
@@ -162,7 +162,7 @@ FixHMC::~FixHMC()
   if (vglobalptr)
     for (int m = 0; m < nv; m++) delete[] vglobalptr[m];
   delete[] vglobalptr;
-  
+
   delete random;
   delete random_equal;
 
@@ -186,7 +186,7 @@ void FixHMC::setup_arrays_and_pointers()
   int kspace_flag;
 
   // determine which energy contributions must be computed
-  
+
   ne = 0;
   if (force->pair) {
     pair_flag = 1;
@@ -220,18 +220,18 @@ void FixHMC::setup_arrays_and_pointers()
     kspace_flag = 0;
 
   // initialize arrays for managing global energy terms
-  
+
   neg = pair_flag ? ne + 1 : ne;
   memory->create(eglobal, neg, "fix_hmc:eglobal");
   delete[] eglobalptr;
   eglobalptr = new double *[neg];
-  
+
   m = 0;
   if (pair_flag) {
     eglobalptr[m++] = &force->pair->eng_vdwl;
     eglobalptr[m++] = &force->pair->eng_coul;
   }
-  
+
   if (bond_flag) eglobalptr[m++] = &force->bond->energy;
   if (angle_flag) eglobalptr[m++] = &force->angle->energy;
   if (dihedral_flag) eglobalptr[m++] = &force->dihedral->energy;
@@ -239,7 +239,7 @@ void FixHMC::setup_arrays_and_pointers()
   if (kspace_flag) eglobalptr[m++] = &force->kspace->energy;
 
   // initialize arrays for managing global virial terms
-  
+
   nv = ne;
   for (const auto &ifix : modify->get_fix_list())
     if (ifix->virial_global_flag) nv++;
@@ -265,7 +265,7 @@ void FixHMC::setup_arrays_and_pointers()
 
   // set maximum number of per-atom variables in forward comm
   //   when dealing with rigid bodies
-  
+
   if (flag_rigid) comm_forward = 12;
 }
 
@@ -288,13 +288,13 @@ void FixHMC::init()
     error->all(FLERR, "Cannot use fix hmc unless atoms have IDs");
 
   // check whether there is any fixes that change box size and/or shape
-  
+
   for (const auto &ifix : modify->get_fix_list())
     if (ifix->box_change)
       error->all(FLERR, "Fix hmc is incompatible with fixes that change box size or shape");
 
   // check whether there are subsequent fixes with active virial_flag
-  
+
   int past_this_fix = false;
   int past_rigid = !flag_rigid;
   for (const auto &ifix : modify->get_fix_list()) {
@@ -307,9 +307,9 @@ void FixHMC::init()
   }
 
   if (!first_init_complete) {
-    
+
     // look for computes with active press_flag
-    
+
     press_flag = 0;
     for (const auto &icompute : modify->get_compute_list())
       if (strncmp(icompute->id, "hmc_", 4)) {
@@ -317,17 +317,17 @@ void FixHMC::init()
       }
 
     // initialize arrays and pointers for saving/restoring state
-    
+
     setup_arrays_and_pointers();
 
     // count per-atom properties to be exchanged
-    
+
     nvalues = 0;
     if (peatom_flag) nvalues += ne;
     if (pressatom_flag) nvalues += 6 * nv;
 
     // activate potential energy and other necessary calculations at setup
-    
+
     pe->addstep(ntimestep);
     if (peatom_flag) peatom->addstep(ntimestep);
     if (press_flag) press->addstep(ntimestep);
@@ -344,9 +344,9 @@ void FixHMC::init()
 void FixHMC::setup(int vflag)
 {
   if (!first_setup_complete) {
-    
+
     // initialize fix rigid first to avoid saving uninitialized state
-    
+
     if (flag_rigid) fix_rigid->setup(vflag);
 
     // compute properties of initial state
@@ -368,7 +368,7 @@ void FixHMC::setup(int vflag)
     save_current_state();
 
     // activate potential energy and other necessary calculations
-    
+
     int nextstep = update->ntimestep + nevery;
     pe->addstep(nextstep);
     if (peatom_flag) peatom->addstep(nextstep);
@@ -376,7 +376,7 @@ void FixHMC::setup(int vflag)
     if (pressatom_flag) pressatom->addstep(nextstep);
 
     // create buffer, store fixes for warnings
-    
+
     int maxexchange_fix = 0;
     int maxexchange_atom = atom->avec->maxexchange;
 
@@ -397,7 +397,7 @@ void FixHMC::end_of_step()
   nattempts++;
 
   // compute potential and kinetic energy variations
-  
+
   update->eflag_global = update->ntimestep;
   double newPE = pe->compute_scalar();
   double newKE = ke->compute_scalar();
@@ -405,7 +405,7 @@ void FixHMC::end_of_step()
   DeltaKE = newKE - KE;
 
   // apply the Metropolis criterion
-  
+
   double DeltaE = DeltaPE + DeltaKE;
   int accept = DeltaE < 0.0;
   if (!accept) {
@@ -420,7 +420,7 @@ void FixHMC::end_of_step()
   //   after N steps an exchange() operation on next timestep will
   //   migrate atoms with old coords back to their original owning procs
   //   if this does not work, atoms will be lost
-  
+
   if (accept) {
     naccepts++;
     PE = newPE;
@@ -431,7 +431,7 @@ void FixHMC::end_of_step()
   }
 
   // choose new velocities and compute kinetic energy
-  
+
   if (!accept || resample_on_accept_flag) {
     if (flag_rigid)
       rigid_body_random_velocities();
@@ -441,7 +441,7 @@ void FixHMC::end_of_step()
   }
 
   // activate potential energy and other necessary calculations
-  
+
   int nextstep = update->ntimestep + nevery;
   if (nextstep <= update->laststep) {
     pe->addstep(nextstep);
@@ -522,18 +522,18 @@ void FixHMC::save_current_state()
   nstore = 0;
 
   // store all needed info about owned atoms via pack_exchange()
-  
+
   for (int i = 0; i < nlocal; i++) {
     if (nstore > maxstore) grow_store(nstore, 1);
     nstore += avec->pack_exchange(i, &buf_store[nstore]);
   }
 
   // save global energy terms
-  
+
   for (m = 0; m < neg; m++) eglobal[m] = *eglobalptr[m];
 
   // save global virial terms
-  
+
   if (press_flag)
     for (m = 0; m < nv; m++) memcpy(vglobal[m], *vglobalptr[m], six);
 }
@@ -548,7 +548,7 @@ void FixHMC::restore_saved_state()
   AtomVec *avec = atom->avec;
 
   // clear atom map
-  
+
   if (atom->map_style != Atom::MAP_NONE) atom->map_clear();
 
   // delete all owned + ghost atoms
@@ -561,14 +561,14 @@ void FixHMC::restore_saved_state()
   // this will restore atoms with coords an other properties from N steps ago
   // NOTE: atoms will not be re-assigned to correct procs until reneighboring on next step
   //       likewise ghost atoms will not be re-created until reneighboring on next step
-  
+
   int m = 0;
   while (m < nstore) {
     m += avec->unpack_exchange(&buf_store[m]);
   }
 
   // reinit atom_map
-  
+
   if (atom->map_style != Atom::MAP_NONE) {
     atom->map_clear();
     atom->map_init();
@@ -576,11 +576,11 @@ void FixHMC::restore_saved_state()
   }
 
   // restore global energy terms
-  
+
   for (i = 0; i < neg; i++) *eglobalptr[i] = eglobal[i];
 
   // restore global virial terms
-  
+
   if (press_flag)
     for (i = 0; i < nv; i++) memcpy(*vglobalptr[i], vglobal[i], six);
  }
@@ -611,7 +611,7 @@ void FixHMC::random_velocities()
         stdev = sqrt(KT / mass[type[i]]);
       for (int j = 0; j < dimension; j++) v[i][j] = stdev * random->gaussian();
     }
-  
+
   if (mom_flag) {
     double vcm[3];
     group->vcm(igroup, group->mass(igroup), vcm);
