@@ -16,10 +16,6 @@
 # Written by Richard Berger <richard.berger@outlook.com>
 ################################################################################
 
-# for python2/3 compatibility
-
-from __future__ import print_function
-
 import io
 import os
 import re
@@ -130,10 +126,10 @@ class AtomList(object):
     :rtype: Atom or Atom2D
     """
     if index not in self._loaded:
-        if self.dimensions == 2:
-            atom = Atom2D(self._pylmp, index)
-        else:
-            atom = Atom(self._pylmp, index)
+      if self.dimensions == 2:
+        atom = Atom2D(self._pylmp, index)
+      else:
+        atom = Atom(self._pylmp, index)
         self._loaded[index] = atom
     return self._loaded[index]
 
@@ -762,7 +758,7 @@ class PyLammps(object):
     if self.comm_me > 0:
       raise Exception("PyLammps.eval() may only be used on MPI rank 0")
 
-    value = self.lmp_print('"$(%s)"' % expr).strip()
+    value = print('"$(%s)"' % expr).strip()
     try:
       return float(value)
     except ValueError:
@@ -846,10 +842,6 @@ class PyLammps(object):
         element[key] = value
       elements.append(element)
     return elements
-
-  def lmp_print(self, s):
-    """ needed for Python2 compatibility, since print is a reserved keyword """
-    return self.__getattr__("print")(s)
 
   def __dir__(self):
     return sorted(set(['angle_coeff', 'angle_style', 'atom_modify', 'atom_style', 'atom_style',
