@@ -57,9 +57,10 @@ using namespace FixConst;
 /* ---------------------------------------------------------------------- */
 
 FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
-    Fix(lmp, narg, arg), fix_rigid(nullptr), random(nullptr), random_equal(nullptr),
-    eglobal(nullptr), eglobalptr(nullptr), vglobal(nullptr), vglobalptr(nullptr), pe(nullptr),
-    ke(nullptr), peatom(nullptr), press(nullptr), pressatom(nullptr), buf_store(nullptr)
+  Fix(lmp, narg, arg), id_rigid(nullptr), fix_rigid(nullptr), random(nullptr),
+  random_equal(nullptr), eglobal(nullptr), eglobalptr(nullptr), vglobal(nullptr),
+  vglobalptr(nullptr), pe(nullptr), ke(nullptr), peatom(nullptr), press(nullptr),
+  pressatom(nullptr), buf_store(nullptr)
 {
   // defaults
 
@@ -95,12 +96,15 @@ FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
       iarg += 2;
     } else if (strcmp(arg[iarg], "rigid") == 0) {
       if (iarg + 2 > narg) utils::missing_cmd_args(FLERR, "hmc rigid", error);
-      auto ifix = modify->get_fix_by_id(arg[iarg + 1]);
-      if (ifix == nullptr) error->all(FLERR, "Unknown rigid fix id {}", arg[iarg + 1]);
+      delete[] id_rigid;
+      id_rigid = utils::strdup(arg[iarg + 1]);
+      auto ifix = modify->get_fix_by_id(id_rigid);
+      if (!ifix) error->all(FLERR, iarg + 1, "Unknown rigid fix id {} for fix hmc", id_rigid);
       fix_rigid = dynamic_cast<FixRigidSmall *>(ifix);
       if (!fix_rigid)
-        error->all(FLERR, "Fix ID {} for compute rigid/local does not point to fix rigid/small",
-            arg[iarg + 1]);
+        error->all(FLERR, iarg + 1,
+                   "Fix ID {} for compute rigid/local does not point to fix rigid/small",
+                   id_rigid);
       flag_rigid = 1;
       iarg += 2;
     } else {
@@ -157,6 +161,8 @@ FixHMC::~FixHMC()
 
   memory->destroy(eglobal);
   memory->destroy(vglobal);
+
+  delete[] id_rigid;
 
   delete[] eglobalptr;
   if (vglobalptr)
@@ -292,6 +298,17 @@ void FixHMC::init()
   for (const auto &ifix : modify->get_fix_list())
     if (ifix->box_change)
       error->all(FLERR, "Fix hmc is incompatible with fixes that change box size or shape");
+
+  // check whether fix rigid/small still exists
+
+  if (flag_rigid) {
+    auto ifix = modify->get_fix_by_id(id_rigid);
+    if (!ifix) error->all(FLERR, Error::NOLASTLINE, "Unknown rigid fix id {} for fix hmc", id_rigid);
+    fix_rigid = dynamic_cast<FixRigidSmall *>(ifix);
+    if (!fix_rigid)
+      error->all(FLERR, Error::NOLASTLINE,
+                   "Fix ID {} for compute rigid/local does not point to fix rigid/small", id_rigid);
+  }
 
   // check whether there are subsequent fixes with active virial_flag
 

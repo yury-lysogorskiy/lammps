@@ -51,6 +51,7 @@ class FixHMC : public Fix {
   int resample_on_accept_flag, mom_flag, flag_rigid;
   int first_init_complete, first_setup_complete;
 
+  char *id_rigid;
   class FixRigidSmall *fix_rigid;
 
   int nattempts, naccepts;
