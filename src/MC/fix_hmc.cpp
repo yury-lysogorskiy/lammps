@@ -72,8 +72,8 @@ FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
   int seed = utils::numeric(FLERR, arg[4], false, lmp);
   double temp = utils::numeric(FLERR, arg[5], false, lmp);
 
-  if (seed <= 0) error->all(FLERR, "Fix hmc seed must be > 0");
-  if (temp <= 0) error->all(FLERR, "Fix hmc temperature must be > 0.0");
+  if (seed <= 0) error->all(FLERR, 4, "Fix hmc seed must be > 0");
+  if (temp <= 0) error->all(FLERR, 5, "Fix hmc temperature must be > 0.0");
 
   KT = force->boltz * temp / force->mvv2e;    // K*T in mvv units
   mbeta = -1.0 / (force->boltz * temp);       // -1/(K*T) in energy units
@@ -108,7 +108,7 @@ FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
       flag_rigid = 1;
       iarg += 2;
     } else {
-      error->all(FLERR, "Unknown fix hmc keyword {}", arg[iarg]);
+      error->all(FLERR, iarg, "Unknown fix hmc keyword {}", arg[iarg]);
     }
   }
 
@@ -291,13 +291,14 @@ void FixHMC::init()
   int ntimestep = update->ntimestep;
 
   if (atom->tag_enable == 0)
-    error->all(FLERR, "Cannot use fix hmc unless atoms have IDs");
+    error->all(FLERR, Error::NOLASTLINE, "Cannot use fix hmc unless atoms have IDs");
 
   // check whether there is any fixes that change box size and/or shape
 
   for (const auto &ifix : modify->get_fix_list())
     if (ifix->box_change)
-      error->all(FLERR, "Fix hmc is incompatible with fixes that change box size or shape");
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Fix hmc is incompatible with fixes that change box size or shape");
 
   // check whether fix rigid/small still exists
 
@@ -317,7 +318,7 @@ void FixHMC::init()
   for (const auto &ifix : modify->get_fix_list()) {
     if (past_this_fix && past_rigid && ifix->virial_global_flag) {
       if (comm->me == 0) utils::logmesg(lmp, "Fix {} defined after fix hmc.\n", ifix->style);
-      error->all(FLERR, "Fix hmc cannot precede fixes that contribute to the system pressure");
+      error->all(FLERR, Error::NOLASTLINE, "Fix hmc cannot precede fixes that contribute to the system pressure");
     }
     if (!strcmp(ifix->id, id)) past_this_fix = true;
     if (flag_rigid && !strcmp(ifix->id, fix_rigid->id)) past_rigid = true;
