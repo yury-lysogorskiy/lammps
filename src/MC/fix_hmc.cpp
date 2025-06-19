@@ -57,10 +57,10 @@ using namespace FixConst;
 /* ---------------------------------------------------------------------- */
 
 FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
-  Fix(lmp, narg, arg), id_rigid(nullptr), fix_rigid(nullptr), random(nullptr),
-  random_equal(nullptr), eglobal(nullptr), eglobalptr(nullptr), vglobal(nullptr),
-  vglobalptr(nullptr), pe(nullptr), ke(nullptr), peatom(nullptr), press(nullptr),
-  pressatom(nullptr), buf_store(nullptr)
+    Fix(lmp, narg, arg), id_rigid(nullptr), fix_rigid(nullptr), random(nullptr),
+    random_equal(nullptr), eglobal(nullptr), eglobalptr(nullptr), vglobal(nullptr),
+    vglobalptr(nullptr), pe(nullptr), ke(nullptr), peatom(nullptr), press(nullptr),
+    pressatom(nullptr), buf_store(nullptr)
 {
   // defaults
 
@@ -103,8 +103,7 @@ FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
       fix_rigid = dynamic_cast<FixRigidSmall *>(ifix);
       if (!fix_rigid)
         error->all(FLERR, iarg + 1,
-                   "Fix ID {} for compute rigid/local does not point to fix rigid/small",
-                   id_rigid);
+                   "Fix ID {} for compute rigid/local does not point to fix rigid/small", id_rigid);
       flag_rigid = 1;
       iarg += 2;
     } else {
@@ -304,11 +303,12 @@ void FixHMC::init()
 
   if (flag_rigid) {
     auto ifix = modify->get_fix_by_id(id_rigid);
-    if (!ifix) error->all(FLERR, Error::NOLASTLINE, "Unknown rigid fix id {} for fix hmc", id_rigid);
+    if (!ifix)
+      error->all(FLERR, Error::NOLASTLINE, "Unknown rigid fix id {} for fix hmc", id_rigid);
     fix_rigid = dynamic_cast<FixRigidSmall *>(ifix);
     if (!fix_rigid)
       error->all(FLERR, Error::NOLASTLINE,
-                   "Fix ID {} for compute rigid/local does not point to fix rigid/small", id_rigid);
+                 "Fix ID {} for compute rigid/local does not point to fix rigid/small", id_rigid);
   }
 
   // check whether there are subsequent fixes with active virial_flag
@@ -317,8 +317,10 @@ void FixHMC::init()
   int past_rigid = !flag_rigid;
   for (const auto &ifix : modify->get_fix_list()) {
     if (past_this_fix && past_rigid && ifix->virial_global_flag) {
-      if (comm->me == 0) utils::logmesg(lmp, "Fix {} defined after fix hmc.\n", ifix->style);
-      error->all(FLERR, Error::NOLASTLINE, "Fix hmc cannot precede fixes that contribute to the system pressure");
+      if (comm->me == 0)
+        utils::logmesg(lmp, "Fix {} with id {} defined after fix hmc.\n", ifix->style, ifix->id);
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Fix hmc cannot precede fixes that contribute to the system pressure");
     }
     if (!strcmp(ifix->id, id)) past_this_fix = true;
     if (flag_rigid && !strcmp(ifix->id, fix_rigid->id)) past_rigid = true;
@@ -330,9 +332,7 @@ void FixHMC::init()
 
     press_flag = 0;
     for (const auto &icompute : modify->get_compute_list())
-      if (strncmp(icompute->id, "hmc_", 4)) {
-        press_flag = press_flag | icompute->pressflag;
-      }
+      if (utils::strmatch(icompute->id, "^hmc_")) press_flag = press_flag | icompute->pressflag;
 
     // initialize arrays and pointers for saving/restoring state
 
@@ -581,9 +581,7 @@ void FixHMC::restore_saved_state()
   //       likewise ghost atoms will not be re-created until reneighboring on next step
 
   int m = 0;
-  while (m < nstore) {
-    m += avec->unpack_exchange(&buf_store[m]);
-  }
+  while (m < nstore) m += avec->unpack_exchange(&buf_store[m]);
 
   // reinit atom_map
 
@@ -601,7 +599,7 @@ void FixHMC::restore_saved_state()
 
   if (press_flag)
     for (i = 0; i < nv; i++) memcpy(*vglobalptr[i], vglobal[i], six);
- }
+}
 
 /* ----------------------------------------------------------------------
    randomly choose velocities from a Maxwell-Boltzmann distribution
