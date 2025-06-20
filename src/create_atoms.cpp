@@ -666,18 +666,6 @@ void CreateAtoms::command(int narg, char **arg)
           if (onemol->specialflag)
             for (int j = 0; j < nspecial[ilocal][2]; j++) special[ilocal][j] += offset;
         }
-
-        // create body particle
-
-        if (onemol->bodyflag) {
-          auto *avec_body = dynamic_cast<AtomVecBody *>(atom->avec);
-          if (avec_body)
-            avec_body->data_body(ilocal, onemol->nibody, onemol->ndbody, onemol->ibodyparams,
-                                 onemol->dbodyparams);
-          else
-            error->all(FLERR, Error::NOLASTLINE, "Molecule template {} requires a body atom style",
-                       onemol->id);
-        }
         ilocal++;
       }
       if (molecule_flag) {
