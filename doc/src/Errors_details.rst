@@ -51,8 +51,11 @@ Parallel versus serial
 ^^^^^^^^^^^^^^^^^^^^^^
 
 Issues where something is "lost" or "missing" often exhibit that issue
-only when running in parallel.  That doesn't mean there is no problem,
-only the symptoms are not triggering an error quickly.  Correspondingly,
+*only* when running in parallel.  That doesn't mean there is no problem
+when running in serial, only the symptoms are not triggering an error.
+This may be because there is no domain decomposition with just one
+processor and thus all atoms are accessible, or it may be because the
+problem will manifest faster with smaller subdomains.  Correspondingly,
 errors may be triggered faster with more processors and thus smaller
 sub-domains.
 
@@ -243,6 +246,25 @@ the wrong place.  This is not always obvious.  So index or string style
 equal style (or similar) variables can only be expanded before the box
 is defined if they do not reference anything that cannot be defined
 before the box (e.g. a compute or fix reference or a thermo keyword).
+
+.. _hint13:
+
+Illegal ... command
+^^^^^^^^^^^^^^^^^^^
+
+These are a catchall error messages that used to be used a lot in LAMMPS
+(also programmers are sometimes lazy).  They usually include the name of
+the source file and the line where the error happened.  This can be used
+to track down what caused the error (most often some form of syntax error)
+by looking at the source code.  However, this has two disadvantages: 1. one
+has to check the source file from the exact same LAMMPS version, or else
+the line number would be different or the core may have been rewritten and
+that specific error does not exist anymore.
+
+The LAMMPS developers are committed to replace these too generic error
+messages with more descriptive errors, e.g. listing *which* keyword was
+causing the error, so that it will be much simpler to look up the
+correct syntax in the manual (and without referring to the source code).
 
 ------
 
