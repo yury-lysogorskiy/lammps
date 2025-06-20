@@ -480,7 +480,7 @@ TEST_F(MoleculeFileTest, minimal)
 TEST_F(MoleculeFileTest, minjson)
 {
     BEGIN_CAPTURE_OUTPUT();
-    run_mol_cmd(
+    run_json_cmd(
         test_name, "",
         "{\"application\":\"LAMMPS\",\"format\":\"molecule\",\"revision\": 1,"
         "\"types\":{\"format\": [\"atom-id\",\"type\"],\"data\": [[1,1]]},"
