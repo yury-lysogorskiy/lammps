@@ -1592,21 +1592,15 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
 
   // error checks
 
-  if ((nspecialflag && !specialflag) || (!nspecialflag && specialflag))
-    error->all(FLERR, fileiarg, "Molecule file needs both Special Bond sections");
   if (specialflag && !bondflag)
     error->all(FLERR, fileiarg, "Molecule file has special flags but no bonds");
   if ((shakeflagflag || shakeatomflag || shaketypeflag) && !shakeflag)
-    error->all(FLERR, fileiarg, "Molecule file shake info is incomplete");
+    error->all(FLERR, Error::NOLASTLINE,
+               "Molecule template {}: \"shake\" info is incomplete in JSON data");
   if (bodyflag && !rmassflag)
     error->all(FLERR, Error::NOLASTLINE,
                "Molecule template {}: \"body\" JSON section requires \"masses\" section", id);
-  if (bodyflag && nibody && ibodyflag == 0)
-    error->all(FLERR, fileiarg, "Molecule file has no Body Integers section");
-  if (bodyflag && ndbody && dbodyflag == 0)
-    error->all(FLERR, fileiarg, "Molecule file has no Body Doubles section");
-  if (nfragments > 0 && !fragmentflag)
-    error->all(FLERR, fileiarg, "Molecule file has no Fragments section");
+
   // auto-generate special bonds if needed and not in file
 
   if (bondflag && specialflag == 0) {
