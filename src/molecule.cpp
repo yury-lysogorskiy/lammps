@@ -1927,10 +1927,11 @@ void Molecule::read(int flag)
 
     readline(line);
 
-    // trim comments. if line is blank, continue
+    // trim comments. if line is blank or comment, continue
 
     auto text = utils::trim(utils::trim_comment(line));
     if (text.empty()) continue;
+    if (utils::strmatch(text, "^\\s*#")) continue;
 
     // search line for header keywords and set corresponding variable
     try {
@@ -1938,31 +1939,31 @@ void Molecule::read(int flag)
 
       int nmatch = values.count();
       int nwant = 0;
-      if (values.matches("^\\s*\\d+\\s+atoms")) {
+      if (values.matches("^\\s*\\d+\\s+atoms\\s*$")) {
         natoms = values.next_int();
         nwant = 2;
         has_atoms = true;
-      } else if (values.matches("^\\s*\\d+\\s+bonds")) {
+      } else if (values.matches("^\\s*\\d+\\s+bonds\\s*$")) {
         nbonds = values.next_int();
         nwant = 2;
-      } else if (values.matches("^\\s*\\d+\\s+angles")) {
+      } else if (values.matches("^\\s*\\d+\\s+angles\\s*$")) {
         nangles = values.next_int();
         nwant = 2;
-      } else if (values.matches("^\\s*\\d+\\s+dihedrals")) {
+      } else if (values.matches("^\\s*\\d+\\s+dihedrals\\s*$")) {
         ndihedrals = values.next_int();
         nwant = 2;
-      } else if (values.matches("^\\s*\\d+\\s+impropers")) {
+      } else if (values.matches("^\\s*\\d+\\s+impropers\\s*$")) {
         nimpropers = values.next_int();
         nwant = 2;
-      } else if (values.matches("^\\s*\\d+\\s+fragments")) {
+      } else if (values.matches("^\\s*\\d+\\s+fragments\\s*$")) {
         nfragments = values.next_int();
         nwant = 2;
-      } else if (values.matches("^\\s*\\f+\\s+mass")) {
+      } else if (values.matches("^\\s*\\f+\\s+mass\\s*$")) {
         massflag = 1;
         masstotal = values.next_double();
         nwant = 2;
         masstotal *= sizescale * sizescale * sizescale;
-      } else if (values.matches("^\\s*\\f+\\s+\\f+\\s+\\f+\\s+com")) {
+      } else if (values.matches("^\\s*\\f+\\s+\\f+\\s+\\f+\\s+com\\s*$")) {
         comflag = 1;
         com[0] = values.next_double();
         com[1] = values.next_double();
@@ -1973,7 +1974,7 @@ void Molecule::read(int flag)
         com[2] *= sizescale;
         if ((domain->dimension == 2) && (com[2] != 0.0))
           error->all(FLERR, fileiarg, "Molecule file z center-of-mass must be 0.0 for 2d systems");
-      } else if (values.matches("^\\s*\\f+\\s+\\f+\\s+\\f+\\s+\\f+\\s+\\f+\\s+\\f+\\s+inertia")) {
+      } else if (values.matches("^\\s*\\f+\\s+\\f+\\s+\\f+\\s+\\f+\\s+\\f+\\s+\\f+\\s+inertia\\s*$")) {
         inertiaflag = 1;
         itensor[0] = values.next_double();
         itensor[1] = values.next_double();
@@ -1989,7 +1990,7 @@ void Molecule::read(int flag)
         itensor[3] *= scale5;
         itensor[4] *= scale5;
         itensor[5] *= scale5;
-      } else if (values.matches("^\\s*\\d+\\s+\\d+\\s+body")) {
+      } else if (values.matches("^\\s*\\d+\\s+\\d+\\s+body\\s*$")) {
         bodyflag = 1;
         avec_body = dynamic_cast<AtomVecBody *>(atom->style_match("body"));
         if (!avec_body) error->all(FLERR, fileiarg, "Molecule file requires atom style body");
@@ -1999,15 +2000,15 @@ void Molecule::read(int flag)
       } else {
         // unknown header keyword
         if (values.matches("^\\s*\\f+\\s+\\S+")) {
-          error->one(FLERR, fileiarg, "Unknown keyword or incorrectly formatted header line: {}",
+          error->all(FLERR, fileiarg, "Unknown keyword or incorrectly formatted header line: {}",
                      line);
         } else
           break;
       }
       if (nmatch != nwant)
-        error->one(FLERR, fileiarg, "Invalid header line format in molecule file");
+        error->all(FLERR, fileiarg, "Invalid header line format in molecule file: {}", line);
     } catch (TokenizerException &e) {
-      error->one(FLERR, fileiarg, "Invalid header in molecule file: {}", e.what());
+      error->all(FLERR, fileiarg, "Invalid header in molecule file: {}", e.what());
     }
   }
 
