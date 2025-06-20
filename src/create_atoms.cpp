@@ -20,6 +20,7 @@
 
 #include "atom.h"
 #include "atom_vec.h"
+#include "atom_vec_body.h"
 #include "comm.h"
 #include "domain.h"
 #include "error.h"
@@ -390,14 +391,13 @@ void CreateAtoms::command(int narg, char **arg)
     if (!input->variable->equalstyle(vvar))
       error->all(FLERR, Error::NOLASTLINE, "Variable {} for create_atoms is invalid style", vstr);
 
-#define SETUP_XYZ_VAR(str, var)                                         \
-    if (str) {                                                          \
-      var = input->variable->find(str);                                 \
-      if (var < 0) var = input->variable->internal_create(str, 0.0);    \
-      if (!input->variable->internalstyle(var))                         \
-        error->all(FLERR, Error::NOLASTLINE,                            \
-                   "Variable {} for create_atoms is invalid style", str); \
-    }
+#define SETUP_XYZ_VAR(str, var)                                                                   \
+  if (str) {                                                                                      \
+    var = input->variable->find(str);                                                             \
+    if (var < 0) var = input->variable->internal_create(str, 0.0);                                \
+    if (!input->variable->internalstyle(var))                                                     \
+      error->all(FLERR, Error::NOLASTLINE, "Variable {} for create_atoms is invalid style", str); \
+  }
 
     SETUP_XYZ_VAR(xstr, xvar);
     SETUP_XYZ_VAR(ystr, yvar);
@@ -580,6 +580,10 @@ void CreateAtoms::command(int narg, char **arg)
     atom->ndihedrals += nmoltotal * onemol->ndihedrals;
     atom->nimpropers += nmoltotal * onemol->nimpropers;
 
+    // molecule files for bodies may only contain a single body
+
+    if (onemol->bodyflag) atom->nbodies += 1;
+
     // if atom style template
     // maxmol = max molecule ID across all procs, for previous atoms
     // moloffset = max molecule ID for all molecules owned by previous procs
@@ -661,6 +665,18 @@ void CreateAtoms::command(int narg, char **arg)
             }
           if (onemol->specialflag)
             for (int j = 0; j < nspecial[ilocal][2]; j++) special[ilocal][j] += offset;
+        }
+
+        // create body particle
+
+        if (onemol->bodyflag) {
+          auto *avec_body = dynamic_cast<AtomVecBody *>(atom->avec);
+          if (avec_body)
+            avec_body->data_body(ilocal, onemol->nibody, onemol->ndbody, onemol->ibodyparams,
+                                 onemol->dbodyparams);
+          else
+            error->all(FLERR, Error::NOLASTLINE, "Molecule template {} requires a body atom style",
+                       onemol->id);
         }
         ilocal++;
       }
