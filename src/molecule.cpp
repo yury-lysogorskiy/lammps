@@ -1585,6 +1585,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
 #undef SET_SHAKE_TYPE
 
   // body integers and doubles
+
   if (bodyflag) {
     for (int i = 0; i < nibody; ++i) ibodyparams[i] = moldata["body"]["integers"][i];
     for (int i = 0; i < ndbody; ++i) dbodyparams[i] = moldata["body"]["doubles"][i];
@@ -1801,7 +1802,7 @@ void Molecule::compute_inertia()
       itensor[5] -= onemass * dx * dy;
     }
 
-    if (radiusflag) {
+    if (radiusflag && !bodyflag) {
       for (int i = 0; i < natoms; i++) {
         if (rmassflag)
           onemass = rmass[i];
@@ -3390,6 +3391,7 @@ void Molecule::check_attributes()
   if (muflag && !atom->mu_flag) mismatch = 1;
   if (radiusflag && !atom->radius_flag) mismatch = 1;
   if (rmassflag && !atom->rmass_flag) mismatch = 1;
+  if (bodyflag && !atom->body_flag) mismatch = 1;
 
   if (mismatch && (comm->me == 0))
     error->warning(FLERR, "Molecule attributes do not match system attributes"
