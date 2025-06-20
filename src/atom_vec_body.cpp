@@ -555,7 +555,7 @@ void AtomVecBody::data_atom_post(int ilocal)
 
 void AtomVecBody::data_body(int m, int ninteger, int ndouble, int *ivalues, double *dvalues)
 {
-  if (body[m]) error->one(FLERR, "Assigning body parameters to non-body atom");
+  if (body[m]) error->one(FLERR, "Assigning body parameters to an atom that already has them");
   if (nlocal_bonus == nmax_bonus) grow_bonus();
   bonus[nlocal_bonus].ilocal = m;
   bptr->data_body(nlocal_bonus, ninteger, ndouble, ivalues, dvalues);
