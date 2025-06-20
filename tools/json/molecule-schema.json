@@ -27,13 +27,8 @@
                 "items": { "type": "number"},
                 "minItems": 3,
                 "maxItems": 3
-               },
+        },
         "masstotal": {"type": "number"},
-        "body": {"type": "array",
-                 "items": { "type": "integer"},
-                "minItems": 2,
-                "maxItems": 2
-               },
         "inertia": {"type": "array",
                     "items": { "type": "number"},
                     "minItems": 6,
@@ -361,6 +356,22 @@
                 }
             },
             "required": ["flags", "atoms", "types"]
+        },
+        "body": {
+            "type": "object",
+            "properties": {
+                "integers": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "minItems" : 1
+                },
+                "doubles": {
+                    "type": "array",
+                    "items": {"type": "number"},
+                    "minItems" : 1
+                }
+            },
+            "required": ["integers", "doubles"]
         }
     },
     "required": ["application", "format", "revision", "types"]

@@ -439,14 +439,22 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
     itensor[5] = double(moldata["inertia"][5]) * scale5;
   }
 
-  if (moldata.contains("body") && (moldata["body"].size() == 2)) {
-    bodyflag = 1;
+  if (moldata.contains("body")) {
     avec_body = dynamic_cast<AtomVecBody *>(atom->style_match("body"));
     if (!avec_body)
       error->all(FLERR, Error::NOLASTLINE,
                  "Molecule template {}: JSON molecule data requires atom style body", id);
-    nibody = moldata["body"][0];
-    ndbody = moldata["body"][1];
+
+    if (moldata["body"].contains("integers") && moldata["body"].contains("doubles")) {
+      bodyflag = radiusflag = dbodyflag = ibodyflag = 1;
+      nibody = moldata["body"]["integers"].size();
+      ndbody = moldata["body"]["doubles"].size();
+    } else {
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Molecule template {}: JSON molecule \"body\" data requires \"integers\" and "
+                 "\"doubles\" sections",
+                 id);
+    }
   }
 
   // checks. No checks for < 0 needed since size() is at least 0
@@ -726,7 +734,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
 
   // diameters
 
-  if (radiusflag) {
+  if (radiusflag && !bodyflag) {
     maxradius = 0.0;
     secfmt.clear();
     for (int i = 0; i < 2; ++i) secfmt.push_back(moldata["diameters"]["format"][i]);
@@ -1576,8 +1584,11 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   }
 #undef SET_SHAKE_TYPE
 
-  // body_integers
-  // body_doubles
+  // body integers and doubles
+  if (bodyflag) {
+    for (int i = 0; i < nibody; ++i) ibodyparams[i] = moldata["body"]["integers"][i];
+    for (int i = 0; i < ndbody; ++i) dbodyparams[i] = moldata["body"]["doubles"][i];
+  }
 
   // error checks
 
@@ -1587,6 +1598,9 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
     error->all(FLERR, fileiarg, "Molecule file has special flags but no bonds");
   if ((shakeflagflag || shakeatomflag || shaketypeflag) && !shakeflag)
     error->all(FLERR, fileiarg, "Molecule file shake info is incomplete");
+  if (bodyflag && !rmassflag)
+    error->all(FLERR, Error::NOLASTLINE,
+               "Molecule template {}: \"body\" JSON section requires \"masses\" section", id);
   if (bodyflag && nibody && ibodyflag == 0)
     error->all(FLERR, fileiarg, "Molecule file has no Body Integers section");
   if (bodyflag && ndbody && dbodyflag == 0)
@@ -2148,6 +2162,8 @@ void Molecule::read(int flag)
       error->all(FLERR, fileiarg, "Molecule file has special flags but no bonds");
     if ((shakeflagflag || shakeatomflag || shaketypeflag) && !shakeflag)
       error->all(FLERR, fileiarg, "Molecule file shake info is incomplete");
+    if (bodyflag && !rmassflag)
+      error->all(FLERR, fileiarg, "Molecule file must have Masses section for body particle");
     if (bodyflag && nibody && ibodyflag == 0)
       error->all(FLERR, fileiarg, "Molecule file has no Body Integers section");
     if (bodyflag && ndbody && dbodyflag == 0)
@@ -3329,7 +3345,6 @@ void Molecule::body(int flag, int pflag, char *line)
   if (pflag) nparam = ndbody;
 
   int nword = 0;
-
   try {
     while (nword < nparam) {
       readline(line);
@@ -3337,15 +3352,16 @@ void Molecule::body(int flag, int pflag, char *line)
       ValueTokenizer values(utils::trim_comment(line));
       int ncount = values.count();
 
-      if (ncount == 0) error->all(FLERR, fileiarg, "Too few values in body section of molecule file");
+      if (ncount == 0)
+        error->all(FLERR, fileiarg, "Too few values in body section of molecule file");
       if (nword + ncount > nparam)
         error->all(FLERR, fileiarg, "Too many values in body section of molecule file");
 
       if (flag) {
         if (pflag == 0) {
-          while (values.has_next()) { ibodyparams[nword++] = values.next_int(); }
+          while (values.has_next()) ibodyparams[nword++] = values.next_int();
         } else {
-          while (values.has_next()) { dbodyparams[nword++] = values.next_double(); }
+          while (values.has_next()) dbodyparams[nword++] = values.next_double();
         }
       } else
         nword += ncount;
@@ -3707,13 +3723,14 @@ void Molecule::stats()
                    "Read molecule template {}:\n{}\n"
                    "  {} molecules\n"
                    "  {} fragments\n"
+                   "  {} bodies\n"
                    "  {} atoms with max type {}\n"
                    "  {} bonds with max type {}\n"
                    "  {} angles with max type {}\n"
                    "  {} dihedrals with max type {}\n"
                    "  {} impropers with max type {}\n",
-                   id, title, nmolecules, nfragments, natoms, ntypes, nbonds, nbondtypes, nangles,
-                   nangletypes, ndihedrals, ndihedraltypes, nimpropers, nimpropertypes);
+                   id, title, nmolecules, nfragments, bodyflag, natoms, ntypes, nbonds, nbondtypes,
+                   nangles, nangletypes, ndihedrals, ndihedraltypes, nimpropers, nimpropertypes);
 }
 
 /* ----------------------------------------------------------------------
