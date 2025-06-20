@@ -152,42 +152,58 @@ void Molecule::command(int narg, char **arg, int &index)
   else
     last = 0;
 
-  json moldata;
-  std::vector<std::uint8_t> jsondata;
-  int jsondata_size = 0;
+  // JSON files must have the extension .json
 
-  if (comm->me == 0) {
-    fp = fopen(arg[fileiarg], "r");
-    if (fp == nullptr)
-      error->one(FLERR, fileiarg, "Cannot open molecule file {}: {}", arg[fileiarg],
-                 utils::getsyserror());
-    try {
-      // try to parse as a JSON file
-      // if successful serialize to bytearray for communication
-      moldata = json::parse(fp);
-      jsondata = json::to_ubjson(moldata);
-      jsondata_size = jsondata.size();
-      fclose(fp);
-    } catch (std::exception &) {
-      // rewind so we can try reading the file as a native molecule file
-      rewind(fp);
+  std::string filename = arg[fileiarg];
+  if (utils::strmatch(filename, "\\.json$")) {
+
+    json moldata;
+    std::vector<std::uint8_t> jsondata;
+    int jsondata_size = 0;
+
+    if (comm->me == 0) {
+      fp = fopen(filename.c_str(), "r");
+      if (fp == nullptr)
+        error->one(FLERR, fileiarg, "Cannot open molecule file {}: {}", filename, utils::getsyserror());
+      try {
+        // try to parse as a JSON file. parser throws an exception on errors
+        // if successful, temporarily serialize to bytearray for communication
+        moldata = json::parse(fp);
+        jsondata = json::to_ubjson(moldata);
+        jsondata_size = jsondata.size();
+        fclose(fp);
+      } catch (std::exception &e) {
+        fclose(fp);
+        error->one(FLERR, fileiarg, "Error parsing JSON file {}: {}", filename, e.what());
+      }
     }
-  }
-  MPI_Bcast(&jsondata_size, 1, MPI_INT, 0, world);
+    MPI_Bcast(&jsondata_size, 1, MPI_INT, 0, world);
 
-  if (jsondata_size > 0) {
-    // broadcast binary JSON data to all processes and deserialize again
-    if (comm->me != 0) jsondata.resize(jsondata_size);
-    MPI_Bcast(jsondata.data(), jsondata_size, MPI_CHAR, 0, world);
-    // convert back to json class on all processors
-    moldata.clear();
-    moldata = json::from_ubjson(jsondata);
-    jsondata.clear();    // free binary data
+    if (jsondata_size > 0) {
 
-    // process JSON data
-    Molecule::from_json(id, moldata);
+      // broadcast binary JSON data to all processes and deserialize again
+
+      if (comm->me != 0) jsondata.resize(jsondata_size);
+      MPI_Bcast(jsondata.data(), jsondata_size, MPI_CHAR, 0, world);
+
+      // convert back to json class on all processors and free temporary storage
+      moldata.clear();
+      moldata = json::from_ubjson(jsondata);
+      jsondata.clear();    // free binary data
+
+      // process JSON data
+      Molecule::from_json(id, moldata);
+    } else {
+      error->all(FLERR, "Molecule file {} does not contain JSON data", filename);
+    }
 
   } else {    // process native molecule file
+
+    if (comm->me == 0) {
+      fp = fopen(filename.c_str(), "r");
+      if (fp == nullptr)
+        error->one(FLERR, fileiarg, "Cannot open molecule file {}: {}", filename, utils::getsyserror());
+    }
 
     // scan file for sizes of all fields and allocate storage for them
 
