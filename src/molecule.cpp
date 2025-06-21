@@ -342,6 +342,75 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   JSON_INIT_FIELD(impropers, nimpropers, improperflag, false, 0);
 
 #undef JSON_INIT_FIELD
+  // special is nested
+
+  if (moldata.contains("special")) {
+    if (moldata["special"].contains("counts")) {
+      nspecialflag = 1;
+      maxspecial = 0;
+      const auto &specialcounts = moldata["special"]["counts"];
+      if (!specialcounts.contains("format"))
+        error->all(FLERR, Error::NOLASTLINE,
+                   "Molecule template {}: JSON molecule data does not contain required 'format' "
+                   "field for 'special:counts'",
+                   id);
+      if (specialcounts.contains("data")) {
+        if (specialcounts["data"].size() != natoms)
+          error->all(
+              FLERR, Error::NOLASTLINE,
+              "Molecule template {}: Found {} instead of {} data entries for 'special:counts'", id,
+              specialcounts["data"].size(), natoms);
+        for (const auto &item : specialcounts["data"]) {
+          if (item.size() != 4)
+            error->all(
+                FLERR, Error::NOLASTLINE,
+                "Molecule template {}: Found {} instead of 4 data entries for 'special:counts'", id,
+                item.size());
+
+          const auto &vals = item.get<std::vector<int>>();
+          int sumspecial = vals[1] + vals[2] + vals[3];
+          maxspecial = MAX(maxspecial, sumspecial);
+        }
+      } else {
+        error->all(FLERR, Error::NOLASTLINE,
+                   "Molecule template {}: JSON molecule data does not contain required 'data' "
+                   "field for 'special:counts'",
+                   id);
+      }
+    } else {
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Molecule template {}: JSON molecule data does not contain required 'counts' "
+                 "field for 'special'",
+                 id);
+    }
+
+    if (moldata["special"].contains("bonds")) {
+      specialflag = tag_require = 1;
+      const auto &specialbonds = moldata["special"]["bonds"];
+      if (!specialbonds.contains("format"))
+        error->all(FLERR, Error::NOLASTLINE,
+                   "Molecule template {}: JSON molecule data does not contain required 'format' "
+                   "field for 'special:bonds'",
+                   id);
+      if (specialbonds.contains("data")) {
+        if (specialbonds["data"].size() != natoms)
+          error->all(
+              FLERR, Error::NOLASTLINE,
+              "Molecule template {}: Found {} instead of {} data entries for 'special:bonds'", id,
+              specialbonds["data"].size(), natoms);
+      } else {
+        error->all(FLERR, Error::NOLASTLINE,
+                   "Molecule template {}: JSON molecule data does not contain required 'data' "
+                   "field for 'special:bonds'",
+                   id);
+      }
+    } else {
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Molecule template {}: JSON molecule data does not contain required 'bonds' "
+                 "field for 'special'",
+                 id);
+    }
+  }
 
   // shake is nested
 
@@ -1369,10 +1438,80 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
     }
   }
 
-  // special_bond_counts
-  // special_bonds
+  if (specialflag) {
+    const auto &specialcounts = moldata["special"]["counts"];
 
-  // shake_flags
+    secfmt.clear();
+    for (int i = 0; i < 4; ++i) secfmt.push_back(specialcounts["format"][i]);
+    if ((secfmt[0] == "atom-id") && (secfmt[1] == "n12") && (secfmt[2] == "n13") &&
+        (secfmt[3] == "n14")) {
+
+      memset(count, 0, natoms * sizeof(int));
+      for (const auto &item : specialcounts["data"]) {
+        if (!item[0].is_number_integer() || !item[1].is_number_integer() ||
+            !item[2].is_number_integer() || !item[3].is_number_integer())
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid data in \"special:counts\" section of molecule "
+                     "JSON data: {}",
+                     id, to_string(item));
+        const auto &vals = item.get<std::vector<int>>();
+        const int iatom = vals[0] - 1;
+        if ((iatom < 0) || (iatom >= natoms))
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid atom-id {} in \"special:counts\" section of "
+                     "molecule JSON data",
+                     id, iatom + 1);
+
+        nspecial[iatom][0] = vals[1];
+        nspecial[iatom][1] = vals[1] + vals[2];
+        nspecial[iatom][2] = vals[1] + vals[2] + vals[3];
+        count[iatom]++;
+      }
+      // check
+      for (int i = 0; i < natoms; i++) {
+        if (count[i] == 0) {
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: atom {} missing in \"special:counts\" JSON section", id,
+                     i + 1);
+        }
+      }
+    } else {
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Molecule template {}: Expected \"special:counts\" format "
+                 "[\"atom-id\",\"n12\",\"n13\",\"n14\"] but found [\"{}\",\"{}\",\"{}\",\"{}\"]",
+                 id, secfmt[0], secfmt[1], secfmt[2], secfmt[3]);
+    }
+#if 0
+    if (moldata["special"].contains("bonds")) {
+      specialflag = tag_require = 1;
+      const auto &specialbonds = moldata["special"]["bonds"];
+      if (!specialbonds.contains("format"))
+        error->all(FLERR, Error::NOLASTLINE,
+                   "Molecule template {}: JSON molecule data does not contain required 'format' "
+                   "field for 'special:bonds'",
+                   id);
+      if (specialbonds.contains("data")) {
+        if (specialbonds["data"].size() != natoms)
+          error->all(
+              FLERR, Error::NOLASTLINE,
+              "Molecule template {}: Found {} instead of {} data entries for 'special:bonds'", id,
+              specialbonds["data"].size(), natoms);
+      } else {
+        error->all(FLERR, Error::NOLASTLINE,
+                   "Molecule template {}: JSON molecule data does not contain required 'data' "
+                   "field for 'special:bonds'",
+                   id);
+      }
+    } else {
+      error->all(FLERR, Error::NOLASTLINE,
+                 "Molecule template {}: JSON molecule data does not contain required 'bonds' "
+                 "field for 'special'",
+                 id);
+    }
+#endif
+  }
+
+  // shake settings
 
   if (shakeflagflag) {
     const auto &shakedata = moldata["shake"]["flags"];
