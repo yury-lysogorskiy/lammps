@@ -965,7 +965,9 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
         const int iatom = int(c[0]) - 1;
         if ((iatom < 0) || (iatom >= natoms))
           error->all(FLERR, Error::NOLASTLINE,
-                     "Invalid atom-id {} in \"masses\" section of molecule JSON data", iatom + 1);
+                     "Molecule template {}: invalid atom-id {} in \"masses\" section of molecule "
+                     "JSON data",
+                     iatom + 1);
         if (!c[1].is_number())
           error->all(FLERR, Error::NOLASTLINE,
                      "Molecule template {}: invalid mass in \"masses\" section of "
@@ -3105,32 +3107,47 @@ void Molecule::nspecial_read(int flag, char *line)
 {
   if (flag == 0) maxspecial = 0;
 
-  for (int i = 0; i < natoms; i++) {
+  for (int i = 0; i < natoms; ++i) count[i] = 0;
+  for (int i = 0; i < natoms; ++i) {
     readline(line);
 
-    int c1, c2, c3;
+    int c0, c1, c2, c3;
 
     try {
       ValueTokenizer values(utils::trim_comment(line));
       if (values.count() != 4)
         error->all(FLERR, fileiarg, "Invalid line in Special Bond Counts section of molecule file: {}", line);
-      values.next_int();
-      c1 = values.next_tagint();
-      c2 = values.next_tagint();
-      c3 = values.next_tagint();
+      c0 = values.next_int();
+      c1 = values.next_int();
+      c2 = values.next_int();
+      c3 = values.next_int();
     } catch (TokenizerException &e) {
       error->all(FLERR, fileiarg, "Invalid line in Special Bond Counts section of molecule file: {}\n{}",
                  e.what(), line);
     }
 
     if (flag) {
-      nspecial[i][0] = c1;
-      nspecial[i][1] = c1 + c2;
-      nspecial[i][2] = c1 + c2 + c3;
-    } else
+      int iatom = c0 - 1;
+      if (iatom < 0 || iatom >= natoms)
+        error->all(FLERR, fileiarg, "Invalid atom index in Special Bond Counts section of molecule file");
+      count[iatom]++;
+      nspecial[iatom][0] = c1;
+      nspecial[iatom][1] = c1 + c2;
+      nspecial[iatom][2] = c1 + c2 + c3;
+    } else {
       maxspecial = MAX(maxspecial, c1 + c2 + c3);
+    }
+  }
+
+  // check
+  if (flag) {
+    for (int i = 0; i < natoms; i++) {
+      if (count[i] == 0)
+        error->all(FLERR, fileiarg, "Atom {} missing in Special Bond Counts section of molecule file", i + 1);
+    }
   }
 }
+
 
 /* ----------------------------------------------------------------------
    read special bond indices from file
