@@ -1494,34 +1494,60 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
                  "[\"atom-id\",\"n12\",\"n13\",\"n14\"] but found [\"{}\",\"{}\",\"{}\",\"{}\"]",
                  id, secfmt[0], secfmt[1], secfmt[2], secfmt[3]);
     }
-#if 0
-    if (moldata["special"].contains("bonds")) {
-      specialflag = tag_require = 1;
-      const auto &specialbonds = moldata["special"]["bonds"];
-      if (!specialbonds.contains("format"))
-        error->all(FLERR, Error::NOLASTLINE,
-                   "Molecule template {}: JSON molecule data does not contain required \"format\" "
-                   "field for \"special:bonds\"",
-                   id);
-      if (specialbonds.contains("data")) {
-        if (specialbonds["data"].size() != natoms)
-          error->all(
-              FLERR, Error::NOLASTLINE,
-              "Molecule template {}: Found {} instead of {} data entries for \"special:bonds\"", id,
-              specialbonds["data"].size(), natoms);
-      } else {
-        error->all(FLERR, Error::NOLASTLINE,
-                   "Molecule template {}: JSON molecule data does not contain required \"data\" "
-                   "field for \"special:bonds\"",
-                   id);
+
+    // process bonds
+
+    const auto &specialbonds = moldata["special"]["bonds"];
+    secfmt.clear();
+    for (int i = 0; i < 2; ++i) secfmt.push_back(specialbonds["format"][i]);
+    if ((secfmt[0] == "atom-id") && (secfmt[1] == "atom-id-list")) {
+      memset(count, 0, natoms * sizeof(int));
+      for (int i = 0; i < natoms; ++i) {
+        if (!specialbonds["data"][i][0].is_number_integer())
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid atom-id {} for entry {} in \"special:bonds\" "
+                     "section of molecule JSON data",
+                     id, to_string(specialbonds["data"][i][0]), i + 1);
+        const int iatom = int(specialbonds["data"][i][0]);
+        if ((iatom < 0) || (iatom >= natoms))
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: invalid atom-id {} in \"special:bondss\" section of "
+                     "molecule JSON data",
+                     id, iatom + 1);
+
+        int m = 0;
+        for (const auto &item : specialbonds["data"][i][1]) {
+          if (!item.is_number_integer())
+            error->all(
+                FLERR, Error::NOLASTLINE,
+                "Molecule template {}: invalid data in \"special:bonds\" section of molecule "
+                "JSON data: {}",
+                id, to_string(specialbonds["data"][i][1]));
+
+          tagint ival = tagint(item);
+          if ((ival <= 0) || (ival > natoms) || (ival == iatom + 1))
+            error->all(FLERR, Error::NOLASTLINE,
+                       "Molecule template {}: invalid atom index {} in \"special:bonds\" section "
+                       "of JSON data",
+                       id, ival);
+          special[iatom][m++] = tagint(item);
+        }
+        count[iatom]++;
+      }
+      // check
+      for (int i = 0; i < natoms; i++) {
+        if (count[i] == 0) {
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: atom {} missing in \"special:bonds\" JSON section", id,
+                     i + 1);
+        }
       }
     } else {
       error->all(FLERR, Error::NOLASTLINE,
-                 "Molecule template {}: JSON molecule data does not contain required \"bonds\" "
-                 "field for \"special\"",
-                 id);
+                 "Molecule template {}: Expected \"special:bonds\" format "
+                 "[\"atom-id\",\"atom-id-list\"] but found [\"{}\",\"{}\"]",
+                 id, secfmt[0], secfmt[1]);
     }
-#endif
   }
 
   // shake settings
