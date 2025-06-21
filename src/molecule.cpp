@@ -356,7 +356,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
                    "field for 'special:counts'",
                    id);
       if (specialcounts.contains("data")) {
-        if (specialcounts["data"].size() != natoms)
+        if ((int)specialcounts["data"].size() != natoms)
           error->all(
               FLERR, Error::NOLASTLINE,
               "Molecule template {}: Found {} instead of {} data entries for 'special:counts'", id,
@@ -394,7 +394,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
                    "field for \"special:bonds\"",
                    id);
       if (specialbonds.contains("data")) {
-        if (specialbonds["data"].size() != natoms)
+        if ((int)specialbonds["data"].size() != natoms)
           error->all(
               FLERR, Error::NOLASTLINE,
               "Molecule template {}: Found {} instead of {} data entries for \"special:bonds\"", id,
@@ -404,7 +404,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
                      "Molecule template {}: \"special:bonds\" is incorrectly formatted: {}", id,
                      to_string(specialbonds["data"][0]));
         for (int i = 0; i < natoms; ++i) {
-          if (specialbonds["data"][i][1].size() > maxspecial)
+          if ((int)specialbonds["data"][i][1].size() > maxspecial)
             error->all(FLERR, Error::NOLASTLINE,
                        "Molecule template {}: Number of data entries in \"special:bonds\" for atom "
                        "{} exceeds limit: {} vs {}",
@@ -438,7 +438,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
                    id);
       if (shakedata["flags"].contains("data")) {
         shakeflagflag = 1;
-        if (shakedata["flags"]["data"].size() != natoms)
+        if ((int)shakedata["flags"]["data"].size() != natoms)
           error->all(
               FLERR, Error::NOLASTLINE,
               "Molecule template {}: Found {} instead of {} data entries for \"shake:flags\"", id,
@@ -465,7 +465,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
       if (shakedata["atoms"].contains("data")) {
         shakeatomflag = 1;
         tag_require = 1;
-        if (shakedata["atoms"]["data"].size() != natoms)
+        if ((int)shakedata["atoms"]["data"].size() != natoms)
           error->all(
               FLERR, Error::NOLASTLINE,
               "Molecule template {}: Found {} instead of {} data entries for \"shake:atoms\"", id,
@@ -492,7 +492,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
       if (shakedata["types"].contains("data")) {
         shaketypeflag = 1;
         tag_require = 1;
-        if (shakedata["types"]["data"].size() != natoms)
+        if ((int)shakedata["types"]["data"].size() != natoms)
           error->all(
               FLERR, Error::NOLASTLINE,
               "Molecule template {}: Found {} instead of {} data entries for \"shake:types\"", id,
