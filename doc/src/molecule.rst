@@ -970,7 +970,7 @@ JSON file above in case the molecule command needs to be issued earlier.
                [3,  ["OW-HO1",  "OW-HO1", "HO1-OW-HO1"]]
            ]
        }
-   }                
+   }
 
 
 Below is a minimal example of a JSON format molecule template for a body
