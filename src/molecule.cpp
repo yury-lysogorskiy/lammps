@@ -243,7 +243,8 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
                  std::string(moldata["application"]));
   } else {
     error->all(FLERR, Error::NOLASTLINE,
-               "Molecule template {}: JSON data does not contain required \"application\" field", id);
+               "Molecule template {}: JSON data does not contain required \"application\" field",
+               id);
   }
   if (moldata.contains("format")) {
     if (moldata["format"] != "molecule")
@@ -438,9 +439,10 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
       if (shakedata["flags"].contains("data")) {
         shakeflagflag = 1;
         if (shakedata["flags"]["data"].size() != natoms)
-          error->all(FLERR, Error::NOLASTLINE,
-                     "Molecule template {}: Found {} instead of {} data entries for \"shake:flags\"",
-                     id, shakedata["flags"]["data"].size(), natoms);
+          error->all(
+              FLERR, Error::NOLASTLINE,
+              "Molecule template {}: Found {} instead of {} data entries for \"shake:flags\"", id,
+              shakedata["flags"]["data"].size(), natoms);
       } else {
         error->all(FLERR, Error::NOLASTLINE,
                    "Molecule template {}: JSON molecule data does not contain required \"data\" "
@@ -464,9 +466,10 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
         shakeatomflag = 1;
         tag_require = 1;
         if (shakedata["atoms"]["data"].size() != natoms)
-          error->all(FLERR, Error::NOLASTLINE,
-                     "Molecule template {}: Found {} instead of {} data entries for \"shake:atoms\"",
-                     id, shakedata["atoms"]["data"].size(), natoms);
+          error->all(
+              FLERR, Error::NOLASTLINE,
+              "Molecule template {}: Found {} instead of {} data entries for \"shake:atoms\"", id,
+              shakedata["atoms"]["data"].size(), natoms);
       } else {
         error->all(FLERR, Error::NOLASTLINE,
                    "Molecule template {}: JSON molecule data does not contain required \"data\" "
@@ -490,9 +493,10 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
         shaketypeflag = 1;
         tag_require = 1;
         if (shakedata["types"]["data"].size() != natoms)
-          error->all(FLERR, Error::NOLASTLINE,
-                     "Molecule template {}: Found {} instead of {} data entries for \"shake:types\"",
-                     id, shakedata["types"]["data"].size(), natoms);
+          error->all(
+              FLERR, Error::NOLASTLINE,
+              "Molecule template {}: Found {} instead of {} data entries for \"shake:types\"", id,
+              shakedata["types"]["data"].size(), natoms);
       } else {
         error->all(FLERR, Error::NOLASTLINE,
                    "Molecule template {}: JSON molecule data does not contain required \"data\" "
@@ -1452,8 +1456,10 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   }
 
   if (specialflag) {
-    const auto &specialcounts = moldata["special"]["counts"];
 
+    // process counts
+
+    const auto &specialcounts = moldata["special"]["counts"];
     secfmt.clear();
     for (int i = 0; i < 4; ++i) secfmt.push_back(specialcounts["format"][i]);
     if ((secfmt[0] == "atom-id") && (secfmt[1] == "n12") && (secfmt[2] == "n13") &&
