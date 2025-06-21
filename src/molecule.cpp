@@ -243,7 +243,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
                  std::string(moldata["application"]));
   } else {
     error->all(FLERR, Error::NOLASTLINE,
-               "Molecule template {}: JSON data does not contain required 'application' field", id);
+               "Molecule template {}: JSON data does not contain required \"application\" field", id);
   }
   if (moldata.contains("format")) {
     if (moldata["format"] != "molecule")
@@ -252,7 +252,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
                  std::string(moldata["format"]));
   } else {
     error->all(FLERR, Error::NOLASTLINE,
-               "Molecule template {}: JSON data does not contain required 'format' field", id);
+               "Molecule template {}: JSON data does not contain required \"format\" field", id);
   }
   if (moldata.contains("revision")) {
     int rev = moldata["revision"];
@@ -261,13 +261,13 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
                  "Molecule template {}: JSON molecule data with unsupported revision {}", id, rev);
   } else {
     error->all(FLERR, Error::NOLASTLINE,
-               "Molecule template {}: JSON data does not contain required 'revision' field", id);
+               "Molecule template {}: JSON data does not contain required \"revision\" field", id);
   }
 
   // length of types data list determines the number of atoms in the template and is thus required
   if (!moldata.contains("types"))
     error->all(FLERR, Error::NOLASTLINE,
-               "Molecule template {}: JSON data does not contain required 'types' field", id);
+               "Molecule template {}: JSON data does not contain required \"types\" field", id);
 
   // optional fields
 
@@ -301,7 +301,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
   if (moldata.contains(#field)) {                                                                  \
     if (!moldata[#field].contains("format"))                                                       \
       error->all(FLERR, Error::NOLASTLINE,                                                         \
-                 "Molecule template {}: JSON molecule data does not contain required 'format' "    \
+                 "Molecule template {}: JSON molecule data does not contain required \"format\" "  \
                  "field for '{}'",                                                                 \
                  id, #field);                                                                      \
     if (moldata[#field].contains("data")) {                                                        \
@@ -309,7 +309,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
       sizevar = moldata[#field]["data"].size();                                                    \
     } else {                                                                                       \
       error->all(FLERR, Error::NOLASTLINE,                                                         \
-                 "Molecule template {}: JSON molecule data does not contain required 'data' "      \
+                 "Molecule template {}: JSON molecule data does not contain required \"data\" "    \
                  "field for '{}'",                                                                 \
                  id, #field);                                                                      \
     }                                                                                              \
@@ -351,7 +351,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
       const auto &specialcounts = moldata["special"]["counts"];
       if (!specialcounts.contains("format"))
         error->all(FLERR, Error::NOLASTLINE,
-                   "Molecule template {}: JSON molecule data does not contain required 'format' "
+                   "Molecule template {}: JSON molecule data does not contain required \"format\" "
                    "field for 'special:counts'",
                    id);
       if (specialcounts.contains("data")) {
@@ -373,14 +373,14 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
         }
       } else {
         error->all(FLERR, Error::NOLASTLINE,
-                   "Molecule template {}: JSON molecule data does not contain required 'data' "
+                   "Molecule template {}: JSON molecule data does not contain required \"data\" "
                    "field for 'special:counts'",
                    id);
       }
     } else {
       error->all(FLERR, Error::NOLASTLINE,
                  "Molecule template {}: JSON molecule data does not contain required 'counts' "
-                 "field for 'special'",
+                 "field for \"special\"",
                  id);
     }
 
@@ -389,25 +389,36 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
       const auto &specialbonds = moldata["special"]["bonds"];
       if (!specialbonds.contains("format"))
         error->all(FLERR, Error::NOLASTLINE,
-                   "Molecule template {}: JSON molecule data does not contain required 'format' "
-                   "field for 'special:bonds'",
+                   "Molecule template {}: JSON molecule data does not contain required \"format\" "
+                   "field for \"special:bonds\"",
                    id);
       if (specialbonds.contains("data")) {
         if (specialbonds["data"].size() != natoms)
           error->all(
               FLERR, Error::NOLASTLINE,
-              "Molecule template {}: Found {} instead of {} data entries for 'special:bonds'", id,
+              "Molecule template {}: Found {} instead of {} data entries for \"special:bonds\"", id,
               specialbonds["data"].size(), natoms);
+        if (specialbonds["data"][0] != 2)
+          error->all(FLERR, Error::NOLASTLINE,
+                     "Molecule template {}: \"special:bonds\" is incorrectly formatted: {}", id,
+                     to_string(specialbonds["data"][0]));
+        for (int i = 0; i < natoms; ++i) {
+          if (specialbonds["data"][i][1].size() > maxspecial)
+            error->all(FLERR, Error::NOLASTLINE,
+                       "Molecule template {}: Number of data entries in \"special:bonds\" for atom "
+                       "{} exceeds limit: {} vs {}",
+                       id, specialbonds["data"][i][1].size(), maxspecial);
+        }
       } else {
         error->all(FLERR, Error::NOLASTLINE,
-                   "Molecule template {}: JSON molecule data does not contain required 'data' "
-                   "field for 'special:bonds'",
+                   "Molecule template {}: JSON molecule data does not contain required \"data\" "
+                   "field for \"special:bonds\"",
                    id);
       }
     } else {
       error->all(FLERR, Error::NOLASTLINE,
-                 "Molecule template {}: JSON molecule data does not contain required 'bonds' "
-                 "field for 'special'",
+                 "Molecule template {}: JSON molecule data does not contain required \"bonds\" "
+                 "field for \"special\"",
                  id);
     }
   }
@@ -421,77 +432,77 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
     if (shakedata.contains("flags")) {
       if (!shakedata["flags"].contains("format"))
         error->all(FLERR, Error::NOLASTLINE,
-                   "Molecule template {}: JSON molecule data does not contain required 'format' "
-                   "field for 'shake:flags'",
+                   "Molecule template {}: JSON molecule data does not contain required \"format\" "
+                   "field for \"shake:flags\"",
                    id);
       if (shakedata["flags"].contains("data")) {
         shakeflagflag = 1;
         if (shakedata["flags"]["data"].size() != natoms)
           error->all(FLERR, Error::NOLASTLINE,
-                     "Molecule template {}: Found {} instead of {} data entries for 'shake:flags'",
+                     "Molecule template {}: Found {} instead of {} data entries for \"shake:flags\"",
                      id, shakedata["flags"]["data"].size(), natoms);
       } else {
         error->all(FLERR, Error::NOLASTLINE,
-                   "Molecule template {}: JSON molecule data does not contain required 'data' "
-                   "field for 'shake:flags'",
+                   "Molecule template {}: JSON molecule data does not contain required \"data\" "
+                   "field for \"shake:flags\"",
                    id);
       }
     } else {
       error->all(FLERR, Error::NOLASTLINE,
                  "Molecule template {}: JSON molecule data does not contain required 'flags' "
-                 "field for 'shake'",
+                 "field for \"shake\"",
                  id);
     }
 
     if (shakedata.contains("atoms")) {
       if (!shakedata["atoms"].contains("format"))
         error->all(FLERR, Error::NOLASTLINE,
-                   "Molecule template {}: JSON molecule data does not contain required 'format' "
-                   "field for 'shake:atoms'",
+                   "Molecule template {}: JSON molecule data does not contain required \"format\" "
+                   "field for \"shake:atoms\"",
                    id);
       if (shakedata["atoms"].contains("data")) {
         shakeatomflag = 1;
         tag_require = 1;
         if (shakedata["atoms"]["data"].size() != natoms)
           error->all(FLERR, Error::NOLASTLINE,
-                     "Molecule template {}: Found {} instead of {} data entries for 'shake:atoms'",
+                     "Molecule template {}: Found {} instead of {} data entries for \"shake:atoms\"",
                      id, shakedata["atoms"]["data"].size(), natoms);
       } else {
         error->all(FLERR, Error::NOLASTLINE,
-                   "Molecule template {}: JSON molecule data does not contain required 'data' "
-                   "field for 'shake:atoms'",
+                   "Molecule template {}: JSON molecule data does not contain required \"data\" "
+                   "field for \"shake:atoms\"",
                    id);
       }
     } else {
       error->all(FLERR, Error::NOLASTLINE,
-                 "Molecule template {}: JSON molecule data does not contain required 'atoms' "
-                 "field for 'shake'",
+                 "Molecule template {}: JSON molecule data does not contain required \"atoms\" "
+                 "field for \"shake\"",
                  id);
     }
 
     if (shakedata.contains("types")) {
       if (!shakedata["types"].contains("format"))
         error->all(FLERR, Error::NOLASTLINE,
-                   "Molecule template {}: JSON molecule data does not contain required 'format' "
-                   "field for 'shake:types'",
+                   "Molecule template {}: JSON molecule data does not contain required \"format\" "
+                   "field for \"shake:types\"",
                    id);
       if (shakedata["types"].contains("data")) {
         shaketypeflag = 1;
         tag_require = 1;
         if (shakedata["types"]["data"].size() != natoms)
           error->all(FLERR, Error::NOLASTLINE,
-                     "Molecule template {}: Found {} instead of {} data entries for 'shake:types'",
+                     "Molecule template {}: Found {} instead of {} data entries for \"shake:types\"",
                      id, shakedata["types"]["data"].size(), natoms);
       } else {
         error->all(FLERR, Error::NOLASTLINE,
-                   "Molecule template {}: JSON molecule data does not contain required 'data' "
-                   "field for 'shake:types'",
+                   "Molecule template {}: JSON molecule data does not contain required \"data\" "
+                   "field for \"shake:types\"",
                    id);
       }
     } else {
       error->all(FLERR, Error::NOLASTLINE,
-                 "Molecule template {}: JSON molecule data does not contain required 'types' "
-                 "field for 'shake'",
+                 "Molecule template {}: JSON molecule data does not contain required \"types\" "
+                 "field for \"shake\"",
                  id);
     }
     if (shakeflagflag && shakeatomflag && shaketypeflag) shakeflag = 1;
@@ -1489,25 +1500,25 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
       const auto &specialbonds = moldata["special"]["bonds"];
       if (!specialbonds.contains("format"))
         error->all(FLERR, Error::NOLASTLINE,
-                   "Molecule template {}: JSON molecule data does not contain required 'format' "
-                   "field for 'special:bonds'",
+                   "Molecule template {}: JSON molecule data does not contain required \"format\" "
+                   "field for \"special:bonds\"",
                    id);
       if (specialbonds.contains("data")) {
         if (specialbonds["data"].size() != natoms)
           error->all(
               FLERR, Error::NOLASTLINE,
-              "Molecule template {}: Found {} instead of {} data entries for 'special:bonds'", id,
+              "Molecule template {}: Found {} instead of {} data entries for \"special:bonds\"", id,
               specialbonds["data"].size(), natoms);
       } else {
         error->all(FLERR, Error::NOLASTLINE,
-                   "Molecule template {}: JSON molecule data does not contain required 'data' "
-                   "field for 'special:bonds'",
+                   "Molecule template {}: JSON molecule data does not contain required \"data\" "
+                   "field for \"special:bonds\"",
                    id);
       }
     } else {
       error->all(FLERR, Error::NOLASTLINE,
-                 "Molecule template {}: JSON molecule data does not contain required 'bonds' "
-                 "field for 'special'",
+                 "Molecule template {}: JSON molecule data does not contain required \"bonds\" "
+                 "field for \"special\"",
                  id);
     }
 #endif
