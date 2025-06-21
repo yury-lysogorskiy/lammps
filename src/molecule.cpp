@@ -3220,6 +3220,7 @@ void Molecule::special_read(char *line)
                      "molecule file", ival);
         special[iatom][m - 1] = ival;
       }
+      count[iatom]++;
     }
   } catch (TokenizerException &e) {
     error->all(FLERR, fileiarg, "Invalid line in Special Bonds section of molecule file: {}\n{}",
