@@ -614,6 +614,8 @@ void FixDeposit::pre_exchange()
       atom->nangles += onemols[imol]->nangles;
       atom->ndihedrals += onemols[imol]->ndihedrals;
       atom->nimpropers += onemols[imol]->nimpropers;
+      // body particle molecule template must contain only one atom
+      atom->nbodies += (bigint) onemols[imol]->bodyflag;
     }
     maxtag_all += natom;
     if (maxtag_all >= MAXTAGINT)

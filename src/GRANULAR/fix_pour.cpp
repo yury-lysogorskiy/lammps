@@ -702,6 +702,8 @@ void FixPour::pre_exchange()
       atom->nangles += (bigint) onemols[imol]->nangles * ninserted_mols;
       atom->ndihedrals += (bigint) onemols[imol]->ndihedrals * ninserted_mols;
       atom->nimpropers += (bigint) onemols[imol]->nimpropers * ninserted_mols;
+      // body particle molecule template must contain only one atom
+      atom->nbodies += (bigint) onemols[imol]->bodyflag * ninserted_mols;
     }
     if (maxtag_all >= MAXTAGINT) error->all(FLERR, "New atom IDs exceed maximum allowed ID");
   }
