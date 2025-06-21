@@ -209,7 +209,7 @@ defining a *body* particle, which requires setting the number of
 
 .. list-table::
       :header-rows: 1
-      :widths: 20 13 42 15
+      :widths: 21 12 47 20
 
       * - Number(s)
         - Keyword
@@ -218,7 +218,7 @@ defining a *body* particle, which requires setting the number of
       * - N
         - atoms
         - # of atoms N in molecule
-        - 0
+        - keyword is *required*
       * - Nb
         - bonds
         - # of bonds Nb in molecule
@@ -241,8 +241,8 @@ defining a *body* particle, which requires setting the number of
         - 0
       * - Ninteger Ndouble
         - body
-        - # of integer and floating-point values in body particle
-        - 0
+        - # of integer and floating-point values in :doc:`body particle <Howto_body>`
+        - 0 0
       * - Mtotal
         - mass
         - total mass of molecule
