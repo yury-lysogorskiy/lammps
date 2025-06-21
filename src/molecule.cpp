@@ -356,7 +356,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
                    "field for 'special:counts'",
                    id);
       if (specialcounts.contains("data")) {
-        if ((int)specialcounts["data"].size() != natoms)
+        if ((int) specialcounts["data"].size() != natoms)
           error->all(
               FLERR, Error::NOLASTLINE,
               "Molecule template {}: Found {} instead of {} data entries for 'special:counts'", id,
@@ -394,7 +394,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
                    "field for \"special:bonds\"",
                    id);
       if (specialbonds.contains("data")) {
-        if ((int)specialbonds["data"].size() != natoms)
+        if ((int) specialbonds["data"].size() != natoms)
           error->all(
               FLERR, Error::NOLASTLINE,
               "Molecule template {}: Found {} instead of {} data entries for \"special:bonds\"", id,
@@ -404,7 +404,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
                      "Molecule template {}: \"special:bonds\" is incorrectly formatted: {}", id,
                      to_string(specialbonds["data"][0]));
         for (int i = 0; i < natoms; ++i) {
-          if ((int)specialbonds["data"][i][1].size() > maxspecial)
+          if ((int) specialbonds["data"][i][1].size() > maxspecial)
             error->all(FLERR, Error::NOLASTLINE,
                        "Molecule template {}: Number of data entries in \"special:bonds\" for atom "
                        "{} exceeds limit: {} vs {}",
@@ -438,7 +438,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
                    id);
       if (shakedata["flags"].contains("data")) {
         shakeflagflag = 1;
-        if ((int)shakedata["flags"]["data"].size() != natoms)
+        if ((int) shakedata["flags"]["data"].size() != natoms)
           error->all(
               FLERR, Error::NOLASTLINE,
               "Molecule template {}: Found {} instead of {} data entries for \"shake:flags\"", id,
@@ -465,7 +465,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
       if (shakedata["atoms"].contains("data")) {
         shakeatomflag = 1;
         tag_require = 1;
-        if ((int)shakedata["atoms"]["data"].size() != natoms)
+        if ((int) shakedata["atoms"]["data"].size() != natoms)
           error->all(
               FLERR, Error::NOLASTLINE,
               "Molecule template {}: Found {} instead of {} data entries for \"shake:atoms\"", id,
@@ -492,7 +492,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
       if (shakedata["types"].contains("data")) {
         shaketypeflag = 1;
         tag_require = 1;
-        if ((int)shakedata["types"]["data"].size() != natoms)
+        if ((int) shakedata["types"]["data"].size() != natoms)
           error->all(
               FLERR, Error::NOLASTLINE,
               "Molecule template {}: Found {} instead of {} data entries for \"shake:types\"", id,
@@ -2181,6 +2181,10 @@ void Molecule::read(int flag)
         nibody = values.next_int();
         ndbody = values.next_int();
         nwant = 3;
+      } else if (values.matches("^\\s*\\d+\\s+\\S+\\s+types\\s*$")) {
+        error->all(FLERR, fileiarg, "Found data file header keyword '{}' in molecule file", text);
+      } else if (values.matches("^\\s*\\f+\\s+\\f+\\s+[xyz]lo\\s+[xyz]hi\\s*$")) {
+        error->all(FLERR, fileiarg, "Found data file header keyword '{}' in molecule file", text);
       } else {
         // unknown header keyword
         if (values.matches("^\\s*\\f+\\s+\\S+")) {
@@ -2335,6 +2339,10 @@ void Molecule::read(int flag)
         error->all(FLERR, fileiarg, "Found Body Doubles section but no setting in header");
       dbodyflag = 1;
       body(flag, 1, line);
+    } else if ((keyword == "Atoms") || (keyword == "Velocities") || (keyword == "Pair Coeffs") ||
+               (keyword == "Bond Coeffs") || (keyword == "Angle Coeffs") ||
+               (keyword == "Dihedral Coeffs") || (keyword == "Improper Coeffs")) {
+      error->all(FLERR, fileiarg, "Found data file section '{}' in molecule file\n", keyword);
     } else {
 
       // Error: Either a too long/short section or a typo in the keyword
