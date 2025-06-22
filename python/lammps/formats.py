@@ -13,7 +13,7 @@
 
 """
 Output formats for LAMMPS python module
-Written by Richard Berger <richard.berger@temple.edu>
+Written by Richard Berger <richard.berger@outlook.com>
 and Axel Kohlmeyer <akohlmey@gmail.com>
 """
 

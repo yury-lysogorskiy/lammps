@@ -13,7 +13,7 @@
 
 """
 NumPy additions to the LAMMPS Python module
-Written by Richard Berger <richard.berger@temple.edu>
+Written by Richard Berger <richard.berger@outlook.com>
 """
 
 from ctypes import POINTER, c_void_p, c_char_p, c_double, c_int, c_int32, c_int64, cast

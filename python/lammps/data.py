@@ -13,7 +13,7 @@
 
 """
 Data structures for LAMMPS Python module
-Written by Richard Berger <richard.berger@temple.edu>
+Written by Richard Berger <richard.berger@outlook.com>
 """
 
 class NeighList:
