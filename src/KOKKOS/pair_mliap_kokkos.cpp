@@ -416,8 +416,8 @@ int PairMLIAPKokkos<DeviceType>::pack_forward_comm_kokkos(
 template <class DeviceType>
 template <typename CommType>
 int PairMLIAPKokkos<DeviceType>::pack_forward_comm_kokkos(
-    int nv, DAT::tdual_int_1d idx_v, DAT::tdual_xfloat_1d &fill, int int2,
-    int *intp, CommType *copy_to) {
+  int nv, DAT::tdual_int_1d idx_v, DAT::tdual_xfloat_1d &fill, int /*int2*/,
+  int */*intp*/, CommType *copy_to) {
   auto idx=idx_v.view<DeviceType>();
   auto val=fill.view<DeviceType>();
   int nf=vec_len;
@@ -457,7 +457,7 @@ int PairMLIAPKokkos<DeviceType>::pack_forward_comm(int nv, int* idx_v, double *f
 template<class DeviceType>
 template <typename CommType>
 int PairMLIAPKokkos<DeviceType>::pack_forward_comm(int nv, int* idx_v, double *fill,
-                                                   int int2, int *intp, CommType *copy_to)
+                                                   int /*int2*/, int */*intp*/, CommType *copy_to)
 {
   for (int i=0;i<nv;++i) {
     int gstart=idx_v[i]*vec_len;
