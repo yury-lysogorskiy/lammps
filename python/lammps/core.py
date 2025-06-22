@@ -10,7 +10,9 @@
 #
 #   See the README file in the top-level LAMMPS directory.
 # -------------------------------------------------------------------------
-# Python wrapper for the LAMMPS library via ctypes
+"""
+Python module wrapping the LAMMPS library via ctypes
+"""
 
 # avoid pylint warnings about naming conventions
 # pylint: disable=C0103
