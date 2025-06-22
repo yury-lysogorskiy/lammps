@@ -68,7 +68,8 @@ Syntax
                            bound(group,dir,region), gyration(group,region), ke(group,reigon),
                            angmom(group,dim,region), torque(group,dim,region),
                            inertia(group,dimdim,region), omega(group,dim,region)
-         special functions = sum(x), min(x), max(x), ave(x), trap(x), slope(x), sort(x), rsort(x), \                                  gmask(x), rmask(x), grmask(x,y), next(x), is_file(name), is_os(name),
+         special functions = sum(x), min(x), max(x), ave(x), trap(x), slope(x), sort(x), rsort(x),
+                             gmask(x), rmask(x), grmask(x,y), next(x), is_file(name), is_os(name),
                              extract_setting(name), label2type(kind,label),
                              is_typelabel(kind,label), is_timeout()
          feature functions = is_available(category,feature), is_active(category,feature),
