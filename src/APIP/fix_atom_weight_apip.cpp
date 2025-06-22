@@ -32,10 +32,9 @@ using namespace LAMMPS_NS;
 using namespace FixConst;
 
 FixAtomWeightAPIP::FixAtomWeightAPIP(LAMMPS *lmp, int narg, char **arg) :
-    Fix(lmp, narg, arg), fixstore(nullptr), time_simple_extract_name(nullptr),
-    time_complex_extract_name(nullptr), time_lambda_extract_name(nullptr),
-    time_group_extract_name(nullptr), time_group_name(nullptr), fix_lambda(nullptr),
-    ap_timer(nullptr)
+    Fix(lmp, narg, arg), time_simple_extract_name(nullptr), time_complex_extract_name(nullptr),
+    time_group_extract_name(nullptr), time_lambda_extract_name(nullptr), time_group_name(nullptr),
+    fixstore(nullptr), ap_timer(nullptr), fix_lambda(nullptr)
 {
   if (narg < 9) error->all(FLERR, "Illegal fix balance command");
 
@@ -119,8 +118,6 @@ FixAtomWeightAPIP::FixAtomWeightAPIP(LAMMPS *lmp, int narg, char **arg) :
   }
 
   int useless_dim = -1;
-  void *extracted_ptr = nullptr;
-
   if (time_simple_extract_name) {
     if (force->pair->extract(time_simple_extract_name, useless_dim) == nullptr)
       error->all(FLERR, "atom_weight/apip: simple time cannot be extracted with {} from {}",

@@ -265,7 +265,7 @@ void PairLambdaInputCSPAPIP::select(int k, int n, double *arr)
 
 void PairLambdaInputCSPAPIP::select2(int k, int n, double *arr, int *iarr)
 {
-  int i, ir, j, l, mid, ia, itmp;
+  int i, ir, j, l, mid, ia;
   double a;
 
   arr--;

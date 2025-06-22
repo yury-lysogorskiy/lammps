@@ -143,7 +143,7 @@ void PairEAMAPIP::compute(int eflag, int vflag)
   int n_non_complex = 0;
 
   int i, j, ii, jj, m, inum, jnum, itype, jtype;
-  double xtmp, ytmp, ztmp, delx, dely, delz, evdwl, fpair, lambda_ij, fpair_cl;
+  double xtmp, ytmp, ztmp, delx, dely, delz, evdwl, fpair, fpair_cl;
   double rsq, r, p, rhoip, rhojp, z2, z2p, recip, phip, psip, phi, psip_cl;
   double *coeff;
   int *ilist, *jlist, *numneigh, **firstneigh;
@@ -181,7 +181,6 @@ void PairEAMAPIP::compute(int eflag, int vflag)
   }
   int *type = atom->type;
   int nlocal = atom->nlocal;
-  int nall = nlocal + atom->nghost;
   int newton_pair = force->newton_pair;
 
   inum = list->inum;
