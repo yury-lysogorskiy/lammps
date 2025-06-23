@@ -65,3 +65,8 @@ def get_ctypes_int(size):
   if size == 8:
     return c_int64
   return c_int
+
+# Local Variables:
+# fill-column: 100
+# python-indent-offset: 2
+# End:

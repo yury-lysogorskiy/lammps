@@ -231,3 +231,8 @@ class AvgChunkFile:
 
           self.timesteps.append(timestep)
           self.total_count.append(total_count)
+
+# Local Variables:
+# fill-column: 100
+# python-indent-offset: 2
+# End:

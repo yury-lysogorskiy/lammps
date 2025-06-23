@@ -526,3 +526,8 @@ class NumPyNeighList(NeighList):
       if idx == iatom:
         return neighbors
     return None
+
+# Local Variables:
+# fill-column: 100
+# python-indent-offset: 2
+# End:

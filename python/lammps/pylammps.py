@@ -1015,3 +1015,8 @@ class IPyLammps(PyLammps):
     """
     from IPython.display import HTML
     return HTML("<video controls><source src=\"" + filename + "\"></video>")
+
+# Local Variables:
+# fill-column: 100
+# python-indent-offset: 2
+# End:

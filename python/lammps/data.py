@@ -91,3 +91,8 @@ class NeighList:
         return numneigh, neighbors
 
     return -1, None
+
+# Local Variables:
+# fill-column: 100
+# python-indent-offset: 2
+# End:

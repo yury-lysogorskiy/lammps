@@ -52,3 +52,8 @@ def get_version_number():
   return t.tm_year*10000 + t.tm_mon*100 + t.tm_mday
 
 __version__ = get_version_number()
+
+# Local Variables:
+# fill-column: 100
+# python-indent-offset: 2
+# End:

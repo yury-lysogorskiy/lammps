@@ -37,6 +37,7 @@ from lammps.data import NeighList
 # -------------------------------------------------------------------------
 
 class MPIAbortException(Exception):
+  """Exception to use when LAMMPS wants to call MPI_Abort()"""
   def __init__(self, message):
     self.message = message
 
@@ -60,6 +61,7 @@ class ExceptionCheck:
 # -------------------------------------------------------------------------
 
 class command_wrapper:
+  """Wrapper class to enable using 'lmp.xxx("args")' instead of 'lmp.command("xxx args")'"""
   def __init__(self, lmp):
     self.lmp = lmp
     self.auto_flush = False
@@ -1625,12 +1627,14 @@ class lammps:
   # -------------------------------------------------------------------------
 
   def clearstep_compute(self):
+    """Call 'lammps_clearstep_compute()' from Python"""
     with ExceptionCheck(self):
       return self.lib.lammps_clearstep_compute(self.lmp)
 
   # -------------------------------------------------------------------------
 
   def addstep_compute(self, nextstep):
+    """Call 'lammps_addstep_compute()' from Python"""
     with ExceptionCheck(self):
       nextstep = self.c_bigint(nextstep)
       return self.lib.lammps_addstep_compute(self.lmp, byref(nextstep))
@@ -1638,6 +1642,7 @@ class lammps:
   # -------------------------------------------------------------------------
 
   def addstep_compute_all(self, nextstep):
+    """Call 'lammps_addstep_compute_all()' from Python"""
     with ExceptionCheck(self):
       nextstep = self.c_bigint(nextstep)
       return self.lib.lammps_addstep_compute_all(self.lmp, byref(nextstep))
@@ -2894,5 +2899,6 @@ class lammps:
     return idx
 
 # Local Variables:
-# fill-column: 80
+# fill-column: 100
+# python-indent-offset: 2
 # End:
