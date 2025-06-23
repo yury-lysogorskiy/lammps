@@ -1162,6 +1162,9 @@ CONTAINS
         CALL lammps_mpi_finalize()
         CALL lammps_python_finalize()
         CALL lammps_plugin_finalize()
+        IF (ALLOCATED(ext_data)) THEN
+            DEALLOCATE(ext_data)
+        END IF
       END IF
     END IF
   END SUBROUTINE lmp_close
