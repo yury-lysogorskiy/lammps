@@ -414,7 +414,22 @@ class numpy_wrapper:
   # -------------------------------------------------------------------------
 
   def iarray(self, c_int_type, raw_ptr, nelem, dim=1):
-    # pylint: disable=C0116
+    """Convert ctypes pointer to an array of integers into a corresponding numpy array
+
+    This will cast the raw pointer into a 1-d or 2-d numpy array and set its shape
+
+    :param c_int_type: type of integer (c_int32 or c_int64)
+    :type: ctypes type
+    :param raw_ptr: ctypes pointer to the array data
+    :type: POINTER(c_int_type)
+    :param nelem: length of the leading dimension
+    :type: integer
+    :param dim: length of the second dimension
+    :type: integer, optional
+    :return: ctypes array converted to numpy style array with proper shape
+    :rtype: numpy.array
+    """
+
     if raw_ptr and nelem >= 0 and dim >= 0:
       np_int_type = self._ctype_to_numpy_int(c_int_type)
       ptr = None
@@ -430,16 +445,27 @@ class numpy_wrapper:
         a = np.empty(0, dtype=np_int_type)
 
       if dim > 1:
-        a.shape = (nelem, dim)
-      else:
-        a.shape = nelem
-      return a
+        return np.reshape(a, (nelem, dim))
+
+      return np.reshape(a, nelem)
     return None
 
   # -------------------------------------------------------------------------
 
   def darray(self, raw_ptr, nelem, dim=1):
-    # pylint: disable=C0116
+    """Convert ctypes pointer to an array of doubles into a corresponding numpy array
+
+    This will cast the raw pointer into a 1-d or 2-d numpy array and set its shape
+
+    :param raw_ptr: ctypes pointer to the array data
+    :type: POINTER(c_double)
+    :param nelem: length of the leading dimension
+    :type: integer
+    :param dim: length of the second dimension
+    :type: integer, optional
+    :return: ctypes array converted to numpy style array with proper shape
+    :rtype: numpy.array
+    """
     if raw_ptr and nelem >= 0 and dim >= 0:
       ptr = None
 
@@ -454,10 +480,9 @@ class numpy_wrapper:
         a = np.empty(0, c_double)
 
       if dim > 1:
-        a.shape = (nelem, dim)
-      else:
-        a.shape = nelem
-      return a
+        return np.reshape(a, (nelem, dim))
+
+      return np.reshape(a, nelem)
     return None
 
 # -------------------------------------------------------------------------
