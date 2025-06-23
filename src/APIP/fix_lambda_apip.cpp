@@ -26,6 +26,8 @@
 #include "memory.h"
 #include "modify.h"
 #include "pair.h"
+#include "pair_lambda_input_apip.h"
+#include "pair_lambda_zone_apip.h"
 #include "update.h"
 
 using namespace LAMMPS_NS;
