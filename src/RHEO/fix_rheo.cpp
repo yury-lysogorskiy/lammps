@@ -398,7 +398,7 @@ void FixRHEO::initial_integrate(int /*vflag*/)
 
   // Shifting atoms
   if (shift_flag) {
-    double vshift = compute_vshift->vshift;
+    double **vshift = compute_vshift->vshift;
     for (i = 0; i < nlocal; i++) {
       if (status[i] & STATUS_NO_SHIFT) continue;
       if (status[i] & PHASECHECK) continue;
