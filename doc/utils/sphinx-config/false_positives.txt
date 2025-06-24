@@ -33,6 +33,7 @@ activationfunctions
 acylindricity
 addforce
 Addington
+addstep
 addtorque
 adf
 Adhikari
@@ -532,6 +533,7 @@ civ
 CKD
 ckk
 Clang
+clearstep
 clearstore
 Cleary
 Clebsch
