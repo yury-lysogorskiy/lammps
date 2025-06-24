@@ -50,6 +50,9 @@ class colvarproxy_lammps : public colvarproxy {
 
   colvarproxy_lammps(LAMMPS_NS::LAMMPS *lmp);
   ~colvarproxy_lammps() override;
+  // disable default and copy constructor
+  colvarproxy_lammps() = delete;
+  colvarproxy_lammps(const colvarproxy_lammps &) = delete;
 
   void init();
 
@@ -57,11 +60,6 @@ class colvarproxy_lammps : public colvarproxy {
   void set_random_seed(int seed);
 
   int setup() override;
-
-  // disable default and copy constructor
- private:
-  colvarproxy_lammps() {};
-  colvarproxy_lammps(const colvarproxy_lammps &) {};
 
   // methods for lammps to move data or trigger actions in the proxy
  public:
