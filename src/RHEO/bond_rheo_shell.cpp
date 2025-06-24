@@ -217,12 +217,6 @@ void BondRHEOShell::compute(int eflag, int vflag)
       i2 = itmp;
     }
 
-    delx = x[i1][0] - x[i2][0];
-    dely = x[i1][1] - x[i2][1];
-    delz = x[i1][2] - x[i2][2];
-    rsq = delx * delx + dely * dely + delz * delz;
-    r = sqrt(rsq);
-
     // If bond hasn't been set - zero data
     if (t < EPSILON || std::isnan(t)) t = store_bond(n, i1, i2);
 
@@ -472,7 +466,7 @@ int BondRHEOShell::pack_reverse_comm(int n, int first, double *buf)
   m = 0;
   last = first + n;
 
-  for (i = first; i < last; i++) { buf[m++] = dbond[i]; }
+  for (i = first; i < last; i++) { buf[m++] = ubuf(dbond[i]).d; }
   return m;
 }
 
@@ -485,7 +479,7 @@ void BondRHEOShell::unpack_reverse_comm(int n, int *list, double *buf)
   m = 0;
   for (i = 0; i < n; i++) {
     j = list[i];
-    dbond[j] += buf[m++];
+    dbond[j] += (int) ubuf(buf[m++]).i;
   }
 }
 
@@ -495,13 +489,17 @@ double BondRHEOShell::single(int type, double rsq, int i, int j, double &fforce)
 {
   if (type <= 0) return 0.0;
 
-  double r0, t;
+  double r0 = -1;
+  double t = -1;
   for (int n = 0; n < atom->num_bond[i]; n++) {
     if (atom->bond_atom[i][n] == atom->tag[j]) {
       r0 = fix_bond_history->get_atom_value(i, n, 0);
       t = fix_bond_history->get_atom_value(i, n, 1);
     }
   }
+
+  if (r0 == -1)
+    error->one(FLERR, "Could not find bond");
 
   svector[1] = t;
   if (t < tform) return 0.0;
