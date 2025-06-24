@@ -85,6 +85,9 @@ int FixReaxFFBonds::setmask()
 
 void FixReaxFFBonds::setup(int /*vflag*/)
 {
+  if (atom->natoms > MAXSMALLINT)
+    error->all(FLERR, Error::NOLASTLINE, "Too many atoms for fix {}", style);
+
   // only print output during setup() at the very beginning
   // to avoid duplicate outputs when using multiple run statements
   if (first_flag) end_of_step();
@@ -96,8 +99,9 @@ void FixReaxFFBonds::setup(int /*vflag*/)
 void FixReaxFFBonds::init()
 {
   reaxff = dynamic_cast<PairReaxFF *>(force->pair_match("^reax..",0));
-  if (reaxff == nullptr) error->all(FLERR,"Cannot use fix reaxff/bonds without "
-                                "pair_style reaxff, reaxff/kk, or reaxff/omp");
+  if (reaxff == nullptr)
+    error->all(FLERR, Error::NOLASTLINE, "Cannot use fix reaxff/bonds without "
+               "pair_style reaxff, reaxff/kk, or reaxff/omp");
 }
 
 /* ---------------------------------------------------------------------- */
@@ -118,7 +122,7 @@ void FixReaxFFBonds::Output_ReaxFF_Bonds()
   double *buf;
 
   int nlocal = atom->nlocal;
-  int nlocal_tot = static_cast<int> (atom->natoms);
+  int nlocal_tot = static_cast<int>(atom->natoms);
 
   if (atom->nmax > nmax) {
     destroy();
