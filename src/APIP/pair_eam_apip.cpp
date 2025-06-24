@@ -30,6 +30,8 @@
 #include "potential_file_reader.h"
 #include "update.h"
 
+#include <cmath>
+
 using namespace LAMMPS_NS;
 
 /* ---------------------------------------------------------------------- */
@@ -686,10 +688,9 @@ void PairEAMAPIP::file2array()
   }
 
   // set nr,nrho from cutoff and spacings
-  // 0.5 is for round-off in divide
 
-  nr = static_cast<int>(rmax / dr + 0.5);
-  nrho = static_cast<int>(rhomax / drho + 0.5);
+  nr = std::lround(rmax / dr);
+  nrho = std::lround(rhomax / drho);
 
   // ------------------------------------------------------------------
   // setup frho arrays

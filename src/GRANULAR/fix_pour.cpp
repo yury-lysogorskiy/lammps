@@ -250,7 +250,7 @@ void FixPour::init()
       delta = yhi - ylo;
     }
     double t = (-v_relative - sqrt(v_relative * v_relative - 2.0 * grav * delta)) /   grav;
-    nfreq = static_cast<int>(t / update->dt + 0.5);
+    nfreq = std::lround(t / update->dt);
 
     // 1st insertion on next timestep
 
