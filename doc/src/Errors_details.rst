@@ -1051,13 +1051,15 @@ Even though the LAMMPS error message recommends to increase the "one"
 parameter, this may not always be the correct solution.  The neighbor
 list overflow can also be a symptom for some other error that cannot be
 easily detected.  For example, a frequent reason for an (unexpected)
-high density are incorrect box boundaries (since LAMMPS wraps atoms back
+high density are incorrect box dimensions (since LAMMPS wraps atoms back
 into the principal box with periodic boundaries) or coordinates provided
-as fractional coordinates.  In both cases, LAMMPS cannot easily know
-whether the input geometry has such a high density (and thus requiring
-more neighbor list storage per atom) by intention.  Rather than blindly
-increasing the "one" parameter, it is thus worth checking if this is
-justified by the combination of density and cutoff.
+as fractional coordinates (LAMMPS does not support this for data files).
+In both cases, LAMMPS cannot easily know whether the input geometry has
+such a high density (and thus requiring more neighbor list storage per
+atom) on purpose or by accident.  Rather than blindly increasing the
+"one" parameter, it is thus worth checking if this is justified by the
+combination of density and cutoff.  This is particularly recommended
+when using some tool(s) to convert input or data files.
 
 When boosting (= increasing) the "one" parameter, it is recommended to
 also increase the value for the "page" parameter to maintain the ratio
