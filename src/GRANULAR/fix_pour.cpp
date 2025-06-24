@@ -684,7 +684,7 @@ void FixPour::pre_exchange()
   // warn if not successful with all insertions b/c too many attempts
 
   int ninserted_atoms = nnear - nprevious;
-  int ninserted_mols = ninserted_atoms / natom;  // clang_sa_ignore [core.DivideZero]
+  int ninserted_mols = ninserted_atoms / natom;
   ninserted += ninserted_mols;
   if (ninserted_mols < nnew && me == 0) error->warning(FLERR, "Fewer insertions than requested");
 
