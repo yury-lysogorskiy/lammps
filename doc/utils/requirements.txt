@@ -11,3 +11,4 @@ six
 pyyaml
 linkchecker
 ipython
+numpy
