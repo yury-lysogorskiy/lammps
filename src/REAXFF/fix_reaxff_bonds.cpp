@@ -29,6 +29,8 @@
 #include "pair_reaxff.h"
 #include "reaxff_api.h"
 
+#include <cmath>
+
 using namespace LAMMPS_NS;
 using namespace FixConst;
 using namespace ReaxFF;
@@ -205,7 +207,7 @@ void FixReaxFFBonds::PassBuffer(double *buf, int &nbuf_local)
     buf[j+2] = reaxff->api->workspace->nlp[i];
     buf[j+3] = atom->q[i];
     buf[j+4] = numneigh[i];
-    numbonds = nint(buf[j+4]);
+    numbonds = std::lround(buf[j+4]);
 
     for (k = 5; k < 5+numbonds; k++) {
       buf[j+k] = neighid[i][k-5];
@@ -273,16 +275,16 @@ void FixReaxFFBonds::RecvBuffer(double *buf, int nbuf, int nbuf_local,
       } else {
         MPI_Irecv(&buf[0],nbuf,MPI_DOUBLE,inode,0,world,&irequest);
         MPI_Wait(&irequest,MPI_STATUS_IGNORE);
-        nlocal_tmp = nint(buf[0]);
+        nlocal_tmp = std::lround(buf[0]);
       }
       j = 2;
       for (i = 0; i < nlocal_tmp; i ++) {
         itag = static_cast<tagint> (buf[j-1]);
-        itype = nint(buf[j+0]);
+        itype = std::lround(buf[j+0]);
         sbotmp = buf[j+1];
         nlptmp = buf[j+2];
         avqtmp = buf[j+3];
-        numbonds = nint(buf[j+4]);
+        numbonds = std::lround(buf[j+4]);
 
         auto mesg = fmt::format(" {} {} {}",itag,itype,numbonds);
         for (k = 5; k < 5+numbonds; k++)
@@ -307,16 +309,6 @@ void FixReaxFFBonds::RecvBuffer(double *buf, int nbuf, int nbuf_local,
     fputs("# \n",fp);
     fflush(fp);
   }
-}
-
-/* ---------------------------------------------------------------------- */
-
-int FixReaxFFBonds::nint(const double &r)
-{
-  int i = 0;
-  if (r>0.0) i = static_cast<int>(r+0.5);
-  else if (r<0.0) i = static_cast<int>(r-0.5);
-  return i;
 }
 
 /* ---------------------------------------------------------------------- */

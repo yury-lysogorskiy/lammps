@@ -344,7 +344,7 @@ void FixReaxFFSpecies::setup(int /*vflag*/)
 {
   if (atom->natoms > MAXSMALLINT)
     error->all(FLERR, Error::NOLASTLINE, "Too many atoms for fix {}", style);
-    
+
   ntotal = static_cast<int>(atom->natoms);
 
   if (!eleflag) {
@@ -589,8 +589,8 @@ void FixReaxFFSpecies::SortMolecule(int &Nmole)
   for (n = 0; n < nlocal; n++) {
     if (!(mask[n] & groupbit)) continue;
     if (clusterID[n] == 0.0) flag = 1;
-    lo = MIN(lo, nint(clusterID[n]));
-    hi = MAX(hi, nint(clusterID[n]));
+    lo = MIN(lo, std::lround(clusterID[n]));
+    hi = MAX(hi, std::lround(clusterID[n]));
   }
   int flagall;
   MPI_Allreduce(&lo, &idlo, 1, MPI_INT, MPI_MIN, world);
@@ -615,7 +615,7 @@ void FixReaxFFSpecies::SortMolecule(int &Nmole)
 
   for (n = 0; n < nlocal; n++) {
     if (!(mask[n] & groupbit)) continue;
-    molmap[nint(clusterID[n]) - idlo] = 1;
+    molmap[std::lround(clusterID[n]) - idlo] = 1;
   }
 
   int *molmapall;
@@ -634,8 +634,8 @@ void FixReaxFFSpecies::SortMolecule(int &Nmole)
   flag = 0;
   for (n = 0; n < nlocal; n++) {
     if (mask[n] & groupbit) continue;
-    if (nint(clusterID[n]) < idlo || nint(clusterID[n]) > idhi) continue;
-    if (molmap[nint(clusterID[n]) - idlo] >= 0) flag = 1;
+    if (std::lround(clusterID[n]) < idlo || std::lround(clusterID[n]) > idhi) continue;
+    if (molmap[std::lround(clusterID[n]) - idlo] >= 0) flag = 1;
   }
 
   MPI_Allreduce(&flag, &flagall, 1, MPI_INT, MPI_SUM, world);
@@ -643,7 +643,7 @@ void FixReaxFFSpecies::SortMolecule(int &Nmole)
 
   for (n = 0; n < nlocal; n++) {
     if (!(mask[n] & groupbit)) continue;
-    clusterID[n] = molmap[nint(clusterID[n]) - idlo] + 1;
+    clusterID[n] = molmap[std::lround(clusterID[n]) - idlo] + 1;
   }
 
   memory->destroy(molmap);
@@ -681,7 +681,7 @@ void FixReaxFFSpecies::FindSpecies(int Nmole, int &Nspec)
     for (n = 0; n < nutypes; n++) Name[n] = 0;
     for (n = 0, flag_mol = 0; n < nlocal; n++) {
       if (!(mask[n] & groupbit)) continue;
-      cid = nint(clusterID[n]);
+      cid = std::lround(clusterID[n]);
       if (cid == m) {
         itype = ele2uele[atom->type[n] - 1];
         Name[itype]++;
@@ -878,7 +878,7 @@ void FixReaxFFSpecies::WritePos(int Nmole, int Nspec)
 
     for (i = 0; i < nlocal; i++) {
       if (!(mask[i] & groupbit)) continue;
-      cid = nint(clusterID[i]);
+      cid = std::lround(clusterID[i]);
       if (cid == m) {
         itype = ele2uele[atom->type[i] - 1];
         Name[itype]++;
@@ -1017,7 +1017,7 @@ void FixReaxFFSpecies::DeleteSpecies(int Nmole, int Nspec)
 
     for (i = 0; i < nlocal; i++) {
       if (!(mask[i] & groupbit)) continue;
-      cid = nint(clusterID[i]);
+      cid = std::lround(clusterID[i]);
       if (cid == m) {
         itype = ele2uele[type[i] - 1];
         Name[itype]++;
@@ -1156,18 +1156,6 @@ double FixReaxFFSpecies::compute_vector(int n)
   if (n == 0) return vector_nmole;
   if (n == 1) return vector_nspec;
   return 0.0;
-}
-
-/* ---------------------------------------------------------------------- */
-
-int FixReaxFFSpecies::nint(const double &r)
-{
-  int i = 0;
-  if (r > 0.0)
-    i = static_cast<int>(r + 0.5);
-  else if (r < 0.0)
-    i = static_cast<int>(r - 0.5);
-  return i;
 }
 
 /* ---------------------------------------------------------------------- */
