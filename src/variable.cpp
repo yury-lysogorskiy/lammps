@@ -2976,7 +2976,7 @@ double Variable::collapse_tree(Tree *tree)
     arg3 = collapse_tree(tree->extra[0]);
     if (tree->first->type != VALUE) return 0.0;
     tree->type = VALUE;
-    if (arg1) tree->value = arg2;
+    if (arg1 != 0.0) tree->value = arg2;
     else tree->value = arg3;
     return tree->value;
   }
@@ -3400,7 +3400,7 @@ double Variable::eval_tree(Tree *tree, int i)
     double first = eval_tree(tree->first,i);
     double second = eval_tree(tree->second,i);
     double third = eval_tree(tree->extra[0],i);
-    if (first) return second;
+    if (first != 0.0) return second;
     else return third;
   }
 
@@ -3940,7 +3940,7 @@ int Variable::math_function(char *word, char *contents, Tree **tree, Tree **tree
       print_var_error(FLERR,"Invalid math function in variable formula",ivar);
     if (tree) newtree->type = TERNARY;
     else {
-      if (value1) argstack[nargstack++] = value2;
+      if (value1 != 0.0) argstack[nargstack++] = value2;
       else argstack[nargstack++] = values[0];
     }
 
