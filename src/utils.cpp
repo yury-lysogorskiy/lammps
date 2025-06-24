@@ -20,7 +20,9 @@
 #include "domain.h"
 #include "error.h"
 #include "fix.h"
+#ifndef FMT_STATIC_THOUSANDS_SEPARATOR
 #include "fmt/chrono.h"
+#endif
 #include "input.h"
 #include "label_map.h"
 #include "memory.h"
@@ -900,7 +902,7 @@ int utils::expand_args(const char *file, int line, int narg, char **arg, int mod
     // match grids
 
     if (strmatch(word, "^[cf]_\\w+:\\w+:\\w+\\[\\d*\\*\\d*\\]")) {
-      auto gridid = utils::parse_grid_id(FLERR, word, lmp->error);
+      auto gridid = utils::parse_grid_id(file, line, word, lmp->error);
 
       size_t first = gridid[2].find('[');
       size_t second = gridid[2].find(']', first + 1);
@@ -1044,6 +1046,9 @@ int utils::expand_args(const char *file, int line, int narg, char **arg, int mod
             if (nhi < MAXSMALLINT) {
               nmax = nhi;
               expandflag = 1;
+            } else {
+              lmp->error->all(file, line, ioffset + iarg,
+                              "Upper bound required to expand vector style variable {}", id);
             }
           }
         }
@@ -1953,8 +1958,15 @@ int utils::date2num(const std::string &date)
 std::string utils::current_date()
 {
   time_t tv = time(nullptr);
+#if defined(FMT_STATIC_THOUSANDS_SEPARATOR)
+  char outstr[200];
+  struct tm *today = localtime(&tv);
+  strftime(outstr, 200, "%Y-%m-%d", today);
+  return std::string(outstr);
+#else
   std::tm today = fmt::localtime(tv);
   return fmt::format("{:%Y-%m-%d}", today);
+#endif
 }
 
 /* ----------------------------------------------------------------------
