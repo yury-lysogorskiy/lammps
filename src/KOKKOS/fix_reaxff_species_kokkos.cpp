@@ -53,7 +53,8 @@ void FixReaxFFSpeciesKokkos::init()
 {
   Pair* pair_kk = force->pair_match("^reax../kk",0);
   if (pair_kk == nullptr)
-    error->all(FLERR,"Cannot use fix reaxff/species/kk without pair_style reaxff/kk");
+    error->all(FLERR, Error::NOLASTLINE,
+               "Cannot use fix reaxff/species/kk without pair_style reaxff/kk");
 
   FixReaxFFSpecies::init();
 }

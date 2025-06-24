@@ -96,9 +96,9 @@ FixReaxFFSpecies::FixReaxFFSpecies(LAMMPS *lmp, int narg, char **arg) :
 
   comm_forward = 4;
 
-  if (nevery <= 0) error->all(FLERR, "Invalid fix reaxff/species nevery value {}", nevery);
-  if (nrepeat <= 0) error->all(FLERR, "Invalid fix reaxff/species nrepeat value {}", nrepeat);
-  if (nfreq <= 0) error->all(FLERR, "Invalid fix reaxff/species nfreq value {}", nfreq);
+  if (nevery <= 0) error->all(FLERR, 3, "Invalid fix reaxff/species nevery value {}", nevery);
+  if (nrepeat <= 0) error->all(FLERR, 4, "Invalid fix reaxff/species nrepeat value {}", nrepeat);
+  if (nfreq <= 0) error->all(FLERR, 5, "Invalid fix reaxff/species nfreq value {}", nfreq);
   if ((nfreq % nevery) || (nrepeat * nevery > nfreq))
     error->all(FLERR, "Incompatible fix reaxff/species nevery/nrepeat/nfreq settings");
 
@@ -133,12 +133,13 @@ FixReaxFFSpecies::FixReaxFFSpecies(LAMMPS *lmp, int narg, char **arg) :
     if (platform::has_compress_extension(arg[6])) {
       fp = platform::compressed_write(arg[6]);
       compressed = 1;
-      if (!fp) error->one(FLERR, "Cannot open compressed file");
+      if (!fp) error->one(FLERR, 6, "Cannot open compressed file");
     } else
       fp = fopen(arg[6], "w");
 
     if (!fp)
-      error->one(FLERR, "Cannot open fix reaxff/species file {}: {}", arg[6], utils::getsyserror());
+      error->one(FLERR, 6, "Cannot open fix reaxff/species file {}: {}", arg[6],
+                 utils::getsyserror());
   }
 
   x0 = nullptr;
@@ -173,7 +174,7 @@ FixReaxFFSpecies::FixReaxFFSpecies(LAMMPS *lmp, int narg, char **arg) :
       utils::bounds(FLERR, arg[iarg + 2], 1, atom->ntypes, jlo, jhi, error);
       bo_cut = utils::numeric(FLERR, arg[iarg + 3], false, lmp);
       if ((bo_cut > 1.0) || (bo_cut < 0.0))
-        error->all(FLERR, "Fix reaxff/species invalid cutoff value: {}", bo_cut);
+        error->all(FLERR, iarg + 3, "Fix reaxff/species invalid cutoff value: {}", bo_cut);
 
       for (int i = ilo; i <= ihi; ++i) {
         for (int j = MAX(jlo, i); j <= jhi; ++j) {
@@ -201,7 +202,7 @@ FixReaxFFSpecies::FixReaxFFSpecies(LAMMPS *lmp, int narg, char **arg) :
         if (fdel) fclose(fdel);
         fdel = fopen(filedel, "w");
         if (!fdel)
-          error->one(FLERR, "Cannot open fix reaxff/species delete file {}: {}", filedel,
+          error->one(FLERR, iarg + 1, "Cannot open fix reaxff/species delete file {}: {}", filedel,
                      utils::getsyserror());
       }
       del_opened = 1;
@@ -231,7 +232,7 @@ FixReaxFFSpecies::FixReaxFFSpecies(LAMMPS *lmp, int narg, char **arg) :
         iarg += ndelspec + 4;
 
       } else
-        error->all(FLERR, "Unknown fix reaxff/species delete option: {}", arg[iarg]);
+        error->all(FLERR, iarg, "Unknown fix reaxff/species delete option: {}", arg[iarg]);
       // rate limit when deleting molecules
     } else if (strcmp(arg[iarg], "delete_rate_limit") == 0) {
       if (iarg + 3 > narg)
@@ -241,10 +242,10 @@ FixReaxFFSpecies::FixReaxFFSpecies(LAMMPS *lmp, int narg, char **arg) :
         delete_Nlimit_varname = &arg[iarg + 1][2];
         delete_Nlimit_varid = input->variable->find(delete_Nlimit_varname.c_str());
         if (delete_Nlimit_varid < 0)
-          error->all(FLERR, "Fix reaxff/species: Variable name {} does not exist",
+          error->all(FLERR, iarg + 1, "Fix reaxff/species: Variable name {} does not exist",
                      delete_Nlimit_varname);
         if (!input->variable->equalstyle(delete_Nlimit_varid))
-          error->all(FLERR, "Fix reaxff/species: Variable {} is not equal-style",
+          error->all(FLERR, iarg + 1, "Fix reaxff/species: Variable {} is not equal-style",
                      delete_Nlimit_varname);
       } else
         delete_Nlimit = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
@@ -256,7 +257,7 @@ FixReaxFFSpecies::FixReaxFFSpecies(LAMMPS *lmp, int narg, char **arg) :
       posflag = 1;
       posfreq = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
       if (posfreq < nfreq || (posfreq % nfreq != 0))
-        error->all(FLERR, "Incompatible fix reaxff/species position frequency {}",
+        error->all(FLERR, iarg + 1, "Incompatible fix reaxff/species position frequency {}",
                    posfreq);
 
       filepos = new char[255];
@@ -267,7 +268,7 @@ FixReaxFFSpecies::FixReaxFFSpecies(LAMMPS *lmp, int narg, char **arg) :
         if (comm->me == 0) {
           pos = fopen(filepos, "w");
           if (pos == nullptr)
-            error->one(FLERR, "Cannot open fix reaxff/species position file: {}",
+            error->one(FLERR, iarg + 2, "Cannot open fix reaxff/species position file: {}",
                        utils::getsyserror());
         }
         singlepos_opened = 1;
@@ -275,7 +276,7 @@ FixReaxFFSpecies::FixReaxFFSpecies(LAMMPS *lmp, int narg, char **arg) :
       }
       iarg += 3;
     } else
-      error->all(FLERR, "Unknown fix reaxff/species keyword: {}", arg[iarg]);
+      error->all(FLERR, iarg, "Unknown fix reaxff/species keyword: {}", arg[iarg]);
   }
 
   if (delflag && specieslistflag && masslimitflag)
@@ -341,6 +342,9 @@ int FixReaxFFSpecies::setmask()
 
 void FixReaxFFSpecies::setup(int /*vflag*/)
 {
+  if (atom->natoms > MAXSMALLINT)
+    error->all(FLERR, Error::NOLASTLINE, "Too many atoms for fix {}", style);
+    
   ntotal = static_cast<int>(atom->natoms);
 
   if (!eleflag) {
@@ -358,11 +362,12 @@ void FixReaxFFSpecies::setup(int /*vflag*/)
 void FixReaxFFSpecies::init()
 {
   if (atom->tag_enable == 0)
-    error->all(FLERR, "Cannot use fix reaxff/species unless atoms have IDs");
+    error->all(FLERR, Error::NOLASTLINE, "Cannot use fix reaxff/species unless atoms have IDs");
 
   reaxff = dynamic_cast<PairReaxFF *>(force->pair_match("^reax..", 0));
   if (reaxff == nullptr)
-    error->all(FLERR, "Cannot use fix reaxff/species without a reaxff pair_style");
+    error->all(FLERR, Error::NOLASTLINE,
+               "Cannot use fix reaxff/species without a reaxff pair_style");
 
   reaxff->fixspecies_flag = 1;
 
@@ -399,10 +404,10 @@ void FixReaxFFSpecies::init()
   if (delete_Nsteps > 0 && delete_Nlimit_varid > -1) {
     delete_Nlimit_varid = input->variable->find(delete_Nlimit_varname.c_str());
     if (delete_Nlimit_varid < 0)
-      error->all(FLERR, "Fix reaxff/species: Variable name {} does not exist",
+      error->all(FLERR, Error::NOLASTLINE, "Fix reaxff/species: Variable name {} does not exist",
                  delete_Nlimit_varname);
     if (!input->variable->equalstyle(delete_Nlimit_varid))
-      error->all(FLERR, "Fix reaxff/species: Variable {} is not equal-style",
+      error->all(FLERR, Error::NOLASTLINE, "Fix reaxff/species: Variable {} is not equal-style",
                  delete_Nlimit_varname);
   }
 }
@@ -823,8 +828,8 @@ void FixReaxFFSpecies::OpenPos()
     auto filecurrent = utils::star_subst(filepos, update->ntimestep, padflag);
     pos = fopen(filecurrent.c_str(), "w");
     if (pos == nullptr)
-      error->one(FLERR, "Cannot open fix reaxff/species position file {}: {}", filecurrent,
-                 utils::getsyserror());
+      error->one(FLERR, Error::NOLASTLINE, "Cannot open fix reaxff/species position file {}: {}",
+                 filecurrent, utils::getsyserror());
   } else
     pos = nullptr;
   multipos_opened = 1;
