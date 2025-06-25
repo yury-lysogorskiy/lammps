@@ -38,7 +38,7 @@ private:
     QTextCharFormat formatURL;
     QLabel *summary;
     QTextDocument *document;
-    int nwarnings, nlines;
+    int nwarnings, oldwarnings, nlines, oldlines;
 };
 #endif
 // Local Variables:

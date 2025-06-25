@@ -438,9 +438,9 @@ FixLbFluid::FixLbFluid(LAMMPS *lmp, int narg, char **arg) :
   //--------------------------------------------------------------------------
   // Set the total number of grid points in each direction.
   //--------------------------------------------------------------------------
-  Nbx = (int) (domain->xprd / dx_lb + 0.5);
-  Nby = (int) (domain->yprd / dx_lb + 0.5);
-  Nbz = (int) (domain->zprd / dx_lb + 0.5);
+  Nbx = std::lround(domain->xprd / dx_lb);
+  Nby = std::lround(domain->yprd / dx_lb);
+  Nbz = std::lround(domain->zprd / dx_lb);
 
   //--------------------------------------------------------------------------
   // Set the number of grid points in each dimension for the local subgrids.
@@ -739,9 +739,9 @@ void FixLbFluid::init()
   // between runs.
   //--------------------------------------------------------------------------
   int Nbx_now, Nby_now, Nbz_now;
-  Nbx_now = (int) (domain->xprd / dx_lb + 0.5);
-  Nby_now = (int) (domain->yprd / dx_lb + 0.5);
-  Nbz_now = (int) (domain->zprd / dx_lb + 0.5);
+  Nbx_now = std::lround(domain->xprd / dx_lb);
+  Nby_now = std::lround(domain->yprd / dx_lb);
+  Nbz_now = std::lround(domain->zprd / dx_lb);
   // If there are walls in the z-direction add an extra grid point.
   if (domain->periodicity[2] == 0) { Nbz_now += 1; }
 

@@ -34,6 +34,8 @@
 
 #include <cctype>
 #include <cerrno>
+#include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <stdexcept>
@@ -270,6 +272,11 @@ void utils::fmtargs_logmesg(LAMMPS *lmp, fmt::string_view format, fmt::format_ar
 void utils::print(FILE *fp, const std::string &mesg)
 {
   fputs(mesg.c_str(), fp);
+}
+
+void utils::print(const std::string &mesg)
+{
+  fputs(mesg.c_str(), stdout);
 }
 
 void utils::fmtargs_print(FILE *fp, fmt::string_view format, fmt::format_args args)
@@ -529,7 +536,7 @@ double utils::numeric(const char *file, int line, const std::string &str, bool d
       lmp->error->all(file, line, msg);
   }
 
-  double rv = 0;
+  double rv = 0.0;
   auto msg = fmt::format("Floating point number {} in input script or data file is invalid", buf);
   try {
     std::size_t endpos;
@@ -546,6 +553,12 @@ double utils::numeric(const char *file, int line, const std::string &str, bool d
     else
       lmp->error->all(file, line, msg);
   } catch (std::out_of_range const &) {
+    // could be a denormal number. try again with std::strtod().
+    char *end;
+    rv = std::strtod(buf.c_str(), &end);
+    // return value if denormal
+    if ((rv > -HUGE_VAL) && (rv < HUGE_VAL)) return rv;
+
     msg = fmt::format("Floating point number {} in input script or data file is out of range", buf);
     if (do_abort)
       lmp->error->one(file, line, msg);

@@ -572,7 +572,6 @@ double GranSubModNormalMDR::calculate_forces()
   double *sigmaxx = atom->dvector[index_sigmaxx];
   double *sigmayy = atom->dvector[index_sigmayy];
   double *sigmazz = atom->dvector[index_sigmazz];
-  double *dRavg = atom->dvector[index_dRavg];
 
   const int itag_true = atom->tag[gm->i]; // true i particle tag
   const int jtag_true = atom->tag[gm->j]; // true j particle tag

@@ -419,6 +419,9 @@ bigint ReaderNative::read_header(double box[3][3], int &boxinfo, int &triclinic,
       fieldindex[i] = find_label("iy", labels);
     else if (fieldtype[i] == IZ)
       fieldindex[i] = find_label("iz", labels);
+
+    else if (fieldtype[i] == APIP_LAMBDA)
+      fieldindex[i] = find_label("apip_lambda", labels);
   }
 
   // set fieldflag = -1 if any unfound fields

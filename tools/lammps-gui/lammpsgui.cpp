@@ -2215,9 +2215,7 @@ void TutorialWizard::accept()
 
     // get hold of LAMMPS-GUI main widget
     if (dirname) {
-        LammpsGui *main = nullptr;
-        for (QWidget *widget : QApplication::topLevelWidgets())
-            if (widget->objectName() == "LammpsGui") main = dynamic_cast<LammpsGui *>(widget);
+        auto *main = dynamic_cast<LammpsGui *>(get_main_widget());
         if (main) main->setup_tutorial(_ntutorial, curdir, purgedir, getsolution, openwebpage);
     }
 }
