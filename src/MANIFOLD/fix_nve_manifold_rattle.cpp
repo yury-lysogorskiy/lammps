@@ -90,7 +90,7 @@ FixNVEManifoldRattle::FixNVEManifoldRattle( LAMMPS *lmp, int &narg, char **arg,
   dtv = dtf = 0;
 
   tolerance = utils::numeric( FLERR, arg[3] ,false,lmp);
-  max_iter  = utils::numeric( FLERR, arg[4] ,false,lmp);
+  max_iter  = utils::inumeric( FLERR, arg[4] ,false,lmp);
 
   ptr_m = create_manifold(arg[5], lmp, narg, arg);
   if (!ptr_m) error->all(FLERR,"Error creating manifold pointer");
