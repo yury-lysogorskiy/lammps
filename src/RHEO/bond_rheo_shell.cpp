@@ -147,7 +147,8 @@ void BondRHEOShell::store_data()
 
       // map to find index n
       j = atom->map(atom->bond_atom[i][m]);
-      if (j == -1) error->one(FLERR, "Atom missing in BPM bond");
+      if (j == -1) error->one(FLERR, Error::NOLASTLINE,
+                              "Atom {} missing in BPM bond", atom->bond_atom[i][m]);
 
       fix_bond_history->update_atom_value(i, m, 0, 0.0);
       fix_bond_history->update_atom_value(i, m, 1, 0.0);
@@ -352,19 +353,20 @@ void BondRHEOShell::init_style()
   BondBPM::init_style();
 
   if (comm->ghost_velocity == 0)
-    error->all(FLERR, "Bond rheo/shell requires ghost atoms store velocity");
+    error->all(FLERR, Error::NOLASTLINE, "Bond rheo/shell requires ghost atoms store velocity");
 
   auto fixes = modify->get_fix_by_style("^rheo$");
-  if (fixes.size() == 0) error->all(FLERR, "Need to define fix rheo to use bond rheo/shell");
+  if (fixes.size() == 0)
+    error->all(FLERR, Error::NOLASTLINE, "Need to define fix rheo to use bond rheo/shell");
   class FixRHEO *fix_rheo = dynamic_cast<FixRHEO *>(fixes[0]);
 
   if (!fix_rheo->surface_flag)
-    error->all(FLERR, "Bond rheo/shell requires surface calculation in fix rheo");
+    error->all(FLERR, Error::NOLASTLINE, "Bond rheo/shell requires surface calculation in fix rheo");
   compute_surface = fix_rheo->compute_surface;
 
   fixes = modify->get_fix_by_style("^rheo/oxidation$");
   if (fixes.size() == 0)
-    error->all(FLERR, "Need to define fix rheo/oxidation to use bond rheo/shell");
+    error->all(FLERR, Error::NOLASTLINE, "Need to define fix rheo/oxidation to use bond rheo/shell");
   class FixRHEOOxidation *fix_rheo_oxidation = dynamic_cast<FixRHEOOxidation *>(fixes[0]);
 
   rsurf = fix_rheo_oxidation->rsurf;
@@ -383,14 +385,13 @@ void BondRHEOShell::settings(int narg, char **arg)
     if (strcmp(arg[iarg], "t/form") == 0) {
       if (iarg + 1 > narg) utils::missing_cmd_args(FLERR, "bond rheo/shell t/form", error);
       tform = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
+      if (tform < 0.0)
+        error->all(FLERR, iarg + 1, "Illegal bond rheo/shell command, must specify positive formation time");
       i += 1;
     } else {
-      error->all(FLERR, "Illegal bond rheo/shell command, invalid argument {}", arg[iarg]);
+      error->all(FLERR, iarg, "Illegal bond rheo/shell command, invalid argument {}", arg[iarg]);
     }
   }
-
-  if (tform < 0.0)
-    error->all(FLERR, "Illegal bond rheo/shell command, must specify positive formation time");
 }
 
 /* ----------------------------------------------------------------------
@@ -491,15 +492,17 @@ double BondRHEOShell::single(int type, double rsq, int i, int j, double &fforce)
 
   double r0 = -1;
   double t = -1;
+  const auto *tag = atom->tag;
   for (int n = 0; n < atom->num_bond[i]; n++) {
-    if (atom->bond_atom[i][n] == atom->tag[j]) {
+    if (atom->bond_atom[i][n] == tag[j]) {
       r0 = fix_bond_history->get_atom_value(i, n, 0);
       t = fix_bond_history->get_atom_value(i, n, 1);
     }
   }
 
   if (r0 == -1)
-    error->one(FLERR, "Could not find bond");
+    error->one(FLERR, Error::NOLASTLINE,
+               "Could not find bond between atoms {} and {}", tag[i], tag[j]);
 
   svector[1] = t;
   if (t < tform) return 0.0;
