@@ -32,7 +32,7 @@ namespace LAMMPS_NS {
 class PPPMElectrode : public PPPM, public ElectrodeKSpace {
  public:
   PPPMElectrode(class LAMMPS *);
-  ~PPPMElectrode() override;
+  ~PPPMElectrode() noexcept(false) override;
   void init() override;
   void setup() override;
   void reset_grid() override;
