@@ -929,6 +929,6 @@ double FixColvars::compute_scalar()
 double FixColvars::memory_usage()
 {
   double bytes = (double) (num_coords * (2*sizeof(int)+3*sizeof(double)));
-  bytes += (double)(double) (nmax*size_one) + sizeof(this);
+  bytes += (double) (nmax*size_one) + sizeof(*this);
   return bytes;
 }
