@@ -48,7 +48,7 @@ enum{ATOM_SELECT,MOL_SELECT,TYPE_SELECT,GROUP_SELECT,REGION_SELECT};
 
 enum{ANGLE,ANGMOM,APIP_LAMBDA,BOND,CC,CHARGE,DENSITY,DIAMETER,DIHEDRAL,DIPOLE,
   DIPOLE_RANDOM,DPD_THETA,EDPD_CV,EDPD_TEMP,EPSILON,IMAGE,IMPROPER,LENGTH,
-  MASS,MOLECULE,OMEGA,QUAT,QUAT_RANDOM,RADIUS_ELECTRON,SHAPE,
+  MASS,MOLECULE,OMEGA,QUAT,QUAT_RANDOM,RADIUS_ELECTRON,RHEO_STATUS,SHAPE,
   SMD_CONTACT_RADIUS,SMD_MASS_DENSITY,SPH_CV,SPH_E,SPH_RHO,
   SPIN_ATOM,SPIN_ATOM_RANDOM,SPIN_ELECTRON,TEMPERATURE,THETA,THETA_RANDOM,
   TRI,TYPE,TYPE_FRACTION,TYPE_RATIO,TYPE_SUBSET,VOLUME,VX,VY,VZ,X,Y,Z,
@@ -296,6 +296,14 @@ void Set::process_args(int caller_flag, int narg, char **arg)
       action->keyword = RADIUS_ELECTRON;
       process_radius_election(iarg,narg,arg,action);
       invoke_choice[naction++] = &Set::invoke_radius_election;
+    } else if (strcmp(arg[iarg],"rheo/rho") == 0) {
+      action->keyword = SPH_RHO;
+      process_sph_rho(iarg,narg,arg,action);
+      invoke_choice[naction++] = &Set::invoke_sph_rho;
+    } else if (strcmp(arg[iarg],"rheo/status") == 0) {
+      action->keyword = RHEO_STATUS;
+      process_rheo_status(iarg,narg,arg,action);
+      invoke_choice[naction++] = &Set::invoke_rheo_status;
     } else if (strcmp(arg[iarg],"shape") == 0) {
       action->keyword = SHAPE;
       process_shape(iarg,narg,arg,action);
@@ -2024,6 +2032,44 @@ void Set::invoke_radius_election(Action *action)
     }
 
     eradius[i] = radius;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+
+void Set::process_rheo_status(int &iarg, int narg, char **arg, Action *action)
+{
+  if (!atom->rheo_status_flag)
+    error->all(FLERR,"Cannot set attribute {} for atom style {}", arg[iarg], atom->get_style());
+  if (iarg+2 > narg) utils::missing_cmd_args(FLERR, "set rheo/status", error);
+
+  if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
+  else {
+    action->ivalue1 = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
+    if (action->ivalue1 != 0 && action->ivalue1 != 1)
+      error->one(FLERR,"Invalid rheo/status {} in set command", action->ivalue1);
+  }
+
+  iarg += 2;
+}
+
+void Set::invoke_rheo_status(Action *action)
+{
+  int nlocal = atom->nlocal;
+  int *status = atom->rheo_status;
+
+  int varflag = action->varflag;
+  int rheo_status;
+  if (!action->varflag1) rheo_status = action->ivalue1;
+
+  for (int i = 0; i < nlocal; i++) {
+    if (!select[i]) continue;
+    if (varflag) {
+      rheo_status = static_cast<int> (vec1[i]);
+      if (rheo_status != 0 && rheo_status != 1)
+        error->one(FLERR,"Invalid rheo/status in set command");
+    }
+    status[i] = rheo_status;
   }
 }
 
