@@ -73,7 +73,7 @@ class FixElectrodeConp : public Fix {
   enum class VarStyle { CONST, EQUAL, UNSET };
   virtual void update_psi();
   virtual void pre_update() {};
-  virtual void recompute_potential(std::vector<double>, std::vector<double>){};
+  virtual void recompute_potential(const std::vector<double> &, const std::vector<double> &) {};
   virtual std::vector<double> constraint_projection(std::vector<double>);
   virtual std::vector<double> constraint_correction(std::vector<double>);
   virtual void compute_macro_matrices();

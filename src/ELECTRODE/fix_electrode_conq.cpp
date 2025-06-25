@@ -113,7 +113,7 @@ std::vector<double> FixElectrodeConq::constraint_projection(std::vector<double> 
    Recompute group potential as average for output if using cg algo
 ------------------------------------------------------------------------- */
 
-void FixElectrodeConq::recompute_potential(std::vector<double> b, std::vector<double> q_local)
+void FixElectrodeConq::recompute_potential(const std::vector<double> &b, const std::vector<double> &q_local)
 {
   const int n = b.size();
   auto a = ele_ele_interaction(q_local);
