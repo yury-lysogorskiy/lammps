@@ -927,7 +927,7 @@ int utils::expand_args(const char *file, int line, int narg, char **arg, int mod
 
       if (gridid[0][0] == 'c') {
 
-        auto compute = lmp->modify->get_compute_by_id(gridid[0].substr(2));
+        auto *compute = lmp->modify->get_compute_by_id(gridid[0].substr(2));
         if (compute && compute->pergrid_flag) {
 
           int dim = 0;
@@ -946,7 +946,7 @@ int utils::expand_args(const char *file, int line, int narg, char **arg, int mod
 
       } else if (gridid[0][0] == 'f') {
 
-        auto fix = lmp->modify->get_fix_by_id(gridid[0].substr(2));
+        auto *fix = lmp->modify->get_fix_by_id(gridid[0].substr(2));
         if (fix && fix->pergrid_flag) {
 
           int dim = 0;
@@ -1003,7 +1003,7 @@ int utils::expand_args(const char *file, int line, int narg, char **arg, int mod
       // compute
 
       if (word[0] == 'c') {
-        auto compute = lmp->modify->get_compute_by_id(id);
+        auto *compute = lmp->modify->get_compute_by_id(id);
 
         // check for global vector/array, peratom array, local array
 
@@ -1026,7 +1026,7 @@ int utils::expand_args(const char *file, int line, int narg, char **arg, int mod
         // fix
 
       } else if (word[0] == 'f') {
-        auto fix = lmp->modify->get_fix_by_id(id);
+        auto *fix = lmp->modify->get_fix_by_id(id);
 
         // check for global vector/array, peratom array, local array
 
