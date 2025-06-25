@@ -1340,7 +1340,7 @@ void PairAmoeba::polar_kspace()
 
     // gridpre = my portion of 3d grid in brick decomp w/ ghost values
 
-    FFT_SCALAR ***gridpre = (FFT_SCALAR ***) p_kspace->zero();
+    auto ***gridpre = (FFT_SCALAR ***) p_kspace->zero();
 
     // map atoms to grid
 
@@ -1399,7 +1399,7 @@ void PairAmoeba::polar_kspace()
     // post-convolution operations including backward FFT
     // gridppost = my portion of 3d grid in brick decomp w/ ghost values
 
-    FFT_SCALAR ***gridpost = (FFT_SCALAR ***) p_kspace->post_convolution();
+    auto ***gridpost = (FFT_SCALAR ***) p_kspace->post_convolution();
 
     // get potential
 
@@ -1432,7 +1432,7 @@ void PairAmoeba::polar_kspace()
 
   // gridpre2 = my portion of 4d grid in brick decomp w/ ghost values
 
-  FFT_SCALAR ****gridpre2 = (FFT_SCALAR ****) pc_kspace->zero();
+  auto ****gridpre2 = (FFT_SCALAR ****) pc_kspace->zero();
 
   // map 2 values to grid
 
@@ -1464,7 +1464,7 @@ void PairAmoeba::polar_kspace()
   // post-convolution operations including backward FFT
   // gridppost = my portion of 4d grid in brick decomp w/ ghost values
 
-  FFT_SCALAR ****gridpost = (FFT_SCALAR ****) pc_kspace->post_convolution();
+  auto ****gridpost = (FFT_SCALAR ****) pc_kspace->post_convolution();
 
   // get potential
 
@@ -1870,7 +1870,7 @@ void PairAmoeba::polar_kspace()
   // gridpre = my portion of 3d grid in brick decomp w/ ghost values
   // zeroed by zero()
 
-  FFT_SCALAR ***gridpre = (FFT_SCALAR ***) p_kspace->zero();
+  auto ***gridpre = (FFT_SCALAR ***) p_kspace->zero();
 
   // map atoms to grid
 
@@ -1966,7 +1966,7 @@ void PairAmoeba::polar_kspace()
     // gridpre = my portion of 3d grid in brick decomp w/ ghost values
     // zeroed by zero()
 
-    FFT_SCALAR ***gridpre = (FFT_SCALAR ***) p_kspace->zero();
+    auto ***gridpre = (FFT_SCALAR ***) p_kspace->zero();
 
     // map atoms to grid
 
