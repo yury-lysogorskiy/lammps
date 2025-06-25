@@ -32,7 +32,7 @@ namespace LAMMPS_NS {
 class EwaldElectrode : public Ewald, public ElectrodeKSpace {
  public:
   EwaldElectrode(class LAMMPS *);
-  ~EwaldElectrode() noexcept(false) override;
+  ~EwaldElectrode() override;
   void init() override;
   void setup() override;
   void compute(int, int) override;

@@ -48,7 +48,7 @@ EwaldElectrode::EwaldElectrode(LAMMPS *lmp) : Ewald(lmp), boundcorr(nullptr)
    free all memory
 ------------------------------------------------------------------------- */
 
-EwaldElectrode::~EwaldElectrode() noexcept(false)
+EwaldElectrode::~EwaldElectrode()
 {
   delete boundcorr;
 }

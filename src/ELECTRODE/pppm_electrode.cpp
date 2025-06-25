@@ -82,7 +82,7 @@ PPPMElectrode::PPPMElectrode(LAMMPS *lmp) :
    free all memory
 ------------------------------------------------------------------------- */
 
-PPPMElectrode::~PPPMElectrode() noexcept(false)
+PPPMElectrode::~PPPMElectrode()
 {
   if (copymode) return;
 

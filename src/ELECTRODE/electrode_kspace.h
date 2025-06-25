@@ -23,9 +23,6 @@
 namespace LAMMPS_NS {
 class ElectrodeKSpace {
  public:
-  ElectrodeKSpace() = default;
-  virtual ~ElectrodeKSpace() noexcept(false) = default;
-
   virtual void compute_vector(double *, int, int, bool) = 0;
   virtual void compute_vector_corr(double *, int, int, bool) = 0;
   virtual void compute_matrix(bigint *, double **, bool) = 0;

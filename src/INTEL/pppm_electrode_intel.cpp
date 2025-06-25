@@ -81,7 +81,7 @@ PPPMElectrodeIntel::PPPMElectrodeIntel(LAMMPS *lmp) :
   last_invert_source = false;
 }
 
-PPPMElectrodeIntel::~PPPMElectrodeIntel() noexcept(false)
+PPPMElectrodeIntel::~PPPMElectrodeIntel()
 {
   memory->destroy3d_offset(electrolyte_density_brick, nzlo_out, nylo_out, nxlo_out);
   memory->destroy(electrolyte_density_fft);
