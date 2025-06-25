@@ -321,8 +321,8 @@ double PairLJLongCoulLongDielectric::single(int i, int j, int itype, int jtype, 
       const int k = (t.i & ncoulmask) >> ncoulshiftbits;
       double f = (rsq - rtable[k]) * drtable[k], qiqj = q[i] * q[j];
       t.f = (1.0 - factor_coul) * (ctable[k] + f * dctable[k]);
-      force_coul = qiqj * (ftable[k] + f * dftable[k] - t.f);
-      eng += qiqj * (etable[k] + f * detable[k] - t.f) * (ei + ej) * 0.5;
+      force_coul = qiqj * (ftable[k] + f * dftable[k] - (double) t.f);
+      eng += qiqj * (etable[k] + f * detable[k] - (double) t.f) * (ei + ej) * 0.5;
     }
   } else
     force_coul = 0.0;
