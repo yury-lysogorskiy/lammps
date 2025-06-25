@@ -270,8 +270,7 @@ FixBocs::FixBocs(LAMMPS *lmp, int narg, char **arg) :
   pstat_flag = 0;
   pstyle = ISO;
 
-  for (int i = 0; i < 6; i++)
-    if (p_flag[i]) pstat_flag = 1;
+  if (p_flag[0] || p_flag[1] || p_flag[2] || p_flag[3] || p_flag[4] || p_flag[5]) pstat_flag = 1;
 
   if (pstat_flag) {
     if (p_flag[0]) box_change |= BOX_CHANGE_X;
