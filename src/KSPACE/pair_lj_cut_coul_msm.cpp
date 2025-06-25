@@ -431,7 +431,7 @@ double PairLJCutCoulMSM::single(int i, int j, int itype, int jtype,
       rsq_lookup_single.f = rsq;
       itable = rsq_lookup_single.i & ncoulmask;
       itable >>= ncoulshiftbits;
-      fraction = (rsq_lookup_single.f - rtable[itable]) * drtable[itable];
+      fraction = ((double) rsq_lookup_single.f - rtable[itable]) * drtable[itable];
       table = ftable[itable] + fraction*dftable[itable];
       forcecoul = atom->q[i]*atom->q[j] * table;
       if (factor_coul < 1.0) {
