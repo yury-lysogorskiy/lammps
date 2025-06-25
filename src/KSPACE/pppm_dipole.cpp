@@ -839,11 +839,8 @@ void PPPMDipole::set_grid_global()
 
       // set local grid dimension
 
-      int npey_fft,npez_fft;
-      if (nz_pppm >= nprocs) {
-        npey_fft = 1;
-        npez_fft = nprocs;
-      } else procs2grid2d(nprocs,ny_pppm,nz_pppm,&npey_fft,&npez_fft);
+      int npey_fft = 1, npez_fft = nprocs;
+      procs2grid2d(nprocs,ny_pppm,nz_pppm,npey_fft,npez_fft);
 
       int me_y = me % npey_fft;
       int me_z = me / npey_fft;
