@@ -164,7 +164,7 @@ void PairTableOMP::eval(int iifrom, int iito, ThrData * const thr)
           rsq_lookup.f = rsq;
           itable = rsq_lookup.i & tb->nmask;
           itable >>= tb->nshiftbits;
-          fraction = (rsq_lookup.f - tb->rsq[itable]) * tb->drsq[itable];
+          fraction = (double) (rsq_lookup.f - tb->rsq[itable]) * tb->drsq[itable];
           value = tb->f[itable] + fraction*tb->df[itable];
           fpair = factor_lj * value;
         }
