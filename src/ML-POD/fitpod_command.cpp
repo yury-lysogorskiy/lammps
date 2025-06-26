@@ -2225,7 +2225,7 @@ void FitPOD::KmeansClustering(double *points, double *centroids, int *assignment
   }
 }
 
-void FitPOD::savematrix2binfile(std::string filename, double *A, int nrows, int ncols)
+void FitPOD::savematrix2binfile(const std::string &filename, double *A, int nrows, int ncols)
 {
   FILE *fp = fopen(filename.c_str(), "wb");
   double sz[2];
@@ -2236,7 +2236,7 @@ void FitPOD::savematrix2binfile(std::string filename, double *A, int nrows, int 
   fclose(fp);
 }
 
-void FitPOD::saveintmatrix2binfile(std::string filename, int *A, int nrows, int ncols)
+void FitPOD::saveintmatrix2binfile(const std::string &filename, int *A, int nrows, int ncols)
 {
   FILE *fp = fopen(filename.c_str(), "wb");
   int sz[2];
@@ -2247,8 +2247,8 @@ void FitPOD::saveintmatrix2binfile(std::string filename, int *A, int nrows, int 
   fclose(fp);
 }
 
-void FitPOD::savedata2textfile(std::string filename, std::string text, double *A, int n, int m,
-                               int dim)
+void FitPOD::savedata2textfile(const std::string &filename, const std::string &text, double *A,
+                               int n, int m, int dim)
 {
   if (comm->me == 0) {
     int precision = 15;
