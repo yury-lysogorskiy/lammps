@@ -522,7 +522,7 @@ int FitPOD::get_number_atoms(std::vector<int> &num_atom, std::vector<int> &num_a
   }
 
   int num_atom_all = 0;
-  for (int i = 0; i < (int) num_atom.size(); i++) num_atom_all += num_atom[i];
+  for (auto i : num_atom) num_atom_all += i;
 
   return num_atom_all;
 }
@@ -757,13 +757,13 @@ void FitPOD::get_data(datastruct &data, const std::vector<std::string> &species)
   }
 
   int len = data.num_atom.size();
-  data.num_atom_min = podArrayMin(&data.num_atom[0], len);
-  data.num_atom_max = podArrayMax(&data.num_atom[0], len);
+  data.num_atom_min = podArrayMin(data.num_atom.data(), len);
+  data.num_atom_max = podArrayMax(data.num_atom.data(), len);
   data.num_atom_cumsum.resize(len + 1);
-  podCumsum(&data.num_atom_cumsum[0], &data.num_atom[0], len + 1);
+  podCumsum(data.num_atom_cumsum.data(), data.num_atom.data(), len + 1);
 
   data.num_config_cumsum.resize(nfiles + 1);
-  podCumsum(&data.num_config_cumsum[0], &data.num_config[0], nfiles + 1);
+  podCumsum(data.num_config_cumsum.data(), data.num_config.data(), nfiles + 1);
 
   // convert all structures to triclinic system
 
@@ -889,12 +889,12 @@ void FitPOD::select_data(datastruct &newdata, const datastruct &data)
     newdata.num_atom_each_file[file] = num_atom_sum;
   }
   int len = newdata.num_atom.size();
-  newdata.num_atom_min = podArrayMin(&newdata.num_atom[0], len);
-  newdata.num_atom_max = podArrayMax(&newdata.num_atom[0], len);
+  newdata.num_atom_min = podArrayMin(newdata.num_atom.data(), len);
+  newdata.num_atom_max = podArrayMax(newdata.num_atom.data(), len);
   newdata.num_atom_cumsum.resize(len + 1);
-  podCumsum(&newdata.num_atom_cumsum[0], &newdata.num_atom[0], len + 1);
+  podCumsum(newdata.num_atom_cumsum.data(), newdata.num_atom.data(), len + 1);
   newdata.num_atom_sum = newdata.num_atom_cumsum[len];
-  podCumsum(&newdata.num_config_cumsum[0], &newdata.num_config[0], nfiles + 1);
+  podCumsum(newdata.num_config_cumsum.data(), newdata.num_config.data(), nfiles + 1);
   newdata.num_config_sum = newdata.num_atom.size();
 
   int n = newdata.num_config_sum;
@@ -1882,8 +1882,8 @@ void FitPOD::error_analysis(const datastruct &data, double *coeff)
     }
   }
 
-  MPI_Allreduce(MPI_IN_PLACE, &outarray[0], m * num_configs, MPI_DOUBLE, MPI_SUM, world);
-  MPI_Allreduce(MPI_IN_PLACE, &ssrarray[0], num_configs, MPI_DOUBLE, MPI_SUM, world);
+  MPI_Allreduce(MPI_IN_PLACE, outarray.data(), m * num_configs, MPI_DOUBLE, MPI_SUM, world);
+  MPI_Allreduce(MPI_IN_PLACE, ssrarray.data(), num_configs, MPI_DOUBLE, MPI_SUM, world);
 
   ci = 0;    // configuration counter
   int nc = 0, nf = 0;
