@@ -59,6 +59,7 @@ class FixBondCreate : public Fix {
   double cutsq, fraction;
   int atype, dtype, itype;
   int angleflag, dihedralflag, improperflag;
+  int molecule_keyword;
 
   int overflow;
   tagint lastcheck;
