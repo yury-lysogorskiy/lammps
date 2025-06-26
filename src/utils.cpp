@@ -247,7 +247,7 @@ std::string utils::point_to_error(Input *input, int failed)
     }
     return cmdline;
   } else
-    return std::string("");
+    return {""};
 }
 
 /* specialization for the case of just a single string argument */
@@ -290,7 +290,8 @@ std::string utils::errorurl(int errorcode)
     return "\nFor more information see https://docs.lammps.org/Errors_details.html";
   else if (errorcode > 0)
     return fmt::format("\nFor more information see https://docs.lammps.org/err{:04d}", errorcode);
-  else return ""; // negative numbers are reserved for future use pointing to a different URL
+  else
+    return "";    // negative numbers are reserved for future use pointing to a different URL
 }
 
 void utils::flush_buffers(LAMMPS *lmp)
