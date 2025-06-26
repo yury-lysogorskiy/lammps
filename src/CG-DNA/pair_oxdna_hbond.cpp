@@ -483,7 +483,7 @@ void PairOxdnaHbond::compute(int eflag, int vflag)
       }
 
       // theta4 torque
-      if (theta4) {
+      if (theta4 != 0.0) {
 
         tpair = -f1 * f4t1 * f4t2 * f4t3 * df4t4 * f4t7 * f4t8 * factor_lj;
         MathExtra::cross3(bz,az,t4dir);

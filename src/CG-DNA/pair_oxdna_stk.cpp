@@ -598,7 +598,7 @@ void PairOxdnaStk::compute(int eflag, int vflag)
     deltb[2] = 0.0;
 
     // theta4 torque
-    if (theta4) {
+    if (theta4 != 0.0) {
 
       tpair = -f1 * df4t4 * f4t5 * f4t6 * f5c1 * f5c2;
       MathExtra::cross3(az,bz,t4dir);
