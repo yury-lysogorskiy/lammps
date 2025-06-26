@@ -25,7 +25,7 @@ namespace LAMMPS_NS {
 class BoundaryCorrection : protected Pointers {
  public:
   BoundaryCorrection(LAMMPS *);
-  virtual ~BoundaryCorrection() noexcept(false) = default;
+  ~BoundaryCorrection() noexcept(false) override = default;
 
   virtual void vector_corr(double *, int, int, bool) {};
   virtual void matrix_corr(bigint *, double **) {};
