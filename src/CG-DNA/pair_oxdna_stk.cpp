@@ -450,7 +450,7 @@ void PairOxdnaStk::compute(int eflag, int vflag)
     delf[2] += delr_st[2] * finc;
 
     // theta5p force
-    if (theta5p) {
+    if (theta5p != 0.0) {
 
       finc   = -f1 * f4t4 * df4t5 * f4t6 * f5c1 * f5c2 * rinv_st;
 
@@ -461,7 +461,7 @@ void PairOxdnaStk::compute(int eflag, int vflag)
     }
 
     // theta6p force
-    if (theta6p) {
+    if (theta6p != 0.0) {
 
       finc   = -f1 * f4t4 * f4t5 * df4t6 * f5c1 * f5c2 * rinv_st;
 
@@ -528,7 +528,7 @@ void PairOxdnaStk::compute(int eflag, int vflag)
     deltb[2] = 0.0;
 
     // cosphi1 force
-    if (cosphi1) {
+    if (cosphi1 != 0.0) {
 
       finc   = -f1 * f4t4 * f4t5 * f4t6 * df5c1 * f5c2 * rinv_ss;
 
@@ -539,7 +539,7 @@ void PairOxdnaStk::compute(int eflag, int vflag)
     }
 
     // cosphi2 force
-    if (cosphi2) {
+    if (cosphi2 != 0.0) {
 
       finc   = -f1 * f4t4 * f4t5 * f4t6 * f5c1 * df5c2 * rinv_ss;
 
@@ -614,7 +614,7 @@ void PairOxdnaStk::compute(int eflag, int vflag)
     }
 
     // theta5p torque
-    if (theta5p) {
+    if (theta5p != 0.0) {
 
       tpair = -f1 * f4t4 * df4t5 * f4t6 * f5c1 * f5c2;
       MathExtra::cross3(delr_st_norm,bz,t5pdir);
@@ -626,7 +626,7 @@ void PairOxdnaStk::compute(int eflag, int vflag)
     }
 
     // theta6p torque
-    if (theta6p) {
+    if (theta6p != 0.0) {
 
       tpair = -f1 * f4t4 * f4t5 * df4t6 * f5c1 * f5c2;
       MathExtra::cross3(delr_st_norm,az,t6pdir);
@@ -638,7 +638,7 @@ void PairOxdnaStk::compute(int eflag, int vflag)
     }
 
     // cosphi1 torque
-    if (cosphi1) {
+    if (cosphi1 != 0.0) {
 
       tpair   = -f1 * f4t4 * f4t5 * f4t6 * df5c1 * f5c2;
       MathExtra::cross3(delr_ss_norm,by,cosphi1dir);
@@ -650,7 +650,7 @@ void PairOxdnaStk::compute(int eflag, int vflag)
     }
 
     // cosphi2 torque
-    if (cosphi2) {
+    if (cosphi2 != 0.0) {
 
       tpair   = -f1 * f4t4 * f4t5 * f4t6 * f5c1 * df5c2;
       MathExtra::cross3(delr_ss_norm,ay,cosphi2dir);
