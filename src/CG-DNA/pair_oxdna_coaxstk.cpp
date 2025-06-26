@@ -250,7 +250,7 @@ void PairOxdnaCoaxstk::compute(int eflag, int vflag)
              b_cxst1[atype][btype], dtheta_cxst1_c[atype][btype]);
 
       // early rejection criterium
-      if (f4t1) {
+      if (f4t1 != 0.0) {
 
       az[0] = nz_xtrct[a][0];
       az[1] = nz_xtrct[a][1];
@@ -268,7 +268,7 @@ void PairOxdnaCoaxstk::compute(int eflag, int vflag)
              b_cxst4[atype][btype], dtheta_cxst4_c[atype][btype]);
 
       // early rejection criterium
-      if (f4t4) {
+      if (f4t4 != 0.0) {
 
       cost5 = MathExtra::dot3(delr_st_norm,az);
       if (cost5 >  1.0) cost5 =  1.0;
@@ -282,7 +282,7 @@ void PairOxdnaCoaxstk::compute(int eflag, int vflag)
              b_cxst5[atype][btype], dtheta_cxst5_c[atype][btype]);
 
       // early rejection criterium
-      if (f4t5) {
+      if (f4t5 != 0.0) {
 
       cost6 = MathExtra::dot3(delr_st_norm,bz);
       if (cost6 >  1.0) cost6 =  1.0;
@@ -311,7 +311,7 @@ void PairOxdnaCoaxstk::compute(int eflag, int vflag)
       evdwl = f2 * f4t1 * f4t4 * f4t5 * f4t6 * f5c3 * f5c3 * factor_lj;
 
       // early rejection criterium
-      if (evdwl) {
+      if (evdwl != 0.0) {
 
       df2 = DF2(r_st, k_cxst[atype][btype], cut_cxst_0[atype][btype],
             cut_cxst_lc[atype][btype], cut_cxst_hc[atype][btype], cut_cxst_lo[atype][btype], cut_cxst_hi[atype][btype],

@@ -341,7 +341,7 @@ void PairOxdnaStk::compute(int eflag, int vflag)
         b_st_lo[atype][btype], b_st_hi[atype][btype], shift_st[atype][btype]);
 
     // early rejection criterium
-    if (f1) {
+    if (f1 != 0.0) {
 
     az[0] = nz_xtrct[a][0];
     az[1] = nz_xtrct[a][1];
@@ -360,7 +360,7 @@ void PairOxdnaStk::compute(int eflag, int vflag)
         b_st4[atype][btype], dtheta_st4_c[atype][btype]);
 
     // early rejection criterium
-    if (f4t4) {
+    if (f4t4 != 0.0) {
 
     // theta5 angle and correction
     cost5p  = MathExtra::dot3(delr_st_norm,bz);
@@ -372,7 +372,7 @@ void PairOxdnaStk::compute(int eflag, int vflag)
         b_st5[atype][btype], dtheta_st5_c[atype][btype]);
 
     // early rejection criterium
-    if (f4t5) {
+    if (f4t5 != 0.0) {
 
     ay[0] = ny_xtrct[a][0];
     ay[1] = ny_xtrct[a][1];
@@ -406,7 +406,7 @@ void PairOxdnaStk::compute(int eflag, int vflag)
     evdwl = f1 * f4t4 * f4t5 * f4t6 * f5c1 * f5c2;
 
     // early rejection criterium
-    if (evdwl) {
+    if (evdwl != 0.0) {
 
     df1 = DF1(r_st, epsilon_st[atype][btype], a_st[atype][btype], cut_st_0[atype][btype],
         cut_st_lc[atype][btype], cut_st_hc[atype][btype], cut_st_lo[atype][btype], cut_st_hi[atype][btype],

@@ -214,7 +214,7 @@ void PairOxdnaXstk::compute(int eflag, int vflag)
            b_xst_lo[atype][btype], b_xst_hi[atype][btype], cut_xst_c[atype][btype]);
 
       // early rejection criterium
-      if (f2) {
+      if (f2 != 0.0) {
 
       cost1 = -1.0*MathExtra::dot3(ax,bx);
       if (cost1 >  1.0) cost1 =  1.0;
@@ -225,7 +225,7 @@ void PairOxdnaXstk::compute(int eflag, int vflag)
              b_xst1[atype][btype], dtheta_xst1_c[atype][btype]);
 
       // early rejection criterium
-      if (f4t1) {
+      if (f4t1 != 0.0) {
 
       cost2 = -1.0*MathExtra::dot3(ax,delr_hb_norm);
       if (cost2 >  1.0) cost2 =  1.0;
@@ -236,7 +236,7 @@ void PairOxdnaXstk::compute(int eflag, int vflag)
              b_xst2[atype][btype], dtheta_xst2_c[atype][btype]);
 
       // early rejection criterium
-      if (f4t2) {
+      if (f4t2 != 0.0) {
 
       cost3 = MathExtra::dot3(bx,delr_hb_norm);
       if (cost3 >  1.0) cost3 =  1.0;
@@ -247,7 +247,7 @@ void PairOxdnaXstk::compute(int eflag, int vflag)
              b_xst3[atype][btype], dtheta_xst3_c[atype][btype]);
 
       // early rejection criterium
-      if (f4t3) {
+      if (f4t3 != 0.0) {
 
       az[0] = nz_xtrct[a][0];
       az[1] = nz_xtrct[a][1];
@@ -268,7 +268,7 @@ void PairOxdnaXstk::compute(int eflag, int vflag)
              b_xst4[atype][btype], dtheta_xst4_c[atype][btype]);
 
       // early rejection criterium
-      if (f4t4) {
+      if (f4t4 != 0.0) {
 
       cost7 = -1.0*MathExtra::dot3(az,delr_hb_norm);
       if (cost7 >  1.0) cost7 =  1.0;
@@ -282,7 +282,7 @@ void PairOxdnaXstk::compute(int eflag, int vflag)
              b_xst7[atype][btype], dtheta_xst7_c[atype][btype]);
 
       // early rejection criterium
-      if (f4t7) {
+      if (f4t7 != 0.0) {
 
       cost8 = MathExtra::dot3(bz,delr_hb_norm);
       if (cost8 >  1.0) cost8 =  1.0;
@@ -300,7 +300,7 @@ void PairOxdnaXstk::compute(int eflag, int vflag)
 
 
       // early rejection criterium
-      if (evdwl) {
+      if (evdwl != 0.0) {
 
       df2 = DF2(r_hb, k_xst[atype][btype], cut_xst_0[atype][btype],
             cut_xst_lc[atype][btype], cut_xst_hc[atype][btype], cut_xst_lo[atype][btype], cut_xst_hi[atype][btype],
