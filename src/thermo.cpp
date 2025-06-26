@@ -498,10 +498,9 @@ bigint Thermo::lost_check()
   if ((maxwarn > 0) && (warnbefore == 0) && (ntotal[1] > maxwarn)) {
     warnbefore = 1;
     if (comm->me == 0)
-      error->message(FLERR,
-                     "WARNING: Too many warnings: {} vs {}. "
-                     "All future warnings will be suppressed",
-                     ntotal[1], maxwarn);
+      utils::logmesg(
+          lmp, "WARNING: Too many warnings: {} vs {}. All future warnings willbe suppressed\n",
+          ntotal[1], maxwarn);
   }
   error->set_allwarn(MIN(MAXSMALLINT, ntotal[1]));
 

@@ -223,7 +223,7 @@ void PairSRPREACT::init_style()
   arg1[0] = (char *) "norm";
   arg1[1] = (char *) "no";
   output->thermo->modify_params(2, arg1);
-  if (comm->me == 0) error->message(FLERR,"Thermo normalization turned off by pair srp/react");
+  if (comm->me == 0) utils::logmesg(lmp,"Thermo normalization turned off by pair srp/react\n");
 
   neighbor->request(this,instance_me);
 }

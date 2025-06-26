@@ -483,7 +483,7 @@ void PairSRP::init_style()
   arg1[0] = (char *) "norm";
   arg1[1] = (char *) "no";
   output->thermo->modify_params(2, arg1);
-  if (comm->me == 0) error->message(FLERR,"Thermo normalization turned off by pair srp");
+  if (comm->me == 0) utils::logmesg(lmp, "Thermo normalization turned off by pair srp\n");
 
   neighbor->add_request(this);
 }
