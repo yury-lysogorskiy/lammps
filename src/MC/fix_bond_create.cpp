@@ -37,6 +37,9 @@ using namespace MathConst;
 static constexpr double BIG = 1.0e20;
 static constexpr int DELTA = 16;
 
+// values for molecule_keyword, matching fix_bond_react.cpp
+enum { OFF, INTER, INTRA };
+
 /* ---------------------------------------------------------------------- */
 
 FixBondCreate::FixBondCreate(LAMMPS *lmp, int narg, char **arg) :
@@ -82,7 +85,7 @@ FixBondCreate::FixBondCreate(LAMMPS *lmp, int narg, char **arg) :
   fraction = 1.0;
   int seed = 12345;
   atype = dtype = itype = 0;
-
+  molecule_keyword = OFF;
   constrainflag = 0;
   constrainpass = 0;
   amin = 0;
@@ -145,7 +148,15 @@ FixBondCreate::FixBondCreate(LAMMPS *lmp, int narg, char **arg) :
       amax = (MY_PI/180.0) * amax;
       constrainflag = 1;
       iarg += 3;
-    } else error->all(FLERR,"Illegal fix bond/create command");
+    } else if (strcmp(arg[iarg],"molecule") == 0) {
+        if (iarg+2 > narg) error->all(FLERR,"Illegal fix bond/create command: "
+                                      "'molecule' has too few arguments");
+        if (strcmp(arg[iarg+1],"off") == 0) molecule_keyword = OFF; //default
+        else if (strcmp(arg[iarg+1],"inter") == 0) molecule_keyword = INTER;
+        else if (strcmp(arg[iarg+1],"intra") == 0) molecule_keyword = INTRA;
+        else error->one(FLERR,"Fix bond/create: Illegal option for 'molecule' keyword");
+        iarg += 2;
+      } else error->all(FLERR,"Illegal fix bond/create command");
   }
 
   // error check
@@ -436,6 +447,13 @@ void FixBondCreate::post_integrate()
       j = jlist[jj];
       j &= NEIGHMASK;
       if (!(mask[j] & groupbit)) continue;
+      // Copied from lines 1169 - 1173 of REACTION/fix_bond_react.cpp
+      if (molecule_keyword == INTER) {
+        if (atom->molecule[i] == atom->molecule[j]) continue;
+      } else if (molecule_keyword == INTRA) {
+        if (atom->molecule[i] != atom->molecule[j]) continue;
+      }
+       
       jtype = type[j];
 
       possible = 0;
