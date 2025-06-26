@@ -132,10 +132,9 @@ class AtomList(object):
     if index not in self._loaded:
       if self.dimensions == 2:
         atom = Atom2D(self._pylmp, index)
-        self._loaded[index] = atom
       else:
         atom = Atom(self._pylmp, index)
-        self._loaded[index] = atom
+      self._loaded[index] = atom
     return self._loaded[index]
 
   def __len__(self):
