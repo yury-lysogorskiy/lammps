@@ -615,6 +615,9 @@ They must be specified in uppercase.
    *  - ZEN4
       - HOST
       - AMD Zen4 architecture
+   *  - ZEN5
+      - HOST
+      - AMD Zen5 architecture
    *  - RISCV_SG2042
       - HOST
       - SG2042 (RISC-V) CPUs
@@ -669,6 +672,12 @@ They must be specified in uppercase.
    *  - HOPPER90
       - GPU
       - NVIDIA Hopper generation CC 9.0
+   *  - BLACKWELL100
+      - GPU
+      - NVIDIA Blackwell generation CC 10.0
+   *  - BLACKWELL120
+      - GPU
+      - NVIDIA Blackwell generation CC 12.0
    *  - AMD_GFX906
       - GPU
       - AMD GPU MI50/60
@@ -717,8 +726,11 @@ They must be specified in uppercase.
    *  - INTEL_PVC
       - GPU
       - Intel GPU Ponte Vecchio
+   *  - INTEL_DG2
+      - GPU
+      - Intel GPU DG2
 
-This list was last updated for version 4.6.0 of the Kokkos library.
+This list was last updated for version 4.6.1 of the Kokkos library.
 
 .. tabs::
 
