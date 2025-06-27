@@ -53,7 +53,7 @@ Examples
 
 .. code-block:: LAMMPS
 
-   fix 5 all bond/create 10 1 2 0.8 1 
+   fix 5 all bond/create 10 1 2 0.8 1
    fix 5 all bond/create 1 3 3 0.8 1 prob 0.5 85784 iparam 2 3
    fix 5 all bond/create 1 3 3 0.8 1 prob 0.5 85784 iparam 2 3 atype 1 dtype 2
    fix 5 all bond/create 10 13 25 7 28 iparam 1 15 jparam 1 27 prob 0.2 91322 molecule inter

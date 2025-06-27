@@ -449,7 +449,7 @@ void FixBondCreate::post_integrate()
       } else if (molecule_keyword == INTRA) {
         if (atom->molecule[i] != atom->molecule[j]) continue;
       }
-       
+
       jtype = type[j];
 
       possible = 0;
