@@ -89,6 +89,7 @@ class Set : public Command {
 
   void process_angle(int &, int, char **, Action *);
   void process_angmom(int &, int, char **, Action *);
+  void process_apip_lambda(int &, int, char **, Action *);
   void process_bond(int &, int, char **, Action *);
   void process_cc(int &, int, char **, Action *);
   void process_charge(int &, int, char **, Action *);
@@ -110,6 +111,7 @@ class Set : public Command {
   void process_quat(int &, int, char **, Action *);
   void process_quat_random(int &, int, char **, Action *);
   void process_radius_election(int &, int, char **, Action *);
+  void process_rheo_status(int &, int, char **, Action *);
   void process_shape(int &, int, char **, Action *);
   void process_smd_contact_radius(int &, int, char **, Action *);
   void process_smd_mass_density(int &, int, char **, Action *);
@@ -141,6 +143,7 @@ class Set : public Command {
 
   void invoke_angle(Action *);
   void invoke_angmom(Action *);
+  void invoke_apip_lambda(Action *);
   void invoke_bond(Action *);
   void invoke_cc(Action *);
   void invoke_charge(Action *);
@@ -162,6 +165,7 @@ class Set : public Command {
   void invoke_quat(Action *);
   void invoke_quat_random(Action *);
   void invoke_radius_election(Action *);
+  void invoke_rheo_status(Action *);
   void invoke_shape(Action *);
   void invoke_smd_contact_radius(Action *);
   void invoke_smd_mass_density(Action *);

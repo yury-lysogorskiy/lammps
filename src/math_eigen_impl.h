@@ -215,8 +215,8 @@ namespace MathEigen {
   public:
     // C++ boilerplate: copy and move constructor, swap, and assignment operator
     Jacobi(const Jacobi<Scalar, Vector, Matrix, ConstMatrix>& source);
-    Jacobi(Jacobi<Scalar, Vector, Matrix, ConstMatrix>&& other);
-    void swap(Jacobi<Scalar, Vector, Matrix, ConstMatrix> &other);
+    Jacobi(Jacobi<Scalar, Vector, Matrix, ConstMatrix>&& other) noexcept;
+    void swap(Jacobi<Scalar, Vector, Matrix, ConstMatrix> &other) noexcept;
     Jacobi<Scalar, Vector, Matrix, ConstMatrix>& operator = (Jacobi<Scalar, Vector, Matrix, ConstMatrix> source);
 
   }; // class Jacobi
@@ -878,7 +878,7 @@ Jacobi(const Jacobi<Scalar, Vector, Matrix, ConstMatrix>& source)
 
 template<typename Scalar,typename Vector,typename Matrix,typename ConstMatrix>
 void Jacobi<Scalar, Vector, Matrix, ConstMatrix>::
-swap(Jacobi<Scalar, Vector, Matrix, ConstMatrix> &other) {
+swap(Jacobi<Scalar, Vector, Matrix, ConstMatrix> &other) noexcept {
   std::swap(n, other.n);
   std::swap(is_preallocated, other.is_preallocated);
   std::swap(max_idx_row, other.max_idx_row);
@@ -888,7 +888,7 @@ swap(Jacobi<Scalar, Vector, Matrix, ConstMatrix> &other) {
 // Move constructor (C++11)
 template<typename Scalar,typename Vector,typename Matrix,typename ConstMatrix>
 Jacobi<Scalar, Vector, Matrix, ConstMatrix>::
-Jacobi(Jacobi<Scalar, Vector, Matrix, ConstMatrix>&& other) {
+Jacobi(Jacobi<Scalar, Vector, Matrix, ConstMatrix>&& other) noexcept {
   Init();
   this->swap(other);
 }

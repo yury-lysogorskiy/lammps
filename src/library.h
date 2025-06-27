@@ -240,6 +240,8 @@ int lammps_create_atoms(void *handle, int n, const int64_t *id, const int *type,
                         const double *v, const int64_t *image, int bexpand);
 #endif
 
+void lammps_create_molecule(void *handle, const char *id, const char *json);
+
 /* ----------------------------------------------------------------------
  * Library functions for accessing neighbor lists
  * ---------------------------------------------------------------------- */

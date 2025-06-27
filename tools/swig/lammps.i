@@ -176,8 +176,10 @@ extern void   lammps_scatter(void *, const char *, int, int, void *);
 extern void   lammps_scatter_subset(void *, const char *, int, int, int, int *, void *);
 extern int    lammps_create_atoms(void *handle, int n, const int *id, const int *type,
                                   const double *x, const double *v, const int *image, int bexpand);
-/*
- extern int    lammps_create_atoms(void *handle, int n, int64_t *id, int *type, */
+/* extern int lammps_create_atoms(void *handle, int n, const int64_t *id, int *type,
+  const double *x, const double *v, const int64_t *image, int bexpand); */
+extern void   lammps_create_molecule(void *handle, const char *id, const char *json);
+
 extern int    lammps_find_pair_neighlist(void *, const char *, int, int, int);
 extern int    lammps_find_fix_neighlist(void *, const char *, int);
 extern int    lammps_find_compute_neighlist(void *, const char *, int);
@@ -375,8 +377,10 @@ extern void   lammps_scatter(void *, const char *, int, int, void *);
 extern void   lammps_scatter_subset(void *, const char *, int, int, int, int *, void *);
 extern int    lammps_create_atoms(void *handle, int n, const int *id, const int *type,
                                   const double *x, const double *v, const int *image, int bexpand);
-/*
- extern int    lammps_create_atoms(void *handle, int n, int64_t *id, int *type, */
+/* extern int lammps_create_atoms(void *handle, int n, const int64_t *id, int *type,
+  const double *x, const double *v, const int64_t *image, int bexpand); */
+extern void   lammps_create_molecule(void *handle, const char *id, const char *json);
+
 extern int    lammps_find_pair_neighlist(void*, const char *, int, int, int);
 extern int    lammps_find_fix_neighlist(void*, const char *, int);
 extern int    lammps_find_compute_neighlist(void*, const char *, int);

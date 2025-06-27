@@ -35,6 +35,7 @@ This is the list of packages that may require additional steps.
    :columns: 6
 
    * :ref:`ADIOS <adios>`
+   * :ref:`APIP <apip>`
    * :ref:`ATC <atc>`
    * :ref:`AWPMD <awpmd>`
    * :ref:`COLVARS <colvar>`
@@ -1269,6 +1270,34 @@ systems.
       .. code-block:: bash
 
          ADIOS2_DIR=path make yes-adios   # path is where ADIOS 2.x is installed
+
+----------
+
+.. _apip:
+
+APIP package
+-----------------------------
+
+The APIP package depends on the library of the
+:ref:`ML-PACE <ml-pace>` package.
+The code for the library can be found
+at: `https://github.com/ICAMS/lammps-user-pace/ <https://github.com/ICAMS/lammps-user-pace/>`_
+
+.. tabs::
+
+   .. tab:: CMake build
+
+      No additional settings are needed besides ``-D PKG_APIP=yes``
+      and ``-D PKG_ML-PACE=yes``.
+      One can use a local version of the ML-PACE library instead of
+      automatically downloading the library as described :ref:`here <ml-pace>`.
+
+
+   .. tab:: Traditional make
+
+      You need to install the ML-PACE package *first* and follow
+      the instructions :ref:`here <ml-pace>` before installing
+      the APIP package.
 
 ----------
 
