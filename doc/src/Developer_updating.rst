@@ -679,3 +679,4 @@ New:
 
    if (comm->me == 0) utils::logmesg(lmp, "INFO: About to read data file: {}\n", filename);
 
+This change is **required** or else the code will not compile.
