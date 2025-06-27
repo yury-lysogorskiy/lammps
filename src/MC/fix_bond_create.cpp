@@ -1193,7 +1193,7 @@ void FixBondCreate::create_impropers(int m)
     i1 = s2list[i];
     i1local = atom->map(i1);
     if (i1local < 0)
-      error->one(FLERR, Error::NOLASTLINE, "Fix bond/create needs ghost atoms from further away");
+      error->one(FLERR, Error::NOLASTLINE, "Fix {} needs ghost atoms from further away", style);
     s1list = special[i1local];
     n1 = nspecial[i1local][0];
 
