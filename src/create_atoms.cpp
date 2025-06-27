@@ -20,6 +20,7 @@
 
 #include "atom.h"
 #include "atom_vec.h"
+#include "atom_vec_body.h"
 #include "comm.h"
 #include "domain.h"
 #include "error.h"
@@ -390,28 +391,19 @@ void CreateAtoms::command(int narg, char **arg)
     if (!input->variable->equalstyle(vvar))
       error->all(FLERR, Error::NOLASTLINE, "Variable {} for create_atoms is invalid style", vstr);
 
-    if (xstr) {
-      xvar = input->variable->find(xstr);
-      if (xvar < 0)
-        error->all(FLERR, Error::NOLASTLINE, "Variable {} for create_atoms does not exist", xstr);
-      if (!input->variable->internalstyle(xvar))
-        error->all(FLERR, Error::NOLASTLINE, "Variable {} for create_atoms is invalid style", xstr);
-    }
-    if (ystr) {
-      yvar = input->variable->find(ystr);
-      if (yvar < 0)
-        error->all(FLERR, Error::NOLASTLINE, "Variable {} for create_atoms does not exist", ystr);
-      if (!input->variable->internalstyle(yvar))
-        error->all(FLERR, Error::NOLASTLINE, "Variable {} for create_atoms is invalid style", ystr);
-    }
-    if (zstr) {
-      zvar = input->variable->find(zstr);
-      if (zvar < 0)
-        error->all(FLERR, Error::NOLASTLINE, "Variable {} for create_atoms does not exist", zstr);
-      if (!input->variable->internalstyle(zvar))
-        error->all(FLERR, Error::NOLASTLINE, "Variable {} for create_atoms is invalid style", zstr);
-    }
+#define SETUP_XYZ_VAR(str, var)                                                                   \
+  if (str) {                                                                                      \
+    var = input->variable->find(str);                                                             \
+    if (var < 0) var = input->variable->internal_create(str, 0.0);                                \
+    if (!input->variable->internalstyle(var))                                                     \
+      error->all(FLERR, Error::NOLASTLINE, "Variable {} for create_atoms is invalid style", str); \
   }
+
+    SETUP_XYZ_VAR(xstr, xvar);
+    SETUP_XYZ_VAR(ystr, yvar);
+    SETUP_XYZ_VAR(zstr, zvar);
+  }
+#undef SETUP_XYZ_VAR
 
   // require non-none lattice be defined for BOX or REGION styles
 
@@ -587,6 +579,10 @@ void CreateAtoms::command(int narg, char **arg)
     atom->nangles += nmoltotal * onemol->nangles;
     atom->ndihedrals += nmoltotal * onemol->ndihedrals;
     atom->nimpropers += nmoltotal * onemol->nimpropers;
+
+    // molecule files for bodies may only contain a single body
+
+    if (onemol->bodyflag) atom->nbodies += 1;
 
     // if atom style template
     // maxmol = max molecule ID across all procs, for previous atoms
@@ -875,7 +871,7 @@ void CreateAtoms::add_random()
             delx = xone[0] - x[i][0];
             dely = xone[1] - x[i][1];
             delz = xone[2] - x[i][2];
-            domain->minimum_image(delx, dely, delz);
+            domain->minimum_image(FLERR, delx, dely, delz);
             distsq = delx * delx + dely * dely + delz * delz;
             if (distsq < odistsq) {
               reject = 1;
@@ -891,7 +887,7 @@ void CreateAtoms::add_random()
               delx = xmol[j][0] - x[i][0];
               dely = xmol[j][1] - x[i][1];
               delz = xmol[j][2] - x[i][2];
-              domain->minimum_image(delx, dely, delz);
+              domain->minimum_image(FLERR, delx, dely, delz);
               distsq = delx * delx + dely * dely + delz * delz;
               if (distsq < odistsq) {
                 reject = 1;

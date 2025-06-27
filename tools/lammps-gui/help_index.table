@@ -482,6 +482,7 @@ fix_aveforce.html fix aveforce
 fix_ave_grid.html fix ave/grid
 fix_ave_histo.html fix ave/histo
 fix_ave_histo.html fix ave/histo/weight
+fix_ave_moments.html fix ave/moments
 fix_ave_time.html fix ave/time
 fix_balance.html fix balance
 fix_bocs.html fix bocs
@@ -542,6 +543,7 @@ fix_flow_gauss.html fix flow/gauss
 fix_freeze.html fix freeze
 fix_freeze.html fix freeze/kk
 fix_gcmc.html fix gcmc
+fix_gjf.html fix gjf
 fix_gld.html fix gld
 fix_gle.html fix gle
 fix_gravity.html fix gravity
@@ -732,6 +734,7 @@ fix_saed_vtk.html fix saed/vtk
 fix_setforce.html fix setforce
 fix_setforce.html fix setforce/kk
 fix_setforce.html fix setforce/spin
+fix_set.html fix set
 fix_sgcmc.html fix sgcmc
 fix_shake.html fix rattle
 fix_shake.html fix shake

@@ -13,6 +13,7 @@
 
 #include "fileviewer.h"
 
+#include "helpers.h"
 #include "lammpsgui.h"
 
 #include <QApplication>
@@ -107,17 +108,13 @@ FileViewer::FileViewer(const QString &_filename, QString title, QWidget *parent)
 
 void FileViewer::quit()
 {
-    LammpsGui *main = nullptr;
-    for (QWidget *widget : QApplication::topLevelWidgets())
-        if (widget->objectName() == "LammpsGui") main = dynamic_cast<LammpsGui *>(widget);
+    auto *main = dynamic_cast<LammpsGui *>(get_main_widget());
     if (main) main->quit();
 }
 
 void FileViewer::stop_run()
 {
-    LammpsGui *main = nullptr;
-    for (QWidget *widget : QApplication::topLevelWidgets())
-        if (widget->objectName() == "LammpsGui") main = dynamic_cast<LammpsGui *>(widget);
+    auto *main = dynamic_cast<LammpsGui *>(get_main_widget());
     if (main) main->stop_run();
 }
 

@@ -883,8 +883,9 @@ void LAMMPS::create()
 
   python = new Python(this);
 
-  // auto-load plugins
+  // restore and auto-load plugins
 #if defined(LMP_PLUGIN)
+  plugin_restore(this, true);
   plugin_auto_load(this);
 #endif
 }
@@ -991,11 +992,6 @@ void LAMMPS::init()
 
 void LAMMPS::destroy()
 {
-  // must wipe out all plugins first, if configured
-#if defined(LMP_PLUGIN)
-  plugin_clear(this);
-#endif
-
   delete update;
   update = nullptr;
 

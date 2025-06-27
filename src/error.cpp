@@ -306,7 +306,7 @@ ErrorType Error::get_last_error_type() const
    set the last error message and error type
 ------------------------------------------------------------------------- */
 
-void Error::set_last_error(const char *msg, ErrorType type)
+void Error::set_last_error(const std::string &msg, ErrorType type)
 {
   last_error_message = msg;
   last_error_type = type;
