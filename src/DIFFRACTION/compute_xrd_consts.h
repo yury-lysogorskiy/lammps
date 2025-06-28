@@ -28,8 +28,8 @@ x-ray and electron atomic scattering factors at high angles
 Acta Crystallogr. A 45 78693
 */
 
-static constexpr int XRDmaxType = 210;
 namespace {
+constexpr int XRDmaxType = 210;
 const char *const XRDtypeList[XRDmaxType] = {
     "H",    "He1-", "He",   "Li",   "Li1+", "Be",   "Be2+", "B",    "C",    "Cval", "N",    "O",
     "O1-",  "F",    "F1-",  "Ne",   "Na",   "Na1+", "Mg",   "Mg2+", "Al",   "Al3+", "Si",   "Sival",
