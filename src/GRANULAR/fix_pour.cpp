@@ -501,6 +501,8 @@ void FixPour::pre_exchange()
         imol = 0;
         while (rng > molfrac[imol]) imol++;
         natom = onemols[imol]->natoms;
+        if (natom <= 0)
+          error->all(FLERR, "Invalid number of atoms ({}) in molecule {}", natom, onemols[imol]->id);
         if (dimension == 3) {
           r[0] = random->uniform() - 0.5;
           r[1] = random->uniform() - 0.5;
