@@ -213,7 +213,7 @@ void MLIAPDescriptorACE::compute_forces(class MLIAPData *data)
     const double ztmp = x[i][2];
 
     for (int jj = 0; jj < jnum; jj++) {
-      const int j = jlist[jj] & NEIGMASK;
+      const int j = jlist[jj] & NEIGHMASK;
       for (int idim = 0; idim < 3; idim++) { fij[idim] = 0.0; }
       for (int iicoeff = 0; iicoeff < ndescriptors; iicoeff++) {
         DOUBLE_TYPE fx_dB =
