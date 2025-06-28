@@ -65,6 +65,7 @@ struct ACEALImpl {
 using namespace LAMMPS_NS;
 using namespace MathConst;
 
+namespace {
 static char const *const elements_pace_al[] = {
     "X",  "H",  "He", "Li", "Be", "B",  "C",  "N",  "O",  "F",  "Ne", "Na", "Mg", "Al", "Si",
     "P",  "S",  "Cl", "Ar", "K",  "Ca", "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu",
@@ -81,6 +82,7 @@ int AtomicNumberByName_pace_al(char *elname)
     if (strcmp(elname, elements_pace_al[i]) == 0) return i;
   return -1;
 }
+}    // namespace
 
 /* ---------------------------------------------------------------------- */
 PairPACEExtrapolation::PairPACEExtrapolation(LAMMPS *lmp) : Pair(lmp)
