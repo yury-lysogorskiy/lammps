@@ -175,7 +175,7 @@ void Timer::print_timeout(FILE *fp)
     // time since init_timeout()
     const double d = platform::walltime() - timeout_start;
     // remaining timeout in seconds
-    int s = _timeout - d;
+    int s = (int) (_timeout - d);
     // remaining 1/100ths of seconds
     const int hs = 100 * ((_timeout - d) - s);
     // breaking s down into second/minutes/hours
