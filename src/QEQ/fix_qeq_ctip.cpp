@@ -122,7 +122,7 @@ void FixQEqCTIP::init()
       (t_cut * (A1 + t_cut * (A2 + t_cut * (A3 + t_cut * (A4 + t_cut * A5)))) * erfcd_cut) / r;
 
   for (int elt1 = 0; elt1 < ntypes; elt1++) {
-    reff[elt1] = std::cbrt(rsq * r + 1.0 / (gamma[elt1 + 1] * gamma[elt1 + 1] * gamma[elt1 + 1]));
+    reff[elt1] = cbrt(rsq * r + 1.0 / (gamma[elt1 + 1] * gamma[elt1 + 1] * gamma[elt1 + 1]));
     reffsq[elt1] = reff[elt1] * reff[elt1];
     reff4[elt1] = reffsq[elt1] * reffsq[elt1];
     reff7[elt1] = reff4[elt1] * reffsq[elt1] * reff[elt1];
