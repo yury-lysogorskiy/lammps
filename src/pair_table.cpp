@@ -428,7 +428,7 @@ void PairTable::read_table(Table *tb, char *file, char *keyword)
         rsq_lookup.i = i << nshiftbits;
         rsq_lookup.i |= maskhi;
       }
-      rnew = sqrtf(rsq_lookup.f);
+      rnew = sqrt((double)rsq_lookup.f);
     }
 
     if (tb->rflag && fabs(rnew - rfile) / rfile > EPSILONR) rerror++;
@@ -763,7 +763,7 @@ void PairTable::compute_table(Table *tb)
         rsq_lookup.i = i << tb->nshiftbits;
         rsq_lookup.i |= maskhi;
       }
-      r = sqrtf(rsq_lookup.f);
+      r = sqrt((double)rsq_lookup.f);
       tb->rsq[i] = rsq_lookup.f;
       if (tb->match) {
         tb->e[i] = tb->efile[i];
@@ -816,7 +816,7 @@ void PairTable::compute_table(Table *tb)
         tb->drsq[itablemax] = tb->drsq[itablemaxm1];
       } else {
         rsq_lookup.f = tb->cut * tb->cut;
-        r = sqrtf(rsq_lookup.f);
+        r = sqrt((double)rsq_lookup.f);
         e_tmp = splint(tb->rfile, tb->efile, tb->e2file, tb->ninput, r);
         f_tmp = splint(tb->rfile, tb->ffile, tb->f2file, tb->ninput, r) / r;
         tb->de[itablemax] = e_tmp - tb->e[itablemax];
