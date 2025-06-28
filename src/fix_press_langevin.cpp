@@ -241,7 +241,7 @@ FixPressLangevin::FixPressLangevin(LAMMPS *lmp, int narg, char **arg) :
       if (iarg + 4 > narg) utils::missing_cmd_args(FLERR, "fix press/langevin temp", error);
       t_start = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
       t_stop = utils::numeric(FLERR, arg[iarg + 2], false, lmp);
-      seed = utils::numeric(FLERR, arg[iarg + 3], false, lmp);
+      seed = utils::inumeric(FLERR, arg[iarg + 3], false, lmp);
       if (seed <= 0) error->all(FLERR, "Fix press/langevin temp seed must be > 0");
       iarg += 4;
     }
