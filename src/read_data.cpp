@@ -2056,7 +2056,7 @@ void ReadData::bodies(int firstpass, AtomVec *ptr)
           auto values = ValueTokenizer(utils::trim_comment(buf));
           tagint tagdata = values.next_tagint() + id_offset;
           ninteger = values.next_int();
-          ndouble = values.next_double();
+          ndouble = values.next_int();
           if (tagdata <= 0 || tagdata > atom->map_tag_max)
             throw TokenizerException("Invalid atom ID in body header", utils::trim(buf));
           if (ninteger < 0)
