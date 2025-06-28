@@ -1243,7 +1243,8 @@ void Neighbor::morph_unique()
 
 void Neighbor::morph_skip()
 {
-  int i,j,jj,inewton,jnewton,icut,jcut;
+  int i,j,jj,inewton,jnewton;
+  double icut,jcut;
   NeighRequest *irq,*jrq,*nrq;
 
   // loop over irq from largest to smallest cutoff
