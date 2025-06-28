@@ -115,7 +115,7 @@ UEFBox::UEFBox()
 ------------------------------------------------------------------------- */
 void UEFBox::get_box(double x[3][3], double v)
 {
-  v = cbrtf(v);
+  v = cbrt(v);
   for (int k=0;k<3;k++)
     for (int j=0;j<3;j++)
       x[k][j] = lrot[k][j]*v;
