@@ -248,8 +248,12 @@ std::string platform::os_info()
     buf = "Windows 11 22H2";
   } else if (build == "22631") {
     buf = "Windows 11 23H2";
+  } else if (build == "25398") {
+    buf = "Windows Server 23H2";
   } else if (build == "26100") {
     buf = "Windows 11 24H2";
+  } else if (build == "26200") {
+    buf = "Windows 11 25H2";
   } else {
     buf = "Windows Build " + build;
   }
