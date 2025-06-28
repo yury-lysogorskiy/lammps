@@ -2506,7 +2506,7 @@ static int matchone(regex_t p, char c)
     case RX_NOT_WHITESPACE:
       return !matchwhitespace(c);
     default:
-      return (p.u.ch == c);
+      return (p.u.ch == (unsigned char)c);
   }
 }
 
