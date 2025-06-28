@@ -1843,7 +1843,7 @@ void PairLJLongTIP4PLongOMP::eval_outer(int iifrom, int iito, ThrData * const th
             union_int_float_t t;
             t.f = rsq;
             const int k = (t.i & ncoulmask) >> ncoulshiftbits;
-            double f = (t.f-rtable[k])*drtable[k], qiqj = qtmp*q[j];
+            double f = ((double)t.f-rtable[k])*drtable[k], qiqj = qtmp*q[j];
             if (ni == 0) {
               forcecoul = qiqj*(ftable[k]+f*dftable[k]);
               if (EFLAG) ecoul = qiqj*(etable[k]+f*detable[k]);
