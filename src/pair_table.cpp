@@ -424,7 +424,7 @@ void PairTable::read_table(Table *tb, char *file, char *keyword)
     } else if (tb->rflag == BMP) {
       rsq_lookup.i = i << nshiftbits;
       rsq_lookup.i |= masklo;
-      if (rsq_lookup.f < tb->rlo * tb->rlo) {
+      if ((double)rsq_lookup.f < tb->rlo * tb->rlo) {
         rsq_lookup.i = i << nshiftbits;
         rsq_lookup.i |= maskhi;
       }
@@ -759,7 +759,7 @@ void PairTable::compute_table(Table *tb)
     for (int i = 0; i < ntable; i++) {
       rsq_lookup.i = i << tb->nshiftbits;
       rsq_lookup.i |= masklo;
-      if (rsq_lookup.f < tb->innersq) {
+      if ((double)rsq_lookup.f < tb->innersq) {
         rsq_lookup.i = i << tb->nshiftbits;
         rsq_lookup.i |= maskhi;
       }
@@ -809,7 +809,7 @@ void PairTable::compute_table(Table *tb)
     if (itablemax == 0) itablemaxm1 = ntablem1;
     rsq_lookup.i = itablemax << tb->nshiftbits;
     rsq_lookup.i |= maskhi;
-    if (rsq_lookup.f < tb->cut * tb->cut) {
+    if ((double)rsq_lookup.f < tb->cut * tb->cut) {
       if (tb->match) {
         tb->de[itablemax] = tb->de[itablemaxm1];
         tb->df[itablemax] = tb->df[itablemaxm1];
@@ -821,7 +821,7 @@ void PairTable::compute_table(Table *tb)
         f_tmp = splint(tb->rfile, tb->ffile, tb->f2file, tb->ninput, r) / r;
         tb->de[itablemax] = e_tmp - tb->e[itablemax];
         tb->df[itablemax] = f_tmp - tb->f[itablemax];
-        tb->drsq[itablemax] = 1.0 / (rsq_lookup.f - tb->rsq[itablemax]);
+        tb->drsq[itablemax] = 1.0 / ((double)rsq_lookup.f - tb->rsq[itablemax]);
       }
     }
   }
