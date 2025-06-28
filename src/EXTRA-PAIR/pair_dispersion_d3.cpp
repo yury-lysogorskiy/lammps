@@ -248,8 +248,8 @@ void PairDispersionD3::read_c6ab(int *atomic_numbers, int ntypes)
   for (int i = 0; i < N_PARS_ROWS; i++) {
     const double ref_c6 = c6ab_table[i][0];
 
-    int atom_number_1 = std::round(c6ab_table[i][1]);
-    int atom_number_2 = std::round(c6ab_table[i][2]);
+    int atom_number_1 = (int)std::round(c6ab_table[i][1]);
+    int atom_number_2 = (int)std::round(c6ab_table[i][2]);
 
     set_limit_in_pars_array(atom_number_1, atom_number_2, grid_i, grid_j);
 
@@ -376,7 +376,7 @@ void PairDispersionD3::calc_coordination_number()
 
       double rr = sqrt(rsq);
       double rcov_ij = (rcov[itype] + rcov[jtype]) * autoang;
-      double cn_ij = 1.0 / (1.0 + expf(-K1 * ((rcov_ij / rr) - 1.0)));
+      double cn_ij = 1.0 / (1.0 + exp(-K1 * ((rcov_ij / rr) - 1.0)));
 
       // update coordination number
       cn[i] += cn_ij;
