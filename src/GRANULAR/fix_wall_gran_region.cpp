@@ -235,7 +235,7 @@ void FixWallGranRegion::post_force(int /*vflag*/)
       model->i = i;
       model->j = ic;
 
-      if (model->beyond_contact) model->touch = history_many[i][c2r[ic]][0];
+      if (model->beyond_contact) model->touch = (history_many[i][c2r[ic]][0] != 0.0);
 
       touchflag = model->check_contact();
 
