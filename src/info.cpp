@@ -113,22 +113,23 @@ static const int STYLES = ATOM_STYLES | INTEGRATE_STYLES | MINIMIZE_STYLES
 
 using namespace LAMMPS_NS;
 
-static const char *mapstyles[] = { "none", "array", "hash", "yes" };
+namespace {
+const char * const mapstyles[] = { "none", "array", "hash", "yes" };
+const char * const commstyles[] = { "brick", "tiled" };
+const char * const commlayout[] = { "uniform", "nonuniform", "irregular" };
 
-static const char *commstyles[] = { "brick", "tiled" };
-static const char *commlayout[] = { "uniform", "nonuniform", "irregular" };
-
-static const char bstyles[] = "pfsm";
-
-template<typename ValueType>
-static void print_columns(FILE *fp, std::map<std::string, ValueType> *styles);
+const char bstyles[] = "pfsm";
 
 template<typename ValueType>
-static bool find_style(const LAMMPS *lmp, std::map<std::string, ValueType> *styles,
+void print_columns(FILE *fp, std::map<std::string, ValueType> *styles);
+
+template<typename ValueType>
+bool find_style(const LAMMPS *lmp, std::map<std::string, ValueType> *styles,
                        const std::string &name, bool suffix_check);
 
 template<typename ValueType>
-static std::vector<std::string> get_style_names(std::map<std::string, ValueType> *styles);
+std::vector<std::string> get_style_names(std::map<std::string, ValueType> *styles);
+}
 
 /* ---------------------------------------------------------------------- */
 
@@ -585,14 +586,14 @@ void Info::command(int narg, char **arg)
     double cpuclock = platform::cputime();
 
     int cpuh,cpum,cpus,wallh,wallm,walls;
-    cpus = (int) fmod(cpuclock,60.0);
+    cpus = (int) fmod(cpuclock, 60.0);
     cpuclock = (cpuclock - cpus) / 60.0;
-    cpum = (int) fmod(cpuclock,60.0);
-    cpuh = (int) (cpuclock - cpum) / 60.0;
-    walls = (int) fmod(wallclock,60.0);
+    cpum = (int) fmod(cpuclock, 60.0);
+    cpuh = (int) ((cpuclock - cpum) / 60.0);
+    walls = (int) fmod(wallclock, 60.0);
     wallclock = (wallclock - walls) / 60.0;
-    wallm = (int) fmod(wallclock,60.0);
-    wallh = (int) (wallclock - wallm) / 60.0;
+    wallm = (int) fmod(wallclock, 60.0);
+    wallh = (int) ((wallclock - wallm) / 60.0);
     utils::print(out,"\nTotal time information (MPI rank 0):\n"
                "  CPU time: {:4d}:{:02d}:{:02d}\n"
                " Wall time: {:4d}:{:02d}:{:02d}\n",
@@ -933,6 +934,7 @@ std::vector<std::string> Info::get_available_styles(const std::string &category)
   return {};
 }
 
+namespace {
 template<typename ValueType>
 static std::vector<std::string> get_style_names(std::map<std::string, ValueType> *styles)
 {
@@ -1013,6 +1015,7 @@ static void print_columns(FILE *fp, std::map<std::string, ValueType> *styles)
       pos += 80;
     }
   }
+}
 }
 
 bool Info::has_gzip_support() {
