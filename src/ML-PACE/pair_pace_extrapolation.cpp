@@ -37,10 +37,10 @@ Copyright 2022 Yury Lysogorskiy^1, Anton Bochkarev^1, Matous Mrovec^1, Ralf Drau
 #include <cstring>
 #include <exception>
 
-#include "ace/ace_b_basis.h"
-#include "ace/ace_b_evaluator.h"
 #include "ace-evaluator/ace_recursive.h"
 #include "ace-evaluator/ace_version.h"
+#include "ace/ace_b_basis.h"
+#include "ace/ace_b_evaluator.h"
 
 namespace LAMMPS_NS {
 struct ACEALImpl {
@@ -134,8 +134,10 @@ void PairPACEExtrapolation::compute(int eflag, int vflag)
   double fij[3];
   int *ilist, *jlist, *numneigh, **firstneigh;
 
-  if (copymode) ev_init(eflag, vflag, 0);
-  else ev_init(eflag, vflag, 1);
+  if (copymode)
+    ev_init(eflag, vflag, 0);
+  else
+    ev_init(eflag, vflag, 1);
 
   // downwards modified by YL
 
@@ -218,8 +220,7 @@ void PairPACEExtrapolation::compute(int eflag, int vflag)
       if (flag_compute_extrapolation_grade) {
         aceimpl->ace->compute_projections = true;
         aceimpl->ace->compute_atom(i, x, type, jnum, jlist);
-      }
-      else
+      } else
         aceimpl->rec_ace->compute_atom(i, x, type, jnum, jlist);
     } catch (std::exception &e) {
       error->one(FLERR, e.what());
@@ -230,8 +231,8 @@ void PairPACEExtrapolation::compute(int eflag, int vflag)
       extrapolation_grade_gamma[i] = aceimpl->ace->max_gamma_grade;
 
     if (flag_corerep_factor) {
-      corerep_factor[i] = 1 - (flag_compute_extrapolation_grade ? aceimpl->ace->ace_fcut
-                              : aceimpl->rec_ace->ace_fcut);
+      corerep_factor[i] = 1 -
+          (flag_compute_extrapolation_grade ? aceimpl->ace->ace_fcut : aceimpl->rec_ace->ace_fcut);
     }
 
     Array2D<DOUBLE_TYPE> &neighbours_forces =
@@ -301,7 +302,7 @@ void PairPACEExtrapolation::allocate()
 
 void PairPACEExtrapolation::settings(int narg, char **arg)
 {
-//  if (narg > 2) error->all(FLERR, "Pair style pace/extrapolation supports no keywords");
+  //  if (narg > 2) error->all(FLERR, "Pair style pace/extrapolation supports no keywords");
   if (narg > 2) utils::missing_cmd_args(FLERR, "pair_style pace/extrapolation", error);
   // ACE potentials are parameterized in metal units
   if (strcmp("metal", update->unit_style) != 0)
@@ -309,11 +310,11 @@ void PairPACEExtrapolation::settings(int narg, char **arg)
 
   int iarg = 0;
   while (iarg < narg) {
-      if (strcmp(arg[iarg], "chunksize") == 0) {
-          chunksize = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
-          iarg += 2;
-      } else
-          error->all(FLERR, "Unknown pair_style pace keyword: {}", arg[iarg]);
+    if (strcmp(arg[iarg], "chunksize") == 0) {
+      chunksize = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
+      iarg += 2;
+    } else
+      error->all(FLERR, "Unknown pair_style pace keyword: {}", arg[iarg]);
   }
 
   if (comm->me == 0)
@@ -373,7 +374,6 @@ void PairPACEExtrapolation::coeff(int narg, char **arg)
   aceimpl->rec_ace->set_recursive(true);
   aceimpl->rec_ace->element_type_mapping.init(atom->ntypes + 1);
   aceimpl->rec_ace->element_type_mapping.fill(-1);    //-1 means atom not included into potential
-
 
   const int n = atom->ntypes;
   element_names.resize(n);
