@@ -41,7 +41,7 @@ class ThrOMP {
   LAMMPS *lmp;    // reference to base lammps object.
   FixOMP *fix;    // pointer to fix_omp;
 
-  const int thr_style;
+  int thr_style;
   int thr_error;
 
  public:
