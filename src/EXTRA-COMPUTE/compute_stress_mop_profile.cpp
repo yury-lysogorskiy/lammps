@@ -235,7 +235,7 @@ void ComputeStressMopProfile::init()
   if (bondflag == 1 && !(force->bond)) {
     error->all(FLERR, "No bond style is defined for compute stress/mop/profile");
   }
-   
+
   // Errors
 
   if (comm->me == 0) {
