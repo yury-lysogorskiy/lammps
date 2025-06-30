@@ -592,6 +592,12 @@ void FixHMC::restore_saved_state()
     atom->map_set();
   }
 
+  // ensure fix_rigid images are OK
+  
+  if (flag_rigid) {
+    fix_rigid->pre_neighbor();
+  }
+
   // restore global energy terms
 
   for (i = 0; i < neg; i++) *eglobalptr[i] = eglobal[i];
