@@ -799,7 +799,6 @@ void Set::setrandom(int keyword, Action *action)
     double *quat_one;
 
     if (domain->dimension == 3) {
-      double s,t1,t2,theta1,theta2;
       for (i = 0; i < nlocal; i++)
         if (select[i]) {
           if (avec_ellipsoid && ellipsoid[i] >= 0)
@@ -814,11 +813,11 @@ void Set::setrandom(int keyword, Action *action)
             error->one(FLERR,"Cannot set quaternion for atom that has none");
 
           ranpark->reset(seed,x[i]);
-          s = ranpark->uniform();
-          t1 = sqrt(1.0-s);
-          t2 = sqrt(s);
-          theta1 = 2.0*MY_PI*ranpark->uniform();
-          theta2 = 2.0*MY_PI*ranpark->uniform();
+          double s = ranpark->uniform();
+          double t1 = sqrt(1.0-s);
+          double t2 = sqrt(s);
+          double theta1 = 2.0*MY_PI*ranpark->uniform();
+          double theta2 = 2.0*MY_PI*ranpark->uniform();
           quat_one[0] = cos(theta2)*t2;
           quat_one[1] = sin(theta1)*t1;
           quat_one[2] = cos(theta1)*t1;
@@ -849,7 +848,7 @@ void Set::setrandom(int keyword, Action *action)
 
   // set theta to random orientation in 2d
 
-  } else if (keyword == THETA_RANDOM) {
+  } else if (avec_line && (keyword == THETA_RANDOM)) {
     int *line = atom->line;
     int nlocal = atom->nlocal;
 
@@ -1056,7 +1055,7 @@ void Set::invoke_angmom(Action *action)
   double **angmom = atom->angmom;
 
   int varflag = action->varflag;
-  double xvalue,yvalue,zvalue;
+  double xvalue = 0.0, yvalue = 0.0, zvalue = 0.0;
   if (!action->varflag1) xvalue = action->dvalue1;
   if (!action->varflag2) yvalue = action->dvalue2;
   if (!action->varflag3) zvalue = action->dvalue3;
@@ -1066,8 +1065,8 @@ void Set::invoke_angmom(Action *action)
 
     if (varflag) {
       if (action->varflag1) xvalue = vec1[i];
-      if (action->varflag1) yvalue = vec2[i];
-      if (action->varflag1) zvalue = vec3[i];
+      if (action->varflag2) yvalue = vec2[i];
+      if (action->varflag3) zvalue = vec3[i];
     }
 
     angmom[i][0] = xvalue;
@@ -1394,7 +1393,7 @@ void Set::invoke_dipole(Action *action)
   double **mu = atom->mu;
 
   int varflag = action->varflag;
-  double xvalue,yvalue,zvalue;
+  double xvalue = 0.0, yvalue = 0.0, zvalue = 0.0;
   if (!action->varflag1) xvalue = action->dvalue1;
   if (!action->varflag2) yvalue = action->dvalue2;
   if (!action->varflag3) zvalue = action->dvalue3;
@@ -1669,14 +1668,13 @@ void Set::invoke_image(Action *action)
 {
   int nlocal = atom->nlocal;
   imageint *image = atom->image;
-  int xbox,ybox,zbox;
 
   int ximageflag = action->ivalue4;
   int yimageflag = action->ivalue5;
   int zimageflag = action->ivalue6;
 
   int varflag = action->varflag;
-  int ximage,yimage,zimage;
+  int ximage = 0, yimage = 0, zimage = 0;
   if (!action->varflag1) ximage = action->ivalue1;
   if (!action->varflag2) yimage = action->ivalue2;
   if (!action->varflag3) zimage = action->ivalue3;
@@ -1687,14 +1685,14 @@ void Set::invoke_image(Action *action)
     if (!select[i]) continue;
 
     if (varflag) {
-      if (action->varflag1) ximage = static_cast<int> (vec1[i]);
-      if (action->varflag2) yimage = static_cast<int> (vec2[i]);
-      if (action->varflag3) zimage = static_cast<int> (vec3[i]);
+      if (action->varflag1) ximage = static_cast<int>(vec1[i]);
+      if (action->varflag2) yimage = static_cast<int>(vec2[i]);
+      if (action->varflag3) zimage = static_cast<int>(vec3[i]);
     }
 
-    xbox = (image[i] & IMGMASK) - IMGMAX;
-    ybox = (image[i] >> IMGBITS & IMGMASK) - IMGMAX;
-    zbox = (image[i] >> IMG2BITS) - IMGMAX;
+    int xbox = (image[i] & IMGMASK) - IMGMAX;
+    int ybox = (image[i] >> IMGBITS & IMGMASK) - IMGMAX;
+    int zbox = (image[i] >> IMG2BITS) - IMGMAX;
     if (ximageflag) xbox = ximage;
     if (yimageflag) ybox = yimage;
     if (zimageflag) zbox = zimage;
@@ -1936,7 +1934,7 @@ void Set::invoke_quat(Action *action)
   double *quat_one;
 
   int varflag = action->varflag;
-  double xvalue,yvalue,zvalue,theta;
+  double xvalue = 0.0, yvalue = 0.0, zvalue = 0.0, theta = 0.0;
   if (!action->varflag1) xvalue = action->dvalue1;
   if (!action->varflag2) yvalue = action->dvalue2;
   if (!action->varflag3) zvalue = action->dvalue3;
@@ -2059,13 +2057,13 @@ void Set::invoke_rheo_status(Action *action)
   int *status = atom->rheo_status;
 
   int varflag = action->varflag;
-  int rheo_status;
+  int rheo_status = 0;
   if (!action->varflag1) rheo_status = action->ivalue1;
 
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
     if (varflag) {
-      rheo_status = static_cast<int> (vec1[i]);
+      rheo_status = static_cast<int>(vec1[i]);
       if (rheo_status != 0 && rheo_status != 1)
         error->one(FLERR,"Invalid rheo/status in set command");
     }
@@ -2337,7 +2335,7 @@ void Set::invoke_spin_atom(Action *action)
   double norm;
 
   int varflag = action->varflag;
-  double magnitude,xvalue,yvalue,zvalue;
+  double magnitude = 0.0, xvalue = 1.0, yvalue = 0.0, zvalue =0.0;
   if (!action->varflag1) magnitude = action->dvalue1;
   if (!action->varflag2) xvalue = action->dvalue2;
   if (!action->varflag3) yvalue = action->dvalue3;
@@ -2423,7 +2421,7 @@ void Set::invoke_spin_electron(Action *action)
     if (!select[i]) continue;
 
     if (varflag) {
-      ispin = static_cast<int> (vec1[i]);
+      ispin = static_cast<int>(vec1[i]);
       if (ispin < -1 || ispin > 3)
         error->one(FLERR,"Invalid electron spin in set command");
     }
@@ -2600,7 +2598,7 @@ void Set::invoke_type(Action *action)
     if (!select[i]) continue;
 
     if (varflag) {
-      itype = static_cast<int> (vec1[i]);
+      itype = static_cast<int>(vec1[i]);
       if (itype <= 0 || itype > atom->ntypes)
         error->one(FLERR, Error::NOLASTLINE, "Invalid atom type in set command");
     }
@@ -2985,7 +2983,7 @@ void Set::invoke_custom(Action *action)
     int *ivector = atom->ivector[index_custom];
     for (int i = 0; i < nlocal; i++) {
       if (!select[i]) continue;
-      if (varflag) ivalue = static_cast<int> (vec1[i]);
+      if (varflag) ivalue = static_cast<int>(vec1[i]);
       ivector[i] = ivalue;
     }
 
@@ -3004,7 +3002,7 @@ void Set::invoke_custom(Action *action)
     int icol_custom = action->ivalue3 - 1;
     for (int i = 0; i < nlocal; i++) {
       if (!select[i]) continue;
-      if (varflag) ivalue = static_cast<int> (vec1[i]);
+      if (varflag) ivalue = static_cast<int>(vec1[i]);
       iarray[i][icol_custom] = ivalue;
     }
 
