@@ -422,7 +422,7 @@ void PairGranular::init_style()
 
   // allocate history and aggregate model information
   class GranularModel* model;
-  double nsvector_total;
+  int nsvector_total;
   extra_svector = 0;
   int size_max[NSUBMODELS] = {0};
   for (int n = 0; n < nmodels; n++) {
