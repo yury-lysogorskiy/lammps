@@ -294,8 +294,8 @@ void Set::process_args(int caller_flag, int narg, char **arg)
       invoke_choice[naction++] = &Set::invoke_quat_random;
     } else if (strcmp(arg[iarg],"radius/electron") == 0) {
       action->keyword = RADIUS_ELECTRON;
-      process_radius_election(iarg,narg,arg,action);
-      invoke_choice[naction++] = &Set::invoke_radius_election;
+      process_radius_electron(iarg,narg,arg,action);
+      invoke_choice[naction++] = &Set::invoke_radius_electron;
     } else if (strcmp(arg[iarg],"rheo/rho") == 0) {
       action->keyword = SPH_RHO;
       process_sph_rho(iarg,narg,arg,action);
@@ -1994,7 +1994,7 @@ void Set::invoke_quat_random(Action *action)
 
 /* ---------------------------------------------------------------------- */
 
-void Set::process_radius_election(int &iarg, int narg, char **arg, Action *action)
+void Set::process_radius_electron(int &iarg, int narg, char **arg, Action *action)
 {
   if (!atom->eradius_flag)
     error->all(FLERR, "Cannot set attribute {} for atom style {}", arg[iarg], atom->get_style());
@@ -2012,7 +2012,7 @@ void Set::process_radius_election(int &iarg, int narg, char **arg, Action *actio
   iarg += 2;
 }
 
-void Set::invoke_radius_election(Action *action)
+void Set::invoke_radius_electron(Action *action)
 {
   int nlocal = atom->nlocal;
   double *eradius = atom->eradius;
