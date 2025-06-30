@@ -21,8 +21,6 @@
 using namespace LAMMPS_NS;
 using namespace FixConst;
 
-enum{SETCOMMAND,FIXSET};     // also used in Set class
-
 /* ---------------------------------------------------------------------- */
 
 FixSet::FixSet(LAMMPS *lmp, int narg, char **arg) : Fix(lmp, narg, arg)
@@ -45,7 +43,7 @@ FixSet::FixSet(LAMMPS *lmp, int narg, char **arg) : Fix(lmp, narg, arg)
   // NOTE: could also allow when set style = region,
   //       since atoms may move in/out of regions
 
-  set->process_args(FIXSET,narg-5,&arg[5]);
+  set->process_args(Set::FIXSET, narg-5, &arg[5]);
 }
 
 /* ---------------------------------------------------------------------- */

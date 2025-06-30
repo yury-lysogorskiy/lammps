@@ -35,6 +35,8 @@ class Set : public Command {
   void selection(int);
   void invoke_actions();
 
+  enum { SETCOMMAND, FIXSET };
+
  private:
   int caller;    // SETCOMMAND or FIXSET
 
