@@ -442,6 +442,7 @@ void FixHMC::end_of_step()
   if (accept) {
     naccepts++;
     PE = newPE;
+    KE = newKE;
     save_current_state();
   } else {
     restore_saved_state();
