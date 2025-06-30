@@ -651,7 +651,7 @@ void PairAmoeba::multipole_kspace()
 
   // gridpre = my portion of 3d grid in brick decomp w/ ghost values
 
-  FFT_SCALAR ***gridpre = (FFT_SCALAR ***) m_kspace->zero();
+  auto ***gridpre = (FFT_SCALAR ***) m_kspace->zero();
 
   // map atoms to grid
 
@@ -731,7 +731,7 @@ void PairAmoeba::multipole_kspace()
   // post-convolution operations including backward FFT
   // gridppost = my portion of 3d grid in brick decomp w/ ghost values
 
-  FFT_SCALAR ***gridpost = (FFT_SCALAR ***) m_kspace->post_convolution();
+  auto ***gridpost = (FFT_SCALAR ***) m_kspace->post_convolution();
 
   // get potential
 

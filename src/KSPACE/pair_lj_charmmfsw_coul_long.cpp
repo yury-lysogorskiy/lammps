@@ -170,7 +170,7 @@ void PairLJCharmmfswCoulLong::compute(int eflag, int vflag)
             rsq_lookup.f = rsq;
             itable = rsq_lookup.i & ncoulmask;
             itable >>= ncoulshiftbits;
-            fraction = (rsq_lookup.f - rtable[itable]) * drtable[itable];
+            fraction = ((double) rsq_lookup.f - rtable[itable]) * drtable[itable];
             table = ftable[itable] + fraction*dftable[itable];
             forcecoul = qtmp*q[j] * table;
             if (factor_coul < 1.0) {
@@ -521,7 +521,7 @@ void PairLJCharmmfswCoulLong::compute_outer(int eflag, int vflag)
             rsq_lookup.f = rsq;
             itable = rsq_lookup.i & ncoulmask;
             itable >>= ncoulshiftbits;
-            fraction = (rsq_lookup.f - rtable[itable]) * drtable[itable];
+            fraction = ((double) rsq_lookup.f - rtable[itable]) * drtable[itable];
             table = ftable[itable] + fraction*dftable[itable];
             forcecoul = qtmp*q[j] * table;
             if (factor_coul < 1.0) {
@@ -968,7 +968,7 @@ double PairLJCharmmfswCoulLong::single(int i, int j, int itype, int jtype,
       rsq_lookup.f = rsq;
       itable = rsq_lookup.i & ncoulmask;
       itable >>= ncoulshiftbits;
-      fraction = (rsq_lookup.f - rtable[itable]) * drtable[itable];
+      fraction = ((double) rsq_lookup.f - rtable[itable]) * drtable[itable];
       table = ftable[itable] + fraction*dftable[itable];
       forcecoul = atom->q[i]*atom->q[j] * table;
       if (factor_coul < 1.0) {

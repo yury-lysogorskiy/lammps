@@ -105,7 +105,7 @@ int BodyNparticle::unpack_border_body(AtomVecBody::Bonus *bonus, double *buf)
 void BodyNparticle::data_body(int ibonus, int ninteger, int ndouble,
                               int *ifile, double *dfile)
 {
-  auto bonus = &avec->bonus[ibonus];
+  auto *bonus = &avec->bonus[ibonus];
 
   // set ninteger, ndouble in bonus and allocate 2 vectors of ints, doubles
 
