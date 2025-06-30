@@ -7,9 +7,9 @@ LAMMPS datafile
 1 angles
 1 angle types
 
--1.0 1.0  xlo xhi
--1.0 1.0  ylo yhi
--1.0 1.0  zlo zhi
+-1.2 1.2  xlo xhi
+-1.2 1.2  ylo yhi
+-1.2 1.2  zlo zhi
 
 Masses
 
