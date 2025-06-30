@@ -1403,8 +1403,8 @@ void Set::invoke_dipole(Action *action)
 
     if (varflag) {
       if (action->varflag1) xvalue = vec1[i];
-      if (action->varflag1) yvalue = vec2[i];
-      if (action->varflag1) zvalue = vec3[i];
+      if (action->varflag2) yvalue = vec2[i];
+      if (action->varflag3) zvalue = vec3[i];
     }
 
     mu[i][0] = xvalue;
@@ -2114,8 +2114,8 @@ void Set::invoke_shape(Action *action)
 
     if (varflag) {
       if (action->varflag1) xvalue = vec1[i];
-      if (action->varflag1) yvalue = vec2[i];
-      if (action->varflag1) zvalue = vec3[i];
+      if (action->varflag2) yvalue = vec2[i];
+      if (action->varflag3) zvalue = vec3[i];
       if (xvalue < 0.0 || yvalue < 0.0 || zvalue < 0.0)
         error->one(FLERR,"Invalid shape in set command");
     }
