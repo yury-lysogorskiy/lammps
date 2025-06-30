@@ -28,13 +28,15 @@
 #include <map>
 
 namespace LAMMPS_NS {
-// list of plugin information data for loaded styles
-static std::list<lammpsplugin_t> pluginlist;
+namespace {
+  // list of plugin information data for loaded styles
+  std::list<lammpsplugin_t> pluginlist;
 
-// map for counting references to dso handles
-static std::map<void *, int> dso_refcounter;
+  // map for counting references to dso handles
+  std::map<void *, int> dso_refcounter;
 
-static bool verbose = true;
+  bool verbose = true;
+}    // namespace
 
 /* ---------------------------------------------------------------------- */
 
