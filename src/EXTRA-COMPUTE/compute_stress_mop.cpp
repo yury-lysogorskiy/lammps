@@ -104,6 +104,7 @@ ComputeStressMop::ComputeStressMop(LAMMPS *lmp, int narg, char **arg) : Compute(
   int iarg = 5;
   while (iarg < narg) {
     if (strcmp(arg[iarg], "conf") == 0) {
+      bondflag = 1;
       for (i = 0; i < 3; i++) {
         which[nvalues] = CONF;
         nvalues++;
@@ -114,6 +115,7 @@ ComputeStressMop::ComputeStressMop(LAMMPS *lmp, int narg, char **arg) : Compute(
         nvalues++;
       }
     } else if (strcmp(arg[iarg], "total") == 0) {
+      bondflag = 1;
       for (i = 0; i < 3; i++) {
         which[nvalues] = TOTAL;
         nvalues++;
@@ -124,6 +126,7 @@ ComputeStressMop::ComputeStressMop(LAMMPS *lmp, int narg, char **arg) : Compute(
         nvalues++;
       }
     } else if (strcmp(arg[iarg], "bond") == 0) {
+      bondflag = 1;
       for (i = 0; i < 3; i++) {
         which[nvalues] = BOND;
         nvalues++;
@@ -237,17 +240,17 @@ void ComputeStressMop::init()
   if (force->pair->single_enable == 0)
     error->all(FLERR, "Pair style does not support compute stress/mop");
 
+  // issue an error for unimplemented bond potentials
+
+  if (bondflag == 1 && !(force->bond)) {
+    error->all(FLERR, "No bond style is defined for compute stress/mop");
+  }
+
   // Errors
 
   if (comm->me == 0) {
 
     // issue an error for unimplemented intramolecular potentials or Kspace.
-
-    if (force->bond) {
-      bondflag = 1;
-      if (comm->nprocs > 1)
-        error->one(FLERR, "compute stress/mop with bonds does not (yet) support MPI parallel runs");
-    }
 
     if (force->angle) {
       if (force->angle->born_matrix_enable == 0) {
