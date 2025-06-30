@@ -267,11 +267,6 @@ void FixHMC::setup_arrays_and_pointers()
     for (const auto &ifix : modify->get_fix_list())
       if (ifix->virial_global_flag) vglobalptr[m++][i] = &ifix->virial[i];
   }
-
-  // set maximum number of per-atom variables in forward comm
-  //   when dealing with rigid bodies
-
-  if (flag_rigid) comm_forward = 12;
 }
 
 /* ---------------------------------------------------------------------- */
