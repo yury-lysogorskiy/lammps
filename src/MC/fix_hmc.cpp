@@ -362,6 +362,7 @@ void FixHMC::setup(int vflag)
     // compute properties of initial state
 
     if (flag_rigid) {
+      random_velocities();
       rigid_body_random_velocities();
     } else {
       random_velocities();
