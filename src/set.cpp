@@ -60,7 +60,7 @@ Set::Set(class LAMMPS *lmp) :
     Command(lmp), id(nullptr), region(nullptr), actions(nullptr), invoke_choice(nullptr),
     vec1(nullptr), vec2(nullptr), vec3(nullptr), vec4(nullptr), select(nullptr)
 {
-  maxselect = maxvariable = 0;
+  argoff = maxselect = maxvariable = 0;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -134,6 +134,9 @@ void Set::command(int narg, char **arg)
 void Set::process_args(int caller_flag, int narg, char **arg)
 {
   caller = caller_flag;
+
+  // determine offset for error pointer in process_XXX(). will be different for set and fix set.
+  while (input && input->arg[argoff] && (strcmp(input->arg[argoff], arg[0]) != 0)) argoff++;
 
   // style and ID info
 

@@ -43,6 +43,7 @@ class Set : public Command {
   // params for atom selection
 
   int style;
+  int argoff;
   char *id;
   int nlo, nhi;
   bigint nlobig, nhibig;
