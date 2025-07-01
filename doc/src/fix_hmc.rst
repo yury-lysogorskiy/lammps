@@ -13,7 +13,7 @@ Syntax
 * hmc = style name of this fix command
 * N = invoke a Monto Carlo step every N steps
 * seed = random # seed (positive integer)
-* T = temperature for assigning velocities
+* T = temperature for assigning velocities and acceptance criterion
 * one or more keyword/value pairs may be appended
 
   .. parsed-literal::
@@ -29,9 +29,9 @@ Examples
 
 .. code-block:: LAMMPS
 
-   fix 1 all hmc 10 123 500 flexible
-   fix hmc_water all hmc 100 123 298.15 rigid
-   fix 2 all hmc 10 12345 300 flexible mom no resample yes
+   fix 1 all hmc 10 123 500
+   fix hmc_water all hmc 100 123 298.15 rigid 1
+   fix 2 all hmc 10 12345 300 mom no resample yes
 
 Description
 """""""""""
@@ -43,14 +43,16 @@ algorithm.  The basic idea is to use molecular dynamics (MD) to
 generate trial MC "moves" which are then accepted or rejected via the
 Metropolis criterion.  In this context, an MC "move" is the new
 configuration of particles after *N* MD steps, i.e. all the particles
-in the system have moved to new positions.  The group assigned to this
-fix has no meaning and is ignored.
+in the system have moved to new positions. HMC generates a canonical
+distribution in configuration space. More details on the theory behind
+HMC can be found in the references, :ref:`(Mehlig) <Mehlig1>` and 
+:ref:`(Mehlig) <Mehlig2>`.
 
 The details of the HMC algorithm for a repeating series of $N$ MD
 steps are as follows:
 
 (1) The configuration of the system is stored along with its current
-energy.  This includes all particle positions and velocities and other
+total energy.  This includes all particle positions and velocities and other
 per-atom properties (e.g. dipole orientation vector for particles with
 dipole moments).
 
@@ -75,12 +77,13 @@ Metropolis criterion with probability:
 where *T* is the specified temperature.
 
 (4) If accepted, the new configuration becomes the starting point for
-the next trial MC "move".
+the next trial MC "move". If *resample* is *yes* then the velocities are 
+resampled at this point as well.
 
 (5) If rejected, the old configuration (from *N* steps ago) is
-restored and new momenta (velocities) are assigned to each particle,
-by randomly resampling from a normal distribution at the specified
-temperature $T$ using the following equation:
+restored and new momenta (velocities) are assigned to each particle 
+in the fix group by randomly resampling from a normal distribution 
+at the specified temperature $T$ using the following equation:
 
 .. math::
 
@@ -150,7 +153,7 @@ the ID of this fix:
    compute hmc_ke_ID all ke
    compute hmc_pe_ID all pe
    compute hmc_peatom_ID all pe/atom
-   compute hmc_oress_ID all pressure NULL virial
+   compute hmc_press_ID all pressure NULL virial
    compute hmc_pressatom_ID all stress/atom NULL virial
 
 The output of these computes can be accessed by the input script,
@@ -206,14 +209,8 @@ The option defaults are resample = no and mom = yes.
 
 ----------
 
-**(Watkins)** Watkins and Jorgensen, J Phys Chem A, 105, 4118-4125
-(2001).
+**(Mehlig1)** Mehlig, B., Heermann, D. W., & Forrest, B. M. (1992).
+Hybrid Monte Carlo method for condensed-matter systems. Physical Review B, 45(2), 679.
 
-**(Betancourt)** Betancourt, Conceptual Introduction to Hamiltonian
-Monte Carlo, 2018.
-
-**(Duane)** Duane, Kennedy, Pendleton, and Roweth, Physics Letters B,
-195 (2), 216-222 (1987). https://doi.org/10.1016/0370-2693(87)91197-X
-
-**(Metropolis)** Metropolis, A. Rosenbluth, M. Rosenbluth, A. Teller,
-and E. Teller, J Chemical Physics, 21, 1087-1092 (1953).
+**(Mehlig2)** Mehlig, B., Heermann, D. W., & Forrest, B. M. (1992). 
+Exact langevin algorithms. Molecular Physics, 76(6), 1347-1357.
