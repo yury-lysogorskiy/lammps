@@ -68,7 +68,7 @@ FixSMD_TLSPH_ReferenceConfiguration::FixSMD_TLSPH_ReferenceConfiguration(LAMMPS 
   wf_list = nullptr;
   energy_per_bond = nullptr;
   degradation_ij = nullptr;
-  grow_arrays(atom->nmax);
+  FixSMD_TLSPH_ReferenceConfiguration::grow_arrays(atom->nmax);
   atom->add_callback(Atom::GROW);
 
   // initialize npartner to 0 so neighbor list creation is OK the 1st time
