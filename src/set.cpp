@@ -1161,7 +1161,7 @@ void Set::invoke_cc(Action *action)
   // NOTE: need to check if cc_index exceeds cc array allocation
 
   int varflag = action->varflag;
-  double ccvalue;
+  double ccvalue = 0.0;
   if (!action->varflag1) ccvalue = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -1198,7 +1198,7 @@ void Set::invoke_charge(Action *action)
   double *epsilon = atom->epsilon;
 
   int varflag = action->varflag;
-  double qvalue;
+  double qvalue = 0.0;
   if (!action->varflag1) qvalue = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -1255,7 +1255,7 @@ void Set::invoke_density(Action *action)
   auto avec_tri = dynamic_cast<AtomVecTri *>(atom->style_match("tri"));
 
   int varflag = action->varflag;
-  double density;
+  double density = 0.0;
   if (!action->varflag1) density = action->dvalue1;
   int discflag = action->ivalue1;
 
@@ -1330,7 +1330,7 @@ void Set::invoke_diameter(Action *action)
   double *radius = atom->radius;
 
   int varflag = action->varflag;
-  double diam;
+  double diam = 0.0;
   if (!action->varflag1) diam = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -1467,7 +1467,7 @@ void Set::invoke_dpd_theta(Action *action)
   double vx,vy,vz;
 
   int varflag = action->varflag;
-  double theta;
+  double theta = 0.0;
   if (!action->varflag1) theta = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -1515,7 +1515,7 @@ void Set::invoke_edpd_cv(Action *action)
   double *edpd_cv = atom->edpd_cv;
 
   int varflag = action->varflag;
-  double cv;
+  double cv = 0.0;
   if (!action->varflag1) cv = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -1552,7 +1552,7 @@ void Set::invoke_edpd_temp(Action *action)
   double *edpd_temp = atom->edpd_temp;
 
   int varflag = action->varflag;
-  double temp;
+  double temp = 0.0;
   if (!action->varflag1) temp = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -1592,7 +1592,7 @@ void Set::invoke_epsilon(Action *action)
   double *q_scaled = atom->q_scaled;
 
   int varflag = action->varflag;
-  double eps;
+  double eps = 1.0;
   if (!action->varflag1) eps = action->dvalue1;
 
   // assign local dielectric constant
@@ -1745,7 +1745,7 @@ void Set::invoke_length(Action *action)
   auto avec_line = dynamic_cast<AtomVecLine *>(atom->style_match("line"));
 
   int varflag = action->varflag;
-  double length;
+  double length = 0.0;
   if (!action->varflag1) length = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -1788,7 +1788,7 @@ void Set::invoke_mass(Action *action)
   double *rmass = atom->rmass;
 
   int varflag = action->varflag;
-  double mass_one;
+  double mass_one = 0.0;
   if (!action->varflag1) mass_one = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -1826,7 +1826,7 @@ void Set::invoke_mol(Action *action)
   tagint *molecule = atom->molecule;
 
   int varflag = action->varflag;
-  tagint molID;
+  tagint molID = 0;
   if (!action->varflag1) molID = action->tvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -1865,7 +1865,7 @@ void Set::invoke_omega(Action *action)
   double **omega = atom->omega;
 
   int varflag = action->varflag;
-  double xvalue,yvalue,zvalue;
+  double xvalue = 0.0, yvalue = 0.0, zvalue= 0.0;
   if (!action->varflag1) xvalue = action->dvalue1;
   if (!action->varflag2) yvalue = action->dvalue2;
   if (!action->varflag3) zvalue = action->dvalue3;
@@ -1928,8 +1928,7 @@ void Set::invoke_quat(Action *action)
   auto avec_body = dynamic_cast<AtomVecBody *>(atom->style_match("body"));
 
   int dimension = domain->dimension;
-  double radians,sintheta;
-  double *quat_one;
+  double *quat_one = nullptr;
 
   int varflag = action->varflag;
   double xvalue = 0.0, yvalue = 0.0, zvalue = 0.0, theta = 0.0;
@@ -1961,8 +1960,8 @@ void Set::invoke_quat(Action *action)
         error->one(FLERR,"Cannot set quaternion with xy components for 2d system");
     }
 
-    radians = MY_PI2 * theta/180.0;
-    sintheta = sin(radians);
+    double radians = MY_PI2 * theta/180.0;
+    double sintheta = sin(radians);
     quat_one[0] = cos(radians);
     quat_one[1] = xvalue * sintheta;
     quat_one[2] = yvalue * sintheta;
@@ -2016,7 +2015,7 @@ void Set::invoke_radius_electron(Action *action)
   double *eradius = atom->eradius;
 
   int varflag = action->varflag;
-  double radius;
+  double radius = 0.0;
   if (!action->varflag1) radius = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -2102,7 +2101,7 @@ void Set::invoke_shape(Action *action)
   auto avec_ellipsoid = dynamic_cast<AtomVecEllipsoid *>(atom->style_match("ellipsoid"));
 
   int varflag = action->varflag;
-  double xvalue,yvalue,zvalue;
+  double xvalue = 0.0, yvalue = 0.0, zvalue = 0.0;
   if (!action->varflag1) xvalue = action->dvalue1;
   if (!action->varflag2) yvalue = action->dvalue2;
   if (!action->varflag3) zvalue = action->dvalue3;
@@ -2122,7 +2121,7 @@ void Set::invoke_shape(Action *action)
       if (xvalue == 0.0 || yvalue == 0.0 || zvalue == 0.0)
         error->one(FLERR,"Invalid shape in set command");
 
-    avec_ellipsoid->set_shape(i,0.5*xvalue,0.5*yvalue,0.5*zvalue);
+    avec_ellipsoid->set_shape(i, 0.5*xvalue, 0.5*yvalue, 0.5*zvalue);
   }
 
   // update global ellipsoid count
@@ -2154,7 +2153,7 @@ void Set::invoke_smd_contact_radius(Action *action)
   double *contact_radius = atom->contact_radius;
 
   int varflag = action->varflag;
-  double radius;
+  double radius = 0.0;
   if (!action->varflag1) radius = action->dvalue1;
 
 
@@ -2194,7 +2193,7 @@ void Set::invoke_smd_mass_density(Action *action)
   double *vfrac = atom->vfrac;
 
   int varflag = action->varflag;
-  double density;
+  double density = 0.0;
   if (!action->varflag1) density = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -2229,7 +2228,7 @@ void Set::invoke_sph_cv(Action *action)
   double *cv = atom->cv;
 
   int varflag = action->varflag;
-  double sph_cv;
+  double sph_cv = 0.0;
   if (!action->varflag1) sph_cv = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -2259,7 +2258,7 @@ void Set::invoke_sph_e(Action *action)
   double *esph = atom->esph;
 
   int varflag = action->varflag;
-  double sph_e;
+  double sph_e = 0.0;
   if (!action->varflag1) sph_e = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -2289,7 +2288,7 @@ void Set::invoke_sph_rho(Action *action)
   double *rho = atom->rho;
 
   int varflag = action->varflag;
-  double sph_rho;
+  double sph_rho = 0.0;
   if (!action->varflag1) sph_rho = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -2412,7 +2411,7 @@ void Set::invoke_spin_electron(Action *action)
 {
   int nlocal = atom->nlocal;
   int varflag = action->varflag;
-  int ispin;
+  int ispin = -1;
   if (!action->varflag1) ispin = action->ivalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -2451,7 +2450,7 @@ void Set::invoke_temperature(Action *action)
   double *temperature = atom->temperature;
 
   int varflag = action->varflag;
-  double temp;
+  double temp = 0.0;
   if (!action->varflag1) temp = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -2488,7 +2487,7 @@ void Set::invoke_theta(Action *action)
   auto avec_line = dynamic_cast<AtomVecLine *>(atom->style_match("line"));
 
   int varflag = action->varflag;
-  double theta;
+  double theta = 0.0;
   if (!action->varflag1) theta = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -2541,16 +2540,11 @@ void Set::invoke_tri(Action *action)
   auto avec_tri = dynamic_cast<AtomVecTri *>(atom->style_match("tri"));
 
   int varflag = action->varflag;
-  double trisize;
+  double trisize = 0.0;
   if (!action->varflag1) trisize = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
     if (!select[i]) continue;
-#if 0
-    // AK: this seems wrong. Isn't the set command supposed *make* this a triangle?
-    if (tri[i] < 0) error->one(FLERR,"Cannot set tri for atom which is not a triangle");
-#endif
-
     if (varflag) {
       trisize = vec1[i];
       if (trisize < 0.0) error->one(FLERR,"Invalid tri size in set command");
@@ -2718,7 +2712,7 @@ void Set::invoke_volume(Action *action)
   double *vfrac = atom->vfrac;
 
   int varflag = action->varflag;
-  double vol;
+  double vol = 0.0;
   if (!action->varflag1) vol = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -2751,7 +2745,7 @@ void Set::invoke_vx(Action *action)
   double **v = atom->v;
 
   int varflag = action->varflag;
-  double vx;
+  double vx = 0.0;
   if (!action->varflag1) vx = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -2779,7 +2773,7 @@ void Set::invoke_vy(Action *action)
   double **v = atom->v;
 
   int varflag = action->varflag;
-  double vy;
+  double vy = 0.0;
   if (!action->varflag1) vy = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -2807,7 +2801,7 @@ void Set::invoke_vz(Action *action)
   double **v = atom->v;
 
   int varflag = action->varflag;
-  double vz;
+  double vz = 0.0;
   if (!action->varflag1) vz = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -2835,7 +2829,7 @@ void Set::invoke_x(Action *action)
   double **x = atom->x;
 
   int varflag = action->varflag;
-  double coord;
+  double coord = 0.0;
   if (!action->varflag1) coord = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -2863,7 +2857,7 @@ void Set::invoke_y(Action *action)
   double **x = atom->x;
 
   int varflag = action->varflag;
-  double coord;
+  double coord = 0.0;
   if (!action->varflag1) coord = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
@@ -2891,7 +2885,7 @@ void Set::invoke_z(Action *action)
   double **x = atom->x;
 
   int varflag = action->varflag;
-  double coord;
+  double coord = 0.0;
   if (!action->varflag1) coord = action->dvalue1;
 
   for (int i = 0; i < nlocal; i++) {
