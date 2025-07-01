@@ -82,11 +82,10 @@ Set::~Set()
 void Set::command(int narg, char **arg)
 {
   if (domain->box_exist == 0)
-    error->all(FLERR, Error::NOLASTLINE,
-               "Set command before simulation box is defined" + utils::errorurl(0));
+    error->all(FLERR, "Set command before simulation box is defined" + utils::errorurl(0));
   if (atom->natoms == 0)
-    error->all(FLERR, Error::NOLASTLINE, "Set command on system without atoms");
-  if (narg < 4) error->all(FLERR, 1, "Illegal set command: need at least four arguments");
+    error->all(FLERR, "Set command on system without atoms");
+  if (narg < 4) utils::missing_cmd_args(FLERR,"set", error);
 
   process_args(SETCOMMAND, narg, arg);
 
@@ -1022,8 +1021,8 @@ void Set::process_angle(int &iarg, int narg, char **arg, Action *action)
   char *typestr = utils::expand_type(FLERR,arg[iarg+1],Atom::ANGLE,lmp);
   action->ivalue1 = utils::inumeric(FLERR,typestr?typestr:arg[iarg+1],false,lmp);
   delete[] typestr;
-  if (action->ivalue1 <= 0 || action->ivalue1 > atom->nangletypes)
-    error->all(FLERR,"Invalid angle type in set command");
+  if ((action->ivalue1 <= 0) || (action->ivalue1 > atom->nangletypes))
+    error->all(FLERR, argoff+iarg+1, "Invalid angle type {} in set command", arg[iarg+1]);
   iarg += 2;
 }
 
@@ -1124,8 +1123,8 @@ void Set::process_bond(int &iarg, int narg, char **arg, Action *action)
   char *typestr = utils::expand_type(FLERR,arg[iarg+1],Atom::BOND,lmp);
   action->ivalue1 = utils::inumeric(FLERR,typestr?typestr:arg[iarg+1],false,lmp);
   delete[] typestr;
-  if (action->ivalue1 <= 0 || action->ivalue1 > atom->nbondtypes)
-    error->all(FLERR,"Invalid bond type in set command");
+  if ((action->ivalue1 <= 0) || (action->ivalue1 > atom->nbondtypes))
+    error->all(FLERR, argoff+iarg+1, "Invalid bond type {} in set command", arg[iarg+1]);
 
   iarg += 2;
 }
@@ -1144,12 +1143,14 @@ void Set::process_cc(int &iarg, int narg, char **arg, Action *action)
   if (iarg+3 > narg) utils::missing_cmd_args(FLERR, "set cc", error);
 
   action->ivalue1 = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
-  if (action->ivalue1 < 1) error->all(FLERR,"Invalid cc index in set command");
+  if (action->ivalue1 < 1)
+    error->all(FLERR, argoff+iarg+1, "Invalid cc index {} in set command", arg[iarg+1]);
 
   if (utils::strmatch(arg[iarg+2],"^v_")) varparse(arg[iarg+2],1,action);
   else {
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+2],false,lmp);
-    if (action->dvalue1 < 0.0) error->all(FLERR,"Invalid cc value in set command");
+    if (action->dvalue1 < 0.0)
+      error->all(FLERR, argoff+iarg+2, "Invalid cc value {} in set command", action->dvalue1);
   }
 
   iarg += 3;
@@ -1172,7 +1173,7 @@ void Set::invoke_cc(Action *action)
 
     if (varflag) {
       ccvalue = vec1[i];
-      if (ccvalue < 0.0) error->all(FLERR,"Invalid cc value in set command");
+      if (ccvalue < 0.0) error->all(FLERR, Error::NOLASTLINE, "Invalid cc value in set command");
     }
 
     cc[i][cc_index] = ccvalue;
@@ -1227,13 +1228,15 @@ void Set::process_density(int &iarg, int narg, char **arg, Action *action)
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else {
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-    if (action->dvalue1 <= 0.0) error->all(FLERR,"Invalid density in set command");
+    if (action->dvalue1 <= 0.0)
+      error->all(FLERR, argoff+iarg+2, "Invalid density value {} in set command", action->dvalue1);
   }
 
   action->ivalue1 = 0;
   if (strcmp(arg[iarg],"density/disc") == 0) {
     action->ivalue1 = 1;
-    if (domain->dimension != 2) error->all(FLERR,"Set density/disc requires 2d simulation");
+    if (domain->dimension != 2)
+      error->all(FLERR, argoff+iarg, "Set density/disc requires 2d simulation");
   }
 
   iarg += 2;
@@ -1274,7 +1277,7 @@ void Set::invoke_density(Action *action)
 
     if (varflag) {
       density = vec1[i];
-      if (density <= 0.0) error->one(FLERR,"Invalid density in set command");
+      if (density <= 0.0) error->one(FLERR, Error::NOLASTLINE, "Invalid density in set command");
     }
 
     if (radius_flag && radius[i] > 0.0)
@@ -1321,7 +1324,8 @@ void Set::process_diameter(int &iarg, int narg, char **arg, Action *action)
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else {
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-    if (action->dvalue1 < 0.0) error->one(FLERR,"Invalid diameter in set command");
+    if (action->dvalue1 < 0.0)
+      error->all(FLERR, argoff+iarg+1, "Invalid diameter value {} in set command", arg[iarg]);
   }
 
   iarg += 2;
@@ -1341,7 +1345,7 @@ void Set::invoke_diameter(Action *action)
 
     if (varflag) {
       diam = vec1[i];
-      if (diam < 0.0) error->one(FLERR,"Invalid diameter in set command");
+      if (diam < 0.0) error->one(FLERR, Error::NOLASTLINE, "Invalid diameter in set command");
     }
 
     radius[i] = 0.5 * diam;
@@ -1359,8 +1363,8 @@ void Set::process_dihedral(int &iarg, int narg, char **arg, Action *action)
   char *typestr = utils::expand_type(FLERR,arg[iarg+1],Atom::DIHEDRAL,lmp);
   action->ivalue1 = utils::inumeric(FLERR,typestr?typestr:arg[iarg+1],false,lmp);
   delete[] typestr;
-  if (action->ivalue1 <= 0 || action->ivalue1 > atom->ndihedraltypes)
-    error->all(FLERR,"Invalid dihedral type in set command");
+  if ((action->ivalue1 <= 0) || (action->ivalue1 > atom->ndihedraltypes))
+    error->all(FLERR, argoff+iarg+1, "Invalid dihedral type {} in set command", arg[iarg+1]);
 
   iarg += 2;
 }
@@ -1426,9 +1430,9 @@ void Set::process_dipole_random(int &iarg, int narg, char **arg, Action *action)
   action->ivalue1 = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
   action->dvalue1 = utils::numeric(FLERR,arg[iarg+2],false,lmp);
   if (action->ivalue1 <= 0)
-    error->all(FLERR,"Invalid random number seed in set command");
+    error->all(FLERR, argoff+iarg+1, "Invalid random number seed {} in set command", arg[iarg+1]);
   if (action->dvalue1 <= 0.0)
-    error->all(FLERR,"Invalid dipole length in set command");
+    error->all(FLERR, argoff+iarg+2, "Invalid dipole length {} in set command", arg[iarg+2]);
 
   iarg += 3;
 }
@@ -1450,7 +1454,8 @@ void Set::process_dpd_theta(int &iarg, int narg, char **arg, Action *action)
   else if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else {
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-    if (action->dvalue1 < 0.0) error->all(FLERR,"Invalid dpd/theta value in set command");
+    if (action->dvalue1 < 0.0)
+      error->all(FLERR, argoff+iarg+1, "Invalid dpd/theta value {} in set command",arg[iarg+1]);
   }
 
   iarg += 2;
@@ -1478,7 +1483,7 @@ void Set::invoke_dpd_theta(Action *action)
 
     if (varflag) {
       theta = vec1[i];
-      if (theta < 0.0) error->one(FLERR,"Invalid dpd/theta value in set command");
+      if (theta < 0.0) error->one(FLERR, Error::NOLASTLINE, "Invalid dpd/theta value in set command");
     }
 
     // if theta is negative, NULL was used, set dpdTheta to KE of particle
@@ -1506,7 +1511,8 @@ void Set::process_edpd_cv(int &iarg, int narg, char **arg, Action *action)
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else {
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-    if (action->dvalue1 < 0.0) error->all(FLERR,"Invalid edpd/cv value in set command");
+    if (action->dvalue1 < 0.0)
+      error->all(FLERR, argoff+iarg+1, "Invalid edpd/cv value {} in set command", arg[iarg+1]);
   }
 
   iarg += 2;
@@ -1526,7 +1532,7 @@ void Set::invoke_edpd_cv(Action *action)
 
     if (varflag) {
       cv = vec1[i];
-      if (cv < 0.0) error->one(FLERR,"Invalid edpd/cv value in set command");
+      if (cv < 0.0) error->one(FLERR, Error::NOLASTLINE, "Invalid edpd/cv value in set command");
     }
 
     edpd_cv[i] = cv;
@@ -1544,7 +1550,8 @@ void Set::process_edpd_temp(int &iarg, int narg, char **arg, Action *action)
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else {
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-    if (action->dvalue1 < 0.0) error->all(FLERR,"Invalid edpd/temp value in set command");
+    if (action->dvalue1 < 0.0)
+      error->all(FLERR, argoff+iarg+1, "Invalid edpd/temp value {} in set command", arg[iarg+1]);
   }
   iarg += 2;
 }
@@ -1563,7 +1570,7 @@ void Set::invoke_edpd_temp(Action *action)
 
     if (varflag) {
       temp = vec1[i];
-      if (temp < 0.0) error->one(FLERR,"Invalid edpd/temp value in set command");
+      if (temp < 0.0) error->one(FLERR, Error::NOLASTLINE, "Invalid edpd/temp value in set command");
     }
 
     edpd_temp[i] = temp;
@@ -1581,7 +1588,8 @@ void Set::process_epsilon(int &iarg, int narg, char **arg, Action *action)
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else {
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-    if (action->dvalue1 <= 0.0) error->all(FLERR,"Invalid epsilon in set command");
+    if (action->dvalue1 <= 0.0)
+      error->all(FLERR, argoff+iarg+1, "Invalid epsilon value {} in set command", arg[iarg+1]);
   }
 
   iarg += 2;
@@ -1606,7 +1614,7 @@ void Set::invoke_epsilon(Action *action)
 
     if (varflag) {
       eps = vec1[i];
-      if (eps <= 0.0) error->one(FLERR,"Invalid epsilon in set command");
+      if (eps <= 0.0) error->one(FLERR, Error::NOLASTLINE, "Invalid epsilon in set command");
     }
 
     epsilon[i] = eps;
@@ -1714,8 +1722,8 @@ void Set::process_improper(int &iarg, int narg, char **arg, Action *action)
   char *typestr = utils::expand_type(FLERR,arg[iarg+1],Atom::IMPROPER,lmp);
   action->ivalue1 = utils::inumeric(FLERR,typestr?typestr:arg[iarg+1],false,lmp);
   delete[] typestr;
-  if (action->ivalue1 <= 0 || action->ivalue1 > atom->nimpropertypes)
-    error->all(FLERR,"Invalid value in set command");
+  if ((action->ivalue1 <= 0) || (action->ivalue1 > atom->nimpropertypes))
+    error->all(FLERR, argoff+iarg+1, "Invalid improper type {} in set command", arg[iarg+1]);
 
   iarg += 2;
 }
@@ -1736,7 +1744,7 @@ void Set::process_length(int &iarg, int narg, char **arg, Action *action)
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else {
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-    if (action->dvalue1 < 0.0) error->one(FLERR,"Invalid length in set command");
+    if (action->dvalue1 < 0.0) error->one(FLERR, Error::NOLASTLINE, "Invalid length in set command");
   }
 
   iarg += 2;
@@ -1756,7 +1764,7 @@ void Set::invoke_length(Action *action)
 
     if (varflag) {
       length = vec1[i];
-      if (length < 0.0) error->one(FLERR,"Invalid length in set command");
+      if (length < 0.0) error->one(FLERR, Error::NOLASTLINE, "Invalid length in set command");
     }
 
     avec_line->set_length(i,length);
@@ -1772,14 +1780,15 @@ void Set::invoke_length(Action *action)
 
 void Set::process_mass(int &iarg, int narg, char **arg, Action *action)
 {
-  if (!atom->rmass_flag)
+  if (!atom->rmass)
     error->all(FLERR,"Cannot set attribute {} for atom style {}", arg[iarg], atom->get_style());
   if (iarg+2 > narg) utils::missing_cmd_args(FLERR, "set mass", error);
 
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else {
     action->dvalue1 = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-    if (action->dvalue1 <= 0.0) error->one(FLERR,"Invalid mass in set command");
+    if (action->dvalue1 <= 0.0)
+      error->one(FLERR, argoff+iarg+1, "Invalid mass {} in set command", arg[iarg+1]);
   }
 
   iarg += 2;
@@ -1799,7 +1808,7 @@ void Set::invoke_mass(Action *action)
 
     if (varflag) {
       mass_one = vec1[i];
-      if (mass_one < 0.0) error->one(FLERR,"Invalid mass in set command");
+      if (mass_one < 0.0) error->one(FLERR, Error::NOLASTLINE, "Invalid mass in set command");
     }
 
     rmass[i] = mass_one;
@@ -1817,7 +1826,8 @@ void Set::process_mol(int &iarg, int narg, char **arg, Action *action)
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else {
     action->tvalue1 = utils::tnumeric(FLERR,arg[iarg+1],false,lmp);
-    if (action->tvalue1 < 0) error->one(FLERR,"Invalid molecule ID in set command");
+    if (action->tvalue1 < 0)
+      error->all(FLERR, argoff+iarg+1, "Invalid molecule ID {} in set command", arg[iarg+1]);
   }
 
   iarg += 2;
@@ -1837,7 +1847,7 @@ void Set::invoke_mol(Action *action)
 
     if (varflag) {
       molID = (tagint)vec1[i];
-      if (molID < 0) error->one(FLERR,"Invalid molecule ID in set command");
+      if (molID < 0) error->one(FLERR, Error::NOLASTLINE, "Invalid molecule ID in set command");
     }
 
     molecule[i] = molID;
@@ -1982,7 +1992,8 @@ void Set::process_quat_random(int &iarg, int narg, char **arg, Action *action)
   if (iarg+2 > narg) utils::missing_cmd_args(FLERR, "set quat/random", error);
 
   action->ivalue1 = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
-  if (action->ivalue1 <= 0) error->all(FLERR,"Invalid random number seed in set command");
+  if (action->ivalue1 <= 0)
+    error->all(FLERR, argoff+iarg+1, "Invalid random number seed {} in set command", arg[iarg+1]);
 
   iarg += 2;
 }
@@ -2026,7 +2037,7 @@ void Set::invoke_radius_electron(Action *action)
 
     if (varflag) {
       radius = vec1[i];
-      if (radius < 0.0) error->one(FLERR,"Invalid electron radius in set command");
+      if (radius < 0.0) error->one(FLERR, Error::NOLASTLINE, "Invalid electron radius in set command");
     }
 
     eradius[i] = radius;
@@ -2044,8 +2055,8 @@ void Set::process_rheo_status(int &iarg, int narg, char **arg, Action *action)
   if (utils::strmatch(arg[iarg+1],"^v_")) varparse(arg[iarg+1],1,action);
   else {
     action->ivalue1 = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
-    if (action->ivalue1 != 0 && action->ivalue1 != 1)
-      error->one(FLERR,"Invalid rheo/status {} in set command", action->ivalue1);
+    if ((action->ivalue1 != 0) && (action->ivalue1 != 1))
+      error->all(FLERR, argoff+iarg+1, "Invalid rheo/status {} in set command", arg[iarg+1]);
   }
 
   iarg += 2;
@@ -2065,7 +2076,7 @@ void Set::invoke_rheo_status(Action *action)
     if (varflag) {
       rheo_status = static_cast<int>(vec1[i]);
       if (rheo_status != 0 && rheo_status != 1)
-        error->one(FLERR,"Invalid rheo/status in set command");
+        error->one(FLERR, Error::NOLASTLINE, "Invalid rheo/status in set command");
     }
     status[i] = rheo_status;
   }
@@ -2117,12 +2128,12 @@ void Set::invoke_shape(Action *action)
       if (action->varflag2) yvalue = vec2[i];
       if (action->varflag3) zvalue = vec3[i];
       if (xvalue < 0.0 || yvalue < 0.0 || zvalue < 0.0)
-        error->one(FLERR,"Invalid shape in set command");
+        error->one(FLERR, Error::NOLASTLINE, "Invalid shape in set command");
     }
 
     if (xvalue > 0.0 || yvalue > 0.0 || zvalue > 0.0)
       if (xvalue == 0.0 || yvalue == 0.0 || zvalue == 0.0)
-        error->one(FLERR,"Invalid shape in set command");
+        error->one(FLERR, Error::NOLASTLINE, "Invalid shape in set command");
 
     avec_ellipsoid->set_shape(i, 0.5*xvalue, 0.5*yvalue, 0.5*zvalue);
   }
@@ -2165,7 +2176,7 @@ void Set::invoke_smd_contact_radius(Action *action)
 
     if (varflag) {
       radius = vec1[i];
-      if (radius < 0.0) error->one(FLERR,"Invalid smd/contact/radius in set command");
+      if (radius < 0.0) error->one(FLERR, Error::NOLASTLINE, "Invalid smd/contact/radius in set command");
     }
 
     contact_radius[i] = radius;
@@ -2204,7 +2215,7 @@ void Set::invoke_smd_mass_density(Action *action)
 
     if (varflag) {
       density = vec1[i];
-      if (density < 0.0) error->one(FLERR,"Invalid smd/mass/density in set command");
+      if (density < 0.0) error->one(FLERR, Error::NOLASTLINE, "Invalid smd/mass/density in set command");
     }
 
     rmass[i] = vfrac[i] * density;
@@ -2347,7 +2358,7 @@ void Set::invoke_spin_atom(Action *action)
     if (varflag) {
       if (action->varflag1) magnitude = vec1[i];
       if (magnitude < 0.0)
-        error->one(FLERR,"Invalid spin magnitude in set command");
+        error->one(FLERR, Error::NOLASTLINE, "Invalid spin magnitude in set command");
       if (action->varflag2) xvalue = vec2[i];
       if (action->varflag3) yvalue = vec3[i];
       if (action->varflag4) zvalue = vec4[i];
@@ -2423,7 +2434,7 @@ void Set::invoke_spin_electron(Action *action)
     if (varflag) {
       ispin = static_cast<int>(vec1[i]);
       if (ispin < -1 || ispin > 3)
-        error->one(FLERR,"Invalid electron spin in set command");
+        error->one(FLERR, Error::NOLASTLINE, "Invalid electron spin in set command");
     }
 
     atom->spin[i] = ispin;
@@ -2461,7 +2472,7 @@ void Set::invoke_temperature(Action *action)
 
     if (varflag) {
       temp = vec1[i];
-      if (temp < 0.0) error->one(FLERR,"Invalid temperature in set command");
+      if (temp < 0.0) error->one(FLERR, Error::NOLASTLINE, "Invalid temperature in set command");
     }
 
     temperature[i] = temp;
@@ -2550,7 +2561,7 @@ void Set::invoke_tri(Action *action)
     if (!select[i]) continue;
     if (varflag) {
       trisize = vec1[i];
-      if (trisize < 0.0) error->one(FLERR,"Invalid tri size in set command");
+      if (trisize < 0.0) error->one(FLERR, Error::NOLASTLINE, "Invalid tri size in set command");
     }
 
     avec_tri->set_equilateral(i,trisize);
@@ -2723,7 +2734,7 @@ void Set::invoke_volume(Action *action)
 
     if (varflag) {
       vol = vec1[i];
-      if (vol < 0.0) error->one(FLERR,"Invalid volume in set command");
+      if (vol < 0.0) error->one(FLERR, Error::NOLASTLINE, "Invalid volume in set command");
     }
 
     vfrac[i] = vol;

@@ -25,14 +25,14 @@ using namespace FixConst;
 
 FixSet::FixSet(LAMMPS *lmp, int narg, char **arg) : Fix(lmp, narg, arg)
 {
-  if (narg < 8) error->all(FLERR, 1, "Illegal fix set command: need at least eight arguments");
+  if (narg < 8) utils::missing_cmd_args(FLERR, "fix set", error);
 
   nevery = utils::inumeric(FLERR, arg[3], false, lmp);
-  if (nevery <= 0) error->all(FLERR, "Fix {} Nevery must be > 0", style);
+  if (nevery <= 0) error->all(FLERR, 3, "Fix {} Nevery must be > 0", style);
 
   reneighbor = utils::inumeric(FLERR, arg[4], false, lmp);
   if (reneighbor < 0 || reneighbor > 1)
-    error->all(FLERR, "Fix {} rnflag must be 0/1", style);
+    error->all(FLERR, 4, "Fix {} rnflag must be 0/1", style);
 
   // create instance of Set class
 

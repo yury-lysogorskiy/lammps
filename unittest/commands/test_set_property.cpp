@@ -89,7 +89,7 @@ TEST_F(SetTest, NoBoxNoAtoms)
     compute->compute_peratom();
     ASSERT_EQ(compute->vector_atom[0], 0);
 
-    TEST_FAILURE(".*ERROR: Illegal set command: need at least four.*", command("set type 1 x"););
+    TEST_FAILURE(".*ERROR: Illegal set command: missing argument.*", command("set type 1 x"););
     TEST_FAILURE(".*ERROR: Unknown set or fix set command style: xxx.*",
                  command("set xxx 1 x 0.0"););
     TEST_FAILURE(".*ERROR: Unrecognized set or fix set command keyword yyy.*",
