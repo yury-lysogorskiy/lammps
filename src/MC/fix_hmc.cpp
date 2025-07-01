@@ -284,9 +284,6 @@ void FixHMC::init()
 {
   int ntimestep = update->ntimestep;
 
-  if (atom->tag_enable == 0)
-    error->all(FLERR, Error::NOLASTLINE, "Cannot use fix hmc unless atoms have IDs");
-
   // check whether there is any fixes that change box size and/or shape
 
   for (const auto &ifix : modify->get_fix_list())
