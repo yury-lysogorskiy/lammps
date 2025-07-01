@@ -375,15 +375,15 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
                                       "'rate_limit' has too few arguments");
         rate_limit[0][rxn] = 1; // serves as flag for rate_limit keyword
         if (strncmp(arg[iarg+1],"v_",2) == 0) read_variable_keyword(&arg[iarg+1][2],NRATE,rxn);
-        else rate_limit[1][rxn] = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-        rate_limit[2][rxn] = utils::numeric(FLERR,arg[iarg+2],false,lmp);
+        else rate_limit[1][rxn] = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
+        rate_limit[2][rxn] = utils::inumeric(FLERR,arg[iarg+2],false,lmp);
         iarg += 3;
       } else if (strcmp(arg[iarg],"stabilize_steps") == 0) {
         if (stabilization_flag == 0) error->all(FLERR,"Stabilize_steps keyword "
                                                 "used without stabilization keyword");
         if (iarg+2 > narg) error->all(FLERR,"Illegal fix bond/react command: "
                                       "'stabilize_steps' has too few arguments");
-        limit_duration[rxn] = utils::numeric(FLERR,arg[iarg+1],false,lmp);
+        limit_duration[rxn] = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
         stabilize_steps_flag[rxn] = 1;
         iarg += 2;
       } else if (strcmp(arg[iarg],"custom_charges") == 0) {

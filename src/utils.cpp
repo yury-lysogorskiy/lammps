@@ -247,7 +247,7 @@ std::string utils::point_to_error(Input *input, int failed)
     }
     return cmdline;
   } else
-    return std::string("");
+    return {""};
 }
 
 /* specialization for the case of just a single string argument */
@@ -290,7 +290,8 @@ std::string utils::errorurl(int errorcode)
     return "\nFor more information see https://docs.lammps.org/Errors_details.html";
   else if (errorcode > 0)
     return fmt::format("\nFor more information see https://docs.lammps.org/err{:04d}", errorcode);
-  else return ""; // negative numbers are reserved for future use pointing to a different URL
+  else
+    return "";    // negative numbers are reserved for future use pointing to a different URL
 }
 
 void utils::flush_buffers(LAMMPS *lmp)
@@ -927,7 +928,7 @@ int utils::expand_args(const char *file, int line, int narg, char **arg, int mod
 
       if (gridid[0][0] == 'c') {
 
-        auto compute = lmp->modify->get_compute_by_id(gridid[0].substr(2));
+        auto *compute = lmp->modify->get_compute_by_id(gridid[0].substr(2));
         if (compute && compute->pergrid_flag) {
 
           int dim = 0;
@@ -946,7 +947,7 @@ int utils::expand_args(const char *file, int line, int narg, char **arg, int mod
 
       } else if (gridid[0][0] == 'f') {
 
-        auto fix = lmp->modify->get_fix_by_id(gridid[0].substr(2));
+        auto *fix = lmp->modify->get_fix_by_id(gridid[0].substr(2));
         if (fix && fix->pergrid_flag) {
 
           int dim = 0;
@@ -1003,7 +1004,7 @@ int utils::expand_args(const char *file, int line, int narg, char **arg, int mod
       // compute
 
       if (word[0] == 'c') {
-        auto compute = lmp->modify->get_compute_by_id(id);
+        auto *compute = lmp->modify->get_compute_by_id(id);
 
         // check for global vector/array, peratom array, local array
 
@@ -1026,7 +1027,7 @@ int utils::expand_args(const char *file, int line, int narg, char **arg, int mod
         // fix
 
       } else if (word[0] == 'f') {
-        auto fix = lmp->modify->get_fix_by_id(id);
+        auto *fix = lmp->modify->get_fix_by_id(id);
 
         // check for global vector/array, peratom array, local array
 
@@ -2505,7 +2506,7 @@ static int matchone(regex_t p, char c)
     case RX_NOT_WHITESPACE:
       return !matchwhitespace(c);
     default:
-      return (p.u.ch == c);
+      return (p.u.ch == (unsigned char)c);
   }
 }
 

@@ -744,7 +744,7 @@ void FixLambdaAPIP::restart(char *buf)
   int history_length_br, history2_length_br;
 
   int n = 0;
-  auto list = (double *) buf;
+  auto *list = (double *) buf;
 
   history_length_br = static_cast<int>(list[n++]);
   history_used = static_cast<int>(list[n++]);

@@ -851,14 +851,14 @@ double GranSubModNormalMDR::calculate_forces()
             for (int lv1 = 0; lv1 < MDR_MAX_IT; ++lv1) {
               fa_tmp = deltae1D - A * 0.5 + A * sqrt(Bsq * 0.25 - square(aAdh_tmp)) * Binv;
               fa = fa_tmp + sqrt(MY_2PI * aAdh_tmp * gamma * Eeffinv);
-              if (abs(fa) < MDR_EPSILON1) {
+              if (fabs(fa) < MDR_EPSILON1) {
                 break;
               }
               dfda = -aAdh_tmp * A / (B * sqrt(-square(aAdh_tmp) + Bsq * 0.25));
               dfda += gamma * SQRTHALFPI / sqrt(aAdh_tmp * gamma * Eeff);
               aAdh_tmp = aAdh_tmp - fa / dfda;
               fa2 = fa_tmp + sqrt(MY_2PI * aAdh_tmp * gamma * Eeffinv);
-              if (abs(fa - fa2) < MDR_EPSILON2) {
+              if (fabs(fa - fa2) < MDR_EPSILON2) {
                 break;
               }
               if (lv1 == MDR_MAX_IT - 1) {
