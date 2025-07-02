@@ -583,6 +583,11 @@ void FixHMC::restore_saved_state()
   int m = 0;
   while (m < nstore) m += avec->unpack_exchange(&buf_store[m]);
 
+  comm->setup();
+  neighbor->setup_bins();
+  comm->exchange();
+  comm->borders();
+
   // reinit atom_map
 
   if (atom->map_style != Atom::MAP_NONE) {
@@ -594,7 +599,6 @@ void FixHMC::restore_saved_state()
   // ensure fix_rigid images are OK
   
   if (flag_rigid) {
-    fix_rigid->setup_pre_neighbor();
     fix_rigid->pre_neighbor();
   }
 
