@@ -323,9 +323,15 @@ void FixHMC::init()
     // look for computes with active press_flag
 
     press_flag = 0;
-    for (const auto &icompute : modify->get_compute_list())
-      if (utils::strmatch(icompute->id, "^hmc_")) press_flag = press_flag | icompute->pressflag;
-
+    pressatom_flag = 0;
+    peatom_flag = 0;
+    for (const auto &icompute : modify->get_compute_list()) {
+      if (utils::strmatch(icompute->id, "^hmc_")) {
+        press_flag = press_flag | icompute->pressflag;
+        pressatom_flag = pressatom_flag | icompute->pressatomflag;
+        peatom_flag = peatom_flag | icompute->peatomflag;
+      }
+    }
     // initialize arrays and pointers for saving/restoring state
 
     setup_arrays_and_pointers();
@@ -588,6 +594,7 @@ void FixHMC::restore_saved_state()
   // ensure fix_rigid images are OK
   
   if (flag_rigid) {
+    fix_rigid->setup_pre_neighbor();
     fix_rigid->pre_neighbor();
   }
 
