@@ -247,6 +247,36 @@ TEST_F(SetTest, StylesTypes)
     TEST_FAILURE(".*ERROR: Numeric index 9 is out of bounds .1-8.*", command("set type 9 x 0.0"););
     TEST_FAILURE(".*ERROR: Invalid range string: 3:10.*", command("set type 3:10 x 0.0"););
     TEST_FAILURE(".*ERROR: Could not find set group ID nope.*", command("set group nope x 0.0"););
+
+    BEGIN_HIDE_OUTPUT();
+    command("variable stephalf atom step*0.5+1");
+    command("variable stepquart atom step*0.25+1");
+    command("fix one all set 2 0 group all type v_stephalf");
+    command("fix two all set 2 0 group top type v_stepquart");
+    command("run 4 post no");
+    END_HIDE_OUTPUT();
+    EXPECT_EQ(atom->type[0], 2);
+    EXPECT_EQ(atom->type[1], 2);
+    EXPECT_EQ(atom->type[2], 3);
+    EXPECT_EQ(atom->type[3], 3);
+    EXPECT_EQ(atom->type[4], 2);
+    EXPECT_EQ(atom->type[5], 2);
+    EXPECT_EQ(atom->type[6], 3);
+    EXPECT_EQ(atom->type[7], 3);
+    BEGIN_HIDE_OUTPUT();
+    command("run 4 pre no post no");
+    END_HIDE_OUTPUT();
+    EXPECT_EQ(atom->type[0], 3);
+    EXPECT_EQ(atom->type[1], 3);
+    EXPECT_EQ(atom->type[2], 5);
+    EXPECT_EQ(atom->type[3], 5);
+    EXPECT_EQ(atom->type[4], 3);
+    EXPECT_EQ(atom->type[5], 3);
+    EXPECT_EQ(atom->type[6], 5);
+    EXPECT_EQ(atom->type[7], 5);
+
+    TEST_FAILURE(".*ERROR: Fix set command keyword type does not invoke a per-atom variable*",
+                 command("fix three all set 1 0 group all type 1"););
 }
 
 TEST_F(SetTest, PosVelCharge)
@@ -350,6 +380,60 @@ TEST_F(SetTest, PosVelCharge)
     ASSERT_EQ(atom->v[7][0], 1.125);
     ASSERT_EQ(atom->v[7][1], 0.28125);
     ASSERT_EQ(atom->v[7][2], 0.5);
+
+    // trigger generation of ghost atoms
+    BEGIN_HIDE_OUTPUT();
+    command("pair_style zero 0.2");
+    command("pair_coeff * *");
+    command("mass * 1.0");
+    command("run 0 post no");
+    END_HIDE_OUTPUT();
+
+    // clear charges on local and ghost atoms
+    int nlocal = atom->nlocal;
+    int nall   = atom->nlocal + atom->nghost;
+    for (int i = 0; i < nall; ++i)
+        atom->q[i] = 0.0;
+
+    // use fix set without updating ghosts
+    BEGIN_HIDE_OUTPUT();
+    command("variable stephalf atom -0.5*step");
+    command("variable stepquart atom 0.25*step");
+    command("fix one all set 2 0 group all charge v_stephalf");
+    command("fix two all set 2 0 group top charge v_stepquart");
+    command("run 4 post no");
+    END_HIDE_OUTPUT();
+    EXPECT_DOUBLE_EQ(atom->q[0], 1.0);
+    EXPECT_DOUBLE_EQ(atom->q[1], 1.0);
+    EXPECT_DOUBLE_EQ(atom->q[2], -2.0);
+    EXPECT_DOUBLE_EQ(atom->q[3], -2.0);
+    EXPECT_DOUBLE_EQ(atom->q[4], 1.0);
+    EXPECT_DOUBLE_EQ(atom->q[5], 1.0);
+    EXPECT_DOUBLE_EQ(atom->q[6], -2.0);
+    EXPECT_DOUBLE_EQ(atom->q[7], -2.0);
+
+    // confirm that ghost atom charges are unchanged
+    for (int i = nlocal; i < nall; ++i)
+        ASSERT_DOUBLE_EQ(atom->q[i], 0.0);
+
+    // replace fix set command to variant with updating ghosts
+    BEGIN_HIDE_OUTPUT();
+    command("fix one all set 2 1 group all charge v_stephalf");
+    command("fix two all set 2 1 group top charge v_stepquart");
+    command("run 4 post no");
+    END_HIDE_OUTPUT();
+    EXPECT_DOUBLE_EQ(atom->q[0], 2.0);
+    EXPECT_DOUBLE_EQ(atom->q[1], 2.0);
+    EXPECT_DOUBLE_EQ(atom->q[2], -4.0);
+    EXPECT_DOUBLE_EQ(atom->q[3], -4.0);
+    EXPECT_DOUBLE_EQ(atom->q[4], 2.0);
+    EXPECT_DOUBLE_EQ(atom->q[5], 2.0);
+    EXPECT_DOUBLE_EQ(atom->q[6], -4.0);
+    EXPECT_DOUBLE_EQ(atom->q[7], -4.0);
+
+    // confirm that ghost atom charges are non-zero
+    for (int i = nlocal; i < nall; ++i)
+        EXPECT_NE((int)atom->q[i], 0);
 }
 
 TEST_F(SetTest, SpinPackage)
