@@ -110,7 +110,7 @@ folder that the dynamic loader searches or inside of the installed
 
       .. code-block:: bash
 
-         python install.py -p <python package> -l <shared library> -v <version.h file> [-n] [-f]
+         python3 install.py -p <python package> -l <shared library> -v <version.h file> [-n] [-f]
 
       * The ``-p`` flag argument is the full path to the
         ``python/lammps`` folder to be installed,
@@ -129,6 +129,14 @@ folder that the dynamic loader searches or inside of the installed
         user and the system level, and advise to use virtual
         environments instead.  Some recent Linux distributions enforce
         that recommendation by default.
+
+      Example command line for building only the wheel after building
+      LAMMPS with ``cmake`` in the folder ``build``:
+
+      .. code-block:: bash
+
+         python3 python/install.py -n -p python/lammps -l build/liblammps.so -v src/version.h -w build
+
 
    .. tab:: Virtual environment
 
