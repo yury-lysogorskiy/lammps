@@ -1,4 +1,4 @@
-# fix hmc running on SPC/E Water, using rigid/ setting
+# SPC/E water with hybrid mc/md via fix hmc, using its rigid option
 
 units           real
 boundary        p p p
@@ -32,12 +32,16 @@ thermo          100
 #dump           1 all atom 100 dump.hmc_rigid
 
 fix             1 all rigid/small molecule
-run             500  # equilibrate a bit
+
+# equilibrate a bit
+
+run             500
 
 # start HMC run
+
 timestep        5.0  # large timestep
 fix             2 all hmc 200 654123 300.0 rigid 1
 
-thermo_style custom step temp pe ke etotal f_2 f_2[*]
+thermo_style    custom step temp pe ke etotal f_2 f_2[*]
 
 run             5000

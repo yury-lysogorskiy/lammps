@@ -430,7 +430,7 @@ void FixHMC::end_of_step()
   // NOTE: assumption here for rejection
   //   after N steps an exchange() operation on next timestep will be able to
   //     migrate atoms with old coords back to their original owning procs
-  //   if this does not work, atoms will be lost
+  //   if this is not the case, atoms will potentially be lost
 
   if (accept) {
     naccepts++;

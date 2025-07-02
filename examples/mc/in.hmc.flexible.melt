@@ -1,4 +1,4 @@
-# 3d Lennard-Jones melt with hybrid mc/md
+# 3d Lennard-Jones melt with hybrid mc/md via fix hmc
 
 units           lj
 atom_style      atomic
@@ -33,7 +33,7 @@ fix             2 all hmc 100 6234 1.5 resample yes
 #               axes yes 0.8 0.02 view 60 -30
 #dump_modify    3 pad 3
 
-thermo_style custom step temp pe ke etotal f_2 f_2[*]
+thermo_style    custom step temp pe ke etotal f_2 f_2[*]
 
 timestep        0.005
 run             50000

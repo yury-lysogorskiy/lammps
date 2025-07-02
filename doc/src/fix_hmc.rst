@@ -142,7 +142,6 @@ ensemble of velocities is not zeroed.
 
 ----------
 
-
 This fix creates several additional computes for monitoring the energy
 and virial of the system and storing/restoring the system state.  This
 is done internally, as if these commands had been issued, where ID is
