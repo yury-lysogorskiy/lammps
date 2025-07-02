@@ -377,29 +377,31 @@ void FixHMC::setup(int vflag)
     update->eflag_global = update->ntimestep;
     PE = pe->compute_scalar();
     KE = ke->compute_scalar();
-
-    maxstore = BUFEXTRA;
-    bufextra = BUFEXTRA;
-    memory->destroy(buf_store);
-    memory->create(buf_store, maxstore + bufextra, "fix_hmc:buf_store");
-    save_current_state();
-
+    
     // activate potential energy and other necessary calculations
-
+    
     int nextstep = update->ntimestep + nevery;
     pe->addstep(nextstep);
     if (peatom_flag) peatom->addstep(nextstep);
     if (press_flag) press->addstep(nextstep);
     if (pressatom_flag) pressatom->addstep(nextstep);
-
+    
     // create buffer, store fixes for warnings
+    
+
+    maxstore = BUFEXTRA;
+    bufextra = BUFEXTRA;
 
     int maxexchange_fix = 0;
     int maxexchange_atom = atom->avec->maxexchange;
-
+    
     for (const auto &fix : modify->get_fix_list()) maxexchange_fix += fix->maxexchange;
     maxexchange = maxexchange_atom + maxexchange_fix;
     bufextra = maxexchange + BUFEXTRA;
+
+    memory->destroy(buf_store);
+    memory->create(buf_store, maxstore + bufextra, "fix_hmc:buf_store");
+    save_current_state();
   }
 }
 
@@ -437,7 +439,6 @@ void FixHMC::end_of_step()
   //   after N steps an exchange() operation on next timestep will be able to
   //     migrate atoms with old coords back to their original owning procs
   //   if this is not the case, atoms will potentially be lost
-
   if (accept) {
     naccepts++;
     PE = newPE;
@@ -538,14 +539,12 @@ void FixHMC::save_current_state()
   int nmax = atom->nmax;
   AtomVec *avec = atom->avec;
   nstore = 0;
-
+  
   // store all needed info about owned atoms via pack_exchange()
-
   for (int i = 0; i < nlocal; i++) {
     if (nstore > maxstore) grow_store(nstore, 1);
     nstore += avec->pack_exchange(i, &buf_store[nstore]);
   }
-
   // save global energy terms
 
   for (m = 0; m < neg; m++) eglobal[m] = *eglobalptr[m];
@@ -583,8 +582,11 @@ void FixHMC::restore_saved_state()
   int m = 0;
   while (m < nstore) m += avec->unpack_exchange(&buf_store[m]);
 
+  for (const auto &ifix : modify->get_fix_list())
+    ifix->pre_exchange();
+  domain->pbc();
+  domain->reset_box();
   comm->setup();
-  neighbor->setup_bins();
   comm->exchange();
   comm->borders();
 
