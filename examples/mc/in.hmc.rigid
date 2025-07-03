@@ -29,17 +29,16 @@ angle_coeff     1 45.7696 109.47
 timestep        1.0
 
 thermo          100
-#dump           1 all atom 100 dump.hmc_rigid
+#dump            1 all atom 10 dump.hmc_rigid
 
 fix             1 all rigid/small molecule
 
 # equilibrate a bit
-
-run             500
+run             1000
 
 # start HMC run
 
-timestep        5.0  # large timestep
+timestep        3.0  # large timestep
 fix             2 all hmc 200 654123 300.0 rigid 1
 
 thermo_style    custom step temp pe ke etotal f_2 f_2[*]
