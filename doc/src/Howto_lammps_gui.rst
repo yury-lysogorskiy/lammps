@@ -378,7 +378,7 @@ fourth order polynomial is fitted to the data in the window.
    breakdown".  It is thus recommended to use a large enough value as
    argument for the :doc:`thermo command <thermo>` and to select
    plotting only the "Raw" data in the *Charts Window* during such
-   simulations. It is alway possible to switch between the different
+   simulations. It is always possible to switch between the different
    display styles for charts during the simulation or after the
    simulation has finished.
 

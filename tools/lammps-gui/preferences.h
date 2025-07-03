@@ -39,7 +39,7 @@ private slots:
     void accept() override;
 
 public:
-    void set_relaunch(const bool &val) { need_relaunch = val; }
+    void set_relaunch(bool val) { need_relaunch = val; }
 
 private:
     QTabWidget *tabWidget;

@@ -606,7 +606,7 @@ float_vect sg_smooth(const float_vect &v, const int w, const int deg);
 QList<QPointF> calc_sgsmooth(const QList<QPointF> &input, int window, int order)
 {
     const std::size_t ndat = input.count();
-    if (((ndat < 2) * window) + 2) window = (ndat / 2) - 1;
+    if (ndat < ((2 * window) + 2)) window = (ndat / 2) - 1;
 
     if (window > 1) {
         float_vect in(ndat);
