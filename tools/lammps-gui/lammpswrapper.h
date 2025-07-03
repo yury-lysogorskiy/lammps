@@ -67,12 +67,12 @@ public:
     int get_last_error_message(char *errorbuf, int buflen);
 
     bool config_accelerator(const char *package, const char *category, const char *setting) const;
-    static bool config_has_package(const char *pkg);
-    static bool config_has_curl_support();
-    static bool has_gpu_device();
+    bool config_has_package(const char *pkg) const;
+    bool config_has_curl_support() const;
+    bool has_gpu_device() const;
 
     bool load_lib(const char *lammpslib);
-    static bool has_plugin();
+    bool has_plugin() const;
 
 private:
     void *lammps_handle;

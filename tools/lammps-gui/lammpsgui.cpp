@@ -127,19 +127,19 @@ LammpsGui::LammpsGui(QWidget *parent, const QString &filename) :
     // switch configured accelerator back to "none" if needed.
     int accel = settings.value("accelerator", AcceleratorTab::None).toInt();
     if (accel == AcceleratorTab::Opt) {
-        if (!LammpsWrapper::config_has_package("OPT"))
+        if (!lammps.config_has_package("OPT"))
             settings.setValue("accelerator", AcceleratorTab::None);
     } else if (accel == AcceleratorTab::OpenMP) {
-        if (!LammpsWrapper::config_has_package("OPENMP"))
+        if (!lammps.config_has_package("OPENMP"))
             settings.setValue("accelerator", AcceleratorTab::None);
     } else if (accel == AcceleratorTab::Intel) {
-        if (!LammpsWrapper::config_has_package("INTEL"))
+        if (!lammps.config_has_package("INTEL"))
             settings.setValue("accelerator", AcceleratorTab::None);
     } else if (accel == AcceleratorTab::Gpu) {
-        if (!LammpsWrapper::config_has_package("GPU") || !LammpsWrapper::has_gpu_device())
+        if (!lammps.config_has_package("GPU") || !lammps.has_gpu_device())
             settings.setValue("accelerator", AcceleratorTab::None);
     } else if (accel == AcceleratorTab::Kokkos) {
-        if (!LammpsWrapper::config_has_package("KOKKOS"))
+        if (!lammps.config_has_package("KOKKOS"))
             settings.setValue("accelerator", AcceleratorTab::None);
     }
 
@@ -2032,7 +2032,7 @@ void LammpsGui::setup_tutorial(int tutno, const QString &dir, bool purgedir, boo
     constexpr int BUFLEN = 1024;
     char errorbuf[BUFLEN];
 
-    if (!LammpsWrapper::config_has_curl_support()) {
+    if (!lammps.config_has_curl_support()) {
         QMessageBox::critical(this, "LAMMPS-GUI tutorial files download error",
                               "<p align=\"center\">LAMMPS must be compiled with libcurl to support "
                               "downloading files</p>");
