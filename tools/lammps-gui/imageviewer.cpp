@@ -637,7 +637,7 @@ void ImageViewer::createImage()
     usesigma               = false;
     const char *pair_style = (const char *)lammps->extract_global("pair_style");
     if (!useelements && !usediameter && pair_style && (strncmp(pair_style, "lj/", 3) == 0)) {
-        double **sigma = (double **)lammps->extract_pair("sigma");
+        auto **sigma = (double **)lammps->extract_pair("sigma");
         if (sigma) {
             usesigma = true;
             for (int i = 1; i <= ntypes; ++i) {
@@ -677,7 +677,7 @@ void ImageViewer::createImage()
                 edit->setEnabled(true);
                 edit->show();
                 // initialize with lattice spacing
-                auto *xlattice = (const double *)lammps->extract_global("xlattice");
+                const auto *xlattice = (const double *)lammps->extract_global("xlattice");
                 if (xlattice) atomSize = *xlattice;
                 edit->setText(QString::number(atomSize));
             }

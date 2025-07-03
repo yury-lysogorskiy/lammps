@@ -89,7 +89,7 @@ void purge_directory(const QString &dir)
 
     directory.setFilter(QDir::AllEntries | QDir::NoDotAndDotDot);
     const auto &entries = directory.entryList();
-    for (auto &entry : entries) {
+    for (const auto &entry : entries) {
         if (!directory.remove(entry)) {
             directory.cd(entry);
             directory.removeRecursively();

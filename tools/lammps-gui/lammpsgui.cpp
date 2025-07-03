@@ -730,7 +730,7 @@ void LammpsGui::view_file(const QString &fileName)
 
 void LammpsGui::purge_inspect_list()
 {
-    for (auto item : inspectList) {
+    for (auto *item : inspectList) {
         if (item->info) {
             if (!item->info->isVisible()) {
                 delete item->info;
@@ -760,7 +760,7 @@ void LammpsGui::inspect_file(const QString &fileName)
     auto shortName = QFileInfo(fileName).fileName();
 
     purge_inspect_list();
-    auto ilist   = new InspectData;
+    auto *ilist  = new InspectData;
     ilist->info  = nullptr;
     ilist->data  = nullptr;
     ilist->image = nullptr;
@@ -2045,29 +2045,29 @@ void LammpsGui::setup_tutorial(int tutno, const QString &dir, bool purgedir, boo
     if (openwebpage) {
         QString weburl = "https://lammpstutorials.github.io/sphinx/build/html/tutorial%1/%2.html";
         switch (tutno) {
-        case 1:
-            weburl = weburl.arg(tutno).arg("lennard-jones-fluid");
-            break;
-        case 2:
-            weburl = weburl.arg(tutno).arg("breaking-a-carbon-nanotube");
-            break;
-        case 3:
-            weburl = weburl.arg(tutno).arg("polymer-in-water");
-            break;
-        case 4:
-            weburl = weburl.arg(tutno).arg("nanosheard-electrolyte");
-            break;
-        case 5:
-            weburl = weburl.arg(tutno).arg("reactive-silicon-dioxide");
-            break;
-        case 6:
-            weburl = weburl.arg(tutno).arg("water-adsorption-in-silica");
-            break;
-        case 7:
-            weburl = weburl.arg(tutno).arg("free-energy-calculation");
-            break;
-        default:
-            weburl = "https://lammpstutorials.github.io/";
+            case 1:
+                weburl = weburl.arg(tutno).arg("lennard-jones-fluid");
+                break;
+            case 2:
+                weburl = weburl.arg(tutno).arg("breaking-a-carbon-nanotube");
+                break;
+            case 3:
+                weburl = weburl.arg(tutno).arg("polymer-in-water");
+                break;
+            case 4:
+                weburl = weburl.arg(tutno).arg("nanosheard-electrolyte");
+                break;
+            case 5:
+                weburl = weburl.arg(tutno).arg("reactive-silicon-dioxide");
+                break;
+            case 6:
+                weburl = weburl.arg(tutno).arg("water-adsorption-in-silica");
+                break;
+            case 7:
+                weburl = weburl.arg(tutno).arg("free-energy-calculation");
+                break;
+            default:
+                weburl = "https://lammpstutorials.github.io/";
         }
         QDesktopServices::openUrl(QUrl(weburl));
     }

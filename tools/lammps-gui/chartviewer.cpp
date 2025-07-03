@@ -685,8 +685,8 @@ float_mat::float_mat(const std::size_t rows, const std::size_t cols, const doubl
 float_mat::float_mat(const float_mat &m) : std::vector<float_vect>(m.size())
 {
 
-    float_mat::iterator inew       = begin();
-    float_mat::const_iterator iold = m.begin();
+    auto inew = begin();
+    auto iold = m.begin();
     for (/* empty */; iold < m.end(); ++inew, ++iold) {
         const auto oldsz = iold->size();
         inew->resize(oldsz);

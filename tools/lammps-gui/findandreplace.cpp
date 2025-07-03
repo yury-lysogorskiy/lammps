@@ -68,7 +68,7 @@ FindAndReplace::FindAndReplace(CodeEditor *_editor, QWidget *parent) :
     connect(replall, &QPushButton::released, this, &FindAndReplace::replace_all);
     connect(done, &QPushButton::released, this, &QDialog::accept);
 
-    auto action = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Q), this);
+    auto *action = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Q), this);
     connect(action, &QShortcut::activated, this, &FindAndReplace::quit);
 
     setLayout(layout);
