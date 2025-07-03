@@ -445,7 +445,7 @@ bool ChartWindow::eventFilter(QObject *watched, QEvent *event)
 ChartViewer::ChartViewer(const QString &title, int _index, QWidget *parent) :
     QChartView(parent), last_step(-1), index(_index), window(10), order(4), chart(new QChart),
     series(new QLineSeries), smooth(nullptr), xaxis(new QValueAxis), yaxis(new QValueAxis),
-    do_raw(true), do_smooth(true)
+    do_raw(true), do_smooth(false)
 {
     chart->legend()->hide();
     chart->addAxis(xaxis, Qt::AlignBottom);
