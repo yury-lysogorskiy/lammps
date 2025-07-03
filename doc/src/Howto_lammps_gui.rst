@@ -370,18 +370,18 @@ fourth order polynomial is fitted to the data in the window.
 .. admonition:: Slowdown of Simulations from Charts Window
    :class: warning
 
-   Using frequent thermo output or having smoothing enabled during long
-   simulations creating many data points for the chart window can result
-   in a significant slowdown of that simulation as it progresses. This
-   can be confirmed when an increasing percentage of the total run time
-   is spent in the "Output" or "Other" sections of the "MPI task timing
-   breakdown".  It is thus recommended to use a large enough value as
-   argument for the :doc:`thermo command <thermo>` and to select
-   plotting only the "Raw" data in the *Charts Window* during such
-   simulations. It is always possible to switch between the different
-   display styles for charts during the simulation or after the
-   simulation has finished.
-
+   Using frequent thermo output during long simulations can result in a
+   significant slowdown of that simulation since it is accumulating many
+   data points for the chart window to be redrawn with every update.
+   The updates are consuming additional CPU time when smoothing enabled.
+   This slowdown can be confirmed when an increasing percentage of the
+   total run time is spent in the "Output" or "Other" sections of the
+   :doc:`MPI task timing breakdown <Run_output>`.  It is thus
+   recommended to use a large enough value as argument `N` for the
+   :doc:`thermo command <thermo>` and to select plotting only the "Raw"
+   data in the *Charts Window* during such simulations.  It is always
+   possible to switch between the different display styles for charts
+   during the simulation and after it has finished.
 
 The "Title:" and "Y:" input boxes allow to edit the text shown as the
 plot title and the y-axis label, respectively.  The text entered in the
