@@ -58,7 +58,7 @@ enum { NONE, APPEND, VALUE, MERGE };
 
 namespace {
 // clang-format off
-std::unordered_set<std::string> section_keywords = {
+const std::unordered_set<std::string> section_keywords = {
   "Atoms", "Velocities", "Ellipsoids", "Lines", "Triangles", "Bodies",
   "Bonds", "Angles", "Dihedrals", "Impropers",
   "Masses", "Pair Coeffs", "PairIJ Coeffs", "Bond Coeffs", "Angle Coeffs",
@@ -2636,7 +2636,7 @@ void ReadData::parse_coeffs(char *line, const char *addstr, int dupflag, int nof
 
 int ReadData::style_match(const char *one, const char *two)
 {
-  int i, delta, len, len1, len2;
+  int delta, len, len1, len2;
 
   if ((one == nullptr) || (two == nullptr)) return 1;
 

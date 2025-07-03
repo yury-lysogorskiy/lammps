@@ -360,7 +360,7 @@ FixLbFluid::FixLbFluid(LAMMPS *lmp, int narg, char **arg) :
   // perform initial allocation of atom-based array register
   // with Atom class
   //--------------------------------------------------------------------------
-  grow_arrays(atom->nmax);
+  FixLbFluid::grow_arrays(atom->nmax);
   atom->add_callback(Atom::GROW);
 
   for (int i = 0; i < atom->nmax; i++) {

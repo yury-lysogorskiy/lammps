@@ -1341,7 +1341,7 @@ std::vector<std::string> utils::parse_grid_id(const char *file, int line, const 
 
 char *utils::strdup(const std::string &text)
 {
-  auto tmp = new char[text.size() + 1];
+  auto *tmp = new char[text.size() + 1];
   strcpy(tmp, text.c_str());    // NOLINT
   return tmp;
 }
