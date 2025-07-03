@@ -668,7 +668,7 @@ ChartsTab::ChartsTab(QSettings *_settings, QWidget *parent) : QWidget(parent), s
     smoothval->addItem("Smooth");
     smoothval->addItem("Both");
     smoothval->setObjectName("smoothchoice");
-    smoothval->setCurrentIndex(settings->value("smoothchoice", 2).toInt());
+    smoothval->setCurrentIndex(settings->value("smoothchoice", 0).toInt());
 
     auto *rawbrlbl = new QLabel("Raw plot color:");
     auto *rawbrush = new QComboBox;

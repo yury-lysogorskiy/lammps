@@ -77,7 +77,7 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     chartYlabel = new QLineEdit("");
 
     // plot smoothing
-    int smoothchoice = settings.value("smoothchoice", 2).toInt();
+    int smoothchoice = settings.value("smoothchoice", 0).toInt();
     switch (smoothchoice) {
         case 0:
             do_raw    = true;
