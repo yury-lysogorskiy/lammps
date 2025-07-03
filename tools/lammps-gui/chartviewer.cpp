@@ -591,59 +591,23 @@ void ChartViewer::set_ylabel(const QString &ylabel)
     yaxis->setTitleText(ylabel);
 }
 
-/* -------------------------------------------------------------------- */
+// local implementation of Savitzky-Golay filter
 
-// update smooth plot data
-
-static QList<QPointF> calc_sgsmooth(const QList<QPointF> &input, const int window, const int order);
-
-void ChartViewer::update_smooth()
-{
-    QSettings settings;
-    settings.beginGroup("charts");
-    int rawidx    = settings.value("rawbrush", 1).toInt();
-    int smoothidx = settings.value("smoothbrush", 2).toInt();
-    if ((rawidx < 0) || (rawidx >= mybrushes.size())) rawidx = 0;
-    if ((smoothidx < 0) || (smoothidx >= mybrushes.size())) smoothidx = 0;
-    settings.endGroup();
-
-    auto allseries = chart->series();
-    if (do_raw) {
-        // add raw data if not in chart
-        if (!allseries.contains(series)) {
-            series->setPen(QPen(mybrushes[rawidx], 3, Qt::SolidLine, Qt::RoundCap));
-            chart->addSeries(series);
-            series->attachAxis(xaxis);
-            series->attachAxis(yaxis);
-        }
-    }
-
-    if (do_smooth) {
-        if (series->count() > (2 * window)) {
-            if (!smooth) {
-                smooth = new QLineSeries;
-                smooth->setPen(QPen(mybrushes[smoothidx], 3, Qt::SolidLine, Qt::RoundCap));
-                chart->addSeries(smooth);
-                smooth->attachAxis(xaxis);
-                smooth->attachAxis(yaxis);
-            }
-            smooth->replace(calc_sgsmooth(series->points(), window, order));
-        }
-    }
-}
+namespace {
 
 //! default convergence
-static constexpr double TINY_FLOAT = 1.0e-300;
+constexpr double TINY_FLOAT = 1.0e-300;
 
-//! comfortable array of doubles
-typedef std::vector<double> float_vect;
-//! comfortable array of ints;
-typedef std::vector<int> int_vect;
+//! array of doubles
+using float_vect = std::vector<double>;
+
+//! array of ints;
+using int_vect = std::vector<int>;
+
+// forward declaration
+float_vect sg_smooth(const float_vect &v, const int w, const int deg);
 
 // savitzky golay smoothing.
-
-static float_vect sg_smooth(const float_vect &v, const int w, const int deg);
-
 QList<QPointF> calc_sgsmooth(const QList<QPointF> &input, int window, int order)
 {
     const int ndat = input.count();
@@ -677,22 +641,21 @@ QList<QPointF> calc_sgsmooth(const QList<QPointF> &input, int window, int order)
  * \brief two dimensional floating point array
  */
 class float_mat : public std::vector<float_vect> {
-private:
-    //! disable the default constructor
-    explicit float_mat() {};
-    //! disable assignment operator until it is implemented.
-    float_mat &operator=(const float_mat &) { return *this; };
 
 public:
+    // disable selected default constructors and assignment operators
+    float_mat()                             = delete;
+    float_mat(float_mat &&)                 = default;
+    ~float_mat()                            = default;
+    float_mat &operator=(const float_mat &) = delete;
+    float_mat &operator=(float_mat &&)      = delete;
+
     //! constructor with sizes
     float_mat(const std::size_t rows, const std::size_t cols, const double def = 0.0);
     //! copy constructor for matrix
     float_mat(const float_mat &m);
     //! copy constructor for vector
     float_mat(const float_vect &v);
-
-    //! use default destructor
-    // ~float_mat() {};
 
     //! get size
     int nr_rows(void) const { return size(); };
@@ -780,8 +743,8 @@ void permute(float_mat &A, int_vect &idx)
  * scaling information in the vector scale. The map of swapped indices is
  * recorded in swp. The return value is +1 or -1 depending on whether the
  * number of row swaps was even or odd respectively. */
-static int partial_pivot(float_mat &A, const std::size_t row, const std::size_t col,
-                         float_vect &scale, int_vect &idx, double tol)
+int partial_pivot(float_mat &A, const std::size_t row, const std::size_t col, float_vect &scale,
+                  int_vect &idx, double tol)
 {
     if (tol <= 0.0) tol = TINY_FLOAT;
 
@@ -824,7 +787,7 @@ static int partial_pivot(float_mat &A, const std::size_t row, const std::size_t 
  * assumed to be 1.  Note that the lower triangular elements are never
  * checked, so this function is valid to use after a LU-decomposition in
  * place.  A is not modified, and the solution, b, is returned in a. */
-static void lu_backsubst(float_mat &A, float_mat &a, bool diag = false)
+void lu_backsubst(float_mat &A, float_mat &a, bool diag = false)
 {
     for (int r = (A.nr_rows() - 1); r >= 0; --r) {
         for (int c = (A.nr_cols() - 1); c > r; --c) {
@@ -847,7 +810,7 @@ static void lu_backsubst(float_mat &A, float_mat &a, bool diag = false)
  * assumed to be 1.  Note that the upper triangular elements are never
  * checked, so this function is valid to use after a LU-decomposition in
  * place.  A is not modified, and the solution, b, is returned in a. */
-static void lu_forwsubst(float_mat &A, float_mat &a, bool diag = true)
+void lu_forwsubst(float_mat &A, float_mat &a, bool diag = true)
 {
     for (int r = 0; r < A.nr_rows(); ++r) {
         for (int c = 0; c < r; ++c) {
@@ -870,7 +833,7 @@ static void lu_forwsubst(float_mat &A, float_mat &a, bool diag = true)
  * depending on whether the number of row swaps was even or odd
  * respectively.  idx must be preinitialized to a valid set of indices
  * (e.g., {1,2, ... ,A.nr_rows()}). */
-static int lu_factorize(float_mat &A, int_vect &idx, double tol = TINY_FLOAT)
+int lu_factorize(float_mat &A, int_vect &idx, double tol = TINY_FLOAT)
 {
     if (tol <= 0.0) tol = TINY_FLOAT;
 #if 0
@@ -914,7 +877,7 @@ static int lu_factorize(float_mat &A, int_vect &idx, double tol = TINY_FLOAT)
 /*! \brief Solve a system of linear equations.
  * Solves the inhomogeneous matrix problem with lu-decomposition. Note that
  * inversion may be accomplished by setting a to the identity_matrix. */
-static float_mat lin_solve(const float_mat &A, const float_mat &a, double tol = TINY_FLOAT)
+float_mat lin_solve(const float_mat &A, const float_mat &a, double tol = TINY_FLOAT)
 {
     float_mat B(A);
     float_mat b(a);
@@ -935,7 +898,7 @@ static float_mat lin_solve(const float_mat &A, const float_mat &a, double tol = 
 ///////////////////////
 
 //! Returns the inverse of a matrix using LU-decomposition.
-static float_mat invert(const float_mat &A)
+float_mat invert(const float_mat &A)
 {
     const int n = A.size();
     float_mat E(n, n, 0.0);
@@ -949,7 +912,7 @@ static float_mat invert(const float_mat &A)
 }
 
 //! returns the transposed matrix.
-static float_mat transpose(const float_mat &a)
+float_mat transpose(const float_mat &a)
 {
     float_mat res(a.nr_cols(), a.nr_rows());
 
@@ -984,7 +947,7 @@ float_mat operator*(const float_mat &a, const float_mat &b)
 }
 
 //! calculate savitzky golay coefficients.
-static float_vect sg_coeff(const float_vect &b, const std::size_t deg)
+float_vect sg_coeff(const float_vect &b, const std::size_t deg)
 {
     const std::size_t rows(b.size());
     const std::size_t cols(deg + 1);
@@ -1075,6 +1038,46 @@ float_vect sg_smooth(const float_vect &v, const int width, const int deg)
         }
     }
     return res;
+}
+} // namespace
+
+/* -------------------------------------------------------------------- */
+
+// update smooth plot data
+
+void ChartViewer::update_smooth()
+{
+    QSettings settings;
+    settings.beginGroup("charts");
+    int rawidx    = settings.value("rawbrush", 1).toInt();
+    int smoothidx = settings.value("smoothbrush", 2).toInt();
+    if ((rawidx < 0) || (rawidx >= mybrushes.size())) rawidx = 0;
+    if ((smoothidx < 0) || (smoothidx >= mybrushes.size())) smoothidx = 0;
+    settings.endGroup();
+
+    auto allseries = chart->series();
+    if (do_raw) {
+        // add raw data if not in chart
+        if (!allseries.contains(series)) {
+            series->setPen(QPen(mybrushes[rawidx], 3, Qt::SolidLine, Qt::RoundCap));
+            chart->addSeries(series);
+            series->attachAxis(xaxis);
+            series->attachAxis(yaxis);
+        }
+    }
+
+    if (do_smooth) {
+        if (series->count() > (2 * window)) {
+            if (!smooth) {
+                smooth = new QLineSeries;
+                smooth->setPen(QPen(mybrushes[smoothidx], 3, Qt::SolidLine, Qt::RoundCap));
+                chart->addSeries(smooth);
+                smooth->attachAxis(xaxis);
+                smooth->attachAxis(yaxis);
+            }
+            smooth->replace(calc_sgsmooth(series->points(), window, order));
+        }
+    }
 }
 
 // Local Variables:
