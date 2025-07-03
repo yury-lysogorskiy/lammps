@@ -270,8 +270,7 @@ FixBocs::FixBocs(LAMMPS *lmp, int narg, char **arg) :
   pstat_flag = 0;
   pstyle = ISO;
 
-  for (int i = 0; i < 6; i++)
-    if (p_flag[i]) pstat_flag = 1;
+  if (p_flag[0] || p_flag[1] || p_flag[2] || p_flag[3] || p_flag[4] || p_flag[5]) pstat_flag = 1;
 
   if (pstat_flag) {
     if (p_flag[0]) box_change |= BOX_CHANGE_X;
@@ -452,8 +451,8 @@ void FixBocs::init()
   // ensure no conflict with fix deform
 
   if (pstat_flag) {
-    for (auto &ifix : modify->get_fix_by_style("^deform")) {
-      auto deform = dynamic_cast<FixDeform *>(ifix);
+    for (const auto &ifix : modify->get_fix_by_style("^deform")) {
+      auto *deform = dynamic_cast<FixDeform *>(ifix);
       if (deform) {
         int *dimflag = deform->dimflag;
         if ((p_flag[0] && dimflag[0]) || (p_flag[1] && dimflag[1]) ||
@@ -485,7 +484,7 @@ void FixBocs::init()
 
   if (pstat_flag) {
     if (p_match_flag) { // MRD NJD
-      auto pressure_bocs = dynamic_cast<ComputePressureBocs *>(pressure);
+      auto *pressure_bocs = dynamic_cast<ComputePressureBocs *>(pressure);
       if (pressure_bocs) {
         if (p_basis_type == BASIS_ANALYTIC) {
           pressure_bocs->send_cg_info(p_basis_type, N_p_match, p_match_coeffs, N_mol, vavg);
@@ -547,7 +546,7 @@ void FixBocs::init()
   else kspace_flag = 0;
 
   if (utils::strmatch(update->integrate_style,"^respa")) {
-    auto respa = dynamic_cast<Respa *>(update->integrate);
+    auto *respa = dynamic_cast<Respa *>(update->integrate);
     if (respa) {
       nlevels_respa = respa->nlevels;
       step_respa = respa->step;
@@ -558,7 +557,7 @@ void FixBocs::init()
   // detect if any rigid fixes exist so rigid bodies move when box is remapped
 
   rfix.clear();
-  for (auto &ifix : modify->get_fix_list())
+  for (const auto &ifix : modify->get_fix_list())
     if (ifix->rigid_flag) rfix.push_back(ifix);
 }
 
@@ -1367,7 +1366,7 @@ int FixBocs::pack_restart_data(double *list)
 void FixBocs::restart(char *buf)
 {
   int n = 0;
-  auto list = (double *) buf;
+  auto *list = (double *) buf;
   int flag = static_cast<int> (list[n++]);
   if (flag) {
     int m = static_cast<int> (list[n++]);
@@ -1462,7 +1461,7 @@ int FixBocs::modify_param(int narg, char **arg)
       error->all(FLERR, "Fix_modify pressure ID {} does not compute pressure", id_press);
 
     if (p_match_flag) {
-      auto bocspress = dynamic_cast<ComputePressureBocs *>(pressure);
+      auto *bocspress = dynamic_cast<ComputePressureBocs *>(pressure);
       if (bocspress) {
         if (p_basis_type == BASIS_ANALYTIC) {
           bocspress->send_cg_info(p_basis_type, N_p_match, p_match_coeffs, N_mol, vavg);

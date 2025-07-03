@@ -35,7 +35,7 @@ class PairLambdaInputAPIP : public Pair {
   PairLambdaInputAPIP(class LAMMPS *);
   ~PairLambdaInputAPIP() override;
   void compute(int, int) override;
-  virtual void settings(int, char **) override;
+  void settings(int, char **) override;
   void coeff(int, char **) override;
   void init_style() override;
   double init_one(int, int) override;
