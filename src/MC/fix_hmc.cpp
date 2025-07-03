@@ -378,24 +378,24 @@ void FixHMC::setup(int vflag)
     update->eflag_global = update->ntimestep;
     PE = pe->compute_scalar();
     KE = ke->compute_scalar();
-    
+
     // activate potential energy and other necessary calculations
-    
+
     int nextstep = update->ntimestep + nevery;
     pe->addstep(nextstep);
     if (peatom_flag) peatom->addstep(nextstep);
     if (press_flag) press->addstep(nextstep);
     if (pressatom_flag) pressatom->addstep(nextstep);
-    
+
     // create buffer, store fixes for warnings
-    
+
     int maxexchange_fix = 0;
     int maxexchange_atom = atom->avec->maxexchange;
-    
+
     for (const auto &fix : modify->get_fix_list()) maxexchange_fix += fix->maxexchange;
     maxexchange = maxexchange_atom + maxexchange_fix;
     bufextra = maxexchange + BUFEXTRA;
-    
+
     maxstore = BUFEXTRA;
     grow_store(maxstore, 2);
     save_current_state();
@@ -535,7 +535,7 @@ void FixHMC::save_current_state()
   int nmax = atom->nmax;
   AtomVec *avec = atom->avec;
   nstore = 0;
-  
+
   // store all needed info about owned atoms via pack_exchange()
   for (int i = 0; i < nlocal; i++) {
     if (nstore > maxstore) grow_store(nstore, 1);
@@ -595,7 +595,7 @@ void FixHMC::restore_saved_state()
   }
 
   // ensure fix_rigid images are OK
-  
+
   if (flag_rigid) {
     fix_rigid->pre_neighbor();
   }

@@ -45,7 +45,7 @@ Metropolis criterion.  In this context, an MC "move" is the new
 configuration of particles after *N* MD steps, i.e. all the particles
 in the system have moved to new positions. HMC generates a canonical
 distribution in configuration space. More details on the theory behind
-HMC can be found in the references, :ref:`(Mehlig) <Mehlig1>` and 
+HMC can be found in the references, :ref:`(Mehlig) <Mehlig1>` and
 :ref:`(Mehlig) <Mehlig2>`.
 
 The details of the HMC algorithm for a repeating series of $N$ MD
@@ -77,12 +77,12 @@ Metropolis criterion with probability:
 where *T* is the specified temperature.
 
 (4) If accepted, the new configuration becomes the starting point for
-the next trial MC "move". If *resample* is *yes* then the velocities are 
+the next trial MC "move". If *resample* is *yes* then the velocities are
 resampled at this point as well.
 
 (5) If rejected, the old configuration (from *N* steps ago) is
-restored and new momenta (velocities) are assigned to each particle 
-in the fix group by randomly resampling from a normal distribution 
+restored and new momenta (velocities) are assigned to each particle
+in the fix group by randomly resampling from a normal distribution
 at the specified temperature $T$ using the following equation:
 
 .. math::
@@ -211,5 +211,5 @@ The option defaults are resample = no and mom = yes.
 **(Mehlig1)** Mehlig, B., Heermann, D. W., & Forrest, B. M. (1992).
 Hybrid Monte Carlo method for condensed-matter systems. Physical Review B, 45(2), 679.
 
-**(Mehlig2)** Mehlig, B., Heermann, D. W., & Forrest, B. M. (1992). 
+**(Mehlig2)** Mehlig, B., Heermann, D. W., & Forrest, B. M. (1992).
 Exact langevin algorithms. Molecular Physics, 76(6), 1347-1357.
