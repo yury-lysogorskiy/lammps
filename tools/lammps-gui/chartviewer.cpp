@@ -651,16 +651,16 @@ QList<QPointF> calc_sgsmooth(const QList<QPointF> &input, int window, int order)
 
     if (window > 1) {
         float_vect in(ndat);
-        QList<QPointF> rv(ndat);
+        QList<QPointF> rv(input);
 
-        for (int i = 0; i < ndat; ++i) {
+        for (int i = 0; i < ndat; ++i)
             in[i] = input[i].y();
-        }
+
         float_vect out = sg_smooth(in, window, order);
 
-        for (int i = 0; i < ndat; ++i) {
-            rv[i] = (QPointF(input[i].x(), out[i]));
-        }
+        for (int i = 0; i < ndat; ++i)
+            rv[i].setY(out[i]);
+
         return rv;
     } else {
         return input;
