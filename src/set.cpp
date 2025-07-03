@@ -1837,7 +1837,7 @@ void Set::invoke_mol(Action *action)
     if (!select[i]) continue;
 
     if (varflag) {
-      molID = vec1[i];
+      molID = (tagint)vec1[i];
       if (molID < 0) error->one(FLERR,"Invalid molecule ID in set command");
     }
 

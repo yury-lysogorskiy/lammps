@@ -1243,7 +1243,8 @@ void Neighbor::morph_unique()
 
 void Neighbor::morph_skip()
 {
-  int i,j,jj,inewton,jnewton,icut,jcut;
+  int i,j,jj,inewton,jnewton;
+  double icut,jcut;
   NeighRequest *irq,*jrq,*nrq;
 
   // loop over irq from largest to smallest cutoff
@@ -2268,7 +2269,7 @@ int Neighbor::request(void *requestor, int instance)
 NeighRequest *Neighbor::add_request(Pair *requestor, int flags)
 {
   int irequest = request(requestor, requestor->instance_me);
-  auto req = requests[irequest];
+  auto *req = requests[irequest];
   req->apply_flags(flags);
   // apply intel flag. omp flag is set globally via set_omp_neighbor()
   if (requestor->suffix_flag & Suffix::INTEL) {
@@ -2281,7 +2282,7 @@ NeighRequest *Neighbor::add_request(Pair *requestor, int flags)
 NeighRequest *Neighbor::add_request(Fix *requestor, int flags)
 {
   int irequest = request(requestor, requestor->instance_me);
-  auto req = requests[irequest];
+  auto *req = requests[irequest];
   req->pair = 0;
   req->fix = 1;
   req->apply_flags(flags);
@@ -2291,7 +2292,7 @@ NeighRequest *Neighbor::add_request(Fix *requestor, int flags)
 NeighRequest *Neighbor::add_request(Compute *requestor, int flags)
 {
   int irequest = request(requestor, requestor->instance_me);
-  auto req = requests[irequest];
+  auto *req = requests[irequest];
   req->pair = 0;
   req->compute = 1;
   req->apply_flags(flags);
@@ -2301,7 +2302,7 @@ NeighRequest *Neighbor::add_request(Compute *requestor, int flags)
 NeighRequest *Neighbor::add_request(Command *requestor, const char *style, int flags)
 {
   int irequest = request(requestor, 0);
-  auto req = requests[irequest];
+  auto *req = requests[irequest];
   req->pair = 0;
   req->command = 1;
   req->occasional = 1;
