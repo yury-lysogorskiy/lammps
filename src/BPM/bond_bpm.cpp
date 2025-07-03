@@ -65,7 +65,10 @@ BondBPM::BondBPM(LAMMPS *_lmp) :
   writedata = 0;
 
   nhistory = 0;
+  n_histories = 0;
   update_flag = 0;
+  hybrid_flag = 0;
+  store_local_freq = 0;
 
   r0_max_estimate = 0.0;
   max_stretch = 1.0;

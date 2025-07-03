@@ -389,7 +389,7 @@ void GeneralTab::pluginpath()
         field->setText(pluginfile);
         settings->setValue("plugin_path", canonical);
         // ugly hack
-        qobject_cast<Preferences *>(parent()->parent()->parent())->need_relaunch = true;
+        qobject_cast<Preferences *>(parent()->parent()->parent())->set_relaunch(true);
     }
 }
 
@@ -668,7 +668,7 @@ ChartsTab::ChartsTab(QSettings *_settings, QWidget *parent) : QWidget(parent), s
     smoothval->addItem("Smooth");
     smoothval->addItem("Both");
     smoothval->setObjectName("smoothchoice");
-    smoothval->setCurrentIndex(settings->value("smoothchoice", 2).toInt());
+    smoothval->setCurrentIndex(settings->value("smoothchoice", 0).toInt());
 
     auto *rawbrlbl = new QLabel("Raw plot color:");
     auto *rawbrush = new QComboBox;

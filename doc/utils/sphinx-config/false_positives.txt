@@ -2094,6 +2094,7 @@ Loewen
 logfile
 logfreq
 logicals
+logmesg
 loID
 Lomdahl
 Lond

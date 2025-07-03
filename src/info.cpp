@@ -936,7 +936,7 @@ std::vector<std::string> Info::get_available_styles(const std::string &category)
 
 namespace {
 template<typename ValueType>
-static std::vector<std::string> get_style_names(std::map<std::string, ValueType> *styles)
+std::vector<std::string> get_style_names(std::map<std::string, ValueType> *styles)
 {
   std::vector<std::string> names;
 
@@ -951,7 +951,7 @@ static std::vector<std::string> get_style_names(std::map<std::string, ValueType>
 }
 
 template<typename ValueType>
-static bool find_style(const LAMMPS *lmp, std::map<std::string, ValueType> *styles,
+bool find_style(const LAMMPS *lmp, std::map<std::string, ValueType> *styles,
                        const std::string &name, bool suffix_check)
 {
   if (styles->find(name) != styles->end()) {
@@ -976,7 +976,7 @@ static bool find_style(const LAMMPS *lmp, std::map<std::string, ValueType> *styl
 }
 
 template<typename ValueType>
-static void print_columns(FILE *fp, std::map<std::string, ValueType> *styles)
+void print_columns(FILE *fp, std::map<std::string, ValueType> *styles)
 {
   if (styles->empty()) {
     fprintf(fp, "\nNone");

@@ -30,7 +30,7 @@
 #include <QTextCursor>
 #include <QTextStream>
 
-FileViewer::FileViewer(const QString &_filename, QString title, QWidget *parent) :
+FileViewer::FileViewer(const QString &_filename, const QString &title, QWidget *parent) :
     QPlainTextEdit(parent), fileName(_filename)
 {
     auto *action = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Q), this);
@@ -123,7 +123,7 @@ bool FileViewer::eventFilter(QObject *watched, QEvent *event)
 {
     if (event->type() == QEvent::ShortcutOverride) {
         auto *keyEvent = dynamic_cast<QKeyEvent *>(event);
-        if (!keyEvent) return QWidget::eventFilter(watched, event);
+        if (!keyEvent) return QAbstractScrollArea::eventFilter(watched, event);
         if (keyEvent->modifiers().testFlag(Qt::ControlModifier) && keyEvent->key() == '/') {
             stop_run();
             event->accept();
