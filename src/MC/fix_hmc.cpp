@@ -160,6 +160,7 @@ FixHMC::~FixHMC()
 
   memory->destroy(eglobal);
   memory->destroy(vglobal);
+  memory->destroy(buf_store);
 
   delete[] id_rigid;
 
@@ -395,7 +396,6 @@ void FixHMC::setup(int vflag)
     maxexchange = maxexchange_atom + maxexchange_fix;
     bufextra = maxexchange + BUFEXTRA;
     
-    buf_store = nullptr;
     maxstore = BUFEXTRA;
     grow_store(maxstore, 2);
     save_current_state();
@@ -518,7 +518,6 @@ void FixHMC::grow_store(int n, int flag)
     maxstore = static_cast<int>(BUFFACTOR * n);
     memory->grow(buf_store, maxstore + bufextra, "fix_hmc:buf_store");
   } else {
-    memory->destroy(buf_store);
     memory->grow(buf_store, maxstore + bufextra, "fix_hmc:buf_store");
   }
 }
