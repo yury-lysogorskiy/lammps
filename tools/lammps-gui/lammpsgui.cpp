@@ -2066,6 +2066,9 @@ void LammpsGui::setup_tutorial(int tutno, const QString &dir, bool purgedir, boo
             case 7:
                 weburl = weburl.arg(tutno).arg("free-energy-calculation");
                 break;
+            case 8:
+                weburl = weburl.arg(tutno).arg("reactive-molecular-dynamics");
+                break;
             default:
                 weburl = "https://lammpstutorials.github.io/";
         }
