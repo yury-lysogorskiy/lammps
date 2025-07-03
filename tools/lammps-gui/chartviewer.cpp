@@ -627,8 +627,7 @@ void ChartViewer::update_smooth()
                 smooth->attachAxis(xaxis);
                 smooth->attachAxis(yaxis);
             }
-            smooth->clear();
-            smooth->append(calc_sgsmooth(series->points(), window, order));
+            smooth->replace(calc_sgsmooth(series->points(), window, order));
         }
     }
 }
@@ -642,6 +641,7 @@ typedef std::vector<double> float_vect;
 typedef std::vector<int> int_vect;
 
 // savitzky golay smoothing.
+
 static float_vect sg_smooth(const float_vect &v, const int w, const int deg);
 
 QList<QPointF> calc_sgsmooth(const QList<QPointF> &input, int window, int order)
@@ -651,7 +651,7 @@ QList<QPointF> calc_sgsmooth(const QList<QPointF> &input, int window, int order)
 
     if (window > 1) {
         float_vect in(ndat);
-        QList<QPointF> rv;
+        QList<QPointF> rv(ndat);
 
         for (int i = 0; i < ndat; ++i) {
             in[i] = input[i].y();
@@ -659,7 +659,7 @@ QList<QPointF> calc_sgsmooth(const QList<QPointF> &input, int window, int order)
         float_vect out = sg_smooth(in, window, order);
 
         for (int i = 0; i < ndat; ++i) {
-            rv.append(QPointF(input[i].x(), out[i]));
+            rv[i] = (QPointF(input[i].x(), out[i]));
         }
         return rv;
     } else {
