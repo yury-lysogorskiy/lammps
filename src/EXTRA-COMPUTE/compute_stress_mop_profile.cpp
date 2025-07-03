@@ -239,15 +239,15 @@ void ComputeStressMopProfile::init()
   // issue an error for unimplemented bond/angle/dihedral potentials
 
   if (bondflag == 1 && !(force->bond)) {
-    error->all(FLERR, "No bond style is defined for compute stress/mop/profile");
+    bondflag = 0;
   }
 
   if (angleflag == 1 && !(force->angle)) {
-    error->all(FLERR, "No angle style is defined for compute stress/mop/profile");
+    angleflag = 0;
   }
 
   if (dihedralflag == 1 && !(force->dihedral)) {
-    error->all(FLERR, "No dihedral style is defined for compute stress/mop/profile");
+    dihedralflag = 0;
   }
 
   if (angleflag == 1 && force->angle) {
@@ -261,7 +261,7 @@ void ComputeStressMopProfile::init()
     if (force->dihedral->born_matrix_enable == 0) {
       if ((strcmp(force->dihedral_style, "zero") != 0) &&
           (strcmp(force->dihedral_style, "none") != 0))
-          error->one(FLERR, "compute stress/mop/profile does not account for the selected dihedral potentials");
+          error->all(FLERR, "compute stress/mop/profile does not account for the selected dihedral potentials");
     }
   }
 
