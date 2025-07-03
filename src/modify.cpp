@@ -1003,7 +1003,7 @@ Fix *Modify::add_fix(const std::string &fixcmd, int trysuffix)
         replace it later with the desired Fix instance
 ------------------------------------------------------------------------- */
 
-Fix *Modify::replace_fix(const char *replaceID, int narg, char **arg, int trysuffix)
+Fix *Modify::replace_fix(const std::string &replaceID, int narg, char **arg, int trysuffix)
 {
   auto oldfix = get_fix_by_id(replaceID);
   if (!oldfix) error->all(FLERR, Error::NOLASTLINE,
@@ -1043,7 +1043,7 @@ Fix *Modify::replace_fix(const std::string &oldfix, const std::string &fixcmd, i
   std::vector<char *> newarg(args.size());
   int i = 0;
   for (const auto &arg : args) { newarg[i++] = (char *) arg.c_str(); }
-  return replace_fix(oldfix.c_str(), args.size(), newarg.data(), trysuffix);
+  return replace_fix(oldfix, args.size(), newarg.data(), trysuffix);
 }
 
 /* ----------------------------------------------------------------------
