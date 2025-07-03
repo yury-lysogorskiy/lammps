@@ -105,7 +105,7 @@ for the next trial MC "move".
    also affect the acceptance ratio.  A larger timestep will lead to
    larger and more extreme MC moves which are less likely to be
    accepted. The timestep size must strike a balance between allowing the
-   total energy to change and generating errors such as lost atoms 
+   total energy to change and generating errors such as lost atoms
    due to atomic overlap.
 
 .. note::
