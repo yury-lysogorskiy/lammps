@@ -388,19 +388,16 @@ void FixHMC::setup(int vflag)
     
     // create buffer, store fixes for warnings
     
-
-    maxstore = BUFEXTRA;
-    bufextra = BUFEXTRA;
-
     int maxexchange_fix = 0;
     int maxexchange_atom = atom->avec->maxexchange;
     
     for (const auto &fix : modify->get_fix_list()) maxexchange_fix += fix->maxexchange;
     maxexchange = maxexchange_atom + maxexchange_fix;
     bufextra = maxexchange + BUFEXTRA;
-
-    memory->destroy(buf_store);
-    memory->create(buf_store, maxstore + bufextra, "fix_hmc:buf_store");
+    
+    buf_store = nullptr;
+    maxstore = BUFEXTRA;
+    grow_store(maxstore, 2);
     save_current_state();
   }
 }
