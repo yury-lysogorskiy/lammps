@@ -61,6 +61,7 @@
         Disable OpenMP processor affinity
         Address performance regression with processing smoothed data
         Code refactoring and optimization
+        Apply fixes and code modernization suggested by clang-tidy
       </description>
     </release>
     <release version="1.6.13" timestamp="1743734509">
