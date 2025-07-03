@@ -44,6 +44,9 @@ int main(int argc, char *argv[])
     qputenv("LC_ALL", "en_US.UTF-8");
 #endif
 
+    // disable processor affinity for threads by default
+    qputenv("OMP_PROC_BIND", "false");
+
     QApplication app(argc, argv);
     QCoreApplication::setOrganizationName("The LAMMPS Developers");
     QCoreApplication::setOrganizationDomain("lammps.org");
