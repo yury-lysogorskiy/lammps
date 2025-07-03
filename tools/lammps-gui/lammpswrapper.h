@@ -20,6 +20,12 @@
 class LammpsWrapper {
 public:
     LammpsWrapper();
+    ~LammpsWrapper() = default;
+
+    LammpsWrapper(const LammpsWrapper &)            = delete;
+    LammpsWrapper(LammpsWrapper &&)                 = delete;
+    LammpsWrapper &operator=(const LammpsWrapper &) = delete;
+    LammpsWrapper &operator=(LammpsWrapper &&)      = delete;
 
 public:
     void open(int nargs, char **args);
@@ -61,12 +67,12 @@ public:
     int get_last_error_message(char *errorbuf, int buflen);
 
     bool config_accelerator(const char *package, const char *category, const char *setting) const;
-    bool config_has_package(const char *pkg) const;
-    bool config_has_curl_support() const;
-    bool has_gpu_device() const;
+    static bool config_has_package(const char *pkg);
+    static bool config_has_curl_support();
+    static bool has_gpu_device();
 
     bool load_lib(const char *lammpslib);
-    bool has_plugin() const;
+    static bool has_plugin();
 
 private:
     void *lammps_handle;

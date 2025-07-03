@@ -83,10 +83,10 @@ int main(int argc, char *argv[])
 
     QString infile;
     QStringList args = parser.positionalArguments();
-    if (args.size() > 0) infile = args[0];
+    if (!args.empty()) infile = args[0];
     LammpsGui w(nullptr, infile);
     w.show();
-    return app.exec();
+    return QApplication::exec();
 }
 
 // Local Variables:

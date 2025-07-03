@@ -170,15 +170,13 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
 
 int ChartWindow::get_step() const
 {
-    if (charts.size() > 0) {
+    if (!charts.empty()) {
         auto *v = charts[0];
-        if (v)
+        if (v) {
             return (int)v->get_step(v->get_count() - 1);
-        else
-            return -1;
-    } else {
-        return -1;
+        }
     }
+    return -1;
 }
 
 void ChartWindow::reset_charts()
@@ -202,7 +200,7 @@ void ChartWindow::add_chart(const QString &title, int index)
     columns->addItem(title, index);
     columns->show();
     // hide all but the first chart added
-    if (charts.size() > 0) {
+    if (!charts.empty()) {
         chart->hide();
     } else {
         // must initialize QLineEdit with first title
@@ -595,9 +593,6 @@ void ChartViewer::set_ylabel(const QString &ylabel)
 
 namespace {
 
-//! default convergence
-constexpr double TINY_FLOAT = 1.0e-300;
-
 //! array of doubles
 using float_vect = std::vector<double>;
 
@@ -610,8 +605,8 @@ float_vect sg_smooth(const float_vect &v, const int w, const int deg);
 // savitzky golay smoothing.
 QList<QPointF> calc_sgsmooth(const QList<QPointF> &input, int window, int order)
 {
-    const int ndat = input.count();
-    if (ndat < 2 * window + 2) window = ndat / 2 - 1;
+    const std::size_t ndat = input.count();
+    if (((ndat < 2) * window) + 2) window = (ndat / 2) - 1;
 
     if (window > 1) {
         float_vect in(ndat);
@@ -626,9 +621,8 @@ QList<QPointF> calc_sgsmooth(const QList<QPointF> &input, int window, int order)
             rv[i].setY(out[i]);
 
         return rv;
-    } else {
-        return input;
     }
+    return input;
 }
 
 /*! matrix class.
@@ -658,9 +652,9 @@ public:
     float_mat(const float_vect &v);
 
     //! get size
-    int nr_rows(void) const { return size(); };
+    std::size_t nr_rows() const { return size(); };
     //! get size
-    int nr_cols(void) const { return front().size(); };
+    std::size_t nr_cols() const { return front().size(); };
 };
 
 // constructor with sizes
@@ -670,15 +664,6 @@ float_mat::float_mat(const std::size_t rows, const std::size_t cols, const doubl
     for (std::size_t i = 0; i < rows; ++i) {
         (*this)[i].resize(cols, defval);
     }
-#if 0
-    if ((rows < 1) || (cols < 1)) {
-        char buffer[1024];
-
-        sprintf(buffer, "cannot build matrix with %d rows and %d columns\n",
-                rows, cols);
-        sgs_error(buffer);
-    }
-#endif
 }
 
 // copy constructor for matrix
@@ -690,7 +675,7 @@ float_mat::float_mat(const float_mat &m) : std::vector<float_vect>(m.size())
     for (/* empty */; iold < m.end(); ++inew, ++iold) {
         const auto oldsz = iold->size();
         inew->resize(oldsz);
-        const float_vect oldvec(*iold);
+        const float_vect &oldvec(*iold);
         *inew = oldvec;
     }
 }
@@ -744,10 +729,8 @@ void permute(float_mat &A, int_vect &idx)
  * recorded in swp. The return value is +1 or -1 depending on whether the
  * number of row swaps was even or odd respectively. */
 int partial_pivot(float_mat &A, const std::size_t row, const std::size_t col, float_vect &scale,
-                  int_vect &idx, double tol)
+                  int_vect &idx)
 {
-    if (tol <= 0.0) tol = TINY_FLOAT;
-
     int swapNum = 1;
 
     // default pivot is the current position, [row,col]
@@ -755,7 +738,7 @@ int partial_pivot(float_mat &A, const std::size_t row, const std::size_t col, fl
     double piv_elem   = fabs(A[idx[row]][col]) * scale[idx[row]];
 
     // loop over possible pivots below current
-    for (int j = row + 1; j < A.nr_rows(); ++j) {
+    for (std::size_t j = row + 1; j < A.nr_rows(); ++j) {
 
         const double tmp = fabs(A[idx[j]][col]) * scale[idx[j]];
 
@@ -765,11 +748,6 @@ int partial_pivot(float_mat &A, const std::size_t row, const std::size_t col, fl
             piv_elem = tmp;
         }
     }
-
-#if 0
-    if(piv_elem < tol) {
-        sgs_error("partial_pivot(): Zero pivot encountered.\n")
-#endif
 
     if (pivot > row) {         // bring the pivot to the diagonal
         int j      = idx[row]; // reorder swap array
@@ -833,36 +811,24 @@ void lu_forwsubst(float_mat &A, float_mat &a, bool diag = true)
  * depending on whether the number of row swaps was even or odd
  * respectively.  idx must be preinitialized to a valid set of indices
  * (e.g., {1,2, ... ,A.nr_rows()}). */
-int lu_factorize(float_mat &A, int_vect &idx, double tol = TINY_FLOAT)
+int lu_factorize(float_mat &A, int_vect &idx)
 {
-    if (tol <= 0.0) tol = TINY_FLOAT;
-#if 0
-    if ((A.nr_rows() == 0) || (A.nr_rows() != A.nr_cols())) {
-        sgs_error("lu_factorize(): cannot handle empty "
-                  "or nonsquare matrices.\n");
-
-        return 0;
-    }
-#endif
     float_vect scale(A.nr_rows()); // implicit pivot scaling
     for (int i = 0; i < A.nr_rows(); ++i) {
         double maxval = 0.0;
         for (int j = 0; j < A.nr_cols(); ++j) {
-            if (fabs(A[i][j]) > maxval) maxval = fabs(A[i][j]);
+            maxval = std::max(fabs(A[i][j]), maxval);
         }
         if (maxval == 0.0) {
-#if 0
-            sgs_error("lu_factorize(): zero pivot found.\n");
-#endif
             return 0;
         }
         scale[i] = 1.0 / maxval;
     }
 
     int swapNum = 1;
-    for (int c = 0; c < A.nr_cols(); ++c) {                 // loop over columns
-        swapNum *= partial_pivot(A, c, c, scale, idx, tol); // bring pivot to diagonal
-        for (int r = 0; r < A.nr_rows(); ++r) {             //  loop over rows
+    for (int c = 0; c < A.nr_cols(); ++c) {            // loop over columns
+        swapNum *= partial_pivot(A, c, c, scale, idx); // bring pivot to diagonal
+        for (int r = 0; r < A.nr_rows(); ++r) {        //  loop over rows
             int lim = (r < c) ? r : c;
             for (int j = 0; j < lim; ++j) {
                 A[idx[r]][c] -= A[idx[r]][j] * A[idx[j]][c];
@@ -877,7 +843,7 @@ int lu_factorize(float_mat &A, int_vect &idx, double tol = TINY_FLOAT)
 /*! \brief Solve a system of linear equations.
  * Solves the inhomogeneous matrix problem with lu-decomposition. Note that
  * inversion may be accomplished by setting a to the identity_matrix. */
-float_mat lin_solve(const float_mat &A, const float_mat &a, double tol = TINY_FLOAT)
+float_mat lin_solve(const float_mat &A, const float_mat &a)
 {
     float_mat B(A);
     float_mat b(a);
@@ -886,10 +852,10 @@ float_mat lin_solve(const float_mat &A, const float_mat &a, double tol = TINY_FL
     for (int j = 0; j < B.nr_rows(); ++j) {
         idx[j] = j; // init row swap label array
     }
-    lu_factorize(B, idx, tol); // get the lu-decomp.
-    permute(b, idx);           // sort the inhomogeneity to match the lu-decomp
-    lu_forwsubst(B, b);        // solve the forward problem
-    lu_backsubst(B, b);        // solve the backward problem
+    lu_factorize(B, idx); // get the lu-decomp.
+    permute(b, idx);      // sort the inhomogeneity to match the lu-decomp
+    lu_forwsubst(B, b);   // solve the forward problem
+    lu_backsubst(B, b);   // solve the backward problem
     return b;
 }
 
@@ -900,11 +866,11 @@ float_mat lin_solve(const float_mat &A, const float_mat &a, double tol = TINY_FL
 //! Returns the inverse of a matrix using LU-decomposition.
 float_mat invert(const float_mat &A)
 {
-    const int n = A.size();
+    const std::size_t n = A.size();
     float_mat E(n, n, 0.0);
-    float_mat B(A);
+    const float_mat &B(A);
 
-    for (int i = 0; i < n; ++i) {
+    for (std::size_t i = 0; i < n; ++i) {
         E[i][i] = 1.0;
     }
 
@@ -916,8 +882,8 @@ float_mat transpose(const float_mat &a)
 {
     float_mat res(a.nr_cols(), a.nr_rows());
 
-    for (int i = 0; i < a.nr_rows(); ++i) {
-        for (int j = 0; j < a.nr_cols(); ++j) {
+    for (std::size_t i = 0; i < a.nr_rows(); ++i) {
+        for (std::size_t j = 0; j < a.nr_cols(); ++j) {
             res[j][i] = a[i][j];
         }
     }
@@ -928,16 +894,10 @@ float_mat transpose(const float_mat &a)
 float_mat operator*(const float_mat &a, const float_mat &b)
 {
     float_mat res(a.nr_rows(), b.nr_cols());
-#if 0
-    if (a.nr_cols() != b.nr_rows()) {
-        sgs_error("incompatible matrices in multiplication\n");
-        return res;
-    }
-#endif
-    for (int i = 0; i < a.nr_rows(); ++i) {
-        for (int j = 0; j < b.nr_cols(); ++j) {
+    for (std::size_t i = 0; i < a.nr_rows(); ++i) {
+        for (std::size_t j = 0; j < b.nr_cols(); ++j) {
             double sum(0.0);
-            for (int k = 0; k < a.nr_cols(); ++k) {
+            for (std::size_t k = 0; k < a.nr_cols(); ++k) {
                 sum += a[i][k] * b[k][j];
             }
             res[i][j] = sum;
@@ -983,13 +943,7 @@ float_vect sg_coeff(const float_vect &b, const std::size_t deg)
 float_vect sg_smooth(const float_vect &v, const int width, const int deg)
 {
     float_vect res(v.size(), 0.0);
-#if 0
-    if ((width < 1) || (deg < 0) || (v.size() < (2 * width + 2))) {
-        sgs_error("sgsmooth: parameter error.\n");
-        return res;
-    }
-#endif
-    const int window = 2 * width + 1;
+    const int window = (2 * width) + 1;
     const int endidx = v.size() - 1;
 
     // do a regular sliding window average

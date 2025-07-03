@@ -389,7 +389,7 @@ void GeneralTab::pluginpath()
         field->setText(pluginfile);
         settings->setValue("plugin_path", canonical);
         // ugly hack
-        qobject_cast<Preferences *>(parent()->parent()->parent())->need_relaunch = true;
+        qobject_cast<Preferences *>(parent()->parent()->parent())->set_relaunch(true);
     }
 }
 
@@ -418,15 +418,15 @@ AcceleratorTab::AcceleratorTab(QSettings *_settings, LammpsWrapper *_lammps, QWi
 
     none->setEnabled(true);
     none->setObjectName("none");
-    opt->setEnabled(lammps->config_has_package("OPT"));
+    opt->setEnabled(LammpsWrapper::config_has_package("OPT"));
     opt->setObjectName("opt");
-    openmp->setEnabled(lammps->config_has_package("OPENMP"));
+    openmp->setEnabled(LammpsWrapper::config_has_package("OPENMP"));
     openmp->setObjectName("openmp");
-    intel->setEnabled(lammps->config_has_package("INTEL"));
+    intel->setEnabled(LammpsWrapper::config_has_package("INTEL"));
     intel->setObjectName("intel");
     // Kokkos support only works with OpenMP for now.
     kokkos->setEnabled(false);
-    if (lammps->config_has_package("KOKKOS")) {
+    if (LammpsWrapper::config_has_package("KOKKOS")) {
         if (lammps->config_accelerator("KOKKOS", "api", "openmp") &&
             !(lammps->config_accelerator("KOKKOS", "api", "cuda") ||
               lammps->config_accelerator("KOKKOS", "api", "hip") ||
@@ -434,7 +434,7 @@ AcceleratorTab::AcceleratorTab(QSettings *_settings, LammpsWrapper *_lammps, QWi
             kokkos->setEnabled(true);
     }
     kokkos->setObjectName("kokkos");
-    gpu->setEnabled(lammps->config_has_package("GPU") && lammps->has_gpu_device());
+    gpu->setEnabled(LammpsWrapper::config_has_package("GPU") && lammps->has_gpu_device());
     gpu->setObjectName("gpu");
 
     int choice = settings->value("accelerator", AcceleratorTab::None).toInt();

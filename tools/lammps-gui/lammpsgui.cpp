@@ -127,19 +127,19 @@ LammpsGui::LammpsGui(QWidget *parent, const QString &filename) :
     // switch configured accelerator back to "none" if needed.
     int accel = settings.value("accelerator", AcceleratorTab::None).toInt();
     if (accel == AcceleratorTab::Opt) {
-        if (!lammps.config_has_package("OPT"))
+        if (!LammpsWrapper::config_has_package("OPT"))
             settings.setValue("accelerator", AcceleratorTab::None);
     } else if (accel == AcceleratorTab::OpenMP) {
-        if (!lammps.config_has_package("OPENMP"))
+        if (!LammpsWrapper::config_has_package("OPENMP"))
             settings.setValue("accelerator", AcceleratorTab::None);
     } else if (accel == AcceleratorTab::Intel) {
-        if (!lammps.config_has_package("INTEL"))
+        if (!LammpsWrapper::config_has_package("INTEL"))
             settings.setValue("accelerator", AcceleratorTab::None);
     } else if (accel == AcceleratorTab::Gpu) {
-        if (!lammps.config_has_package("GPU") || !lammps.has_gpu_device())
+        if (!LammpsWrapper::config_has_package("GPU") || !LammpsWrapper::has_gpu_device())
             settings.setValue("accelerator", AcceleratorTab::None);
     } else if (accel == AcceleratorTab::Kokkos) {
-        if (!lammps.config_has_package("KOKKOS"))
+        if (!LammpsWrapper::config_has_package("KOKKOS"))
             settings.setValue("accelerator", AcceleratorTab::None);
     }
 
@@ -535,13 +535,13 @@ void LammpsGui::update_recents(const QString &filename)
 
     if (!filename.isEmpty() && !recent.contains(filename)) recent.prepend(filename);
     if (recent.size() > 5) recent.removeLast();
-    if (recent.size() > 0)
+    if (!recent.empty())
         settings.setValue("recent", QVariant::fromValue(recent));
     else
         settings.remove("recent");
 
     ui->action_1->setVisible(false);
-    if ((recent.size() > 0) && !recent[0].isEmpty()) {
+    if ((!recent.empty()) && !recent[0].isEmpty()) {
         QFileInfo fi(recent[0]);
         ui->action_1->setText(QString("&1. ") + fi.fileName());
         ui->action_1->setData(recent[0]);
@@ -1004,7 +1004,7 @@ void LammpsGui::logupdate()
     progress->setValue(completed);
     if (logwindow) {
         const auto text = capturer->GetChunk();
-        if (text.size() > 0) {
+        if (!text.empty()) {
             logwindow->moveCursor(QTextCursor::End);
             logwindow->insertPlainText(text.c_str());
             logwindow->moveCursor(QTextCursor::End);
@@ -1510,8 +1510,8 @@ void LammpsGui::about()
     msg.setFont(myfont);
 
     auto *minwidth = new QSpacerItem(700, 0, QSizePolicy::Minimum, QSizePolicy::Expanding);
-    auto *layout   = (QGridLayout *)msg.layout();
-    layout->addItem(minwidth, layout->rowCount(), 0, 1, layout->columnCount());
+    auto *layout   = dynamic_cast<QGridLayout *>(msg.layout());
+    if (layout) layout->addItem(minwidth, layout->rowCount(), 0, 1, layout->columnCount());
 
     msg.exec();
 }
@@ -1703,7 +1703,7 @@ QWizardPage *LammpsGui::tutorial_directory(const int ntutorial)
 
 void LammpsGui::start_tutorial1()
 {
-    if (wizard) delete wizard;
+    delete wizard;
     wizard = new TutorialWizard(1);
     const auto infotext =
         QString("<p>In tutorial 1 you will learn about LAMMPS input files, their syntax and "
@@ -1721,7 +1721,7 @@ void LammpsGui::start_tutorial1()
 
 void LammpsGui::start_tutorial2()
 {
-    if (wizard) delete wizard;
+    delete wizard;
     wizard = new TutorialWizard(2);
     const auto infotext =
         QString("<p>In tutorial 2 you will learn about setting up a simulation for a molecular "
@@ -1741,7 +1741,7 @@ void LammpsGui::start_tutorial2()
 
 void LammpsGui::start_tutorial3()
 {
-    if (wizard) delete wizard;
+    delete wizard;
     wizard              = new TutorialWizard(3);
     const auto infotext = QString(
         "<p>In tutorial 3 you will learn setting up a multi-component, a polymer molecule embedded "
@@ -1759,7 +1759,7 @@ void LammpsGui::start_tutorial3()
 
 void LammpsGui::start_tutorial4()
 {
-    if (wizard) delete wizard;
+    delete wizard;
     wizard = new TutorialWizard(4);
     const auto infotext =
         QString("<p>In tutorial 4 an electrolyte is simulated while confined between two walls and "
@@ -1778,7 +1778,7 @@ void LammpsGui::start_tutorial4()
 
 void LammpsGui::start_tutorial5()
 {
-    if (wizard) delete wizard;
+    delete wizard;
     wizard = new TutorialWizard(5);
     const auto infotext =
         QString("<p>Tutorial 5 demonstrates the use of the ReaxFF reactive force field which "
@@ -1796,7 +1796,7 @@ void LammpsGui::start_tutorial5()
 
 void LammpsGui::start_tutorial6()
 {
-    if (wizard) delete wizard;
+    delete wizard;
     wizard              = new TutorialWizard(6);
     const auto infotext = QString(
         "<p>In tutorial 6 an MD simulation is combined with Monte Carlo (MC) steps to implement "
@@ -1813,7 +1813,7 @@ void LammpsGui::start_tutorial6()
 
 void LammpsGui::start_tutorial7()
 {
-    if (wizard) delete wizard;
+    delete wizard;
     wizard = new TutorialWizard(7);
     const auto infotext =
         QString("<p>In tutorial 7 you will determine the height of a free energy barrier through "
@@ -1832,7 +1832,7 @@ void LammpsGui::start_tutorial7()
 
 void LammpsGui::start_tutorial8()
 {
-    if (wizard) delete wizard;
+    delete wizard;
     wizard = new TutorialWizard(8);
     const auto infotext =
         QString("<p>In tutorial 8 a CNT embedded in a Nylon-6,6 polymer melt is simulated.  The "
@@ -2032,7 +2032,7 @@ void LammpsGui::setup_tutorial(int tutno, const QString &dir, bool purgedir, boo
     constexpr int BUFLEN = 1024;
     char errorbuf[BUFLEN];
 
-    if (!lammps.config_has_curl_support()) {
+    if (!LammpsWrapper::config_has_curl_support()) {
         QMessageBox::critical(this, "LAMMPS-GUI tutorial files download error",
                               "<p align=\"center\">LAMMPS must be compiled with libcurl to support "
                               "downloading files</p>");

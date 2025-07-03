@@ -113,7 +113,7 @@ double LammpsWrapper::extract_variable(const char *keyword)
         ptr = lammps_extract_variable(lammps_handle, keyword, nullptr);
 #endif
     }
-    double val = *((double *)ptr);
+    double val = (ptr) ? *((double *)ptr) : 0.0;
 #if defined(LAMMPS_GUI_USE_PLUGIN)
     ((liblammpsplugin_t *)plugin_handle)->free(ptr);
 #else
@@ -122,14 +122,14 @@ double LammpsWrapper::extract_variable(const char *keyword)
     return val;
 }
 
-int LammpsWrapper::id_count(const char *keyword)
+int LammpsWrapper::id_count(const char *idtype)
 {
     int val = 0;
     if (lammps_handle) {
 #if defined(LAMMPS_GUI_USE_PLUGIN)
-        val = ((liblammpsplugin_t *)plugin_handle)->id_count(lammps_handle, keyword);
+        val = ((liblammpsplugin_t *)plugin_handle)->id_count(lammps_handle, idtype);
 #else
-        val = lammps_id_count(lammps_handle, keyword);
+        val = lammps_id_count(lammps_handle, idtype);
 #endif
     }
     return val;
@@ -319,7 +319,7 @@ void LammpsWrapper::finalize()
 #endif
 }
 
-bool LammpsWrapper::config_has_package(const char *package) const
+bool LammpsWrapper::config_has_package(const char *package)
 {
 #if defined(LAMMPS_GUI_USE_PLUGIN)
     return ((liblammpsplugin_t *)plugin_handle)->config_has_package(package) != 0;
@@ -339,7 +339,7 @@ bool LammpsWrapper::config_accelerator(const char *package, const char *category
 #endif
 }
 
-bool LammpsWrapper::config_has_curl_support() const
+bool LammpsWrapper::config_has_curl_support()
 {
 #if defined(LAMMPS_GUI_USE_PLUGIN)
     return ((liblammpsplugin_t *)plugin_handle)->config_has_curl_support() != 0;
@@ -348,7 +348,7 @@ bool LammpsWrapper::config_has_curl_support() const
 #endif
 }
 
-bool LammpsWrapper::has_gpu_device() const
+bool LammpsWrapper::has_gpu_device()
 {
 #if defined(LAMMPS_GUI_USE_PLUGIN)
     return ((liblammpsplugin_t *)plugin_handle)->has_gpu_device() != 0;
@@ -358,7 +358,7 @@ bool LammpsWrapper::has_gpu_device() const
 }
 
 #if defined(LAMMPS_GUI_USE_PLUGIN)
-bool LammpsWrapper::has_plugin() const
+bool LammpsWrapper::has_plugin()
 {
     return true;
 }
@@ -379,7 +379,7 @@ bool LammpsWrapper::load_lib(const char *libfile)
     return true;
 }
 #else
-bool LammpsWrapper::has_plugin() const
+bool LammpsWrapper::has_plugin()
 {
     return false;
 }

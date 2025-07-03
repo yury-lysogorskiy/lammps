@@ -82,15 +82,15 @@ void FindAndReplace::find_next()
 {
     auto text = search->text();
 
-    int find_flags = 0;
+    auto find_flags = QTextDocument::FindFlags();
     if (withcase->isChecked()) find_flags |= QTextDocument::FindCaseSensitively;
     if (whole->isChecked()) find_flags |= QTextDocument::FindWholeWords;
 
     if (!text.isEmpty()) {
-        if (!editor->find(text, (QTextDocument::FindFlag)find_flags) && wrap->isChecked()) {
+        if (!editor->find(text, find_flags) && wrap->isChecked()) {
             // nothing found from the current position to the end, reposition cursor and beginning
             editor->moveCursor(QTextCursor::Start, QTextCursor::MoveAnchor);
-            editor->find(text, (QTextDocument::FindFlag)find_flags);
+            editor->find(text, find_flags);
         }
     }
 }
