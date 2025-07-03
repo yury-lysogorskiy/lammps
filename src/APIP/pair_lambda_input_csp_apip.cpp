@@ -120,7 +120,7 @@ int PairLambdaInputCSPAPIP::calculate_lambda_input()
   int nhalf = nnn / 2;
   int nnn_all = nnn + nnn_buffer;
   int npairs = nnn_all * (nnn_all - 1) / 2;
-  auto pairs = new double[npairs];
+  auto *pairs = new double[npairs];
 
   double **x = atom->x;
   double *lambda_input = atom->apip_lambda_input;
@@ -265,7 +265,7 @@ void PairLambdaInputCSPAPIP::select(int k, int n, double *arr)
 
 void PairLambdaInputCSPAPIP::select2(int k, int n, double *arr, int *iarr)
 {
-  int i, ir, j, l, mid, ia, itmp;
+  int i, ir, j, l, mid, ia;
   double a;
 
   arr--;

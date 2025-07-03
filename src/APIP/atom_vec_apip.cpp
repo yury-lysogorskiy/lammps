@@ -25,9 +25,6 @@ AtomVecApip::AtomVecApip(LAMMPS *lmp) : AtomVec(lmp)
   mass_type = PER_TYPE;
   forceclearflag = 1;
 
-  double *apip_lambda, *apip_lambda_input, *apip_lambda_input_ta, *apip_lambda_const, *apip_e_fast,
-      *apip_e_precise, **apip_f_const_lambda, **apip_f_dyn_lambda;
-  int *apip_lambda_required;
   atom->apip_lambda_flag = 1;
   atom->apip_lambda_input_flag = 1;
   atom->apip_lambda_input_ta_flag = 1;

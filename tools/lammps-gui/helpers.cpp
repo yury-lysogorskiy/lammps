@@ -75,10 +75,7 @@ bool has_exe(const QString &exe)
 
     QFile file(retStr);
     QFileInfo check_file(file);
-    if (check_file.exists() && check_file.isFile())
-        return true; // Found!
-    else
-        return false; // Not found!
+    return (check_file.exists() && check_file.isFile());
 }
 
 // recursively remove all contents from a directory
@@ -89,7 +86,7 @@ void purge_directory(const QString &dir)
 
     directory.setFilter(QDir::AllEntries | QDir::NoDotAndDotDot);
     const auto &entries = directory.entryList();
-    for (auto &entry : entries) {
+    for (const auto &entry : entries) {
         if (!directory.remove(entry)) {
             directory.cd(entry);
             directory.removeRecursively();
