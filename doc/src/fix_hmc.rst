@@ -76,6 +76,11 @@ Metropolis criterion with probability:
 
 where *T* is the specified temperature.
 
+The idea of HMC is to use a timestep large enough that total energy is
+*not* conserved. The change in total energy (the Hamiltonian) is what
+the Metropolis criterion is based on, not the change in potential
+energy.
+
 (4) If accepted, the new configuration becomes the starting point for
 the next trial MC "move". If *resample* is *yes* then the velocities are
 resampled at this point as well.
@@ -99,7 +104,9 @@ for the next trial MC "move".
    MD would not normally generate as quickly.  The timestep size may
    also affect the acceptance ratio.  A larger timestep will lead to
    larger and more extreme MC moves which are less likely to be
-   accepted.
+   accepted. The timestep size must strike a balance between allowing the
+   total energy to change and generating errors such as lost atoms 
+   due to atomic overlap.
 
 .. note::
 
