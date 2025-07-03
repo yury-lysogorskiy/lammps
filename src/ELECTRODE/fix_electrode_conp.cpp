@@ -829,7 +829,7 @@ void FixElectrodeConp::compute_sd_vectors_ffield()
 
 int FixElectrodeConp::get_top_group()
 {
-  double *zmax = new double[num_of_groups];
+  auto *zmax = new double[num_of_groups];
   double **x = atom->x;
   for (int g = 0; g < num_of_groups; g++) { zmax[g] = domain->boxlo[2]; }
   int *mask = atom->mask;
@@ -928,7 +928,7 @@ void FixElectrodeConp::update_charges()
       delta = dot_nlocalele(r, d);
       dot_old = dot_new;
     }
-    recompute_potential(std::move(b), q_local);
+    recompute_potential(b, q_local);
     if ((delta > cg_threshold) && (comm->me == 0))
       error->warning(FLERR, "CG threshold not reached");
   } else {

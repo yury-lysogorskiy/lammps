@@ -562,7 +562,7 @@ void FixBocs::init()
 }
 
 // NJD MRD 2 functions
-int FixBocs::read_F_table( char *filename, int p_basis_type )
+int FixBocs::read_F_table(char *filename, int p_basis_type)
 {
   std::string message;
   double **data;
@@ -576,9 +576,7 @@ int FixBocs::read_F_table( char *filename, int p_basis_type )
     // through the file.
     // NB: LAMMPS coding guidelines prefer cstdio so we are intentionally
     // foregoing  reading with getline
-    if (comm->me == 0) {
-        error->message(FLERR, "INFO: About to read data file: {}", filename);
-    }
+    if (comm->me == 0) utils::logmesg(lmp, "INFO: About to read data file: {}\n", filename);
 
     // Data file lines hold two floating point numbers.
     // Line length we allocate should be long enough without being too long.
@@ -586,16 +584,11 @@ int FixBocs::read_F_table( char *filename, int p_basis_type )
     constexpr int MAX_F_TABLE_LINE_LENGTH = 128;
     char line[MAX_F_TABLE_LINE_LENGTH] = {'\0'};
     std::vector<std::string> inputLines;
-    while (fgets(line, MAX_F_TABLE_LINE_LENGTH, fpi)) {
-      inputLines.emplace_back(line);
-    }
+    while (fgets(line, MAX_F_TABLE_LINE_LENGTH, fpi)) inputLines.emplace_back(line);
     fclose(fpi);
 
     numEntries = inputLines.size();
-    if (comm->me == 0) {
-      error->message(FLERR, "INFO: Read {} lines from file", numEntries);
-    }
-
+    if (comm->me == 0) utils::logmesg(lmp, "INFO: Read {} lines from file\n", numEntries);
 
     // Allocate memory for the two dimensional matrix
     // that holds data from the input file.
@@ -648,16 +641,14 @@ int FixBocs::read_F_table( char *filename, int p_basis_type )
       }
     }
 
-    if (numBadVolumeIntervals > 0 && comm->me == 0) {
-      error->message(FLERR, "INFO: total number bad volume intervals = {}", numBadVolumeIntervals);
-    }
+    if (numBadVolumeIntervals > 0 && comm->me == 0)
+      utils::logmesg(lmp, "INFO: total number bad volume intervals = {}\n", numBadVolumeIntervals);
   } else {
     error->all(FLERR,"ERROR: Unable to open file: {}", filename);
   }
 
-  if (badInput && comm->me == 0) {
+  if (badInput && comm->me == 0)
     error->warning(FLERR,"Bad volume / pressure-correction data: {}\nSee details above", filename);
-  }
 
   if (p_basis_type == BASIS_LINEAR_SPLINE) {
     spline_length = numEntries;
@@ -683,9 +674,8 @@ int FixBocs::build_linear_splines(double **data) {
     splines[PRESSURE_CORRECTION][i] = data[PRESSURE_CORRECTION][i];
   }
 
-  if (comm->me == 0) {
-    error->message(FLERR, "INFO: leaving build_linear_splines, spline_length = {}", spline_length);
-  }
+  if (comm->me == 0)
+    utils::logmesg(lmp, "INFO: leaving build_linear_splines, spline_length = {}\n", spline_length);
 
   return spline_length;
 }
@@ -773,9 +763,8 @@ int FixBocs::build_cubic_splines(double **data)
   memory->destroy(mu);
   memory->destroy(z);
 
-  if (comm->me == 0) {
-    error->message(FLERR, "INFO: leaving build_cubic_splines, numSplines = {}", numSplines);
-  }
+  if (comm->me == 0)
+    utils::logmesg(lmp, "INFO: leaving build_cubic_splines, numSplines = {}\n", numSplines);
 
   // Tell the caller how many splines we created
   return numSplines;

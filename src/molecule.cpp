@@ -399,7 +399,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
               FLERR, Error::NOLASTLINE,
               "Molecule template {}: Found {} instead of {} data entries for \"special:bonds\"", id,
               specialbonds["data"].size(), natoms);
-        if (specialbonds["data"][0] != 2)
+        if (specialbonds["data"][0].size() != 2)
           error->all(FLERR, Error::NOLASTLINE,
                      "Molecule template {}: \"special:bonds\" is incorrectly formatted: {}", id,
                      to_string(specialbonds["data"][0]));
@@ -1514,7 +1514,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
                      "Molecule template {}: invalid atom-id {} for entry {} in \"special:bonds\" "
                      "section of molecule JSON data",
                      id, to_string(specialbonds["data"][i][0]), i + 1);
-        const int iatom = int(specialbonds["data"][i][0]);
+        const int iatom = int(specialbonds["data"][i][0]) - 1;
         if ((iatom < 0) || (iatom >= natoms))
           error->all(FLERR, Error::NOLASTLINE,
                      "Molecule template {}: invalid atom-id {} in \"special:bondss\" section of "
