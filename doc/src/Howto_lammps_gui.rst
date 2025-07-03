@@ -357,17 +357,31 @@ property can be shown at a time.  The plots are updated regularly with
 new data as the run progresses, so they can be used to visually monitor
 the evolution of available properties.  The update interval can be set
 in the *Preferences* dialog.  By default, the raw data for the selected
-property is plotted as a blue graph. As soon as there are a sufficient
-number of data points, there will be a second graph shown in red with a
-smoothed version of the data.  From the drop down menu on the top left,
-you can select whether to plot only the raw data, only the smoothed
-data or both.  The smoothing uses a `Savitzky-Golay convolution filter
-<https://en.wikipedia.org/wiki/Savitzky%E2%80%93Golay_filter>`_ The
-window width (left) and order (right) parameters can be set in the boxes
-next to the drop down menu.  Default settings are 10 and 4 which means
-that the smoothing window includes 10 points each to the left and the
-right of the current data point for a total of 21 points and a fourth
-order polynomial is fitted to the data in the window.
+property is plotted as a blue graph.  From the drop down menu on the top
+left, you can select whether to plot only raw data graph, only a
+smoothed data graph or both.  The smoothing uses a `Savitzky-Golay convolution
+filter <https://en.wikipedia.org/wiki/Savitzky%E2%80%93Golay_filter>`_
+The window width (left) and order (right) parameters can be set in the
+boxes next to the drop down menu.  Default settings are 10 and 4 which
+means that the smoothing window includes 10 points each to the left and
+the right of the current data point for a total of 21 points and a
+fourth order polynomial is fitted to the data in the window.
+
+.. admonition:: Slowdown of Simulations from Charts Window
+   :class: warning
+
+   Using frequent thermo output or having smoothing enabled during long
+   simulations creating many data points for the chart window can result
+   in a significant slowdown of that simulation as it progresses. This
+   can be confirmed when an increasing percentage of the total run time
+   is spent in the "Output" or "Other" sections of the "MPI task timing
+   breakdown".  It is thus recommended to use a large enough value as
+   argument for the :doc:`thermo command <thermo>` and to select
+   plotting only the "Raw" data in the *Charts Window* during such
+   simulations. It is alway possible to switch between the different
+   display styles for charts during the simulation or after the
+   simulation has finished.
+
 
 The "Title:" and "Y:" input boxes allow to edit the text shown as the
 plot title and the y-axis label, respectively.  The text entered in the
