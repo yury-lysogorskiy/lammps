@@ -64,7 +64,7 @@ FixRigidSmall::FixRigidSmall(LAMMPS *lmp, int narg, char **arg) :
 {
   int i;
 
-  if (comm->me == 0) utils::logmesg(lmp,"Fix rigid/small setup ...\n");
+  if (comm->me == 0) utils::logmesg(lmp,"Fix {} setup ...\n", style);
 
   scalar_flag = 1;
   extscalar = 0;
