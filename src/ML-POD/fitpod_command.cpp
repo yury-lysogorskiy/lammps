@@ -1691,7 +1691,7 @@ void FitPOD::least_squares_fit(const datastruct &data)
   fastpodptr->mknewcoeff(desc.c, nCoeffAll);
 }
 
-double latticevolume(double *lattice)
+static double latticevolume(double *lattice)
 {
   double *v1 = &lattice[0];
   double *v2 = &lattice[3];
