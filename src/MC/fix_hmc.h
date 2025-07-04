@@ -86,10 +86,6 @@ class FixHMC : public Fix {
   int ncommrev;
 
   double (*itensor)[6];
-
-  static constexpr size_t three = 3 * sizeof(double);
-  static constexpr size_t four = 4 * sizeof(double);
-  static constexpr size_t six = 6 * sizeof(double);
 };
 
 }    // namespace LAMMPS_NS

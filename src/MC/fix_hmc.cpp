@@ -51,8 +51,9 @@
 using namespace LAMMPS_NS;
 using namespace FixConst;
 
-#define BUFFACTOR 1.5
-#define BUFEXTRA 1024
+static constexpr double BUFFACTOR = 1.5;
+static constexpr int BUFEXTRA = 1024;
+static constexpr auto SIX = sizeof(double) * 6;
 
 /* ---------------------------------------------------------------------- */
 
@@ -562,7 +563,7 @@ void FixHMC::save_current_state()
   // save global virial terms
 
   if (press_flag)
-    for (m = 0; m < nv; m++) memcpy(vglobal[m], *vglobalptr[m], six);
+    for (m = 0; m < nv; m++) memcpy(vglobal[m], *vglobalptr[m], SIX);
 }
 
 /* ----------------------------------------------------------------------
@@ -618,7 +619,7 @@ void FixHMC::restore_saved_state()
   // restore global virial terms
 
   if (press_flag)
-    for (i = 0; i < nv; i++) memcpy(*vglobalptr[i], vglobal[i], six);
+    for (i = 0; i < nv; i++) memcpy(*vglobalptr[i], vglobal[i], SIX);
 }
 
 /* ----------------------------------------------------------------------
