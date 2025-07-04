@@ -98,12 +98,14 @@ FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
       if (iarg + 2 > narg) utils::missing_cmd_args(FLERR, "hmc rigid", error);
       delete[] id_rigid;
       id_rigid = utils::strdup(arg[iarg + 1]);
-      auto ifix = modify->get_fix_by_id(id_rigid);
+      auto *ifix = modify->get_fix_by_id(id_rigid);
       if (!ifix) error->all(FLERR, iarg + 1, "Unknown rigid fix id {} for fix hmc", id_rigid);
       fix_rigid = dynamic_cast<FixRigidSmall *>(ifix);
-      if (!fix_rigid)
-        error->all(FLERR, iarg + 1,
-                   "Fix ID {} for compute rigid/local does not point to fix rigid/small", id_rigid);
+      if (!fix_rigid || !utils::strmatch(ifix->style, "^rigid/small") ||
+          !utils::strmatch(ifix->style, "^rigid/nve/small"))
+        error->all(FLERR, Error::NOLASTLINE,
+                   "Fix ID {} for fix hmc does not point to fix rigid/small or rigid/nve/small",
+                   id_rigid);
       flag_rigid = 1;
       iarg += 2;
     } else {
@@ -295,13 +297,25 @@ void FixHMC::init()
   // check whether fix rigid/small still exists
 
   if (flag_rigid) {
-    auto ifix = modify->get_fix_by_id(id_rigid);
+    auto *ifix = modify->get_fix_by_id(id_rigid);
     if (!ifix)
       error->all(FLERR, Error::NOLASTLINE, "Unknown rigid fix id {} for fix hmc", id_rigid);
     fix_rigid = dynamic_cast<FixRigidSmall *>(ifix);
-    if (!fix_rigid)
+    if (!fix_rigid || !utils::strmatch(ifix->style, "^rigid/small") ||
+        !utils::strmatch(ifix->style, "^rigid/nve/small"))
       error->all(FLERR, Error::NOLASTLINE,
-                 "Fix ID {} for compute rigid/local does not point to fix rigid/small", id_rigid);
+                 "Fix ID {} for fix hmc does not point to fix rigid/small or rigid/nve/small",
+                 id_rigid);
+  }
+
+  // check if nve time integration fix exists
+
+  for (const auto &ifix : modify->get_fix_list()) {
+    if (ifix->time_integrate && !ifix->rigid_flag) {
+      if (!utils::strmatch(ifix->style, "^nve"))
+        if (comm->me == 0)
+          error->warning(FLERR, "Non NVE time integration fix {} {} found", ifix->id, ifix->style);
+    }
   }
 
   // check whether there are subsequent fixes with active virial_flag
@@ -578,8 +592,7 @@ void FixHMC::restore_saved_state()
   int m = 0;
   while (m < nstore) m += avec->unpack_exchange(&buf_store[m]);
 
-  for (const auto &ifix : modify->get_fix_list())
-    ifix->pre_exchange();
+  for (const auto &ifix : modify->get_fix_list()) ifix->pre_exchange();
   domain->pbc();
   domain->reset_box();
   comm->setup();
@@ -596,9 +609,7 @@ void FixHMC::restore_saved_state()
 
   // ensure fix_rigid images are OK
 
-  if (flag_rigid) {
-    fix_rigid->pre_neighbor();
-  }
+  if (flag_rigid) fix_rigid->pre_neighbor();
 
   // restore global energy terms
 
