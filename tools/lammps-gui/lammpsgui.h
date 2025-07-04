@@ -65,6 +65,7 @@ class LammpsGui : public QMainWindow {
     friend class CodeEditor;
     friend class GeneralTab;
     friend class TutorialWizard;
+    friend class Preferences;
 
 public:
     LammpsGui(QWidget *parent = nullptr, const QString &filename = QString());
@@ -183,6 +184,9 @@ private:
     bool is_running;
     int run_counter;
     std::vector<char *> lammps_args;
+
+protected:
+    int nthreads;
 };
 
 class TutorialWizard : public QWizard {

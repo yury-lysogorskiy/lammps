@@ -112,15 +112,20 @@ void Preferences::accept()
         }
     }
 
+#if defined(_OPENMP)
     // store number of threads, reset to 1 for "None" and "Opt" settings
+    auto *main = dynamic_cast<LammpsGui *>(get_main_widget());
     auto *field = tabWidget->findChild<QLineEdit *>("nthreads");
     if (field) {
         int accel = settings->value("accelerator", AcceleratorTab::None).toInt();
-        if ((accel == AcceleratorTab::None) || (accel == AcceleratorTab::Opt))
-            settings->setValue("nthreads", 1);
-        else if (field->hasAcceptableInput())
+        if ((accel == AcceleratorTab::None) || (accel == AcceleratorTab::Opt)) {
+            main->nthreads = 1;
+        } else if (field->hasAcceptableInput()) {
             settings->setValue("nthreads", field->text());
+            main->nthreads = settings->value("nthreads", 16).toInt();
+        }
     }
+#endif
 
     // store image width, height, zoom, and rendering settings
 
@@ -462,7 +467,8 @@ AcceleratorTab::AcceleratorTab(QSettings *_settings, LammpsWrapper *_lammps, QWi
 
     int maxthreads = 1;
 #if defined(_OPENMP)
-    maxthreads = QThread::idealThreadCount();
+    // don't use more than 16 threads by default
+    maxthreads = std::min(QThread::idealThreadCount(), 16);
 #endif
     auto *choices      = new QFrame;
     auto *choiceLayout = new QVBoxLayout;

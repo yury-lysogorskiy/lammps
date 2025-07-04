@@ -147,14 +147,14 @@ LammpsGui::LammpsGui(QWidget *parent, const QString &filename) :
     // is no preference but do not override OMP_NUM_THREADS
 #if defined(_OPENMP)
     // use up to 16 available threads unless OMP_NUM_THREADS was set
-    int nthreads = settings.value("nthreads", std::min(omp_get_max_threads(), 16)).toInt();
+    nthreads = settings.value("nthreads", std::min(omp_get_max_threads(), 16)).toInt();
     if (!qEnvironmentVariableIsSet("OMP_NUM_THREADS")) {
         qputenv("OMP_NUM_THREADS", std::to_string(nthreads).c_str());
     }
-#else
-    int nthreads = settings.value("nthreads", 1).toInt();
-#endif
     settings.setValue("nthreads", QString::number(nthreads));
+#else
+    nthreads = 1;
+#endif
 
     lammps_args.clear();
     lammps_args.push_back(mystrdup("LAMMPS-GUI"));
@@ -1218,13 +1218,13 @@ void LammpsGui::do_run(bool use_buffer)
     dirstatus->hide();
     progress->show();
 
-    int nthreads = settings.value("nthreads", 1).toInt();
+    int numthreads = nthreads;
     int accel    = settings.value("accelerator", AcceleratorTab::None).toInt();
     if ((accel != AcceleratorTab::OpenMP) && (accel != AcceleratorTab::Intel) &&
         (accel != AcceleratorTab::Kokkos))
-        nthreads = 1;
-    if (nthreads > 1)
-        status->setText(QString("Running LAMMPS with %1 thread(s)...").arg(nthreads));
+        numthreads = 1;
+    if (numthreads > 1)
+        status->setText(QString("Running LAMMPS with %1 thread(s)...").arg(numthreads));
     else
         status->setText(QString("Running LAMMPS ..."));
     status->repaint();
@@ -1916,6 +1916,7 @@ void LammpsGui::preferences()
 #if defined(_OPENMP)
             qputenv("OMP_NUM_THREADS", std::to_string(newthreads).c_str());
             omp_set_num_threads(newthreads);
+            nthreads = newthreads;
 #endif
         }
         if (imagewindow) imagewindow->createImage();
@@ -1931,7 +1932,6 @@ void LammpsGui::start_lammps()
     // temporary extend lammps_args with additional arguments
     int initial_narg = lammps_args.size();
     QSettings settings;
-    int nthreads = settings.value("nthreads", 1).toInt();
     int accel    = settings.value("accelerator", AcceleratorTab::None).toInt();
     if (accel == AcceleratorTab::Opt) {
         lammps_args.push_back(mystrdup("-suffix"));
