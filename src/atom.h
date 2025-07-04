@@ -179,6 +179,11 @@ class Atom : protected Pointers {
 
   double *area, *ed, *em, *epsilon, *curvature, *q_scaled;
 
+  // APIP package
+
+  double *apip_lambda, *apip_lambda_input, *apip_lambda_input_ta, *apip_e_fast, *apip_e_precise, **apip_f_const_lambda, **apip_f_dyn_lambda, *apip_lambda_const;
+  int *apip_lambda_required;
+
   // end of customization section
   // --------------------------------------------------------------------
 
@@ -226,6 +231,10 @@ class Atom : protected Pointers {
   // DIELECTRIC package
 
   int dielectric_flag;
+
+  // APIP package
+
+  int apip_lambda_flag, apip_e_fast_flag, apip_e_precise_flag, apip_lambda_input_flag, apip_lambda_input_ta_flag, apip_lambda_required_flag, apip_f_const_lambda_flag, apip_f_dyn_lambda_flag, apip_lambda_const_flag;
 
   // end of customization section
   // --------------------------------------------------------------------
@@ -305,8 +314,8 @@ class Atom : protected Pointers {
 
   // AtomVec factory types and map
 
-  typedef AtomVec *(*AtomVecCreator)(LAMMPS *);
-  typedef std::map<std::string, AtomVecCreator> AtomVecCreatorMap;
+  using AtomVecCreator = AtomVec *(*)(LAMMPS *);
+  using AtomVecCreatorMap = std::map<std::string, AtomVecCreator>;
   AtomVecCreatorMap *avec_map;
 
   // --------------------------------------------------------------------

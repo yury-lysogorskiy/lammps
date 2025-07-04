@@ -2099,7 +2099,7 @@ Procedures Bound to the :f:type:`lammps` Derived Type
 
 --------
 
-.. f:subroutine:: create_atoms([id,] type, x, [v,] [image,] [bexpand])
+.. f:function:: create_atoms([id,] type, x, [v,] [image,] [bexpand])
 
    This method calls :cpp:func:`lammps_create_atoms` to create additional atoms
    from a given list of coordinates and a list of atom types. Additionally,
@@ -2128,6 +2128,8 @@ Procedures Bound to the :f:type:`lammps` Derived Type
     will be created, not dropped, and the box dimensions will be extended.
     Default is ``.FALSE.``
    :otype bexpand: logical,optional
+   :r atoms: number of created atoms
+   :rtype atoms: integer(c_int)
    :to: :cpp:func:`lammps_create_atoms`
 
    .. note::
@@ -2149,6 +2151,18 @@ Procedures Bound to the :f:type:`lammps` Derived Type
       This is required because having all arguments be optional in both
       generic functions creates an ambiguous interface. This limitation does
       not exist if LAMMPS was not compiled with ``-DLAMMPS_BIGBIG``.
+
+--------
+
+.. f:subroutine:: create_molecule(id, jsonstr)
+
+   Add molecule template from string with JSON data
+
+   .. versionadded:: TBD
+
+   :p character(len=\*) id: desired molecule-ID
+   :p character(len=\*) jsonstr: string with JSON data defining the molecule template
+   :to: :cpp:func:`lammps_create_molecule`
 
 --------
 

@@ -177,6 +177,7 @@ if (test $1 = "PHONON") then
 fi
 
 if (test $1 = "RIGID") then
+  depend MC
   depend KOKKOS
   depend OPENMP
   depend DPD-SMOOTH
