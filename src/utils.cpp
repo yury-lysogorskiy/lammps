@@ -1220,7 +1220,7 @@ int utils::check_grid_reference(char *errstr, char *ref, int nevery, char *&id, 
 {
   ArgInfo argi(ref, ArgInfo::COMPUTE | ArgInfo::FIX);
   index = argi.get_index1();
-  auto name = argi.get_name();
+  const auto *name = argi.get_name();
 
   switch (argi.get_type()) {
 
@@ -1239,7 +1239,7 @@ int utils::check_grid_reference(char *errstr, char *ref, int nevery, char *&id, 
       const auto &gname = words[1];
       const auto &dname = words[2];
 
-      auto icompute = lmp->modify->get_compute_by_id(idcompute);
+      auto *icompute = lmp->modify->get_compute_by_id(idcompute);
       if (!icompute) lmp->error->all(FLERR, "{} compute ID {} not found", errstr, idcompute);
       if (icompute->pergrid_flag == 0)
         lmp->error->all(FLERR, "{} compute {} does not compute per-grid info", errstr, idcompute);
@@ -1281,7 +1281,7 @@ int utils::check_grid_reference(char *errstr, char *ref, int nevery, char *&id, 
       const auto &gname = words[1];
       const auto &dname = words[2];
 
-      auto ifix = lmp->modify->get_fix_by_id(idfix);
+      auto *ifix = lmp->modify->get_fix_by_id(idfix);
       if (!ifix) lmp->error->all(FLERR, "{} fix ID {} not found", errstr, idfix);
       if (ifix->pergrid_flag == 0)
         lmp->error->all(FLERR, "{} fix {} does not compute per-grid info", errstr, idfix);
@@ -1853,7 +1853,7 @@ double utils::get_conversion_factor(const int property, const int conversion)
 
 FILE *utils::open_potential(const std::string &name, LAMMPS *lmp, int *auto_convert)
 {
-  auto error = lmp->error;
+  auto *error = lmp->error;
   auto me = lmp->comm->me;
 
   std::string filepath = get_potential_file_path(name);

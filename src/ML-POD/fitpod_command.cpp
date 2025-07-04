@@ -797,9 +797,9 @@ std::vector<int> FitPOD::linspace(int start_in, int end_in, int num_in)
 
   std::vector<int> linspaced;
 
-  double start = static_cast<double>(start_in);
-  double end = static_cast<double>(end_in);
-  double num = static_cast<double>(num_in);
+  auto start = static_cast<double>(start_in);
+  auto end = static_cast<double>(end_in);
+  auto num = static_cast<double>(num_in);
 
   int elm;
 

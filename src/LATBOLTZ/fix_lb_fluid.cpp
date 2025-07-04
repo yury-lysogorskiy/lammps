@@ -4433,7 +4433,7 @@ void FixLbFluid::calc_MPT(double &totalmass, double totalmomentum[3], double &Ta
 bigint FixLbFluid::adjust_dof_fix() /* Based on same private method in compute class */
 {                                   /* altered to return fix_dof */
   bigint fix_dof = 0;
-  for (auto &ifix : modify->get_fix_list())
+  for (const auto &ifix : modify->get_fix_list())
     if (ifix->dof_flag) fix_dof += ifix->dof(igroup);
   return fix_dof;
 }

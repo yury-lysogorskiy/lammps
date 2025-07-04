@@ -1071,7 +1071,7 @@ void ReadDump::migrate_old_atoms()
   for (int i = 0; i < nlocal; i++)
     procassign[i] = tag[i] % comm->nprocs;
 
-  auto irregular = new Irregular(lmp);
+  auto *irregular = new Irregular(lmp);
   irregular->migrate_atoms(1,1,procassign);
   delete irregular;
 
@@ -1094,7 +1094,7 @@ void ReadDump::migrate_new_atoms()
     procassign[i] = mtag % comm->nprocs;
   }
 
-  auto irregular = new Irregular(lmp);
+  auto *irregular = new Irregular(lmp);
   int nrecv = irregular->create_data(nnew,procassign,1);
   int newmaxnew = MAX(nrecv,maxnew);
   newmaxnew = MAX(newmaxnew,1);    // avoid null pointer
@@ -1131,7 +1131,7 @@ void ReadDump::migrate_atoms_by_coords()
 
   if (domain->triclinic) domain->x2lamda(atom->nlocal);
   domain->reset_box();
-  auto irregular = new Irregular(lmp);
+  auto *irregular = new Irregular(lmp);
   irregular->migrate_atoms(1);
   delete irregular;
   if (domain->triclinic) domain->lamda2x(atom->nlocal);
