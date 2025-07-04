@@ -99,14 +99,38 @@ for the next trial MC "move".
 
 .. note::
 
-   Typically HMC is run with a larger timestep than would be used for
-   traditional MD, which enables generation of new conformations which
-   MD would not normally generate as quickly.  The timestep size may
-   also affect the acceptance ratio.  A larger timestep will lead to
-   larger and more extreme MC moves which are less likely to be
-   accepted. The timestep size must strike a balance between allowing the
-   total energy to change and generating errors such as lost atoms
-   due to atomic overlap.
+   HMC should be run with a larger timestep than would be used for
+   traditional MD, which enables total energy fluctuations and 
+   generation of new conformations which MD would not normally generate
+   as quickly.  The timestep size may also affect the acceptance ratio 
+   as a larger timestep will lead to larger and more extreme MC moves
+   which are less likely to be accepted.  The timestep size must strike
+   a balance between allowing the total energy to change and generating
+   errors such as lost atoms due to atomic overlap.  This means that
+   during the MD portion of the algorithm, unphysical dynamics will take
+   place, such as large temperature fluctuations and large forces between
+   atoms.  This is expected and is part of the HMC algorithm, as the MD
+   step is not intended to produce a physically realistic trajectory, but
+   rather to generate a new configuration of particles that can be
+   accepted or rejected based on the Metropolis criterion.
+
+.. note::
+
+   High acceptance ratios indicate that the MC algorithm is inefficient,
+   as it is not generating new configurations of particles any faster than
+   MD would on its own. In the limit of an acceptance ratio of 1.0,
+   the algorithm is equivalent to MD (with momentum resampling every
+   *N* timsteps if *resample* = *yes*), and no benefit is gained from MC.
+   A good rule of thumb is to aim for an acceptance ratio of 0.5 to 0.8,
+   which can be monitored via the output of this fix.  This can be
+   achieved by adjusting the *N* parameter and the timestep size.
+   Increasing either of these values will increase the size of the total 
+   energy fluctuations, which can decrease acceptance ratio.  Increasing 
+   *N* will also increase the computation time for each MC step, as more 
+   MD steps are performed before each acceptance/rejection decision.  As 
+   noted above, increasing the timestep too much can lead to LAMMPS errors 
+   due to lost atoms or bonds, so both of these parameters should be 
+   chosen carefully.
 
 .. note::
 
