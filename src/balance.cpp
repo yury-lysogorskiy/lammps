@@ -46,7 +46,7 @@
 
 using namespace LAMMPS_NS;
 
-double EPSNEIGH = 1.0e-3;
+static constexpr double EPSNEIGH = 1.0e-3;
 
 enum { XYZ, SHIFT, BISECTION };
 enum { NONE, UNIFORM, USER };
