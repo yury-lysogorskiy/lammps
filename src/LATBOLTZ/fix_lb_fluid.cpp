@@ -379,9 +379,8 @@ FixLbFluid::FixLbFluid(LAMMPS *lmp, int narg, char **arg) :
   //--------------------------------------------------------------------------
   if (setdx == 1) {
     double dx_lb1 = sqrt(3.0 * viscosity * dt_lb / densityinit_real);
-    double mindomain =
-        std::min(std::min(domain->xprd / comm->procgrid[0], domain->yprd / comm->procgrid[1]),
-                 domain->zprd / comm->procgrid[2]);
+    double mindomain = MIN(MIN(domain->xprd / comm->procgrid[0], domain->yprd / comm->procgrid[1]),
+                           domain->zprd / comm->procgrid[2]);
     dx_lb = mindomain / floor(mindomain / dx_lb1);
 
     if (comm->me == 0) utils::logmesg(lmp, "Setting lattice-Boltzmann dx to {:10.6f}", dx_lb);
