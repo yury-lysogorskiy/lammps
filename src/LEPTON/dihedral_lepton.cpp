@@ -35,9 +35,7 @@
 #include "lepton_utils.h"
 
 using namespace LAMMPS_NS;
-using MathConst::DEG2RAD;
 using MathConst::MY_2PI;
-using MathConst::RAD2DEG;
 using MathExtra::cross3;
 using MathExtra::dot3;
 using MathExtra::norm3;

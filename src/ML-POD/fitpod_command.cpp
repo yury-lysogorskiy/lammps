@@ -33,7 +33,6 @@
 #include "eapod.h"
 
 using namespace LAMMPS_NS;
-using MathSpecial::powint;
 
 static constexpr int MAXLINE = 1024;
 static constexpr double SMALL = 1.0e-10;

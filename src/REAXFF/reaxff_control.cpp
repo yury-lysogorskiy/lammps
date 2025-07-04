@@ -35,11 +35,6 @@
 #include <string>
 #include <unordered_set>
 
-using LAMMPS_NS::utils::getsyserror;
-using LAMMPS_NS::utils::sfgets;
-using LAMMPS_NS::utils::logmesg;
-using LAMMPS_NS::ValueTokenizer;
-
 namespace ReaxFF {
   static std::unordered_set<std::string> inactive_keywords = {
     "ensemble_type", "nsteps", "dt", "proc_by_dim", "random_vel",

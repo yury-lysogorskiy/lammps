@@ -22,8 +22,6 @@
 #include <utility>
 #include <vector>
 
-using std::array;
-using std::vector;
 using namespace MathEigen;
 
 // Special case: 3x3 matrices
