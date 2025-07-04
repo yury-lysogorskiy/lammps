@@ -661,7 +661,7 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
             // Get distance if own center atom
             double r = INFINITY;
-            if (i_center >= 0) = sqrt(distsq3(x[temp_j], x[i_center]));
+            if (i_center >= 0) r = sqrt(distsq3(x[temp_j], x[i_center]));
 
             // Get local id of ghost center atom when ghost
             for (int i = nlocal; i < nlocal + nghost; i++) {
