@@ -56,7 +56,7 @@ template <typename T> static Dump *dump_creator(LAMMPS *lmp, int narg, char ** a
    initialize all output
 ------------------------------------------------------------------------- */
 
-Output::Output(LAMMPS *lmp) : Pointers(lmp)
+Output::Output(LAMMPS *lmp) : Pointers(lmp), thermo(nullptr)
 {
   // create default computes for temp,pressure,pe
 
@@ -132,7 +132,7 @@ Output::~Output()
 
   delete dump_map;
 
-  if (thermo) delete thermo;
+  delete thermo;
   delete[] var_thermo;
 
 }
