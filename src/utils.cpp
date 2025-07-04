@@ -2123,8 +2123,8 @@ static void do_merge(int *idx, int *buf, int llo, int lhi, int rlo, int rhi, voi
 extern "C" {
 
 /* Typedef'd pointer to get abstract datatype. */
-typedef struct regex_t *re_t;
-typedef struct regex_context_t *re_ctx_t;
+typedef struct regex_t *re_t;                // NOLINT
+typedef struct regex_context_t *re_ctx_t;    // NOLINT
 
 /* Compile regex string pattern to a regex_t-array. */
 static re_t re_compile(re_ctx_t context, const char *pattern);
@@ -2160,6 +2160,7 @@ enum {
   RX_NOT_WHITESPACE /*, BRANCH */
 };
 
+// BEGIN_NOLINT
 typedef struct regex_t {
   unsigned char type; /* CHAR, STAR, etc.                      */
   union {
@@ -2174,6 +2175,7 @@ typedef struct regex_context_t {
   regex_t re_compiled[MAX_REGEXP_OBJECTS];
   unsigned char ccl_buf[MAX_CHAR_CLASS_LEN];
 } regex_context_t;
+// END_NOLINT
 
 int re_match(const char *text, const char *pattern)
 {
@@ -2506,7 +2508,7 @@ static int matchone(regex_t p, char c)
     case RX_NOT_WHITESPACE:
       return !matchwhitespace(c);
     default:
-      return (p.u.ch == (unsigned char)c);
+      return (p.u.ch == (unsigned char) c);
   }
 }
 
