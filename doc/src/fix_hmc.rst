@@ -11,7 +11,7 @@ Syntax
 
 * ID, group-ID are documented in :doc:`fix <fix>` command
 * hmc = style name of this fix command
-* N = invoke a Monto Carlo step every N steps
+* N = invoke a Monte Carlo step every N steps
 * seed = random # seed (positive integer)
 * T = temperature for assigning velocities and acceptance criterion
 * one or more keyword/value pairs may be appended
@@ -61,7 +61,7 @@ specified *N* MD steps and the new energy is calculated.  The new
 configuration is the trial "move" to accept or reject.
 
 (3) The energy change :math:`\Delta{H}` in the Hamiltonian of the
-system due to the "move" is calulated by the following equation:
+system due to the "move" is calculated by the following equation:
 
 .. math::
 
@@ -100,47 +100,47 @@ for the next trial MC "move".
 .. note::
 
    HMC should be run with a larger timestep than would be used for
-   traditional MD, which enables total energy fluctuations and 
+   traditional MD, which enables total energy fluctuations and
    generation of new conformations which MD would not normally generate
-   as quickly.  The timestep size may also affect the acceptance ratio 
+   as quickly.  The timestep size may also affect the acceptance ratio
    as a larger timestep will lead to larger and more extreme MC moves
    which are less likely to be accepted.  The timestep size must strike
    a balance between allowing the total energy to change and generating
    errors such as lost atoms due to atomic overlap.  This means that
    during the MD portion of the algorithm, unphysical dynamics will take
-   place, such as large temperature fluctuations and large forces between
-   atoms.  This is expected and is part of the HMC algorithm, as the MD
-   step is not intended to produce a physically realistic trajectory, but
-   rather to generate a new configuration of particles that can be
-   accepted or rejected based on the Metropolis criterion.
+   place, such as large temperature fluctuations and large forces
+   between atoms.  This is expected and is part of the HMC algorithm, as
+   the MD step is not intended to produce a physically realistic
+   trajectory, but rather to generate a new configuration of particles
+   that can be accepted or rejected based on the Metropolis criterion.
 
 .. note::
 
    High acceptance ratios indicate that the MC algorithm is inefficient,
-   as it is not generating new configurations of particles any faster than
-   MD would on its own. In the limit of an acceptance ratio of 1.0,
-   the algorithm is equivalent to MD (with momentum resampling every
-   *N* timsteps if *resample* = *yes*), and no benefit is gained from MC.
+   as it is not generating new configurations of particles any faster
+   than MD would on its own. In the limit of an acceptance ratio of 1.0,
+   the algorithm is equivalent to MD (with momentum resampling every *N*
+   timesteps if *resample* = *yes*), and no benefit is gained from MC.
    A good rule of thumb is to aim for an acceptance ratio of 0.5 to 0.8,
    which can be monitored via the output of this fix.  This can be
    achieved by adjusting the *N* parameter and the timestep size.
-   Increasing either of these values will increase the size of the total 
-   energy fluctuations, which can decrease acceptance ratio.  Increasing 
-   *N* will also increase the computation time for each MC step, as more 
-   MD steps are performed before each acceptance/rejection decision.  As 
-   noted above, increasing the timestep too much can lead to LAMMPS errors 
-   due to lost atoms or bonds, so both of these parameters should be 
-   chosen carefully.
+   Increasing either of these values will increase the size of the total
+   energy fluctuations, which can decrease acceptance ratio.  Increasing
+   *N* will also increase the computation time for each MC step, as more
+   MD steps are performed before each acceptance/rejection decision.  As
+   noted above, increasing the timestep too much can lead to LAMMPS
+   errors due to lost atoms or bonds, so both of these parameters should
+   be chosen carefully.
 
 .. note::
 
    This fix is designed to be used only for constant NVE simulations.
    No thermostat or barostat should be used, though LAMMPS does not
    check for this.  A :doc:`fix nve <fix_nve>` command must be defined
-   to perform time integration for the MD portion of the algorithm.
-   See the explanation of the *rigid* keyword below for an exception
-   when rigid bodies are defined.  Also note that only per-atom data
-   is restored on MC move rejection, so anything which adds or remove
+   to perform time integration for the MD portion of the algorithm.  See
+   the explanation of the *rigid* keyword below for an exception when
+   rigid bodies are defined.  Also note that only per-atom data is
+   restored on MC move rejection, so anything which adds or remove
    particles, changes the box size, or has some external state not
    dependent on per-atom data will have undefined behavior.
 
@@ -211,7 +211,7 @@ quantities:
 * 5 = change in total energy (kinetic + potential energy) for last trial move
 
 These values are updated once every *N* timesteps.  The scalar and
-cummulative counts are "intensive"; the three energies are "extensive"
+cumulative counts are "intensive"; the three energies are "extensive"
 and are in energy :doc:`units <units>`.
 
 No parameter of this fix can be used with the *start/stop* keywords of
@@ -239,8 +239,11 @@ The option defaults are resample = no and mom = yes.
 
 ----------
 
+.. _Mehlig1:
+
 **(Mehlig1)** Mehlig, B., Heermann, D. W., & Forrest, B. M. (1992).
 Hybrid Monte Carlo method for condensed-matter systems. Physical Review B, 45(2), 679.
 
+.. _Mehlig2:
 **(Mehlig2)** Mehlig, B., Heermann, D. W., & Forrest, B. M. (1992).
 Exact langevin algorithms. Molecular Physics, 76(6), 1347-1357.
