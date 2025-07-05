@@ -97,17 +97,18 @@ void Preferences::accept()
     QList<QRadioButton *> allButtons = tabWidget->findChildren<QRadioButton *>();
     for (auto &allButton : allButtons) {
         if (allButton->isChecked()) {
-            if (allButton->objectName() == "none")
+            const auto &button = allButton->objectName();
+            if (button == "none")
                 settings->setValue("accelerator", QString::number(AcceleratorTab::None));
-            if (allButton->objectName() == "opt")
+            else if (button == "opt")
                 settings->setValue("accelerator", QString::number(AcceleratorTab::Opt));
-            if (allButton->objectName() == "openmp")
+            else if (button == "openmp")
                 settings->setValue("accelerator", QString::number(AcceleratorTab::OpenMP));
-            if (allButton->objectName() == "intel")
+            else if (button == "intel")
                 settings->setValue("accelerator", QString::number(AcceleratorTab::Intel));
-            if (allButton->objectName() == "kokkos")
+            else if (button == "kokkos")
                 settings->setValue("accelerator", QString::number(AcceleratorTab::Kokkos));
-            if (allButton->objectName() == "gpu")
+            else if (button == "gpu")
                 settings->setValue("accelerator", QString::number(AcceleratorTab::Gpu));
         }
     }
@@ -442,29 +443,6 @@ AcceleratorTab::AcceleratorTab(QSettings *_settings, LammpsWrapper *_lammps, QWi
     gpu->setEnabled(lammps->config_has_package("GPU") && lammps->has_gpu_device());
     gpu->setObjectName("gpu");
 
-    int choice = settings->value("accelerator", AcceleratorTab::None).toInt();
-    switch (choice) {
-        case AcceleratorTab::Opt:
-            if (opt->isEnabled()) opt->setChecked(true);
-            break;
-        case AcceleratorTab::OpenMP:
-            if (openmp->isEnabled()) openmp->setChecked(true);
-            break;
-        case AcceleratorTab::Intel:
-            if (intel->isEnabled()) intel->setChecked(true);
-            break;
-        case AcceleratorTab::Kokkos:
-            if (kokkos->isEnabled()) kokkos->setChecked(true);
-            break;
-        case AcceleratorTab::Gpu:
-            if (gpu->isEnabled()) gpu->setChecked(true);
-            break;
-        case AcceleratorTab::None: // fallthrough
-        default:
-            none->setChecked(true);
-            break;
-    }
-
     auto *choices      = new QFrame;
     auto *choiceLayout = new QVBoxLayout;
 #if defined(_OPENMP)
@@ -485,6 +463,13 @@ AcceleratorTab::AcceleratorTab(QSettings *_settings, LammpsWrapper *_lammps, QWi
 #endif
     ntchoice->setObjectName("nthreads");
 
+    connect(none, &QRadioButton::released, this, &AcceleratorTab::update_threads);
+    connect(opt, &QRadioButton::released, this, &AcceleratorTab::update_threads);
+    connect(openmp, &QRadioButton::released, this, &AcceleratorTab::update_threads);
+    connect(intel, &QRadioButton::released, this, &AcceleratorTab::update_threads);
+    connect(kokkos, &QRadioButton::released, this, &AcceleratorTab::update_threads);
+    connect(gpu, &QRadioButton::released, this, &AcceleratorTab::update_threads);
+
     choiceLayout->addWidget(ntlabel);
     choiceLayout->addWidget(ntchoice);
     choices->setLayout(choiceLayout);
@@ -492,6 +477,85 @@ AcceleratorTab::AcceleratorTab(QSettings *_settings, LammpsWrapper *_lammps, QWi
 
     mainLayout->addWidget(choices);
     setLayout(mainLayout);
+
+    // trigger update of nthreads line editor field depending on accelerator choice
+    // fall back on None, if configured accelerator package is no longer available
+    int choice = settings->value("accelerator", AcceleratorTab::None).toInt();
+    switch (choice) {
+        case AcceleratorTab::Opt:
+            if (opt->isEnabled())
+                opt->click();
+            else
+                none->click();
+            break;
+        case AcceleratorTab::OpenMP:
+            if (openmp->isEnabled())
+                openmp->click();
+            else
+                none->click();
+            break;
+        case AcceleratorTab::Intel:
+            if (intel->isEnabled())
+                intel->click();
+            else
+                none->click();
+            break;
+        case AcceleratorTab::Kokkos:
+            if (kokkos->isEnabled())
+                kokkos->click();
+            else
+                none->click();
+            break;
+        case AcceleratorTab::Gpu:
+            if (gpu->isEnabled())
+                gpu->click();
+            else
+                none->click();
+            break;
+        case AcceleratorTab::None: // fallthrough
+        default:
+            none->click();
+            break;
+    }
+}
+
+void AcceleratorTab::update_threads()
+{
+    // store selected accelerator
+    int choice = AcceleratorTab::None;
+
+    QList<QRadioButton *> allButtons = findChildren<QRadioButton *>();
+    for (auto &allButton : allButtons) {
+        if (allButton->isChecked()) {
+            const auto &button = allButton->objectName();
+            if (button == "none")
+                choice = AcceleratorTab::None;
+            else if (button == "opt")
+                choice = AcceleratorTab::Opt;
+            else if (button == "openmp")
+                choice = AcceleratorTab::OpenMP;
+            else if (button == "intel")
+                choice = AcceleratorTab::Intel;
+            else if (button == "kokkos")
+                choice = AcceleratorTab::Kokkos;
+            else if (button == "gpu")
+                choice = AcceleratorTab::Gpu;
+        }
+    }
+
+#if defined(_OPENMP)
+    // The number of threads field is disabled and the value set to 1 for "None" and "Opt" choice
+    auto *field = findChild<QLineEdit *>("nthreads");
+    if (field) {
+        if ((choice == AcceleratorTab::None) || (choice == AcceleratorTab::Opt)) {
+            field->setText("1");
+            field->setEnabled(false);
+        } else {
+            field->setText(settings->value("nthreads", 1).toString());
+            field->setEnabled(true);
+        }
+    }
+#endif
 }
 
 SnapshotTab::SnapshotTab(QSettings *_settings, QWidget *parent) :

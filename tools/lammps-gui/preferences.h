@@ -75,6 +75,9 @@ public:
     explicit AcceleratorTab(QSettings *settings, LammpsWrapper *lammps, QWidget *parent = nullptr);
     enum { None, Opt, OpenMP, Intel, Kokkos, Gpu };
 
+private slots:
+    void update_threads();
+
 private:
     QSettings *settings;
     LammpsWrapper *lammps;
