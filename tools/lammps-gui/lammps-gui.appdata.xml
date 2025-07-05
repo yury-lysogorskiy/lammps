@@ -55,13 +55,22 @@
   </provides>
 
   <releases>
+    <release version="1.6.15" timestamp="1751751132">
+      <description>
+        Apply fixes and code modernization suggested by clang-tidy
+        Make selection of accelerator and threads consistent
+        Add support for some common package command options
+          GPU: neighbor list on host/device, accelerate only pair style
+          INTEL: choose double/mixed/single precision
+        Display CPU utilization in %
+      </description>
+    </release>
     <release version="1.6.14" timestamp="1747828753">
       <description>
         Must set en_US.UTF-8 locale on macOS since it lacks support for C.UTF-8
         Disable OpenMP processor affinity
         Address performance regression with processing smoothed data
         Code refactoring and optimization
-        Apply fixes and code modernization suggested by clang-tidy
       </description>
     </release>
     <release version="1.6.13" timestamp="1743734509">
