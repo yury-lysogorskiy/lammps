@@ -153,6 +153,7 @@ private:
     Highlighter *highlighter;
     StdCapture *capturer;
     QLabel *status;
+    QLabel *cpuuse;
     LogWindow *logwindow;
     ImageViewer *imagewindow;
     ChartWindow *chartwindow;

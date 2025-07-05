@@ -77,10 +77,10 @@ const QString citeme("# When using LAMMPS-GUI in your project, please cite: "
 
 LammpsGui::LammpsGui(QWidget *parent, const QString &filename) :
     QMainWindow(parent), ui(new Ui::LammpsGui), highlighter(nullptr), capturer(nullptr),
-    status(nullptr), logwindow(nullptr), imagewindow(nullptr), chartwindow(nullptr),
-    slideshow(nullptr), logupdater(nullptr), dirstatus(nullptr), progress(nullptr),
-    prefdialog(nullptr), lammpsstatus(nullptr), varwindow(nullptr), wizard(nullptr),
-    runner(nullptr), is_running(false), run_counter(0)
+    status(nullptr), cpuuse(nullptr), logwindow(nullptr), imagewindow(nullptr),
+    chartwindow(nullptr), slideshow(nullptr), logupdater(nullptr), dirstatus(nullptr),
+    progress(nullptr), prefdialog(nullptr), lammpsstatus(nullptr), varwindow(nullptr),
+    wizard(nullptr), runner(nullptr), is_running(false), run_counter(0)
 {
     docver = "";
     ui->setupUi(this);
@@ -314,6 +314,10 @@ LammpsGui::LammpsGui(QWidget *parent, const QString &filename) :
     connect(lammpsstop, &QPushButton::released, this, &LammpsGui::stop_run);
     connect(lammpsimage, &QPushButton::released, this, &LammpsGui::render_image);
 
+    cpuuse = new QLabel("   0%CPU");
+    cpuuse->setFixedWidth(90);
+    ui->statusbar->addWidget(cpuuse);
+    cpuuse->hide();
     status = new QLabel("Ready.");
     status->setFixedWidth(300);
     ui->statusbar->addWidget(status);
@@ -438,6 +442,7 @@ LammpsGui::~LammpsGui()
     delete highlighter;
     delete capturer;
     delete status;
+    delete cpuuse;
     delete logwindow;
     delete imagewindow;
     delete chartwindow;
@@ -725,6 +730,7 @@ void LammpsGui::open_file(const QString &fileName)
     ui->textEdit->setFileList();
     dirstatus->setText(QString(" Directory: ") + current_dir);
     status->setText("Ready.");
+    cpuuse->hide();
 
     if (slideshow) {
         delete slideshow;
@@ -1010,6 +1016,24 @@ void LammpsGui::logupdate()
         t_remain  = lammps.get_thermo("cpuremain");
         t_total   = t_elapsed + t_remain + 1.0e-10;
         completed = t_elapsed / t_total * 1000.0;
+        // update cpu usage
+        int percent_cpu = (int)lammps.get_thermo("cpuuse");
+        cpuuse->setText(QString("%1%CPU").arg(percent_cpu, 4));
+        if (percent_cpu < 25.0 * nthreads) {
+            cpuuse->setStyleSheet("QLabel {background-color: black; color: white;}");
+        } else if (percent_cpu < 50.0 * nthreads) {
+            cpuuse->setStyleSheet("QLabel {background-color: darkblue; color: white;}");
+        } else if (percent_cpu > 100.0 * nthreads + 50.0) {
+            cpuuse->setStyleSheet("QLabel {background-color: firebrick; color: white;}");
+        } else if (percent_cpu < 100.0 * nthreads - 50.0) {
+            cpuuse->setStyleSheet("QLabel {background-color: firebrick; color: white;}");
+        } else if (percent_cpu > 100.0 * nthreads + 20.0) {
+            cpuuse->setStyleSheet("QLabel {background-color: gold; color: black;}");
+        } else if (percent_cpu < 100.0 * nthreads - 20.0) {
+            cpuuse->setStyleSheet("QLabel {background-color: gold; color: black;}");
+        } else {
+            cpuuse->setStyleSheet("QLabel {background-color: forestgreen; color: white;}");
+        }
 
         int nline = -1;
         void *ptr = lammps.last_thermo("line", 0);
@@ -1201,15 +1225,18 @@ void LammpsGui::run_done()
 
     if (success) {
         status->setText("Ready.");
+        cpuuse->setText("   0%CPU");
     } else {
         status->setText("Failed.");
         ui->textEdit->setHighlight(nline, true);
         QMessageBox::critical(this, "LAMMPS-GUI Error",
-                              QString("<p>Error running LAMMPS:\n\n<pre>") + errorbuf + "</pre></p>");
+                              QString("<p>Error running LAMMPS:\n\n<pre>") + errorbuf +
+                                  "</pre></p>");
     }
     ui->textEdit->setCursor(nline);
     ui->textEdit->setFileList();
     progress->hide();
+    cpuuse->hide();
     dirstatus->show();
 }
 
@@ -1248,6 +1275,7 @@ void LammpsGui::do_run(bool use_buffer)
     progress->setValue(0);
     dirstatus->hide();
     progress->show();
+    cpuuse->show();
 
     int numthreads = nthreads;
     int accel      = settings.value("accelerator", AcceleratorTab::OpenMP).toInt();
