@@ -66,10 +66,14 @@
 #include <omp.h>
 #endif
 
-static const QString blank(" ");
-static constexpr int BUFLEN = 256;
-static const QString citeme("# When using LAMMPS-GUI in your project, please cite: "
-                            "https://arxiv.org/abs/2503.14020\n");
+namespace {
+constexpr int DEFAULT_BUFLEN      = 1024;
+constexpr int MAX_DEFAULT_THREADS = 16;
+
+const QString blank(" ");
+const QString citeme("# When using LAMMPS-GUI in your project, please cite: "
+                     "https://arxiv.org/abs/2503.14020\n");
+} // namespace
 
 LammpsGui::LammpsGui(QWidget *parent, const QString &filename) :
     QMainWindow(parent), ui(new Ui::LammpsGui), highlighter(nullptr), capturer(nullptr),
@@ -124,38 +128,55 @@ LammpsGui::LammpsGui(QWidget *parent, const QString &filename) :
     }
 #endif
 
-    // switch configured accelerator back to "none" if needed.
-    int accel = settings.value("accelerator", AcceleratorTab::None).toInt();
-    if (accel == AcceleratorTab::Opt) {
-        if (!lammps.config_has_package("OPT"))
-            settings.setValue("accelerator", AcceleratorTab::None);
-    } else if (accel == AcceleratorTab::OpenMP) {
-        if (!lammps.config_has_package("OPENMP"))
-            settings.setValue("accelerator", AcceleratorTab::None);
-    } else if (accel == AcceleratorTab::Intel) {
-        if (!lammps.config_has_package("INTEL"))
-            settings.setValue("accelerator", AcceleratorTab::None);
-    } else if (accel == AcceleratorTab::Gpu) {
-        if (!lammps.config_has_package("GPU") || !lammps.has_gpu_device())
-            settings.setValue("accelerator", AcceleratorTab::None);
-    } else if (accel == AcceleratorTab::Kokkos) {
-        if (!lammps.config_has_package("KOKKOS"))
-            settings.setValue("accelerator", AcceleratorTab::None);
+    // default accelerator package is OPENMP, but we switch the configured accelerator to
+    // "none" if the selected package is not available to have an option that always works
+    int accel = settings.value("accelerator", AcceleratorTab::OpenMP).toInt();
+    switch (accel) {
+        case AcceleratorTab::Opt:
+            if (!lammps.config_has_package("OPT")) accel = AcceleratorTab::None;
+            break;
+        case AcceleratorTab::OpenMP:
+            if (!lammps.config_has_package("OPENMP")) accel = AcceleratorTab::None;
+            break;
+        case AcceleratorTab::Intel:
+            if (!lammps.config_has_package("INTEL")) accel = AcceleratorTab::None;
+            break;
+        case AcceleratorTab::Gpu:
+            if (!lammps.config_has_package("GPU")) accel = AcceleratorTab::None;
+            break;
+        case AcceleratorTab::Kokkos:
+            if (!lammps.config_has_package("KOKKOS")) accel = AcceleratorTab::None;
+            break;
+        case AcceleratorTab::None: // fallthrough
+        default:                   // do nothing
+            break;
     }
+    settings.setValue("accelerator", accel);
 
-    // check and initialize nthreads setting. Default is to use max if there
+    // Check and initialize nthreads setting for when OpenMP support is compiled in.
+    // Default is to use OMP_NUM_THREADS setting, if that is not available, then
+    // half of max (assuming hyperthreading is enabled) and no more than 16.
     // is no preference but do not override OMP_NUM_THREADS
-#if defined(_OPENMP)
-    // use up to 16 available threads unless OMP_NUM_THREADS was set
-    nthreads = settings.value("nthreads", std::min(omp_get_max_threads(), 16)).toInt();
-    if (!qEnvironmentVariableIsSet("OMP_NUM_THREADS")) {
-        qputenv("OMP_NUM_THREADS", std::to_string(nthreads).c_str());
-    }
-    settings.setValue("nthreads", QString::number(nthreads));
-#else
     nthreads = 1;
+#if defined(_OPENMP)
+    int default_threads = std::min(QThread::idealThreadCount() / 2, 16);
+    default_threads     = std::max(default_threads, 1);
+    if (qEnvironmentVariableIsSet("OMP_NUM_THREADS"))
+        default_threads = qEnvironmentVariable("OMP_NUM_THREADS").toInt();
+    nthreads = settings.value("nthreads", default_threads).toInt();
+
+    // reset nthreads if accelerator does not support threads
+    if ((accel == AcceleratorTab::Opt) || (accel == AcceleratorTab::None)) nthreads = 1;
+
+    // reset number of threads in use
+    omp_set_num_threads(nthreads);
+
+    // set OMP_NUM_THREADS environment variable, if not set
+    if (!qEnvironmentVariableIsSet("OMP_NUM_THREADS"))
+        qputenv("OMP_NUM_THREADS", QByteArray::number(nthreads));
 #endif
 
+    // set up default LAMMPS thread arguments
     lammps_args.clear();
     lammps_args.push_back(mystrdup("LAMMPS-GUI"));
     lammps_args.push_back(mystrdup("-log"));
@@ -305,7 +326,7 @@ LammpsGui::LammpsGui(QWidget *parent, const QString &filename) :
     // start LAMMPS and initialize command completion
     start_lammps();
     QStringList style_list;
-    char buf[BUFLEN];
+    char buf[DEFAULT_BUFLEN];
     QFile internal_commands(":/lammps_internal_commands.txt");
     if (internal_commands.open(QIODevice::ReadOnly | QIODevice::Text)) {
         while (!internal_commands.atEnd()) {
@@ -315,7 +336,7 @@ LammpsGui::LammpsGui(QWidget *parent, const QString &filename) :
     internal_commands.close();
     int ncmds = lammps.style_count("command");
     for (int i = 0; i < ncmds; ++i) {
-        if (lammps.style_name("command", i, buf, BUFLEN)) {
+        if (lammps.style_name("command", i, buf, DEFAULT_BUFLEN)) {
             // skip suffixed names
             const QString style(buf);
             if (style.endsWith("/kk/host") || style.endsWith("/kk/device") || style.endsWith("/kk"))
@@ -362,7 +383,7 @@ LammpsGui::LammpsGui(QWidget *parent, const QString &filename) :
         style_list << QString("none");                                                         \
     ncmds = lammps.style_count(#keyword);                                                      \
     for (int i = 0; i < ncmds; ++i) {                                                          \
-        if (lammps.style_name(#keyword, i, buf, BUFLEN)) {                                     \
+        if (lammps.style_name(#keyword, i, buf, DEFAULT_BUFLEN)) {                             \
             const QString style(buf);                                                          \
             if (style.endsWith("/gpu") || style.endsWith("/intel") || style.endsWith("/kk") || \
                 style.endsWith("/kk/device") || style.endsWith("/kk/host") ||                  \
@@ -988,11 +1009,11 @@ void LammpsGui::logupdate()
 
         if (varwindow) {
             int nvar = lammps.id_count("variable");
-            char buffer[BUFLEN];
+            char buffer[DEFAULT_BUFLEN];
             QString varinfo("\n");
             for (int i = 0; i < nvar; ++i) {
-                memset(buffer, 0, BUFLEN);
-                if (lammps.variable_info(i, buffer, BUFLEN)) varinfo += buffer;
+                memset(buffer, 0, DEFAULT_BUFLEN);
+                if (lammps.variable_info(i, buffer, DEFAULT_BUFLEN)) varinfo += buffer;
             }
             if (nvar == 0) varinfo += "  (none)  ";
 
@@ -1155,12 +1176,11 @@ void LammpsGui::run_done()
         }
     }
 
-    bool success         = true;
-    constexpr int BUFLEN = 1024;
-    char errorbuf[BUFLEN];
+    bool success = true;
+    char errorbuf[DEFAULT_BUFLEN];
 
     if (lammps.has_error()) {
-        lammps.get_last_error_message(errorbuf, BUFLEN);
+        lammps.get_last_error_message(errorbuf, DEFAULT_BUFLEN);
         success = false;
     }
 
@@ -1219,9 +1239,9 @@ void LammpsGui::do_run(bool use_buffer)
     progress->show();
 
     int numthreads = nthreads;
-    int accel    = settings.value("accelerator", AcceleratorTab::None).toInt();
+    int accel      = settings.value("accelerator", AcceleratorTab::OpenMP).toInt();
     if ((accel != AcceleratorTab::OpenMP) && (accel != AcceleratorTab::Intel) &&
-        (accel != AcceleratorTab::Kokkos))
+        (accel != AcceleratorTab::Kokkos) && (accel != AcceleratorTab::Gpu))
         numthreads = 1;
     if (numthreads > 1)
         status->setText(QString("Running LAMMPS with %1 thread(s)...").arg(numthreads));
@@ -1889,6 +1909,7 @@ void LammpsGui::findandreplace()
 
 void LammpsGui::preferences()
 {
+    // default settings are committed to QSettings during initialization of LAMMPS-GUI
     QSettings settings;
     int oldthreads = settings.value("nthreads", 1).toInt();
     int oldaccel   = settings.value("accelerator", AcceleratorTab::None).toInt();
@@ -1902,9 +1923,10 @@ void LammpsGui::preferences()
         // must delete LAMMPS instance after preferences have changed that require
         // using different command line flags when creating the LAMMPS instance like
         // suffixes or package commands
-        int newthreads = settings.value("nthreads", 1).toInt();
-        if ((oldaccel != settings.value("accelerator", AcceleratorTab::None).toInt()) ||
-            (oldthreads != newthreads) || (oldecho != settings.value("echo", false).toBool()) ||
+        int newthreads = settings.value("nthreads", nthreads).toInt();
+        int newaccel   = settings.value("accelerator", AcceleratorTab::None).toInt();
+        if ((oldaccel != newaccel) || (oldthreads != newthreads) ||
+            (oldecho != settings.value("echo", false).toBool()) ||
             (oldcite != settings.value("cite", false).toBool())) {
             if (lammps.is_running()) {
                 stop_run();
@@ -1914,9 +1936,16 @@ void LammpsGui::preferences()
             lammps.close();
             lammpsstatus->hide();
 #if defined(_OPENMP)
-            qputenv("OMP_NUM_THREADS", std::to_string(newthreads).c_str());
-            omp_set_num_threads(newthreads);
-            nthreads = newthreads;
+            // reset nthreads if accelerator does not support threads
+            if ((newaccel == AcceleratorTab::Opt) || (newaccel == AcceleratorTab::None))
+                nthreads = 1;
+            else
+                nthreads = newthreads;
+
+            // reset number of threads in use
+            omp_set_num_threads(nthreads);
+#else
+            nthreads = 1;
 #endif
         }
         if (imagewindow) imagewindow->createImage();
@@ -1932,7 +1961,15 @@ void LammpsGui::start_lammps()
     // temporary extend lammps_args with additional arguments
     int initial_narg = lammps_args.size();
     QSettings settings;
-    int accel    = settings.value("accelerator", AcceleratorTab::None).toInt();
+    int accel = settings.value("accelerator", AcceleratorTab::None).toInt();
+    // if non-threaded accelerator selected reset threads
+#if defined(_OPENMP)
+    if ((accel == AcceleratorTab::None) || (accel == AcceleratorTab::Opt)) {
+        nthreads = 1;
+        omp_set_num_threads(nthreads);
+    }
+#endif
+
     if (accel == AcceleratorTab::Opt) {
         lammps_args.push_back(mystrdup("-suffix"));
         lammps_args.push_back(mystrdup("opt"));
@@ -1944,13 +1981,25 @@ void LammpsGui::start_lammps()
         lammps_args.push_back(mystrdup(std::to_string(nthreads)));
     } else if (accel == AcceleratorTab::Intel) {
         lammps_args.push_back(mystrdup("-suffix"));
-        lammps_args.push_back(mystrdup("intel"));
+        if (lammps.config_has_package("OPENMP")) {
+            lammps_args.push_back(mystrdup("hybrid"));
+            lammps_args.push_back(mystrdup("intel"));
+            lammps_args.push_back(mystrdup("omp"));
+        } else {
+            lammps_args.push_back(mystrdup("intel"));
+        }
         lammps_args.push_back(mystrdup("-pk"));
         lammps_args.push_back(mystrdup("intel"));
         lammps_args.push_back(mystrdup(std::to_string(nthreads)));
     } else if (accel == AcceleratorTab::Gpu) {
         lammps_args.push_back(mystrdup("-suffix"));
-        lammps_args.push_back(mystrdup("gpu"));
+        if ((nthreads > 1) && lammps.config_has_package("OPENMP")) {
+            lammps_args.push_back(mystrdup("hybrid"));
+            lammps_args.push_back(mystrdup("gpu"));
+            lammps_args.push_back(mystrdup("omp"));
+        } else {
+            lammps_args.push_back(mystrdup("gpu"));
+        }
         lammps_args.push_back(mystrdup("-pk"));
         lammps_args.push_back(mystrdup("gpu"));
         lammps_args.push_back(mystrdup("0"));
@@ -2004,9 +2053,8 @@ void LammpsGui::start_lammps()
     }
 
     if (lammps.has_error()) {
-        constexpr int BUFLEN = 1024;
-        char errorbuf[BUFLEN];
-        lammps.get_last_error_message(errorbuf, BUFLEN);
+        char errorbuf[DEFAULT_BUFLEN];
+        lammps.get_last_error_message(errorbuf, DEFAULT_BUFLEN);
 
         QMessageBox::critical(this, "LAMMPS-GUI Error",
                               QString("Error launching LAMMPS:\n\n") + errorbuf);
@@ -2021,7 +2069,7 @@ bool LammpsGui::eventFilter(QObject *watched, QEvent *event)
     return QWidget::eventFilter(watched, event);
 }
 
-// LAMMPS geturl command with current location of the input and solution files on the web
+// LAMMPS geturl command template with current location of the input and solution files on the web
 static const QString geturl =
     "geturl https://raw.githubusercontent.com/lammpstutorials/"
     "lammpstutorials-article/refs/heads/main/files/tutorial%1/%2 output %2 verify no";
@@ -2029,8 +2077,7 @@ static const QString geturl =
 void LammpsGui::setup_tutorial(int tutno, const QString &dir, bool purgedir, bool getsolution,
                                bool openwebpage)
 {
-    constexpr int BUFLEN = 1024;
-    char errorbuf[BUFLEN];
+    char errorbuf[DEFAULT_BUFLEN];
 
     if (!lammps.config_has_curl_support()) {
         QMessageBox::critical(this, "LAMMPS-GUI tutorial files download error",
@@ -2042,6 +2089,7 @@ void LammpsGui::setup_tutorial(int tutno, const QString &dir, bool purgedir, boo
     QDir directory(dir);
     directory.cd(dir);
 
+    // open web page of the corresponding online tutorial
     if (openwebpage) {
         QString weburl = "https://lammpstutorials.github.io/sphinx/build/html/tutorial%1/%2.html";
         switch (tutno) {
@@ -2091,7 +2139,7 @@ void LammpsGui::setup_tutorial(int tutno, const QString &dir, bool purgedir, boo
     // must check for error after download, e.g. when there is no network.
     lammps.command(geturl.arg(tutno).arg(".manifest"));
     if (lammps.has_error()) {
-        lammps.get_last_error_message(errorbuf, BUFLEN);
+        lammps.get_last_error_message(errorbuf, DEFAULT_BUFLEN);
         QMessageBox::critical(this, "LAMMPS-GUI tutorial download error", QString(errorbuf));
         return;
     }
@@ -2150,7 +2198,7 @@ void LammpsGui::setup_tutorial(int tutno, const QString &dir, bool purgedir, boo
             progress->hide();
             dirstatus->show();
             status->repaint();
-            lammps.get_last_error_message(errorbuf, BUFLEN);
+            lammps.get_last_error_message(errorbuf, DEFAULT_BUFLEN);
             QMessageBox::critical(this, "LAMMPS-GUI tutorial download error", QString(errorbuf));
             return;
         }

@@ -114,7 +114,7 @@ void Preferences::accept()
 
 #if defined(_OPENMP)
     // store number of threads, reset to 1 for "None" and "Opt" settings
-    auto *main = dynamic_cast<LammpsGui *>(get_main_widget());
+    auto *main  = dynamic_cast<LammpsGui *>(get_main_widget());
     auto *field = tabWidget->findChild<QLineEdit *>("nthreads");
     if (field) {
         int accel = settings->value("accelerator", AcceleratorTab::None).toInt();
@@ -122,7 +122,7 @@ void Preferences::accept()
             main->nthreads = 1;
         } else if (field->hasAcceptableInput()) {
             settings->setValue("nthreads", field->text());
-            main->nthreads = settings->value("nthreads", 16).toInt();
+            main->nthreads = settings->value("nthreads", 1).toInt();
         }
     }
 #endif
@@ -465,26 +465,25 @@ AcceleratorTab::AcceleratorTab(QSettings *_settings, LammpsWrapper *_lammps, QWi
             break;
     }
 
-    int maxthreads = 1;
-#if defined(_OPENMP)
-    // don't use more than 16 threads by default
-    maxthreads = std::min(QThread::idealThreadCount(), 16);
-#endif
     auto *choices      = new QFrame;
     auto *choiceLayout = new QVBoxLayout;
 #if defined(_OPENMP)
+    // maximum number of threads is limited half of available threads and no more than 16
+    // unless OMP_NUM_THREADS is set to a larger value
+    int maxthreads = std::min(QThread::idealThreadCount() / 2, 16);
+    maxthreads     = std::max(maxthreads, 1);
+    maxthreads     = std::max(maxthreads, qEnvironmentVariable("OMP_NUM_THREADS").toInt());
+
     auto *ntlabel  = new QLabel(QString("Number of threads (max %1):").arg(maxthreads));
     auto *ntchoice = new QLineEdit(settings->value("nthreads", maxthreads).toString());
+    auto *intval   = new QIntValidator(1, maxthreads, this);
+    ntchoice->setValidator(intval);
 #else
     auto *ntlabel  = new QLabel(QString("Number of threads (OpenMP not available):"));
     auto *ntchoice = new QLineEdit("1");
-#endif
-    auto *intval = new QIntValidator(1, maxthreads, this);
-    ntchoice->setValidator(intval);
-    ntchoice->setObjectName("nthreads");
-#if !defined(_OPENMP)
     ntchoice->setEnabled(false);
 #endif
+    ntchoice->setObjectName("nthreads");
 
     choiceLayout->addWidget(ntlabel);
     choiceLayout->addWidget(ntchoice);
