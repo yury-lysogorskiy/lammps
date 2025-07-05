@@ -99,17 +99,23 @@ void Preferences::accept()
         if (allButton->isChecked()) {
             const auto &button = allButton->objectName();
             if (button == "none")
-                settings->setValue("accelerator", QString::number(AcceleratorTab::None));
+                settings->setValue("accelerator", AcceleratorTab::None);
             else if (button == "opt")
-                settings->setValue("accelerator", QString::number(AcceleratorTab::Opt));
+                settings->setValue("accelerator", AcceleratorTab::Opt);
             else if (button == "openmp")
-                settings->setValue("accelerator", QString::number(AcceleratorTab::OpenMP));
+                settings->setValue("accelerator", AcceleratorTab::OpenMP);
             else if (button == "intel")
-                settings->setValue("accelerator", QString::number(AcceleratorTab::Intel));
+                settings->setValue("accelerator", AcceleratorTab::Intel);
             else if (button == "kokkos")
-                settings->setValue("accelerator", QString::number(AcceleratorTab::Kokkos));
+                settings->setValue("accelerator", AcceleratorTab::Kokkos);
             else if (button == "gpu")
-                settings->setValue("accelerator", QString::number(AcceleratorTab::Gpu));
+                settings->setValue("accelerator", AcceleratorTab::Gpu);
+            else if (button == "inteldouble")
+                settings->setValue("intelprec", AcceleratorTab::Double);
+            else if (button == "intelmixed")
+                settings->setValue("intelprec", AcceleratorTab::Mixed);
+            else if (button == "intelsingle")
+                settings->setValue("intelprec", AcceleratorTab::Single);
         }
     }
 
@@ -128,6 +134,12 @@ void Preferences::accept()
     }
 #endif
 
+    // store setting for GPU package
+    auto *box = tabWidget->findChild<QCheckBox *>("gpuneigh");
+    if (box) settings->setValue("gpuneigh", box->isChecked());
+    box = tabWidget->findChild<QCheckBox *>("gpupaironly");
+    if (box) settings->setValue("gpupaironly", box->isChecked());
+
     // store image width, height, zoom, and rendering settings
 
     settings->beginGroup("snapshot");
@@ -140,7 +152,7 @@ void Preferences::accept()
     field = tabWidget->findChild<QLineEdit *>("zoom");
     if (field)
         if (field->hasAcceptableInput()) settings->setValue("zoom", field->text());
-    auto *box = tabWidget->findChild<QCheckBox *>("anti");
+    box = tabWidget->findChild<QCheckBox *>("anti");
     if (box) settings->setValue("antialias", box->isChecked());
     box = tabWidget->findChild<QCheckBox *>("ssao");
     if (box) settings->setValue("ssao", box->isChecked());
@@ -411,7 +423,10 @@ AcceleratorTab::AcceleratorTab(QSettings *_settings, LammpsWrapper *_lammps, QWi
     auto *kokkos      = new QRadioButton("&Kokkos");
     auto *gpu         = new QRadioButton("GP&U");
 
+    auto *accelframe   = new QFrame;
+    auto *accelLayout  = new QVBoxLayout;
     auto *buttonLayout = new QVBoxLayout;
+    accelLayout->addWidget(accelerator);
     buttonLayout->addWidget(none);
     buttonLayout->addWidget(opt);
     buttonLayout->addWidget(openmp);
@@ -420,7 +435,8 @@ AcceleratorTab::AcceleratorTab(QSettings *_settings, LammpsWrapper *_lammps, QWi
     buttonLayout->addWidget(gpu);
     buttonLayout->addStretch(1);
     accelerator->setLayout(buttonLayout);
-    mainLayout->addWidget(accelerator);
+    accelframe->setLayout(accelLayout);
+    mainLayout->addWidget(accelframe);
 
     none->setEnabled(true);
     none->setObjectName("none");
@@ -463,24 +479,69 @@ AcceleratorTab::AcceleratorTab(QSettings *_settings, LammpsWrapper *_lammps, QWi
 #endif
     ntchoice->setObjectName("nthreads");
 
-    connect(none, &QRadioButton::released, this, &AcceleratorTab::update_threads);
-    connect(opt, &QRadioButton::released, this, &AcceleratorTab::update_threads);
-    connect(openmp, &QRadioButton::released, this, &AcceleratorTab::update_threads);
-    connect(intel, &QRadioButton::released, this, &AcceleratorTab::update_threads);
-    connect(kokkos, &QRadioButton::released, this, &AcceleratorTab::update_threads);
-    connect(gpu, &QRadioButton::released, this, &AcceleratorTab::update_threads);
+    connect(none, &QRadioButton::released, this, &AcceleratorTab::update_accel);
+    connect(opt, &QRadioButton::released, this, &AcceleratorTab::update_accel);
+    connect(openmp, &QRadioButton::released, this, &AcceleratorTab::update_accel);
+    connect(intel, &QRadioButton::released, this, &AcceleratorTab::update_accel);
+    connect(kokkos, &QRadioButton::released, this, &AcceleratorTab::update_accel);
+    connect(gpu, &QRadioButton::released, this, &AcceleratorTab::update_accel);
 
+    auto *intelLayout = new QHBoxLayout;
+    auto *intelprec   = new QGroupBox("Intel Precision:");
+    auto *inteldouble = new QRadioButton("&Double");
+    auto *intelmixed  = new QRadioButton("&Mixed");
+    auto *intelsingle = new QRadioButton("&Single");
+    intelLayout->addWidget(inteldouble);
+    inteldouble->setObjectName("inteldouble");
+    intelLayout->addWidget(intelmixed);
+    intelmixed->setObjectName("intelmixed");
+    intelLayout->addWidget(intelsingle);
+    intelsingle->setObjectName("intelsingle");
+    intelprec->setLayout(intelLayout);
+    intelprec->setObjectName("intelprec");
+    intelprec->setEnabled(false);
+
+    connect(inteldouble, &QRadioButton::released, this, &AcceleratorTab::update_accel);
+    connect(intelmixed, &QRadioButton::released, this, &AcceleratorTab::update_accel);
+    connect(intelsingle, &QRadioButton::released, this, &AcceleratorTab::update_accel);
+
+    auto *gpuLayout   = new QHBoxLayout;
+    auto *gpuchoice   = new QGroupBox("GPU Settings:");
+    auto *gpuneigh    = new QCheckBox("Neighbor&list on GPU");
+    auto *gpupaironly = new QCheckBox("Pair st&yles only");
+    gpuLayout->addWidget(gpuneigh);
+    gpuneigh->setObjectName("gpuneigh");
+    gpuneigh->setCheckState(settings->value("gpuneigh", true).toBool() ? Qt::Checked
+                                                                       : Qt::Unchecked);
+    gpuLayout->addWidget(gpupaironly);
+    gpupaironly->setObjectName("gpupaironly");
+    gpupaironly->setCheckState(settings->value("gpupaironly", false).toBool() ? Qt::Checked
+                                                                              : Qt::Unchecked);
+    gpuchoice->setLayout(gpuLayout);
+    gpuchoice->setObjectName("gpuchoice");
+    gpuchoice->setEnabled(false);
+
+    choiceLayout->addWidget(new QLabel("Settings for accelerator packages:\n"));
     choiceLayout->addWidget(ntlabel);
     choiceLayout->addWidget(ntchoice);
-    choices->setLayout(choiceLayout);
+    choiceLayout->addWidget(intelprec);
+    choiceLayout->addWidget(gpuchoice);
     choiceLayout->addStretch(1);
-
+    choices->setLayout(choiceLayout);
     mainLayout->addWidget(choices);
     setLayout(mainLayout);
 
     // trigger update of nthreads line editor field depending on accelerator choice
     // fall back on None, if configured accelerator package is no longer available
     int choice = settings->value("accelerator", AcceleratorTab::None).toInt();
+    int iprec  = settings->value("intelprec", AcceleratorTab::Mixed).toInt();
+    if (iprec == AcceleratorTab::Double)
+        inteldouble->setChecked(true);
+    else if (iprec == AcceleratorTab::Mixed)
+        intelmixed->setChecked(true);
+    else if (iprec == AcceleratorTab::Single)
+        intelsingle->setChecked(true);
+
     switch (choice) {
         case AcceleratorTab::Opt:
             if (opt->isEnabled())
@@ -495,10 +556,12 @@ AcceleratorTab::AcceleratorTab(QSettings *_settings, LammpsWrapper *_lammps, QWi
                 none->click();
             break;
         case AcceleratorTab::Intel:
-            if (intel->isEnabled())
+            if (intel->isEnabled()) {
                 intel->click();
-            else
+                intelprec->setEnabled(true);
+            } else {
                 none->click();
+            }
             break;
         case AcceleratorTab::Kokkos:
             if (kokkos->isEnabled())
@@ -507,9 +570,10 @@ AcceleratorTab::AcceleratorTab(QSettings *_settings, LammpsWrapper *_lammps, QWi
                 none->click();
             break;
         case AcceleratorTab::Gpu:
-            if (gpu->isEnabled())
+            if (gpu->isEnabled()) {
                 gpu->click();
-            else
+                gpuchoice->setEnabled(true);
+            } else
                 none->click();
             break;
         case AcceleratorTab::None: // fallthrough
@@ -519,10 +583,11 @@ AcceleratorTab::AcceleratorTab(QSettings *_settings, LammpsWrapper *_lammps, QWi
     }
 }
 
-void AcceleratorTab::update_threads()
+void AcceleratorTab::update_accel()
 {
     // store selected accelerator
     int choice = AcceleratorTab::None;
+    int prec   = AcceleratorTab::Mixed;
 
     QList<QRadioButton *> allButtons = findChildren<QRadioButton *>();
     for (auto &allButton : allButtons) {
@@ -540,7 +605,27 @@ void AcceleratorTab::update_threads()
                 choice = AcceleratorTab::Kokkos;
             else if (button == "gpu")
                 choice = AcceleratorTab::Gpu;
+            else if (button == "inteldouble")
+                prec = AcceleratorTab::Double;
+            else if (button == "intelmixed")
+                prec = AcceleratorTab::Mixed;
+            else if (button == "intelsingle")
+                prec = AcceleratorTab::Single;
         }
+    }
+
+    auto *group = findChild<QGroupBox *>("intelprec");
+    if (choice == AcceleratorTab::Intel) {
+        group->setEnabled(true);
+    } else {
+        group->setEnabled(false);
+    }
+
+    group = findChild<QGroupBox *>("gpuchoice");
+    if (choice == AcceleratorTab::Gpu) {
+        group->setEnabled(true);
+    } else {
+        group->setEnabled(false);
     }
 
 #if defined(_OPENMP)

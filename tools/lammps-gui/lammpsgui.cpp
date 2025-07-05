@@ -153,6 +153,17 @@ LammpsGui::LammpsGui(QWidget *parent, const QString &filename) :
     }
     settings.setValue("accelerator", accel);
 
+    // Check and initialize some settings for individual accelerator packages and commit
+    // GPU neighbor list on GPU versus host
+    bool gpuneigh = settings.value("gpuneigh", true).toBool();
+    settings.setValue("gpuneigh", gpuneigh);
+    // accelerate only pair style (i.e. run PPPM completely on host)
+    bool gpupaironly = settings.value("gpupaironly", false).toBool();
+    settings.setValue("gpupaironly", gpupaironly);
+    // INTEL package precision
+    int intelprec = settings.value("intelprec", QString::number(AcceleratorTab::Mixed)).toInt();
+    settings.setValue("intelprec", QString::number(intelprec));
+
     // Check and initialize nthreads setting for when OpenMP support is compiled in.
     // Default is to use OMP_NUM_THREADS setting, if that is not available, then
     // half of max (assuming hyperthreading is enabled) and no more than 16.
@@ -1911,10 +1922,13 @@ void LammpsGui::preferences()
 {
     // default settings are committed to QSettings during initialization of LAMMPS-GUI
     QSettings settings;
-    int oldthreads = settings.value("nthreads", 1).toInt();
-    int oldaccel   = settings.value("accelerator", AcceleratorTab::None).toInt();
-    bool oldecho   = settings.value("echo", false).toBool();
-    bool oldcite   = settings.value("cite", false).toBool();
+    int oldthreads   = settings.value("nthreads", 1).toInt();
+    int oldaccel     = settings.value("accelerator", AcceleratorTab::None).toInt();
+    bool oldecho     = settings.value("echo", false).toBool();
+    bool oldcite     = settings.value("cite", false).toBool();
+    int oldiprec     = settings.value("intelprec", AcceleratorTab::Mixed).toInt();
+    bool oldgpuneigh = settings.value("gpuneigh", true).toBool();
+    bool oldgpupair  = settings.value("gpupaironly", false).toBool();
 
     Preferences prefs(&lammps);
     prefs.setFont(font());
@@ -1925,9 +1939,12 @@ void LammpsGui::preferences()
         // suffixes or package commands
         int newthreads = settings.value("nthreads", nthreads).toInt();
         int newaccel   = settings.value("accelerator", AcceleratorTab::None).toInt();
-        if ((oldaccel != newaccel) || (oldthreads != newthreads) ||
+        int newiprec   = settings.value("intelprec", AcceleratorTab::Mixed).toInt();
+        if ((oldaccel != newaccel) || (oldthreads != newthreads) || (oldiprec != newiprec) ||
             (oldecho != settings.value("echo", false).toBool()) ||
-            (oldcite != settings.value("cite", false).toBool())) {
+            (oldcite != settings.value("cite", false).toBool()) ||
+            (oldgpuneigh != settings.value("gpuneigh", true).toBool()) ||
+            (oldgpupair != settings.value("gpupaironly", false).toBool())) {
             if (lammps.is_running()) {
                 stop_run();
                 runner->wait();
@@ -1985,24 +2002,54 @@ void LammpsGui::start_lammps()
             lammps_args.push_back(mystrdup("hybrid"));
             lammps_args.push_back(mystrdup("intel"));
             lammps_args.push_back(mystrdup("omp"));
+            lammps_args.push_back(mystrdup("-pk"));
+            lammps_args.push_back(mystrdup("omp"));
+            lammps_args.push_back(mystrdup(std::to_string(nthreads)));
         } else {
             lammps_args.push_back(mystrdup("intel"));
         }
         lammps_args.push_back(mystrdup("-pk"));
         lammps_args.push_back(mystrdup("intel"));
+        lammps_args.push_back(mystrdup("0"));
+        lammps_args.push_back(mystrdup("omp"));
         lammps_args.push_back(mystrdup(std::to_string(nthreads)));
+        lammps_args.push_back(mystrdup("mode"));
+        int iprec = settings.value("intelprec", AcceleratorTab::Mixed).toInt();
+        if (iprec == AcceleratorTab::Double)
+            lammps_args.push_back(mystrdup("double"));
+        else if (iprec == AcceleratorTab::Mixed)
+            lammps_args.push_back(mystrdup("mixed"));
+        else if (iprec == AcceleratorTab::Single)
+            lammps_args.push_back(mystrdup("single"));
+        else // use mixed precision for invalid value so there is no syntax error crash
+            lammps_args.push_back(mystrdup("mixed"));
     } else if (accel == AcceleratorTab::Gpu) {
         lammps_args.push_back(mystrdup("-suffix"));
         if ((nthreads > 1) && lammps.config_has_package("OPENMP")) {
             lammps_args.push_back(mystrdup("hybrid"));
             lammps_args.push_back(mystrdup("gpu"));
             lammps_args.push_back(mystrdup("omp"));
+            lammps_args.push_back(mystrdup("-pk"));
+            lammps_args.push_back(mystrdup("omp"));
+            lammps_args.push_back(mystrdup(std::to_string(nthreads)));
         } else {
             lammps_args.push_back(mystrdup("gpu"));
         }
         lammps_args.push_back(mystrdup("-pk"));
         lammps_args.push_back(mystrdup("gpu"));
-        lammps_args.push_back(mystrdup("0"));
+        lammps_args.push_back(mystrdup("1")); // can use only one GPU without MPI
+        lammps_args.push_back(mystrdup("omp"));
+        lammps_args.push_back(mystrdup(std::to_string(nthreads)));
+        lammps_args.push_back(mystrdup("neigh"));
+        if (settings.value("gpuneigh", true).toBool())
+            lammps_args.push_back(mystrdup("yes"));
+        else
+            lammps_args.push_back(mystrdup("no"));
+        lammps_args.push_back(mystrdup("pair/only"));
+        if (settings.value("gpupaironly", false).toBool())
+            lammps_args.push_back(mystrdup("on"));
+        else
+            lammps_args.push_back(mystrdup("off"));
     } else if (accel == AcceleratorTab::Kokkos) {
         lammps_args.push_back(mystrdup("-kokkos"));
         lammps_args.push_back(mystrdup("on"));
