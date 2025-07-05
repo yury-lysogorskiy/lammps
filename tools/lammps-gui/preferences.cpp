@@ -409,7 +409,7 @@ AcceleratorTab::AcceleratorTab(QSettings *_settings, LammpsWrapper *_lammps, QWi
     auto *openmp      = new QRadioButton("&OpenMP");
     auto *intel       = new QRadioButton("&Intel");
     auto *kokkos      = new QRadioButton("&Kokkos");
-    auto *gpu         = new QRadioButton("&GPU");
+    auto *gpu         = new QRadioButton("GP&U");
 
     auto *buttonLayout = new QVBoxLayout;
     buttonLayout->addWidget(none);
