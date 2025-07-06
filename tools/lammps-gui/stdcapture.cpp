@@ -36,7 +36,7 @@
 #include <thread>
 
 namespace {
-constexpr int bufSize = 1 << 16 + 1;
+constexpr int bufSize = (1 << 16) + 1;
 } // namespace
 
 StdCapture::StdCapture() : m_oldStdOut(0), m_capturing(false), maxread(0), buf(new char[bufSize])
