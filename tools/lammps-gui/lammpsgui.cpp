@@ -69,7 +69,10 @@
 
 namespace {
 constexpr int DEFAULT_BUFLEN      = 1024;
+
+#if defined(_OPENMP)
 constexpr int MAX_DEFAULT_THREADS = 16;
+#endif
 
 const QString blank(" ");
 const QString citeme("# When using LAMMPS-GUI in your project, please cite: "

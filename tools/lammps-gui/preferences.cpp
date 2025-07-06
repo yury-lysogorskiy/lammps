@@ -60,9 +60,9 @@
 #endif
 
 Preferences::Preferences(LammpsWrapper *_lammps, QWidget *parent) :
-    QDialog(parent), need_relaunch(false), tabWidget(new QTabWidget),
+    QDialog(parent), tabWidget(new QTabWidget),
     buttonBox(new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel)),
-    settings(new QSettings), lammps(_lammps)
+    settings(new QSettings), lammps(_lammps), need_relaunch(false)
 {
     tabWidget->addTab(new GeneralTab(settings, lammps), "&General Settings");
     tabWidget->addTab(new AcceleratorTab(settings, lammps), "&Accelerators");
@@ -118,10 +118,12 @@ void Preferences::accept()
         }
     }
 
+    QLineEdit *field;
+
 #if defined(_OPENMP)
     // store number of threads, reset to 1 for "None" and "Opt" settings
     auto *mainwidget = dynamic_cast<LammpsGui *>(get_main_widget());
-    auto *field      = tabWidget->findChild<QLineEdit *>("nthreads");
+    field            = tabWidget->findChild<QLineEdit *>("nthreads");
     if (field && mainwidget) {
         int accel = settings->value("accelerator", AcceleratorTab::None).toInt();
         if ((accel == AcceleratorTab::None) || (accel == AcceleratorTab::Opt)) {
@@ -586,7 +588,6 @@ void AcceleratorTab::update_accel()
 {
     // store selected accelerator
     int choice = AcceleratorTab::None;
-    int prec   = AcceleratorTab::Mixed;
 
     QList<QRadioButton *> allButtons = findChildren<QRadioButton *>();
     for (auto &anyButton : allButtons) {
@@ -594,8 +595,6 @@ void AcceleratorTab::update_accel()
             const auto &button = anyButton->objectName();
             if (buttonToChoice.contains(button)) {
                 choice = buttonToChoice.value(button);
-            } else if (buttonToPrecision.contains(button)) {
-                prec = buttonToPrecision.value(button);
             }
         }
     }

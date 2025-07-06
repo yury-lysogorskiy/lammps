@@ -63,6 +63,7 @@ class LammpsGui : public QMainWindow {
     Q_OBJECT
 
     friend class CodeEditor;
+    friend class AcceleratorTab;
     friend class GeneralTab;
     friend class TutorialWizard;
     friend class Preferences;
