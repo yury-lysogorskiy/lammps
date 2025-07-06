@@ -35,7 +35,12 @@
 #include <fcntl.h>
 #include <thread>
 
-StdCapture::StdCapture() : m_oldStdOut(0), m_capturing(false)
+namespace {
+// constexpr int bufSize = 1025;
+constexpr int bufSize = 1 << 16 + 1;
+} // namespace
+
+StdCapture::StdCapture() : m_oldStdOut(0), m_capturing(false), buf(new char[bufSize])
 {
     // make stdout unbuffered so that we don't need to flush the stream
     setvbuf(stdout, nullptr, _IONBF, 0);
@@ -54,6 +59,7 @@ StdCapture::StdCapture() : m_oldStdOut(0), m_capturing(false)
 
 StdCapture::~StdCapture()
 {
+    delete[] buf;
     if (m_capturing) {
         EndCapture();
     }

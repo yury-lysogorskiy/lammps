@@ -31,14 +31,13 @@ public:
     std::string GetChunk();
 
 private:
-    enum PIPES { READ, WRITE };
-    int m_pipe[2];
+    enum PIPES { READ, WRITE, BUFSZ };
+    int m_pipe[BUFSZ];
     int m_oldStdOut;
     bool m_capturing;
     std::string m_captured;
 
-    static constexpr int bufSize = 1025;
-    char buf[bufSize];
+    char *buf;
 };
 
 #endif

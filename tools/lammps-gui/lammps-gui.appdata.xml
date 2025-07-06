@@ -57,6 +57,8 @@
   <releases>
     <release version="1.6.15" timestamp="1751751132">
       <description>
+        Address the issue of LAMMPS stalling on output by increasing
+        the buffersize for reading from the pipe to the maximum of 64k.
         Apply fixes and code modernization suggested by clang-tidy
         Make selection of accelerator and threads consistent
         Add support for some common package command options
