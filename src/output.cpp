@@ -888,7 +888,8 @@ void Output::set_thermo(int narg, char **arg)
     var_thermo = utils::strdup(arg[0]+2);
   } else {
     thermo_every = utils::inumeric(FLERR,arg[0],false,lmp);
-    if (thermo_every < 0) error->all(FLERR,"Illegal thermo output frequency {}", thermo_every);
+    if (thermo_every < 0)
+      error->all(FLERR, Error::ARGZERO, "Illegal thermo output frequency {}", thermo_every);
   }
 }
 
