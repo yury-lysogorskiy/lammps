@@ -1182,6 +1182,31 @@ void LammpsGui::run_done()
     logwindow->insertPlainText(log.c_str());
     logwindow->moveCursor(QTextCursor::End);
 
+    // check stdout capture buffer utilization and print warning message if large
+
+    double bufferuse = capturer->get_bufferuse();
+    if (bufferuse > 0.333) {
+        int thermo_val     = lammps.extract_setting("thermo_every");
+        int thermo_suggest = 5 * (int)round(bufferuse * thermo_val);
+        int update_val     = QSettings().value("updfreq", 100).toInt();
+        int update_suggest = std::max(1, update_val / 5);
+
+        QString mesg(
+            "<p align=\"justified\">The I/O buffer for capturing the LAMMPS screen output was used "
+            "by up to %1%.</p> <p align=\"justified\"><b>This can slow down the "
+            "simulation.</b></p> <p align=\"justified\">Please consider reducing the amount of "
+            "output to the screen, for example by increasing the thermo interval in the input "
+            "from %2 to %3, or reducing the data update interval in the preferences from %4 to %5, "
+            "or something similar.</p>");
+
+        QMessageBox::critical(this, " Warning: High I/O Buffer Usage",
+                              mesg.arg((int)(100.0 * bufferuse))
+                                  .arg(thermo_val)
+                                  .arg(thermo_suggest)
+                                  .arg(update_val)
+                                  .arg(update_suggest));
+    }
+
     if (chartwindow) {
         void *ptr = lammps.last_thermo("step", 0);
         if (ptr) {

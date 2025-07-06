@@ -270,11 +270,19 @@ green in the line number display for the *Editor* Window.
    running a simulation of a small system.  In the *Preferences* dialog,
    the polling interval for updating the the *Output* and *Charts*
    windows can be set. The intervals may need to be lowered to not miss
-   data between updates or avoid stalling when the thermo output is not
-   transferred to the *Output* window fast enough, but that increases
-   the overhead.  The utilization can also be lower, e.g.  when the
-   simulation is slowed down by the GUI or other processes also running
-   on the host computer and competing with LAMMPS-GUI for GPU resources.
+   data between *Charts* data updates or to avoid stalling when the
+   thermo output is not transferred to the *Output* window fast enough.
+   It is also possible to reduce the amount of data by increasing the
+   :doc:`thermo interval <thermo>`.  LAMMPS-GUI detects, if the
+   associated I/O buffer is by a significant percentage and will print a
+   warning after the run with suggested adjustments.  The utilization
+   can also be lower, e.g.  when the simulation is slowed down by the
+   GUI or other processes also running on the host computer and
+   competing with LAMMPS-GUI for GPU resources.
+
+   .. image:: JPG/lammps-gui-buffer-warn.png
+      :align: center
+      :scale: 75%
 
 If an error occurs (in the example below the command :doc:`label
 <label>` was incorrectly capitalized as "Label"), an error message

@@ -59,6 +59,7 @@
       <description>
         Address the issue of LAMMPS stalling on output by increasing
         the buffersize for reading from the pipe to the maximum of 64k.
+        Add warning dialog at the end of a run if I/O buffer usage is high.
         Apply fixes and code modernization suggested by clang-tidy
         Make selection of accelerator and threads consistent
         Add support for some common package command options
