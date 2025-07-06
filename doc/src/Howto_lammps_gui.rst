@@ -247,15 +247,34 @@ before LAMMPS can be run from a file.
    :align: center
    :scale: 75%
 
-While LAMMPS is running, the contents of the status bar change.  On
-the left side there is a text indicating that LAMMPS is running, which
-also indicates the number of active threads, when thread-parallel
-acceleration was selected in the *Preferences* dialog.  On the right
+While LAMMPS is running, the contents of the status bar change.  The
+text fields that normally show "Ready." and the current working
+directory, change into an area showing the CPU utilization in percent.
+Nest to it is a text indicating that LAMMPS is running, which also
+indicates the number of active threads (in case thread-parallel
+acceleration was selected in the *Preferences* dialog).  On the right
 side, a progress bar is shown that displays the estimated progress for
 the current :doc:`run <run>` or :doc:`minimize <minimize>` command.
 
-Also, the line number of the currently executed command is highlighted
-in green.
+The line number of the currently executed command is highlighted in
+green in the line number display for the *Editor* Window.
+
+.. admonition:: CPU Utilization
+   :class: note
+
+   The CPU Utilization should ideally be close to 100% times the number
+   of threads like in the screenshot image above.  Since the GUI is
+   running as a separate thread, the CPU utilization can be higher, for
+   example when the GUI needs to work hard to keep up with the
+   simulation.  This can be caused by having frequent thermo output or
+   running a simulation of a small system.  In the *Preferences* dialog,
+   the polling interval for updating the the *Output* and *Charts*
+   windows can be set. The intervals may need to be lowered to not miss
+   data between updates or avoid stalling when the thermo output is not
+   transferred to the *Output* window fast enough, but that increases
+   the overhead.  The utilization can also be lower, e.g.  when the
+   simulation is slowed down by the GUI or other processes also running
+   on the host computer and competing with LAMMPS-GUI for GPU resources.
 
 If an error occurs (in the example below the command :doc:`label
 <label>` was incorrectly capitalized as "Label"), an error message
@@ -359,29 +378,41 @@ the evolution of available properties.  The update interval can be set
 in the *Preferences* dialog.  By default, the raw data for the selected
 property is plotted as a blue graph.  From the drop down menu on the top
 left, you can select whether to plot only raw data graph, only a
-smoothed data graph or both.  The smoothing uses a `Savitzky-Golay convolution
-filter <https://en.wikipedia.org/wiki/Savitzky%E2%80%93Golay_filter>`_
-The window width (left) and order (right) parameters can be set in the
-boxes next to the drop down menu.  Default settings are 10 and 4 which
-means that the smoothing window includes 10 points each to the left and
-the right of the current data point for a total of 21 points and a
-fourth order polynomial is fitted to the data in the window.
+smoothed data graph or both.  The smoothing uses a `Savitzky-Golay
+convolution filter
+<https://en.wikipedia.org/wiki/Savitzky%E2%80%93Golay_filter>`_ The
+convolution window width (left) and order (right) parameters can be set
+in the boxes next to the drop down menu.  Default settings are 10 and 4
+which means that the smoothing window includes 10 points each to the
+left and the right of the current data point for a total of 21 points
+and a fourth order polynomial is fitted to the data in the window.
 
-.. admonition:: Slowdown of Simulations from Charts Window
+.. admonition:: Slowdown of Simulations from Charts Data Processing
    :class: warning
 
    Using frequent thermo output during long simulations can result in a
    significant slowdown of that simulation since it is accumulating many
-   data points for the chart window to be redrawn with every update.
-   The updates are consuming additional CPU time when smoothing enabled.
-   This slowdown can be confirmed when an increasing percentage of the
-   total run time is spent in the "Output" or "Other" sections of the
-   :doc:`MPI task timing breakdown <Run_output>`.  It is thus
-   recommended to use a large enough value as argument `N` for the
-   :doc:`thermo command <thermo>` and to select plotting only the "Raw"
-   data in the *Charts Window* during such simulations.  It is always
-   possible to switch between the different display styles for charts
-   during the simulation and after it has finished.
+   data points for each of the thermo properties in the chart window to
+   be redrawn with every update.  The updates are consuming additional
+   CPU time when smoothing enabled.  This slowdown can be confirmed when
+   an increasing percentage of the total run time is spent in the
+   "Output" or "Other" sections of the :doc:`MPI task timing breakdown
+   <Run_output>`.  It is thus recommended to use a large enough value as
+   argument `N` for the :doc:`thermo command <thermo>` and to select
+   plotting only the "Raw" data in the *Charts Window* during such
+   simulations.  It is always possible to switch between the different
+   display styles for charts during the simulation and after it has
+   finished.
+
+   .. versionchanged:: 1.6.15
+
+      As of LAMMPS-GUI version 1.6.15 the chart data processing is
+      significantly optimized compared to older versions of LAMMPS-GUI.
+      The general problem of accumulating excessive amounts of data
+      and the overhead of too frequently polling LAMMPS for new data
+      cannot be optimized away, though.  If necessary, the command
+      line LAMMPS executable needs to be used and the output accumulated
+      of a very fast disk (e.g. a high-performance SSD).
 
 The "Title:" and "Y:" input boxes allow to edit the text shown as the
 plot title and the y-axis label, respectively.  The text entered in the
@@ -654,13 +685,27 @@ generated with a :doc:`write_data command <write_data>`.  The third
 window is a :ref:`Snapshot Image Viewer <snapshot_viewer>` containing a
 visualization of the system in the restart.
 
-If the restart file is larger than 250 MBytes, a dialog will ask
-for confirmation before continuing, since large restart files
-may require large amounts of RAM since the entire system must
-be read into RAM.  Thus restart file for large simulations that
-have been run on an HPC cluster may overload a laptop or local
-workstation. The *Show Details...* button will display a rough
-estimate of the additional memory required.
+.. |inspect1| image:: JPG/lammps-gui-inspect-data.png
+   :width: 32%
+
+.. |inspect2| image:: JPG/lammps-gui-inspect-info.png
+   :width: 32%
+
+.. |inspect3| image:: JPG/lammps-gui-inspect-image.png
+   :width: 32%
+
+|inspect1|  |inspect2|  |inspect3|
+
+.. admonition:: Large Restart Files
+   :class: warning
+
+   If the restart file is larger than 250 MBytes, a dialog will ask for
+   confirmation before continuing, since large restart files may require
+   large amounts of RAM since the entire system must be read into RAM.
+   Thus restart file for large simulations that have been run on an HPC
+   cluster may overload a laptop or local workstation. The *Show
+   Details...* button will display a rough estimate of the additional
+   memory required.
 
 Menu
 ----
@@ -785,6 +830,10 @@ tutorial's online version opened in your web browser.  The dialog will
 then start downloading the files requested (download progress is
 reported in the status line) and load the first input file for the
 selected session into LAMMPS-GUI.
+
+.. image:: JPG/lammps-gui-tutorials.png
+   :align: center
+   :scale: 50%
 
 About
 ^^^^^
@@ -926,12 +975,20 @@ General Settings:
 Accelerators:
 ^^^^^^^^^^^^^
 
-This tab enables selection of an accelerator package for LAMMPS to use
-and is equivalent to using the `-suffix` and `-package` flags on the
-command-line.  Only settings supported by the LAMMPS library and local
-hardware are available.  The `Number of threads` field allows setting
-the maximum number of threads for the accelerator packages that use
-threads.
+This tab enables selection of an accelerator package and modify some of
+its settings to use for running LAMMPS and is equivalent to using the
+:doc:`-sf <suffix>` and :doc:`-pk <package>` flags :doc:`on the
+command-line <Run_options>`.  Only settings supported by the LAMMPS
+library and local hardware are available.  The `Number of threads` field
+allows setting the number of threads for the accelerator packages that
+support using threads (OPENMP, INTEL, KOKKOS, and GPU).  Furthermore,
+the choice of precision mode (double, mixed, or single) for the INTEL
+package can be selected and for the GPU package, whether the neighbor
+lists are built on the GPU or the host (required for :doc:`pair style
+hybrid <pair_hybrid>`) and whether only pair styles should be
+accelerated (i.e. run PPPM entirely on the CPU, which sometimes leads
+to better overall performance).  Whether settings can be changed depends
+on which accelerator package is chosen (or "None").
 
 Snapshot Image:
 ^^^^^^^^^^^^^^^
