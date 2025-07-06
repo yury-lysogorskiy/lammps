@@ -28,6 +28,7 @@
 #include <QFontDialog>
 #include <QGroupBox>
 #include <QHBoxLayout>
+#include <QHash>
 #include <QIcon>
 #include <QIntValidator>
 #include <QLabel>
@@ -88,41 +89,39 @@ Preferences::~Preferences()
     delete settings;
 }
 
+namespace {
+const QHash<QString, int> buttonToChoice = {
+    {"none", AcceleratorTab::None},     {"opt", AcceleratorTab::Opt},
+    {"openmp", AcceleratorTab::OpenMP}, {"intel", AcceleratorTab::Intel},
+    {"kokkos", AcceleratorTab::Kokkos}, {"gpu", AcceleratorTab::Gpu}};
+
+const QHash<QString, int> buttonToPrecision = {{"inteldouble", AcceleratorTab::Double},
+                                               {"intelmixed", AcceleratorTab::Mixed},
+                                               {"intelsingle", AcceleratorTab::Single}};
+} // namespace
+
 void Preferences::accept()
 {
     // store all data in settings class
     // and then confirm accepting
 
-    // store selected accelerator
+    // store selected accelerator and precision settings from radiobuttons
     QList<QRadioButton *> allButtons = tabWidget->findChildren<QRadioButton *>();
-    for (auto &allButton : allButtons) {
-        if (allButton->isChecked()) {
-            const auto &button = allButton->objectName();
-            if (button == "none")
-                settings->setValue("accelerator", AcceleratorTab::None);
-            else if (button == "opt")
-                settings->setValue("accelerator", AcceleratorTab::Opt);
-            else if (button == "openmp")
-                settings->setValue("accelerator", AcceleratorTab::OpenMP);
-            else if (button == "intel")
-                settings->setValue("accelerator", AcceleratorTab::Intel);
-            else if (button == "kokkos")
-                settings->setValue("accelerator", AcceleratorTab::Kokkos);
-            else if (button == "gpu")
-                settings->setValue("accelerator", AcceleratorTab::Gpu);
-            else if (button == "inteldouble")
-                settings->setValue("intelprec", AcceleratorTab::Double);
-            else if (button == "intelmixed")
-                settings->setValue("intelprec", AcceleratorTab::Mixed);
-            else if (button == "intelsingle")
-                settings->setValue("intelprec", AcceleratorTab::Single);
+    for (const auto &anyButton : allButtons) {
+        if (anyButton->isChecked()) {
+            const auto &button = anyButton->objectName();
+            if (buttonToChoice.contains(button)) {
+                settings->setValue("accelerator", buttonToChoice.value(button));
+            } else if (buttonToPrecision.contains(button)) {
+                settings->setValue("intelprec", buttonToPrecision.value(button));
+            }
         }
     }
 
 #if defined(_OPENMP)
     // store number of threads, reset to 1 for "None" and "Opt" settings
-    auto *mainwidget  = dynamic_cast<LammpsGui *>(get_main_widget());
-    auto *field = tabWidget->findChild<QLineEdit *>("nthreads");
+    auto *mainwidget = dynamic_cast<LammpsGui *>(get_main_widget());
+    auto *field      = tabWidget->findChild<QLineEdit *>("nthreads");
     if (field && mainwidget) {
         int accel = settings->value("accelerator", AcceleratorTab::None).toInt();
         if ((accel == AcceleratorTab::None) || (accel == AcceleratorTab::Opt)) {
@@ -473,7 +472,7 @@ AcceleratorTab::AcceleratorTab(QSettings *_settings, LammpsWrapper *_lammps, QWi
     auto *intval   = new QIntValidator(1, maxthreads, this);
     ntchoice->setValidator(intval);
 #else
-    auto *ntlabel  = new QLabel(QString("Number of threads (OpenMP not available):"));
+    auto *ntlabel  = new QLabel("Number of threads (OpenMP not available):");
     auto *ntchoice = new QLineEdit("1");
     ntchoice->setEnabled(false);
 #endif
@@ -590,27 +589,14 @@ void AcceleratorTab::update_accel()
     int prec   = AcceleratorTab::Mixed;
 
     QList<QRadioButton *> allButtons = findChildren<QRadioButton *>();
-    for (auto &allButton : allButtons) {
-        if (allButton->isChecked()) {
-            const auto &button = allButton->objectName();
-            if (button == "none")
-                choice = AcceleratorTab::None;
-            else if (button == "opt")
-                choice = AcceleratorTab::Opt;
-            else if (button == "openmp")
-                choice = AcceleratorTab::OpenMP;
-            else if (button == "intel")
-                choice = AcceleratorTab::Intel;
-            else if (button == "kokkos")
-                choice = AcceleratorTab::Kokkos;
-            else if (button == "gpu")
-                choice = AcceleratorTab::Gpu;
-            else if (button == "inteldouble")
-                prec = AcceleratorTab::Double;
-            else if (button == "intelmixed")
-                prec = AcceleratorTab::Mixed;
-            else if (button == "intelsingle")
-                prec = AcceleratorTab::Single;
+    for (auto &anyButton : allButtons) {
+        if (anyButton->isChecked()) {
+            const auto &button = anyButton->objectName();
+            if (buttonToChoice.contains(button)) {
+                choice = buttonToChoice.value(button);
+            } else if (buttonToPrecision.contains(button)) {
+                prec = buttonToPrecision.value(button);
+            }
         }
     }
 
