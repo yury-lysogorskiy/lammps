@@ -546,8 +546,6 @@ void FixHMC::save_current_state()
   int m;
 
   int nlocal = atom->nlocal;
-  int ntotal = nlocal + atom->nghost;
-  int nmax = atom->nmax;
   AtomVec *avec = atom->avec;
   nstore = 0;
 
