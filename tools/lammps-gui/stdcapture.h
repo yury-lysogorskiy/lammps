@@ -30,12 +30,15 @@ public:
     std::string GetCapture();
     std::string GetChunk();
 
+    double get_bufferuse() const;
+
 private:
     enum PIPES { READ, WRITE, BUFSZ };
     int m_pipe[BUFSZ];
     int m_oldStdOut;
     bool m_capturing;
     std::string m_captured;
+    int maxread;
 
     char *buf;
 };

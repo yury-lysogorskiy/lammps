@@ -36,11 +36,10 @@
 #include <thread>
 
 namespace {
-// constexpr int bufSize = 1025;
 constexpr int bufSize = 1 << 16 + 1;
 } // namespace
 
-StdCapture::StdCapture() : m_oldStdOut(0), m_capturing(false), buf(new char[bufSize])
+StdCapture::StdCapture() : m_oldStdOut(0), m_capturing(false), maxread(0), buf(new char[bufSize])
 {
     // make stdout unbuffered so that we don't need to flush the stream
     setvbuf(stdout, nullptr, _IONBF, 0);
@@ -73,6 +72,7 @@ void StdCapture::BeginCapture()
     if (m_capturing) EndCapture();
     dup2(m_pipe[WRITE], fileno(stdout));
     m_capturing = true;
+    maxread = 0;
 }
 
 bool StdCapture::EndCapture()
@@ -127,7 +127,13 @@ std::string StdCapture::GetChunk()
     if (bytesRead > 0) {
         buf[bytesRead] = '\0';
     }
+    maxread = std::max(maxread, bytesRead);
     return {buf};
+}
+
+double StdCapture::get_bufferuse() const
+{
+    return (double)maxread / (double)(bufSize-1);
 }
 
 std::string StdCapture::GetCapture()
