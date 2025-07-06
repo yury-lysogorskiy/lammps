@@ -161,8 +161,8 @@ LammpsGui::LammpsGui(QWidget *parent, const QString &filename) :
     bool gpupaironly = settings.value("gpupaironly", false).toBool();
     settings.setValue("gpupaironly", gpupaironly);
     // INTEL package precision
-    int intelprec = settings.value("intelprec", QString::number(AcceleratorTab::Mixed)).toInt();
-    settings.setValue("intelprec", QString::number(intelprec));
+    int intelprec = settings.value("intelprec", AcceleratorTab::Mixed).toInt();
+    settings.setValue("intelprec", intelprec);
 
     // Check and initialize nthreads setting for when OpenMP support is compiled in.
     // Default is to use OMP_NUM_THREADS setting, if that is not available, then

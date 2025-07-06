@@ -121,15 +121,15 @@ void Preferences::accept()
 
 #if defined(_OPENMP)
     // store number of threads, reset to 1 for "None" and "Opt" settings
-    auto *main  = dynamic_cast<LammpsGui *>(get_main_widget());
+    auto *mainwidget  = dynamic_cast<LammpsGui *>(get_main_widget());
     auto *field = tabWidget->findChild<QLineEdit *>("nthreads");
-    if (field) {
+    if (field && mainwidget) {
         int accel = settings->value("accelerator", AcceleratorTab::None).toInt();
         if ((accel == AcceleratorTab::None) || (accel == AcceleratorTab::Opt)) {
-            main->nthreads = 1;
+            mainwidget->nthreads = 1;
         } else if (field->hasAcceptableInput()) {
             settings->setValue("nthreads", field->text());
-            main->nthreads = settings->value("nthreads", 1).toInt();
+            mainwidget->nthreads = settings->value("nthreads", 1).toInt();
         }
     }
 #endif
@@ -355,11 +355,11 @@ GeneralTab::GeneralTab(QSettings *_settings, LammpsWrapper *_lammps, QWidget *pa
 
 void GeneralTab::updatefonts(const QFont &all, const QFont &text)
 {
-    auto *main = dynamic_cast<LammpsGui *>(get_main_widget());
-    if (main) {
-        main->setFont(all);
-        main->ui->textEdit->document()->setDefaultFont(text);
-        if (main->wizard) main->wizard->setFont(all);
+    auto *mainwidget = dynamic_cast<LammpsGui *>(get_main_widget());
+    if (mainwidget) {
+        mainwidget->setFont(all);
+        mainwidget->ui->textEdit->document()->setDefaultFont(text);
+        if (mainwidget->wizard) mainwidget->wizard->setFont(all);
     }
 
     Preferences *prefs = nullptr;
