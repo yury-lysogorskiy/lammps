@@ -1495,6 +1495,7 @@ Hebbeker
 Hebenstreit
 Hecht
 Heenen
+Heermann
 heFFTe
 Hendrik
 Henin
@@ -1532,6 +1533,7 @@ histogrammed
 histogramming
 hma
 hmaktulga
+hmc
 hoc
 Hochbruck
 Hofling
@@ -2267,6 +2269,7 @@ mediumturquoise
 mediumvioletred
 Mees
 Mehl
+Mehlig
 Mei
 Meissner
 Melchor
