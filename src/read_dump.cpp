@@ -345,7 +345,7 @@ bigint ReadDump::seek(bigint nrequest, int exact)
 
 bigint ReadDump::next(bigint ncurrent, bigint nlast, int nevery, int nskip)
 {
-  int ifile,eofflag;
+  int ifile = 0, eofflag = 0;
   bigint ntimestep;
 
   // proc 0 finds the timestep in its first reader
@@ -442,7 +442,8 @@ bigint ReadDump::next(bigint ncurrent, bigint nlast, int nevery, int nskip)
 
 void ReadDump::header(int fieldinfo)
 {
-  int boxinfo, triclinic_snap;
+  int boxinfo = 0;
+  int triclinic_snap;
   int fieldflag,xflag,yflag,zflag;
 
   if (filereader) {
