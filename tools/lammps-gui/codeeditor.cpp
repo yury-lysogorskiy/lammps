@@ -121,8 +121,9 @@ static std::vector<std::string> split_line(const std::string &text)
             }
             if ((c == ' ') || (c == '\t') || (c == '\r') || (c == '\n') || (c == '\f') ||
                 (c == '\0')) {
-                list.push_back(text.substr(beg, len));
-                beg += len + add;
+                add = std::min(len, text.size() - beg);
+                if (beg < text.size()) list.push_back(text.substr(beg, add));
+                beg += add;
                 break;
             }
             c = *++buf;
