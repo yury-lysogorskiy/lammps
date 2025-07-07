@@ -1664,8 +1664,10 @@ std::vector<std::string> utils::split_words(const std::string &text)
         ++len;
       }
       if ((c == ' ') || (c == '\t') || (c == '\r') || (c == '\n') || (c == '\f') || (c == '\0')) {
-        list.push_back(text.substr(beg, len));
-        beg += len + add;
+        // avoid out-of-range access
+        add = std::min(len, text.size() - beg);
+        if (beg < text.size()) list.push_back(text.substr(beg, add));
+        beg += add;
         break;
       }
       c = *++buf;
