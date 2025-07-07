@@ -623,6 +623,20 @@ void LammpsGui::update_recents(const QString &filename)
     }
 }
 
+// delete all current variables in the LAMMPS instance
+void LammpsGui::clear_variables()
+{
+    int nvar = lammps.id_count("variable");
+    char buffer[DEFAULT_BUFLEN];
+
+    // delete from back so they are not re-indexed
+    for (int i = nvar - 1; i >= 0; --i) {
+        memset(buffer, 0, DEFAULT_BUFLEN);
+        if (lammps.id_name("variable", i, buffer, DEFAULT_BUFLEN))
+            lammps.command(QString("variable %1 delete").arg(buffer));
+    }
+}
+
 void LammpsGui::update_variables()
 {
     const auto doc = ui->textEdit->toPlainText().replace('\t', ' ').split('\n');
@@ -861,6 +875,7 @@ void LammpsGui::inspect_file(const QString &fileName)
 
         start_lammps();
         lammps.command("clear");
+        clear_variables();
         lammps.command(QString("read_restart %1").arg(fileName));
         capturer->BeginCapture();
         lammps.command("info system group compute fix");
@@ -1331,8 +1346,10 @@ void LammpsGui::do_run(bool use_buffer)
     is_running = true;
     ++run_counter;
 
+    // must delete all variables since clear does not delete them
+    clear_variables();
+
     // define "gui_run" variable set to run_counter value
-    lammps.command("variable gui_run delete");
     lammps.command(std::string("variable gui_run index " + std::to_string(run_counter)));
     if (use_buffer) {
         // always add final newline since the text edit widget does not do it
@@ -1426,6 +1443,7 @@ void LammpsGui::render_image()
                 selection += "\nrun 0 pre yes post no";
                 ui->textEdit->setTextCursor(saved);
                 lammps.command("clear");
+                clear_variables();
                 lammps.commands_string(selection);
                 // clear any possible error status
                 lammps.get_last_error_message(nullptr, 0);

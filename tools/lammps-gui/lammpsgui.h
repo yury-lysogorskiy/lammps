@@ -84,6 +84,7 @@ protected:
     void inspect_file(const QString &filename);
     void write_file(const QString &filename);
     void update_recents(const QString &filename = "");
+    void clear_variables();
     void update_variables();
     void do_run(bool use_buffer);
     void start_lammps();
