@@ -58,14 +58,18 @@
     <release version="1.6.15" timestamp="1751751132">
       <description>
         Address the issue of LAMMPS stalling on output by increasing
-        the buffersize for reading from the pipe to the maximum of 64k.
+          the buffersize for reading from the pipe to the maximum of 64k.
         Add warning dialog at the end of a run if I/O buffer usage is high.
         Apply fixes and code modernization suggested by clang-tidy
         Make selection of accelerator and threads consistent
-        Add support for some common package command options
+        Fix bug when recentering object in image viewer
+        Fix crash when editing partially quoted strings
+        Must delete variable when starting a new run, since we don't
+          always re-launch LAMMPS "clear" does not clear variables
+        Add support for some common accelerator package command options
           GPU: neighbor list on host/device, accelerate only pair style
           INTEL: choose double/mixed/single precision
-        Display CPU utilization in %
+        Display CPU utilization in % during runs
         Display a LAMMPS-GUI banner image on new/empty editor windows
           and clear it when editing or loading a file.
       </description>
