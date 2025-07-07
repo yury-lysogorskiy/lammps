@@ -90,7 +90,7 @@ void GetURL::command(int narg, char **arg)
 
   FILE *out = fopen(output.c_str(), "wb");
   if (!out)
-    error->all(FLERR, "Cannot open output file {} for writing: {}", output, utils::getsyserror());
+    error->one(FLERR, "Cannot open output file {} for writing: {}", output, utils::getsyserror());
 
   // initialize curl and perform download
 
