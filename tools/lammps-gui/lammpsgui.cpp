@@ -68,7 +68,7 @@
 #endif
 
 namespace {
-constexpr int DEFAULT_BUFLEN      = 1024;
+constexpr int DEFAULT_BUFLEN = 1024;
 
 #if defined(_OPENMP)
 constexpr int MAX_DEFAULT_THREADS = 16;
@@ -77,6 +77,9 @@ constexpr int MAX_DEFAULT_THREADS = 16;
 const QString blank(" ");
 const QString citeme("# When using LAMMPS-GUI in your project, please cite: "
                      "https://arxiv.org/abs/2503.14020\n");
+const QString bannerstyle("CodeEditor {background-position: center center;"
+                          "background-repeat: no-repeat;"
+                          "background-image: url(:/icons/lammps-gui-banner.png);}");
 } // namespace
 
 LammpsGui::LammpsGui(QWidget *parent, const QString &filename) :
@@ -90,6 +93,7 @@ LammpsGui::LammpsGui(QWidget *parent, const QString &filename) :
     ui->setupUi(this);
     ui->textEdit->document()->setPlainText(citeme);
     ui->textEdit->document()->setModified(false);
+    ui->textEdit->setStyleSheet(bannerstyle);
     this->setCentralWidget(ui->textEdit);
     highlighter = new Highlighter(ui->textEdit->document());
     capturer    = new StdCapture;
@@ -460,6 +464,7 @@ void LammpsGui::new_document()
     current_file.clear();
     ui->textEdit->document()->setPlainText(citeme);
     ui->textEdit->document()->setModified(false);
+    ui->textEdit->setStyleSheet(bannerstyle);
 
     if (lammps.is_running()) {
         stop_run();
@@ -678,6 +683,7 @@ void LammpsGui::update_variables()
 void LammpsGui::open_file(const QString &fileName)
 {
     purge_inspect_list();
+    ui->textEdit->setStyleSheet("");
     if (ui->textEdit->document()->isModified()) {
         QMessageBox msg;
         msg.setWindowTitle("Unsaved Changes");
@@ -1167,9 +1173,10 @@ void LammpsGui::modified()
 {
     const QString modflag(" - *modified*");
     auto title = windowTitle().remove(modflag);
-    if (ui->textEdit->document()->isModified())
+    if (ui->textEdit->document()->isModified()) {
+        ui->textEdit->setStyleSheet("");
         setWindowTitle(title + modflag);
-    else
+    } else
         setWindowTitle(title);
 }
 

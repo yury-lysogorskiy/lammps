@@ -66,6 +66,8 @@
           GPU: neighbor list on host/device, accelerate only pair style
           INTEL: choose double/mixed/single precision
         Display CPU utilization in %
+        Display a LAMMPS-GUI banner image on new/empty editor windows
+          and clear it when editing or loading a file.
       </description>
     </release>
     <release version="1.6.14" timestamp="1747828753">

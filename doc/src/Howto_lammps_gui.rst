@@ -1,10 +1,14 @@
 Using LAMMPS-GUI
 ================
 
+.. image:: JPG/lammps-gui-banner.png
+   :align: center
+
 LAMMPS-GUI is a graphical text editor programmed using the `Qt Framework
-<https://www.qt.io/>`_ and customized for editing LAMMPS input files.  It
-is linked to the :ref:`LAMMPS library <lammps_c_api>` and thus can run
-LAMMPS directly using the contents of the editor's text buffer as input.
+<https://www.qt.io/>`_ and customized for editing and running LAMMPS
+input files.  It is linked to the :ref:`LAMMPS library <lammps_c_api>`
+and thus can run LAMMPS directly using the contents of the editor's text
+buffer as input and without having to launch the LAMMPS executable.
 
 It *differs* from other known interfaces to LAMMPS in that it can
 retrieve and display information from LAMMPS *while it is running*,
@@ -22,15 +26,16 @@ This document describes **LAMMPS-GUI version 1.6**.
 ----
 
 LAMMPS-GUI tries to provide an experience similar to what people
-traditionally would have running LAMMPS using a command-line window and
-the console LAMMPS executable but just rolled into a single executable:
+traditionally would have when running LAMMPS using a text editor, the
+command-line window, and launching the LAMMPS executable but just rolled
+into a single executable:
 
 - writing & editing LAMMPS input files with a text editor
 - run LAMMPS on those input file with selected command-line flags
-- extract data from the created files and visualize it with and
+- extract data from the created files and visualize it with
   external software
 
-That procedure is quite effective for people proficient in using the
+That traditional procedure is effective for people proficient in using the
 command-line, as that allows them to use tools for the individual steps
 that they are most comfortable with.  In fact, it is often *required* to
 adopt this workflow when running LAMMPS simulations on high-performance
@@ -42,35 +47,44 @@ window or using external programs, let alone writing scripts to extract
 data from the generated output.  It also integrates well with graphical
 desktop environments where the `.lmp` filename extension can be
 registered with LAMMPS-GUI as the executable to launch when double
-clicking on such files.  Also, LAMMPS-GUI has support for drag-n-drop,
-i.e.  an input file can be selected and then moved and dropped on the
-LAMMPS-GUI executable, and LAMMPS-GUI will launch and read the file into
-its buffer.  In many cases LAMMPS-GUI will be integrated into the
-graphical desktop environment and can be launched like other
-applications.
+clicking on such files using a graphical file manager.  LAMMPS-GUI also
+has support for drag-n-drop for opening inputs, i.e.  an input file can
+be selected and then moved and dropped on the LAMMPS-GUI executable, and
+LAMMPS-GUI will launch and read the file into its buffer.  In many cases
+LAMMPS-GUI will be integrated into the graphical desktop environment and
+can be launched like other applications.
 
 LAMMPS-GUI thus makes it easier for beginners to get started running
-simple LAMMPS simulations.  It is very suitable for tutorials on LAMMPS
-since you only need to learn how to use a single program for most tasks
-and thus time can be saved and people can focus on learning LAMMPS.
-The tutorials at https://lammpstutorials.github.io/ are specifically
-updated for use with LAMMPS-GUI and their tutorial materials can
-be downloaded and edited directly from the GUI.
+LAMMPS simulations since you can start with learning LAMMPS right away.
+It is therefore very suitable for tutorials on LAMMPS, since you only
+need to learn how to use a single program that is available as
+ready-to-use, pre-compiled packages for popular operating systems
+(Linux, macOS, Windows), for most of the tasks.  This saves time and
+people can focus on learning LAMMPS instead of having to compile LAMMPS,
+learn how to use the command line and a text editor.
 
-Another design goal is to keep the barrier low when replacing part of
-the functionality of LAMMPS-GUI with external tools.  That said, LAMMPS-GUI
-has some unique functionality that is not found elsewhere:
+The tutorials at https://lammpstutorials.github.io/ are specifically
+updated for use with LAMMPS-GUI and their tutorial materials can be
+downloaded and edited directly from within the GUI while automatically
+loading the matching tutorial instructions into a webbrowser.
+
+Yet the basic control flow remains similar to running LAMMPS from the
+command line and thus the barrier for replacing part of the
+functionality of LAMMPS-GUI with external tools is low.  That said,
+LAMMPS-GUI has some unique functionality that is not easily found
+elsewhere:
 
 - auto-adapting to features available in the integrated LAMMPS library
-- auto-completion for LAMMPS commands and options
-- context-sensitive online help
+- auto-completion for available LAMMPS commands and options only
+- context-sensitive online help for known LAMMPS commands
 - start and stop of simulations via mouse or keyboard
-- monitoring of simulation progress
-- interactive visualization using the :doc:`dump image <dump_image>`
+- monitoring of simulation progress and CPU use
+- interactive visualization using the LAMMPS :doc:`dump image feature <dump_image>`
   command with the option to copy-paste the resulting settings
 - automatic slide show generation from dump image output at runtime
 - automatic plotting of thermodynamic data at runtime
 - inspection of binary restart files
+- integration will a set of LAMMPS tutorials
 
 .. admonition:: Download LAMMPS-GUI for your platform
    :class: Hint
@@ -93,7 +107,7 @@ has some unique functionality that is not found elsewhere:
 
 -----
 
-The following text provides a detailed tour of the features and
+The following text provides a documentation of the features and
 functionality of LAMMPS-GUI.  Suggestions for new features and
 reports of bugs are always welcome.  You can use the :doc:`the same
 channels as for LAMMPS itself <Errors_bugs>` for that purpose.
