@@ -501,7 +501,7 @@ to do this to install it via pip:
 
 .. code-block:: bash
 
-   pip install git+https://github.com/gcovr/gcovr.git
+   python3 -m pip install gcovr
 
 After post-processing with ``gen_coverage_html`` the results are in
 a folder ``coverage_html`` and can be viewed with a web browser.

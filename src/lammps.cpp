@@ -560,8 +560,9 @@ LAMMPS::LAMMPS(int narg, char **arg, MPI_Comm communicator) :
       if (inflag <= 0) infile = stdin;
       else if (strcmp(arg[inflag], "none") == 0) infile = stdin;
       else infile = fopen(arg[inflag],"r");
+
       if (infile == nullptr)
-        error->all(FLERR,"Cannot open input script {}: {}", arg[inflag], utils::getsyserror());
+        error->one(FLERR,"Cannot open input script {}: {}", arg[inflag], utils::getsyserror());
       if (!helpflag)
         utils::logmesg(this,"LAMMPS ({}{})\n", version, update_string);
 

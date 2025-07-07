@@ -66,7 +66,7 @@ using namespace LAMMPS_NS;
 using namespace MathConst;
 
 namespace {
-static char const *const elements_pace_al[] = {
+const char *const elements_pace_al[] = {
     "X",  "H",  "He", "Li", "Be", "B",  "C",  "N",  "O",  "F",  "Ne", "Na", "Mg", "Al", "Si",
     "P",  "S",  "Cl", "Ar", "K",  "Ca", "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu",
     "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y",  "Zr", "Nb", "Mo", "Tc", "Ru",
@@ -74,7 +74,7 @@ static char const *const elements_pace_al[] = {
     "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W",
     "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac",
     "Th", "Pa", "U",  "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"};
-static constexpr int elements_num_pace_al = sizeof(elements_pace_al) / sizeof(const char *);
+constexpr int elements_num_pace_al = sizeof(elements_pace_al) / sizeof(const char *);
 
 int AtomicNumberByName_pace_al(char *elname)
 {
