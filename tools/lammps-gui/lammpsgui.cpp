@@ -129,9 +129,11 @@ LammpsGui::LammpsGui(QWidget *parent, const QString &filename) :
     if (plugin_path.isEmpty()) {
         // none of the plugin paths could load, remove key
         settings.remove("plugin_path");
-        QMessageBox::critical(this, "Error",
-                              "Cannot open LAMMPS shared library file.\n"
-                              "Use -p command line flag to specify a path to the library.");
+        QMessageBox::critical(
+            this, "Error",
+            QString("Cannot open LAMMPS shared library file: %1.\n\n")
+                    .arg(settings.value("plugin_path", "liblammps.so").toString()) +
+                "Use -p command line flag to specify a path to the library.");
         exit(1);
     }
 #endif
@@ -733,10 +735,12 @@ void LammpsGui::open_file(const QString &fileName)
     QDir::setCurrent(current_dir);
     if (!file.open(QIODevice::ReadOnly | QFile::Text)) {
         QMessageBox::warning(this, "Warning",
-                             "Cannot open file " + path.absoluteFilePath() + ": " +
+                             "Cannot open file " + path.absoluteFilePath() + ":\n " +
                                  file.errorString() +
-                                 ".\nWill create new file on saving editor buffer.");
-        ui->textEdit->document()->setPlainText(QString());
+                                 ".\n\nWill create new file on saving editor buffer.");
+        ui->textEdit->document()->setPlainText(citeme);
+        ui->textEdit->document()->setModified(false);
+        ui->textEdit->setStyleSheet(bannerstyle);
     } else {
         QTextStream in(&file);
         QString text = in.readAll();
