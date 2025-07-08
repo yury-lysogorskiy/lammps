@@ -17,7 +17,7 @@ display visualizations created with the :doc:`dump image command
 LAMMPS commands and styles, and directly integrates with a collection
 of LAMMPS tutorials (:ref:`Gravelle1 <Gravelle1>`).
 
-This document describes **LAMMPS-GUI version 1.6**.
+This document describes **LAMMPS-GUI version 1.7**.
 
 -----
 
