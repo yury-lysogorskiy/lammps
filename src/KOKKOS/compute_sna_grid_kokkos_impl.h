@@ -158,7 +158,7 @@ void ComputeSNAGridKokkos<DeviceType, real_type, vector_length>::setup()
   memory->create(gridall, size_array_rows, size_array_cols, "grid:gridall");
   if (nxlo <= nxhi && nylo <= nyhi && nzlo <= nzhi) {
     gridlocal_allocated = 1;
-    memory->create4d_offset(gridlocal, size_array_cols, nzlo, nzhi, nylo, nyhi, nxlo, nxhi,                
+    memory->create4d_offset(gridlocal, size_array_cols, nzlo, nzhi, nylo, nyhi, nxlo, nxhi,
                             "grid:gridlocal");
   }
 
