@@ -2354,8 +2354,16 @@ void LammpsGui::setup_tutorial(int tutno, const QString &dir, bool purgedir, boo
             line = line.trimmed();
             dlfile.close();
 
+#if defined(_WIN32)
             if (line == QString("../") + dlpath.fileName())
-                lammps.command(QString("shell cp %1 %2").arg(dlpath.fileName()).arg(item.fname));
+                // must replace "/" path separator with "\" on Windows
+                lammps.command(QString("shell copy /y %1 %2")
+                                   .arg(dlpath.fileName())
+                                   .arg(QString(item.fname).replace('/', '\\')));
+#else
+            if (line == QString("../") + dlpath.fileName())
+                lammps.command(QString("shell cp -f %1 %2").arg(dlpath.fileName()).arg(item.fname));
+#endif
         }
     }
     progress->setValue(1000);
