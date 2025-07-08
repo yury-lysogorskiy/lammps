@@ -969,13 +969,12 @@ General Settings:
 - *Replace image window on new render:* when checked, an existing
   chart window will be replaced when a new snapshot image is requested,
   otherwise each command will create a new image window.
-- *Path to LAMMPS Shared Library File:* this option is only visible
-  when LAMMPS-GUI was compiled to load the LAMMPS library at run time
-  instead of being linked to it directly.  With the *Browse..* button
-  or by changing the text, a different shared library file with a
-  different compilation of LAMMPS with different settings or from a
-  different version can be loaded.  After this setting was changed,
-  LAMMPS-GUI needs to be re-launched.
+- *Download tutorial solutions enabled* this controls whether the
+  "Download solutions" option is enabled by default when setting up
+  a tutorial.
+- *Open tutorial webpage enabled* this controls whether the "Open
+  tutorial webpage in web browser" option is enabled by default when
+  setting up a tutorial.
 - *Select Default Font:* Opens a font selection dialog where the type
   and size for the default font (used for everything but the editor and
   log) of the application can be set.
@@ -999,6 +998,13 @@ General Settings:
   or for downloading tutorial files from the *Tutorials* menu.  If the
   ``https_proxy`` environment variable was set externally, its value is
   displayed but cannot be changed.
+- *Path to LAMMPS Shared Library File:* this option is only visible
+  when LAMMPS-GUI was compiled to load the LAMMPS library at run time
+  instead of being linked to it directly.  With the *Browse..* button
+  or by changing the text, a different shared library file with a
+  different compilation of LAMMPS with different settings or from a
+  different version can be loaded.  After this setting was changed,
+  LAMMPS-GUI needs to be re-launched.
 
 Accelerators:
 ^^^^^^^^^^^^^

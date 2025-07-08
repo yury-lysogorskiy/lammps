@@ -1745,6 +1745,8 @@ QWizardPage *LammpsGui::tutorial_intro(const int ntutorial, const QString &infot
 
 QWizardPage *LammpsGui::tutorial_directory(const int ntutorial)
 {
+    QSettings settings;
+    settings.beginGroup("tutorial");
     auto *page = new QWizardPage;
     page->setTitle(QString("Select Directory for Tutorial %1").arg(ntutorial));
     page->setPixmap(QWizard::WatermarkPixmap,
@@ -1799,7 +1801,7 @@ QWizardPage *LammpsGui::tutorial_directory(const int ntutorial)
 
     purgeval->setCheckState(Qt::Unchecked);
     purgeval->setObjectName("t_dirpurge");
-    solval->setCheckState(Qt::Unchecked);
+    solval->setCheckState(settings.value("solution", false).toBool() ? Qt::Checked : Qt::Unchecked);
     solval->setObjectName("t_getsolution");
     grid->addWidget(purgeval, 0, 0, Qt::AlignVCenter);
     grid->addWidget(purgelabel, 0, 1, Qt::AlignVCenter);
@@ -1814,7 +1816,8 @@ QWizardPage *LammpsGui::tutorial_directory(const int ntutorial)
     if ((ntutorial > 0) && (ntutorial < 8)) {
         grid->addWidget(new QLabel, 2, 0, 1, 2, Qt::AlignVCenter);
         webval = new QCheckBox;
-        webval->setCheckState(Qt::Checked);
+        webval->setCheckState(settings.value("webpage", true).toBool() ? Qt::Checked
+                                                                       : Qt::Unchecked);
         webval->setObjectName("t_webopen");
         grid->addWidget(webval, 3, 0, Qt::AlignVCenter);
         grid->addWidget(new QLabel("Open tutorial webpage in web browser"), 3, 1, Qt::AlignVCenter);
@@ -1830,6 +1833,7 @@ QWizardPage *LammpsGui::tutorial_directory(const int ntutorial)
     layout->addLayout(dirlayout);
     layout->addLayout(grid);
     layout->addWidget(label2);
+    settings.endGroup();
 
     page->setLayout(layout);
     return page;

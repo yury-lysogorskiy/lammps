@@ -59,6 +59,18 @@
 #include <unistd.h>
 #endif
 
+// convenience class
+
+class QHline : public QFrame {
+public:
+    QHline(QWidget *parent = nullptr) : QFrame(parent)
+    {
+        setGeometry(QRect(0, 0, 100, 3));
+        setFrameShape(QFrame::HLine);
+        setFrameShadow(QFrame::Sunken);
+    }
+};
+
 Preferences::Preferences(LammpsWrapper *_lammps, QWidget *parent) :
     QDialog(parent), tabWidget(new QTabWidget),
     buttonBox(new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel)),
@@ -189,6 +201,13 @@ void Preferences::accept()
     box = tabWidget->findChild<QCheckBox *>("viewslide");
     if (box) settings->setValue("viewslide", box->isChecked());
 
+    settings->beginGroup("tutorial");
+    box = tabWidget->findChild<QCheckBox *>("solution");
+    if (box) settings->setValue("solution", box->isChecked());
+    box = tabWidget->findChild<QCheckBox *>("webpage");
+    if (box) settings->setValue("webpage", box->isChecked());
+    settings->endGroup();
+
     auto *spin = tabWidget->findChild<QSpinBox *>("updfreq");
     if (spin) settings->setValue("updfreq", spin->value());
     spin = tabWidget->findChild<QSpinBox *>("updchart");
@@ -254,7 +273,8 @@ void Preferences::accept()
 GeneralTab::GeneralTab(QSettings *_settings, LammpsWrapper *_lammps, QWidget *parent) :
     QWidget(parent), settings(_settings), lammps(_lammps)
 {
-    auto *layout = new QVBoxLayout;
+    auto *layout = new QGridLayout;
+    ;
 
     auto *echo = new QCheckBox("Echo input to output buffer");
     echo->setObjectName("echo");
@@ -283,7 +303,76 @@ GeneralTab::GeneralTab(QSettings *_settings, LammpsWrapper *_lammps, QWidget *pa
     pltr->setCheckState(settings->value("chartreplace", true).toBool() ? Qt::Checked
                                                                        : Qt::Unchecked);
 
+    settings->beginGroup("tutorial");
+    auto *solution = new QCheckBox("Download tutorial solutions enabled");
+    solution->setObjectName("solution");
+    solution->setCheckState(settings->value("solution", false).toBool() ? Qt::Checked
+                                                                        : Qt::Unchecked);
+    auto *webpage = new QCheckBox("Open tutorial webpage enabled");
+    webpage->setObjectName("webpage");
+    webpage->setCheckState(settings->value("webpage", true).toBool() ? Qt::Checked : Qt::Unchecked);
+    settings->endGroup();
+
+    auto *getallfont =
+        new QPushButton(QIcon(":/icons/preferences-desktop-font.png"), "Select Default Font...");
+    auto *gettextfont =
+        new QPushButton(QIcon(":/icons/preferences-desktop-font.png"), "Select Text Font...");
+    connect(getallfont, &QPushButton::released, this, &GeneralTab::newallfont);
+    connect(gettextfont, &QPushButton::released, this, &GeneralTab::newtextfont);
+
+    auto *freqlabel = new QLabel("Data update interval (ms):");
+    auto *freqval   = new QSpinBox;
+    freqval->setRange(1, 1000);
+    freqval->setStepType(QAbstractSpinBox::AdaptiveDecimalStepType);
+    freqval->setValue(settings->value("updfreq", "10").toInt());
+    freqval->setObjectName("updfreq");
+
+    auto *chartlabel = new QLabel("Charts update interval (ms):");
+    auto *chartval   = new QSpinBox;
+    chartval->setRange(1, 5000);
+    chartval->setStepType(QAbstractSpinBox::AdaptiveDecimalStepType);
+    chartval->setValue(settings->value("updchart", "500").toInt());
+    chartval->setObjectName("updchart");
+
+    int nrow = 0;
+    layout->addWidget(new QHline, nrow++, 0, 1, 2);
+    layout->addWidget(echo, nrow, 0);
+    layout->addWidget(cite, nrow++, 1);
+    layout->addWidget(new QHline, nrow++, 0, 1, 2);
+    layout->addWidget(logv, nrow, 0);
+    layout->addWidget(logr, nrow++, 1);
+    layout->addWidget(pltv, nrow, 0);
+    layout->addWidget(pltr, nrow++, 1);
+    layout->addWidget(sldv, nrow, 0);
+    layout->addWidget(imgr, nrow++, 1);
+    layout->addWidget(new QHline, nrow++, 0, 1, 2);
+    layout->addWidget(solution, nrow, 0);
+    layout->addWidget(webpage, nrow++, 1);
+    layout->addWidget(new QHline, nrow++, 0, 1, 2);
+    layout->addWidget(getallfont, nrow, 0);
+    layout->addWidget(gettextfont, nrow++, 1);
+    layout->addWidget(new QHline, nrow++, 0, 1, 2);
+    layout->addWidget(freqlabel, nrow, 0);
+    layout->addWidget(freqval, nrow++, 1);
+    layout->addWidget(chartlabel, nrow, 0);
+    layout->addWidget(chartval, nrow++, 1);
+    layout->addWidget(new QHline, nrow++, 0, 1, 2);
+
+    auto *proxylabel = new QLabel("HTTPS proxy setting (empty for no proxy):");
+    layout->addWidget(proxylabel, nrow, 0);
+
+    auto https_proxy = QString::fromLocal8Bit(qgetenv("https_proxy"));
+    if (https_proxy.isEmpty()) {
+        https_proxy     = settings->value("https_proxy", "").toString();
+        auto *proxyedit = new QLineEdit(https_proxy);
+        proxyedit->setObjectName("proxyval");
+        layout->addWidget(proxyedit, nrow++, 1);
+    } else {
+        layout->addWidget(new QLabel(https_proxy), nrow++, 1);
+    }
+
 #if defined(LAMMPS_GUI_USE_PLUGIN)
+    layout->addWidget(new QHline, nrow++, 0, 1, 2);
     auto *pluginlabel = new QLabel("Path to LAMMPS Shared Library File:");
     auto *pluginedit =
         new QLineEdit(settings->value("plugin_path", "liblammpsplugin.so").toString());
@@ -294,63 +383,15 @@ GeneralTab::GeneralTab(QSettings *_settings, LammpsWrapper *_lammps, QWidget *pa
     pluginlayout->addWidget(pluginbrowse);
 
     connect(pluginbrowse, &QPushButton::released, this, &GeneralTab::pluginpath);
+
+    layout->addWidget(pluginlabel, nrow++, 0, 1, 2);
+    layout->addLayout(pluginlayout, nrow++, 0, 1, 2);
 #endif
+    layout->addWidget(new QHline, nrow++, 0, 1, 2);
 
-    auto *gridlayout = new QGridLayout;
-    auto *getallfont =
-        new QPushButton(QIcon(":/icons/preferences-desktop-font.png"), "Select Default Font...");
-    auto *gettextfont =
-        new QPushButton(QIcon(":/icons/preferences-desktop-font.png"), "Select Text Font...");
-    gridlayout->addWidget(getallfont, 0, 0);
-    gridlayout->addWidget(gettextfont, 0, 1);
-    connect(getallfont, &QPushButton::released, this, &GeneralTab::newallfont);
-    connect(gettextfont, &QPushButton::released, this, &GeneralTab::newtextfont);
-
-    auto *freqlabel = new QLabel("Data update interval (ms):");
-    auto *freqval   = new QSpinBox;
-    freqval->setRange(1, 1000);
-    freqval->setStepType(QAbstractSpinBox::AdaptiveDecimalStepType);
-    freqval->setValue(settings->value("updfreq", "10").toInt());
-    freqval->setObjectName("updfreq");
-    gridlayout->addWidget(freqlabel, 1, 0);
-    gridlayout->addWidget(freqval, 1, 1);
-
-    auto *chartlabel = new QLabel("Charts update interval (ms):");
-    auto *chartval   = new QSpinBox;
-    chartval->setRange(1, 5000);
-    chartval->setStepType(QAbstractSpinBox::AdaptiveDecimalStepType);
-    chartval->setValue(settings->value("updchart", "500").toInt());
-    chartval->setObjectName("updchart");
-    gridlayout->addWidget(chartlabel, 2, 0);
-    gridlayout->addWidget(chartval, 2, 1);
-
-    auto *proxylabel = new QLabel("HTTPS proxy setting (empty for no proxy):");
-    gridlayout->addWidget(proxylabel, 3, 0);
-
-    auto https_proxy = QString::fromLocal8Bit(qgetenv("https_proxy"));
-    if (https_proxy.isEmpty()) {
-        https_proxy     = settings->value("https_proxy", "").toString();
-        auto *proxyedit = new QLineEdit(https_proxy);
-        proxyedit->setObjectName("proxyval");
-        gridlayout->addWidget(proxyedit, 3, 1);
-    } else {
-        gridlayout->addWidget(new QLabel(https_proxy), 3, 1);
-    }
-
-    layout->addWidget(echo);
-    layout->addWidget(cite);
-    layout->addWidget(logv);
-    layout->addWidget(pltv);
-    layout->addWidget(sldv);
-    layout->addWidget(logr);
-    layout->addWidget(pltr);
-    layout->addWidget(imgr);
-#if defined(LAMMPS_GUI_USE_PLUGIN)
-    layout->addWidget(pluginlabel);
-    layout->addLayout(pluginlayout);
-#endif
-    layout->addLayout(gridlayout);
-    layout->addStretch(1);
+    layout->addItem(new QSpacerItem(10, 10, QSizePolicy::Minimum, QSizePolicy::Expanding), nrow, 0);
+    layout->addItem(new QSpacerItem(10, 10, QSizePolicy::Minimum, QSizePolicy::Expanding), nrow++,
+                    1);
     setLayout(layout);
 }
 
