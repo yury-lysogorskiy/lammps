@@ -121,7 +121,7 @@ private slots:
     void findandreplace();
     void run_buffer() { do_run(true); }
     void run_file() { do_run(false); }
-    void restart_lammps() { lammps.close(); };
+    void restart_lammps();
 
     void edit_variables();
     void render_image();

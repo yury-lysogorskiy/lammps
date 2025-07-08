@@ -1295,6 +1295,16 @@ void LammpsGui::run_done()
     dirstatus->show();
 }
 
+void LammpsGui::restart_lammps()
+{
+    if (lammps.is_running()) {
+        QMessageBox::warning(this, "LAMMPS-GUI Error",
+                             "Must stop current run before relaunching LAMMPS");
+        return;
+    }
+    lammps.close();
+};
+
 void LammpsGui::do_run(bool use_buffer)
 {
     if (lammps.is_running()) {
