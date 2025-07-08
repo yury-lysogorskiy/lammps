@@ -62,6 +62,8 @@
         Add warning dialog at the end of a run if I/O buffer usage is high.
         Apply fixes and code modernization suggested by clang-tidy
         Make selection of accelerator and threads consistent
+        Cache and restore PATH and LD_LIBRARY_PATH in linux-wrapper.sh
+          so that xdg-open can work with native executables
         Fix bug when recentering object in image viewer
         Fix crash when editing partially quoted strings
         Must delete variable when starting a new run, since we don't
