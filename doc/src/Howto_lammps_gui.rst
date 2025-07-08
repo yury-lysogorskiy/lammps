@@ -799,6 +799,12 @@ timestep.  The *Stop LAMMPS* entry will do this by calling the
 :cpp:func:`lammps_force_timeout` library function, which is equivalent
 to a :doc:`timer timeout 0 <timer>` command.
 
+The *Relaunch LAMMPS Instance* will destroy the current LAMMPS thread
+and free its data and then create a new thread with a new LAMMPS
+instance.  This is usually not needed, since LAMMPS-GUI tries to detect
+when this is needed and does it automatically.  This is available
+in case it missed something and LAMMPS behaves in unexpected ways.
+
 The *Set Variables...* entry opens a dialog box where
 :doc:`index style variables <variable>` can be set. Those variables
 are passed to the LAMMPS instance when it is created and are thus
