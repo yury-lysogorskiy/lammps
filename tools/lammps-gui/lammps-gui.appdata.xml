@@ -67,6 +67,8 @@
         Rename "Restart LAMMPS" to "Relaunch LAMMPS Instance" and document it.
         Fix bug when recentering object in image viewer
         Fix crash when editing partially quoted strings
+        Closing the editor window will close the entire app, even when
+          a simulation is still runnig. Prevent segfaults in that case.
         Must delete variable when starting a new run, since we don't
           always re-launch LAMMPS "clear" does not clear variables
         Add support for some common accelerator package command options

@@ -955,10 +955,16 @@ void LammpsGui::save_as()
 
 void LammpsGui::quit()
 {
+    removeEventFilter(this);
+
     if (lammps.is_running()) {
         stop_run();
         runner->wait();
+        delete runner;
+        runner = nullptr;
     }
+
+    // close LAMMPS instance
     lammps.close();
     lammpsstatus->hide();
     lammps.finalize();
@@ -995,6 +1001,7 @@ void LammpsGui::quit()
         settings.setValue("mainy", height());
     }
     settings.sync();
+    // quit application
     QCoreApplication::quit();
 }
 
@@ -2208,6 +2215,8 @@ bool LammpsGui::eventFilter(QObject *watched, QEvent *event)
 {
     if (event->type() == QEvent::Close) {
         autoSave();
+        quit();
+        return true;
     }
     return QWidget::eventFilter(watched, event);
 }
