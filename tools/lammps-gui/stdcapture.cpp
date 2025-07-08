@@ -59,9 +59,6 @@ StdCapture::StdCapture() : m_oldStdOut(0), m_capturing(false), maxread(0), buf(n
 StdCapture::~StdCapture()
 {
     delete[] buf;
-    if (m_capturing) {
-        EndCapture();
-    }
     if (m_oldStdOut > 0) close(m_oldStdOut);
     if (m_pipe[READ] > 0) close(m_pipe[READ]);
     if (m_pipe[WRITE] > 0) close(m_pipe[WRITE]);
