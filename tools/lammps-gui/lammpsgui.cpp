@@ -2236,7 +2236,7 @@ void LammpsGui::setup_tutorial(int tutno, const QString &dir, bool purgedir, boo
                 weburl = weburl.arg(tutno).arg("polymer-in-water");
                 break;
             case 4:
-                weburl = weburl.arg(tutno).arg("nanosheard-electrolyte");
+                weburl = weburl.arg(tutno).arg("nanosheared-electrolyte");
                 break;
             case 5:
                 weburl = weburl.arg(tutno).arg("reactive-silicon-dioxide");
