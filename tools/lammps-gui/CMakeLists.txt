@@ -282,6 +282,9 @@ if(APPLE)
     MACOSX_BUNDLE_COPYRIGHT "(c) 2003 - 2025, The LAMMPS Developers"
     MACOSX_BUNDLE TRUE
   )
+  # purge app bundle directory during configure
+  file(REMOVE_RECURSE ${CMAKE_BINARY_DIR}/lammps-gui.app)
+
   # additional targets to populate the bundle tree and create the .dmg image file
   set(APP_CONTENTS ${CMAKE_BINARY_DIR}/lammps-gui.app/Contents)
   if(BUILD_TOOLS)
