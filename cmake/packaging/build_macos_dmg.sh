@@ -4,7 +4,7 @@ APP_NAME=lammps-gui
 VERSION="$1"
 
 echo "Delete old files, if they exist"
-rm -f ${APP_NAME}.dmg ${APP_NAME}-rw.dmg LAMMPS_GUI-macOS-multiarch*.dmg
+rm -f ${APP_NAME}.dmg ${APP_NAME}-rw.dmg LAMMPS_GUI-macOS-multiarch*.dmg lammps-gui.app
 
 echo "Create initial dmg file with macdeployqt"
 macdeployqt  lammps-gui.app -dmg
