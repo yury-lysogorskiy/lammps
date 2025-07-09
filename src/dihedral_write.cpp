@@ -44,7 +44,7 @@ void DihedralWrite::command(int narg, char **arg)
     error->all(FLERR, "Dihedral_write command before simulation box is defined" + utils::errorurl(33));
   if (atom->avec->dihedrals_allow == 0)
     error->all(FLERR, "Dihedral_write command when no dihedrals allowed");
-  auto dihedral = force->dihedral;
+  auto *dihedral = force->dihedral;
   if (dihedral == nullptr)
     error->all(FLERR, "Dihedral_write command before an dihedral_style is defined" + utils::errorurl(33));
   if (dihedral && (force->dihedral->writedata == 0))
@@ -123,7 +123,7 @@ void DihedralWrite::command(int narg, char **arg)
   if (comm->me == 0) {
     // set up new LAMMPS instance with dummy system to evaluate dihedral potential
     LAMMPS::argv args = {"DihedralWrite", "-nocite", "-echo", "screen", "-log", "none"};
-    LAMMPS *writer = new LAMMPS(args, singlecomm);
+    auto *writer = new LAMMPS(args, singlecomm);
 
     // create dummy system replicating dihedral style settings
     writer->input->one(fmt::format("units {}", update->unit_style));
@@ -164,7 +164,7 @@ void DihedralWrite::command(int narg, char **arg)
 
     double theta, phi, phi1, phi2, f;
     dihedral = writer->force->dihedral;
-    auto atom4 = writer->atom->x[writer->atom->map(4)];
+    auto *atom4 = writer->atom->x[writer->atom->map(4)];
 
     // evaluate energy and force at each of N distances
 

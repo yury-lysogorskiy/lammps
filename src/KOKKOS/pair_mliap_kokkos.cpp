@@ -90,8 +90,9 @@ void PairMLIAPKokkos<DeviceType>::compute(int eflag, int vflag)
       memoryKK->destroy_kokkos(k_eatom,eatom);
       memoryKK->create_kokkos(k_eatom,eatom,maxeatom,"pair:eatom");
     } else {
-      Kokkos::deep_copy(k_eatom.d_view,0);
+      Kokkos::deep_copy(k_eatom.template view<DeviceType>(),0);
       k_eatom.modify<DeviceType>();
+      k_eatom.sync_host();
     }
   }
 
@@ -100,8 +101,9 @@ void PairMLIAPKokkos<DeviceType>::compute(int eflag, int vflag)
       memoryKK->destroy_kokkos(k_vatom,vatom);
       memoryKK->create_kokkos(k_vatom,vatom,maxeatom,6,"pair:eatom");
     } else {
-      Kokkos::deep_copy(k_vatom.d_view,0);
+      Kokkos::deep_copy(k_vatom.template view<DeviceType>(),0);
       k_vatom.modify<DeviceType>();
+      k_vatom.sync_host();
     }
   }
 
@@ -312,6 +314,7 @@ void PairMLIAPKokkos<DeviceType>::e_tally(MLIAPData* data)
     auto d_iatoms = k_data->k_iatoms.template view<DeviceType>();
     auto d_eatoms = k_data->k_eatoms.template view<DeviceType>();
     auto d_eatom = k_eatom.template view<DeviceType>();
+    k_eatom.sync<DeviceType>();
     Kokkos::parallel_for(Kokkos::RangePolicy<DeviceType>(0,data->nlistatoms), KOKKOS_LAMBDA (int ii) {
       d_eatom(d_iatoms(ii)) = d_eatoms(ii);
     });

@@ -760,7 +760,7 @@ std::string platform::current_directory()
   char *buf = new char[MAX_PATH];
   if (_getcwd(buf, MAX_PATH)) { cwd = buf; }
 #else
-  auto buf = new char[PATH_MAX];
+  auto *buf = new char[PATH_MAX];
   if (::getcwd(buf, PATH_MAX)) { cwd = buf; }
 #endif
   delete[] buf;

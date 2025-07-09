@@ -327,8 +327,8 @@ void Variable::set(int narg, char **arg)
 
     int maxcopy = strlen(arg[2]) + 1;
     int maxwork = maxcopy;
-    auto scopy = (char *) memory->smalloc(maxcopy, "var:string/copy");
-    auto work = (char *) memory->smalloc(maxwork, "var:string/work");
+    auto *scopy = (char *) memory->smalloc(maxcopy, "var:string/copy");
+    auto *work = (char *) memory->smalloc(maxwork, "var:string/work");
     strcpy(scopy, arg[2]);
     input->substitute(scopy, work, maxcopy, maxwork, 1);
     memory->sfree(work);
@@ -1513,7 +1513,7 @@ double Variable::evaluate(char *str, Tree **tree, int ivar)
       int istop = i - 1;
 
       int n = istop - istart + 1;
-      auto number = new char[n+1];
+      auto *number = new char[n+1];
       strncpy(number,&str[istart],n);
       number[n] = '\0';
 
@@ -1546,7 +1546,7 @@ double Variable::evaluate(char *str, Tree **tree, int ivar)
       int istop = i-1;
 
       int n = istop - istart + 1;
-      auto word = new char[n+1];
+      auto *word = new char[n+1];
       strncpy(word,&str[istart],n);
       word[n] = '\0';
 
