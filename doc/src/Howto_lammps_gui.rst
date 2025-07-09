@@ -25,15 +25,17 @@ This document describes **LAMMPS-GUI version 1.7**.
 
 ----
 
-LAMMPS-GUI tries to provide an experience similar to what people
-traditionally would have when running LAMMPS using a text editor, the
-command-line window, and launching the LAMMPS executable but just rolled
-into a single executable:
+LAMMPS-GUI aims to provide the traditional experience of running LAMMPS
+using a text editor, a command-line window, and launching the LAMMPS
+text-mode executable printing output to the screen, but just integrated
+into a single application:
 
-- writing & editing LAMMPS input files with a text editor
-- run LAMMPS on those input file with selected command-line flags
-- extract data from the created files and visualize it with
-  external software
+- Write and edit LAMMPS input files using the built-in text editor.
+- Run LAMMPS on those input file with command-line flags to enable a
+  specific accelerator package (or none).
+- Extract data from the created files (like trajectory files, log files
+  with thermodynamic data, or images) and visualize it using external
+  software.
 
 That traditional procedure is effective for people proficient in using the
 command-line, as that allows them to use tools for the individual steps
@@ -47,12 +49,15 @@ window or using external programs, let alone writing scripts to extract
 data from the generated output.  It also integrates well with graphical
 desktop environments where the `.lmp` filename extension can be
 registered with LAMMPS-GUI as the executable to launch when double
-clicking on such files using a graphical file manager.  LAMMPS-GUI also
-has support for drag-n-drop for opening inputs, i.e.  an input file can
-be selected and then moved and dropped on the LAMMPS-GUI executable, and
-LAMMPS-GUI will launch and read the file into its buffer.  In many cases
-LAMMPS-GUI will be integrated into the graphical desktop environment and
-can be launched like other applications.
+clicking on such files using a file manager.  LAMMPS-GUI also has
+support for 'drag and drop' for opening inputs: an input file can
+be selected and then moved and dropped on the LAMMPS-GUI executable;
+LAMMPS-GUI will launch and read the file into its buffer.  Input files
+also can be dropped into the editor window of the running LAMMPS-GUI
+appilcation, which will close the current file and open the new file.
+In many cases LAMMPS-GUI will be integrated into the graphical desktop
+environment and can be launched just like any other applications from
+the graphical interface.
 
 LAMMPS-GUI thus makes it easier for beginners to get started running
 LAMMPS simulations since you can start with learning LAMMPS right away.
