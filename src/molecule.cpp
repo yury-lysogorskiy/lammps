@@ -1530,7 +1530,7 @@ void Molecule::from_json(const std::string &molid, const json &moldata)
                 "JSON data: {}",
                 id, to_string(specialbonds["data"][i][1]));
 
-          tagint ival = tagint(item);
+          auto ival = tagint(item);
           if ((ival <= 0) || (ival > natoms) || (ival == iatom + 1))
             error->all(FLERR, Error::NOLASTLINE,
                        "Molecule template {}: invalid atom index {} in \"special:bonds\" section "

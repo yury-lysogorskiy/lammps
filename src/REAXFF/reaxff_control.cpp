@@ -67,7 +67,7 @@ namespace ReaxFF {
 
   void Read_Control_File(const char *control_file, control_params *control)
   {
-    auto error = control->error_ptr;
+    auto *error = control->error_ptr;
 
     /* assign default values */
     control->nthreads = 1;

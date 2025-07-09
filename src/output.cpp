@@ -66,7 +66,7 @@ Output::Output(LAMMPS *lmp) : Pointers(lmp)
 
   // create default Thermo class
 
-  auto newarg = new char*[1];
+  auto *newarg = new char*[1];
   newarg[0] = (char *) "one";
   thermo = new Thermo(lmp,1,newarg);
   delete[] newarg;
@@ -809,7 +809,7 @@ void Output::modify_dump(int narg, char **arg)
 
   // find which dump it is
 
-  auto idump = get_dump_by_id(arg[0]);
+  auto *idump = get_dump_by_id(arg[0]);
   if (!idump) error->all(FLERR,"Could not find dump_modify ID: {}", arg[0]);
   idump->modify_params(narg-1,&arg[1]);
 }
