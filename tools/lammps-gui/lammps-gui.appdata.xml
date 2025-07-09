@@ -58,6 +58,8 @@
     <release version="1.7.0" timestamp="1751978344">
       <description>
         Reset minor version number for upcoming stable release and tutorial session.
+        refactor chartviewer title line to have two rows and add display of units and normalization
+        remove rubberband-zoom feature and button to reset zoom since it would not work reliably
       </description>
     </release>
     <release version="1.6.15" timestamp="1751751132">

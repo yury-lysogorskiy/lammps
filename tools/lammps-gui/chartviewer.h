@@ -17,13 +17,16 @@
 #include <QComboBox>
 #include <QLineEdit>
 #include <QList>
+#include <QRectF>
 #include <QString>
 #include <QTime>
 #include <QWidget>
 
 class QAction;
+class QCheckBox;
 class QCloseEvent;
 class QEvent;
+class QLabel;
 class QMenuBar;
 class QMenu;
 class QSpinBox;
@@ -46,6 +49,8 @@ public:
     void reset_charts();
     void add_chart(const QString &title, int index);
     void add_data(int step, double data, int index);
+    void set_units(const QString &_units);
+    void set_norm(bool norm);
 
 private slots:
     void quit();
@@ -76,6 +81,8 @@ private:
     QComboBox *smooth;
     QSpinBox *window, *order;
     QLineEdit *chartTitle, *chartYlabel;
+    QLabel *units;
+    QCheckBox *norm;
 
     QString filename;
     QList<QtCharts::ChartViewer *> charts;
@@ -103,6 +110,7 @@ public:
     ChartViewer &operator=(ChartViewer &&)      = delete;
 
     void add_data(int step, double data);
+    QRectF get_minmax() const;
     void reset_zoom();
     void smooth_param(bool _do_raw, bool _do_smooth, int _window, int _order);
     void update_smooth();

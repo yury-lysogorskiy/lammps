@@ -19,6 +19,7 @@
 #include <QAction>
 #include <QApplication>
 #include <QChart>
+#include <QCheckBox>
 #include <QCloseEvent>
 #include <QComboBox>
 #include <QEvent>
@@ -59,10 +60,15 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     QWidget(parent), menu(new QMenuBar), file(new QMenu("&File")), saveAsAct(nullptr),
     exportCsvAct(nullptr), exportDatAct(nullptr), exportYamlAct(nullptr), closeAct(nullptr),
     stopAct(nullptr), quitAct(nullptr), smooth(nullptr), window(nullptr), order(nullptr),
-    chartTitle(nullptr), chartYlabel(nullptr), filename(_filename)
+    chartTitle(nullptr), chartYlabel(nullptr), units(nullptr), norm(nullptr), filename(_filename)
 {
     QSettings settings;
-    auto *top = new QHBoxLayout;
+    auto *top  = new QVBoxLayout;
+    auto *row1 = new QHBoxLayout;
+    auto *row2 = new QHBoxLayout;
+    top->addLayout(row1);
+    top->addLayout(row2);
+
     menu->addMenu(file);
     menu->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
 
@@ -113,22 +119,30 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     settings.endGroup();
 
     columns = new QComboBox;
-    top->addWidget(menu);
-    top->addSpacerItem(new QSpacerItem(1, 1, QSizePolicy::Expanding, QSizePolicy::Minimum));
-    top->addWidget(dummy);
-    top->addWidget(new QLabel("Title:"));
-    top->addWidget(chartTitle);
-    top->addWidget(new QLabel("Y:"));
-    top->addWidget(chartYlabel);
-    top->addWidget(new QLabel("Plot:"));
-    top->addWidget(smooth);
-    top->addWidget(new QLabel(" Smooth:"));
-    top->addWidget(window);
-    top->addWidget(order);
-    top->addWidget(new QLabel(" "));
-    top->addWidget(normal);
-    top->addWidget(new QLabel(" Data:"));
-    top->addWidget(columns);
+    row1->addWidget(menu);
+    row1->addWidget(dummy);
+    row2->addWidget(dummy);
+    row1->addWidget(new QLabel("Title:"));
+    row1->addWidget(chartTitle);
+    row1->addWidget(new QLabel("Y-Axis:"));
+    row1->addWidget(chartYlabel);
+    row2->addWidget(new QLabel("        "));
+
+    units = new QLabel("Units: (unknown)");
+    row2->addWidget(units);
+    row2->addWidget(new QLabel("Normalized: "));
+    norm = new QCheckBox("");
+    norm->setChecked(Qt::Unchecked);
+    norm->setEnabled(false);
+    row2->addWidget(norm);
+    row2->addStretch(1);
+    row2->addWidget(new QLabel("Plot:"));
+    row2->addWidget(smooth);
+    row2->addWidget(new QLabel(" Smooth:"));
+    row2->addWidget(window);
+    row2->addWidget(order);
+    row1->addWidget(new QLabel(" Data:"));
+    row1->addWidget(columns);
     saveAsAct = file->addAction("&Save Graph As...", this, &ChartWindow::saveAs);
     saveAsAct->setIcon(QIcon(":/icons/document-save-as.png"));
     exportCsvAct = file->addAction("&Export data to CSV...", this, &ChartWindow::exportCsv);
@@ -212,6 +226,16 @@ void ChartWindow::add_data(int step, double data, int index)
 {
     for (auto &c : charts)
         if (c->get_index() == index) c->add_data(step, data);
+}
+
+void ChartWindow::set_units(const QString &_units)
+{
+    units->setText(_units);
+}
+
+void ChartWindow::set_norm(bool _norm)
+{
+    norm->setChecked(_norm ? Qt::Checked : Qt::Unchecked);
 }
 
 void ChartWindow::quit()
@@ -485,7 +509,7 @@ void ChartViewer::add_data(int step, double data)
 
 /* -------------------------------------------------------------------- */
 
-void ChartViewer::reset_zoom()
+QRectF ChartViewer::get_minmax() const
 {
     auto points = series->points();
 
@@ -535,8 +559,16 @@ void ChartViewer::reset_zoom()
         }
     }
 
-    xaxis->setRange(xmin, xmax);
-    yaxis->setRange(ymin, ymax);
+    return QRectF(xmin, ymax, xmax-xmin, ymin-ymax);
+}
+
+/* -------------------------------------------------------------------- */
+
+void ChartViewer::reset_zoom()
+{
+    auto ranges = get_minmax();
+    xaxis->setRange(ranges.left(), ranges.right());
+    yaxis->setRange(ranges.bottom(), ranges.top());
 }
 
 /* -------------------------------------------------------------------- */
