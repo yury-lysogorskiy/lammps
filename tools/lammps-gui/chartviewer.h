@@ -49,7 +49,6 @@ public:
 
 private slots:
     void quit();
-    void reset_zoom();
     void stop_run();
     void select_smooth(int selection);
     void update_smooth();

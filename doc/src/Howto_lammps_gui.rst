@@ -446,10 +446,6 @@ plot title and the y-axis label, respectively.  The text entered in the
 "Title:" box is applied to *all* charts, while the "Y:" text changes
 only the y-axis label of the currently *selected* plot.
 
-You can use the mouse to zoom into the graph (hold the left button and
-drag to mark an area) or zoom out (right click) and you can reset the
-view with a click to the "lens" button next to the data drop down menu.
-
 The window title shows the current run number that this chart window
 corresponds to.  Same as for the *Output* window, the chart window is
 replaced on each new run, but the behavior can be changed in the

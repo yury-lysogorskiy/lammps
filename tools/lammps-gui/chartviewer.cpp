@@ -112,9 +112,6 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     order->setToolTip("Smoothing Order");
     settings.endGroup();
 
-    auto *normal = new QPushButton(QIcon(":/icons/gtk-zoom-fit.png"), "");
-    normal->setToolTip("Reset zoom to normal");
-
     columns = new QComboBox;
     top->addWidget(menu);
     top->addSpacerItem(new QSpacerItem(1, 1, QSizePolicy::Expanding, QSizePolicy::Minimum));
@@ -161,7 +158,6 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     connect(order, &QAbstractSpinBox::editingFinished, this, &ChartWindow::update_smooth);
     connect(window, QOverload<int>::of(&QSpinBox::valueChanged), this, &ChartWindow::update_smooth);
     connect(order, QOverload<int>::of(&QSpinBox::valueChanged), this, &ChartWindow::update_smooth);
-    connect(normal, &QPushButton::released, this, &ChartWindow::reset_zoom);
     connect(columns, SIGNAL(currentIndexChanged(int)), this, SLOT(change_chart(int)));
     installEventFilter(this);
 
@@ -222,15 +218,6 @@ void ChartWindow::quit()
 {
     auto *main = dynamic_cast<LammpsGui *>(get_main_widget());
     if (main) main->quit();
-}
-
-void ChartWindow::reset_zoom()
-{
-    int choice = columns->currentData().toInt();
-    if ((choice >= 0) && (choice < charts.size())) {
-        charts[choice]->update_smooth();
-        charts[choice]->reset_zoom();
-    }
 }
 
 void ChartWindow::stop_run()
@@ -462,7 +449,7 @@ ChartViewer::ChartViewer(const QString &title, int _index, QWidget *parent) :
 
     setRenderHint(QPainter::Antialiasing);
     setChart(chart);
-    setRubberBand(QChartView::RectangleRubberBand);
+    setRubberBand(QChartView::NoRubberBand);
     last_update = QTime::currentTime();
     update_smooth();
 }
