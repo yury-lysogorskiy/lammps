@@ -331,8 +331,9 @@ void MLIAPDescriptorACE::compute_descriptor_gradients(class MLIAPData *data)
     acemlimpl->ace->compute_atom(i, atom->x, atom->type, data->numneighs[ii],
                                  data->lmp_firstneigh[ii]);
 
-    // Store descriptor gradients per ij index
-    for (int jj = 0; jj < data->numneighs[ii]; jj++) {
+    // Store descriptor gradients per ij index and access descriptor gradients
+    //   from ace->neighbours_dB with jj index
+    for (int jj = 0; jj < jnum; jj++) {
       for (int iicoeff = 0; iicoeff < ndescriptors; iicoeff++) {
         DOUBLE_TYPE fx_dB = acemlimpl->ace->neighbours_dB(iicoeff, jj, 0);
         DOUBLE_TYPE fy_dB = acemlimpl->ace->neighbours_dB(iicoeff, jj, 1);
