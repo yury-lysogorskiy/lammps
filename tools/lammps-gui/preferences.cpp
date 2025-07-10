@@ -60,7 +60,7 @@
 #endif
 
 // convenience class
-
+namespace {
 class QHline : public QFrame {
 public:
     QHline(QWidget *parent = nullptr) : QFrame(parent)
@@ -70,6 +70,7 @@ public:
         setFrameShadow(QFrame::Sunken);
     }
 };
+}
 
 Preferences::Preferences(LammpsWrapper *_lammps, QWidget *parent) :
     QDialog(parent), tabWidget(new QTabWidget),
