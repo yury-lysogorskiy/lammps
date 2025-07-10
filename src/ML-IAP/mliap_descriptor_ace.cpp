@@ -62,14 +62,12 @@ MLIAPDescriptorACE::MLIAPDescriptorACE(LAMMPS *_lmp, char *yacefilename) :
   delete acemlimpl->basis_set;
   acemlimpl->basis_set = new ACECTildeBasisSet(ctilde_file);
   nelements = acemlimpl->basis_set->nelements;
-  int tot_num = 0;
   for (int mu = 0; mu < nelements; mu++) {
     if (max_num < acemlimpl->basis_set->total_basis_size_rank1[mu] +
             acemlimpl->basis_set->total_basis_size[mu]) {
       max_num = acemlimpl->basis_set->total_basis_size_rank1[mu] +
           acemlimpl->basis_set->total_basis_size[mu];
     }
-    tot_num += acemlimpl->basis_set->total_basis_size_rank1[mu] +
         acemlimpl->basis_set->total_basis_size[mu];
   }
 
@@ -103,7 +101,7 @@ MLIAPDescriptorACE::MLIAPDescriptorACE(LAMMPS *_lmp, char *yacefilename) :
   }
   float cutmax = 0.0;
   float cuti, cutj;
-  float cutfac = 1.0;
+  float cutfac = 0.5;
   for (int mui = 0; mui < acemlimpl->basis_set->nelements; mui++) {
     cuti = acemlimpl->basis_set->radial_functions->cut(mui, mui);
     if (cuti > cutmax) cutmax = cuti;
@@ -303,6 +301,7 @@ void MLIAPDescriptorACE::compute_force_gradients(class MLIAPData *data)
 
 void MLIAPDescriptorACE::compute_descriptor_gradients(class MLIAPData *data)
 {
+  int ij = 0;
   int max_jnum = -1;
   int nei = 0;
   int jtmp = 0;
@@ -332,17 +331,18 @@ void MLIAPDescriptorACE::compute_descriptor_gradients(class MLIAPData *data)
     acemlimpl->ace->compute_atom(i, atom->x, atom->type, data->numneighs[ii],
                                  data->lmp_firstneigh[ii]);
 
-    // TODO: should this loop really store with index jj and not j = jlist[jj] & NEIGHMASK;
+    // Store descriptor gradients per ij index
     for (int jj = 0; jj < data->numneighs[ii]; jj++) {
       for (int iicoeff = 0; iicoeff < ndescriptors; iicoeff++) {
         DOUBLE_TYPE fx_dB = acemlimpl->ace->neighbours_dB(iicoeff, jj, 0);
         DOUBLE_TYPE fy_dB = acemlimpl->ace->neighbours_dB(iicoeff, jj, 1);
         DOUBLE_TYPE fz_dB = acemlimpl->ace->neighbours_dB(iicoeff, jj, 2);
         // Accumulate dB_k^i/dRi, dB_k^i/dRj
-        data->graddesc[jj][iicoeff][0] = fx_dB;
-        data->graddesc[jj][iicoeff][1] = fy_dB;
-        data->graddesc[jj][iicoeff][2] = fz_dB;
+        data->graddesc[ij][iicoeff][0] = fx_dB;
+        data->graddesc[ij][iicoeff][1] = fy_dB;
+        data->graddesc[ij][iicoeff][2] = fz_dB;
       }
+      ij++;
     }
   }
 }
