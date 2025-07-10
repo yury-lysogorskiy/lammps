@@ -15,6 +15,7 @@
 
 #include "helpers.h"
 #include "lammpsgui.h"
+#include "rangeslider.h"
 
 #include <QAction>
 #include <QApplication>
@@ -46,15 +47,22 @@
 
 using namespace QtCharts;
 
+namespace {
+
+// Set RangeSlider resolution to 1000 steps
+constexpr int SLIDER_RANGE       = 1000;
+constexpr double SLIDER_FRACTION = 1.0 / (double)SLIDER_RANGE;
+
 // brush color index must be kept in sync with preferences
 
-static const QList<QBrush> mybrushes = {
+const QList<QBrush> mybrushes = {
     QBrush(QColor(0, 0, 0)),       // black
     QBrush(QColor(100, 150, 255)), // blue
     QBrush(QColor(255, 125, 125)), // red
     QBrush(QColor(100, 200, 100)), // green
     QBrush(QColor(120, 120, 120)), // grey
 };
+} // namespace
 
 ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     QWidget(parent), menu(new QMenuBar), file(new QMenu("&File")), saveAsAct(nullptr),
@@ -126,16 +134,30 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     row1->addWidget(chartTitle);
     row1->addWidget(new QLabel("Y-Axis:"));
     row1->addWidget(chartYlabel);
-    row2->addWidget(new QLabel("        "));
 
-    units = new QLabel("Units: (unknown)");
+    units = new QLabel("Units:");
     row2->addWidget(units);
-    row2->addWidget(new QLabel("Normalized: "));
+    row2->addWidget(new QLabel("Norm:"));
     norm = new QCheckBox("");
     norm->setChecked(Qt::Unchecked);
     norm->setEnabled(false);
     row2->addWidget(norm);
-    row2->addStretch(1);
+    xrange = new RangeSlider;
+    xrange->setMinimum(0);
+    xrange->setMaximum(SLIDER_RANGE);
+    xrange->setLow(0);
+    xrange->setHigh(SLIDER_RANGE);
+    xrange->setTickInterval(100);
+    yrange = new RangeSlider;
+    yrange->setMinimum(0);
+    yrange->setMaximum(SLIDER_RANGE);
+    yrange->setLow(0);
+    yrange->setHigh(SLIDER_RANGE);
+    yrange->setTickInterval(100);
+    row2->addWidget(new QLabel("X:"));
+    row2->addWidget(xrange);
+    row2->addWidget(new QLabel("Y:"));
+    row2->addWidget(yrange);
     row2->addWidget(new QLabel("Plot:"));
     row2->addWidget(smooth);
     row2->addWidget(new QLabel(" Smooth:"));
@@ -173,9 +195,11 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     connect(window, QOverload<int>::of(&QSpinBox::valueChanged), this, &ChartWindow::update_smooth);
     connect(order, QOverload<int>::of(&QSpinBox::valueChanged), this, &ChartWindow::update_smooth);
     connect(columns, SIGNAL(currentIndexChanged(int)), this, SLOT(change_chart(int)));
-    installEventFilter(this);
+    connect(xrange, &RangeSlider::sliderMoved, this, &ChartWindow::update_xrange);
+    connect(yrange, &RangeSlider::sliderMoved, this, &ChartWindow::update_yrange);
 
-    resize(settings.value("chartx", 500).toInt(), settings.value("charty", 320).toInt());
+    installEventFilter(this);
+    resize(settings.value("chartx", 640).toInt(), settings.value("charty", 480).toInt());
 }
 
 int ChartWindow::get_step() const
@@ -291,6 +315,33 @@ void ChartWindow::update_ylabel()
 {
     for (auto &c : charts) {
         if (c->isVisible()) c->set_ylabel(chartYlabel->text());
+    }
+}
+
+void ChartWindow::update_xrange(int low, int high)
+{
+    for (auto &c : charts) {
+        if (c->isVisible()) {
+            auto axes   = c->get_axes();
+            auto ranges = c->get_minmax();
+            double xmin = ranges.left() + (double)low * SLIDER_FRACTION * ranges.width();
+            double xmax = ranges.left() + (double)high * SLIDER_FRACTION * ranges.width();
+            axes[0]->setRange(xmin, xmax);
+        }
+    }
+}
+
+void ChartWindow::update_yrange(int low, int high)
+{
+    for (auto &c : charts) {
+        if (c->isVisible()) {
+            constexpr double fraction = 1.0 / (double)SLIDER_RANGE;
+            auto axes                 = c->get_axes();
+            auto ranges               = c->get_minmax();
+            double ymin = ranges.bottom() - (double)low * SLIDER_FRACTION * ranges.height();
+            double ymax = ranges.bottom() - (double)high * SLIDER_FRACTION * ranges.height();
+            axes[1]->setRange(ymin, ymax);
+        }
     }
 }
 
@@ -419,6 +470,12 @@ void ChartWindow::change_chart(int)
             c->hide();
         }
     }
+
+    // reset plot range selection
+    xrange->setLow(0);
+    xrange->setHigh(SLIDER_RANGE);
+    yrange->setLow(0);
+    yrange->setHigh(SLIDER_RANGE);
 }
 
 void ChartWindow::closeEvent(QCloseEvent *event)
@@ -559,7 +616,7 @@ QRectF ChartViewer::get_minmax() const
         }
     }
 
-    return QRectF(xmin, ymax, xmax-xmin, ymin-ymax);
+    return QRectF(xmin, ymax, xmax - xmin, ymin - ymax);
 }
 
 /* -------------------------------------------------------------------- */

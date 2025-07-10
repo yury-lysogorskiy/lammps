@@ -69,7 +69,7 @@ void StdCapture::BeginCapture()
     if (m_capturing) EndCapture();
     dup2(m_pipe[WRITE], fileno(stdout));
     m_capturing = true;
-    maxread = 0;
+    maxread     = 0;
 }
 
 bool StdCapture::EndCapture()
@@ -130,7 +130,7 @@ std::string StdCapture::GetChunk()
 
 double StdCapture::get_bufferuse() const
 {
-    return (double)maxread / (double)(bufSize-1);
+    return (double)maxread / (double)(bufSize - 1);
 }
 
 std::string StdCapture::GetCapture()

@@ -30,6 +30,8 @@ class QLabel;
 class QMenuBar;
 class QMenu;
 class QSpinBox;
+class RangeSlider;
+
 namespace QtCharts {
 class ChartViewer;
 }
@@ -59,6 +61,8 @@ private slots:
     void update_smooth();
     void update_tlabel();
     void update_ylabel();
+    void update_xrange(int low, int high);
+    void update_yrange(int low, int high);
 
     void saveAs();
     void exportDat();
@@ -83,6 +87,7 @@ private:
     QLineEdit *chartTitle, *chartYlabel;
     QLabel *units;
     QCheckBox *norm;
+    RangeSlider *xrange, *yrange;
 
     QString filename;
     QList<QtCharts::ChartViewer *> charts;
@@ -111,6 +116,7 @@ public:
 
     void add_data(int step, double data);
     QRectF get_minmax() const;
+    QList<QAbstractAxis *> get_axes() const { return chart->axes(); }
     void reset_zoom();
     void smooth_param(bool _do_raw, bool _do_smooth, int _window, int _order);
     void update_smooth();

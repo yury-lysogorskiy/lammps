@@ -50,14 +50,14 @@
  */
 RangeSlider::RangeSlider(Qt::Orientation ot, QWidget *parent) : QSlider(ot)
 {
-    lowLimit  = minimum();
-    highLimit = maximum();
+    lowLimit        = minimum();
+    highLimit       = maximum();
     pressed_control = QStyle::SC_None;
-    tick_interval = 0;
-    tick_position = QSlider::NoTicks;
-    hover_control = QStyle::SC_None;
-    click_offset = 0;
-    active_slider = 0;
+    tick_interval   = 0;
+    tick_position   = QSlider::NoTicks;
+    hover_control   = QStyle::SC_None;
+    click_offset    = 0;
+    active_slider   = 0;
 }
 
 // based on http://qt.gitorious.org/qt/qt/blobs/master/src/gui/widgets/qslider.cpp
@@ -111,9 +111,9 @@ void RangeSlider::paintEvent(QPaintEvent *ev)
     if (tickPosition() != QSlider::NoTicks) opt.subControls |= QStyle::SC_SliderTickmarks;
 
     if (pressed_control)
-      opt.activeSubControls = pressed_control;
+        opt.activeSubControls = pressed_control;
     else
-      opt.activeSubControls = hover_control;
+        opt.activeSubControls = hover_control;
 
     opt.sliderPosition = lowLimit;
     opt.sliderValue    = lowLimit;
@@ -124,9 +124,9 @@ void RangeSlider::paintEvent(QPaintEvent *ev)
     if (tickPosition() != QSlider::NoTicks) opt.subControls |= QStyle::SC_SliderTickmarks;
 
     if (pressed_control)
-      opt.activeSubControls = pressed_control;
+        opt.activeSubControls = pressed_control;
     else
-      opt.activeSubControls = hover_control;
+        opt.activeSubControls = hover_control;
 
     opt.sliderPosition = highLimit;
     opt.sliderValue    = highLimit;

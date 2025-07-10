@@ -54,12 +54,20 @@ class RangeSlider : public QSlider {
     Q_OBJECT
 
 public:
-    RangeSlider(Qt::Orientation ot, QWidget *parent = nullptr);
+    RangeSlider(Qt::Orientation ot = Qt::Horizontal, QWidget *parent = nullptr);
 
-    int low() { return this->lowLimit; }
-    void setLow(int low_limit) { this->lowLimit = low_limit; }
-    int high() { return this->highLimit; }
-    void setHigh(int high_limit) { this->highLimit = high_limit; }
+    int low() const { return this->lowLimit; }
+    void setLow(int low_limit)
+    {
+        this->lowLimit = low_limit;
+        update();
+    }
+    int high() const { return this->highLimit; }
+    void setHigh(int high_limit)
+    {
+        this->highLimit = high_limit;
+        update();
+    }
 
 signals:
     void sliderMoved(int, int);
