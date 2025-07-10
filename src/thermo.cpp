@@ -112,6 +112,8 @@ Thermo::Thermo(LAMMPS *_lmp, int narg, char **arg) :
   lineflag = ONELINE;
   modified = 0;
   normuserflag = 0;
+  normflag = 0;
+  normvalue = 0;
   lostflag = lostbond = Thermo::ERROR;
   lostbefore = warnbefore = 0;
   flushflag = 0;
@@ -194,6 +196,7 @@ void Thermo::init()
     normvalue = 1;
   else
     normvalue = 0;
+  normflag = normvalue;
 
   // add Volume field if volume changes and not style = custom
   // this check must come after domain init, so box_change is set
