@@ -38,7 +38,7 @@ into a single application:
   software.
 
 That traditional procedure is effective for people proficient in using the
-command-line, as that allows them to use tools for the individual steps
+command-line, as it allows them to use the tools for the individual steps
 that they are most comfortable with.  In fact, it is often *required* to
 adopt this workflow when running LAMMPS simulations on high-performance
 computing facilities.
@@ -54,19 +54,19 @@ support for 'drag and drop' for opening inputs: an input file can
 be selected and then moved and dropped on the LAMMPS-GUI executable;
 LAMMPS-GUI will launch and read the file into its buffer.  Input files
 also can be dropped into the editor window of the running LAMMPS-GUI
-appilcation, which will close the current file and open the new file.
+application, which will close the current file and open the new file.
 In many cases LAMMPS-GUI will be integrated into the graphical desktop
 environment and can be launched just like any other applications from
 the graphical interface.
 
 LAMMPS-GUI thus makes it easier for beginners to get started running
-LAMMPS simulations since you can start with learning LAMMPS right away.
-It is therefore very suitable for tutorials on LAMMPS, since you only
-need to learn how to use a single program that is available as
-ready-to-use, pre-compiled packages for popular operating systems
-(Linux, macOS, Windows), for most of the tasks.  This saves time and
-people can focus on learning LAMMPS instead of having to compile LAMMPS,
-learn how to use the command line and a text editor.
+LAMMPS and is well-suited for LAMMPS tutorials, since you only need to
+work with a single, ready-to-use program for most of the tasks.  Plus it
+is available for download as pre-compiled package for popular operating
+systems (Linux, macOS, Windows).  This saves time and allows users to
+focus on learning LAMMPS itself, without the need to learn how to
+compile LAMMPS, learn how to use the command line, or learn how to use a
+separate text editor.
 
 The tutorials at https://lammpstutorials.github.io/ are specifically
 updated for use with LAMMPS-GUI and their tutorial materials can be
@@ -74,10 +74,9 @@ downloaded and edited directly from within the GUI while automatically
 loading the matching tutorial instructions into a webbrowser.
 
 Yet the basic control flow remains similar to running LAMMPS from the
-command line and thus the barrier for replacing part of the
-functionality of LAMMPS-GUI with external tools is low.  That said,
-LAMMPS-GUI has some unique functionality that is not easily found
-elsewhere:
+command line, so the barrier for replacing parts of the functionality of
+LAMMPS-GUI with external tools is low.  That said, LAMMPS-GUI offer some
+unique features that are not easily found elsewhere:
 
 - auto-adapting to features available in the integrated LAMMPS library
 - auto-completion for available LAMMPS commands and options only
