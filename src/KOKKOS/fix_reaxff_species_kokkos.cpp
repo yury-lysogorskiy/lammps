@@ -38,13 +38,17 @@ using namespace FixConst;
 FixReaxFFSpeciesKokkos::FixReaxFFSpeciesKokkos(LAMMPS *lmp, int narg, char **arg) :
   FixReaxFFSpecies(lmp, narg, arg)
 {
-  kokkosable = 1;
+  // not all functions in FixReaxFFSpecies are ported to KOKKOS
+  //  so set kokkosable flag to zero
+
+  kokkosable = 0;
+
   atomKK = (AtomKokkos *) atom;
 
   // NOTE: Could improve performance if a Kokkos version of ComputeSpecAtom is added
 
-  datamask_read = X_MASK | V_MASK | Q_MASK | MASK_MASK;
-  datamask_modify = EMPTY_MASK;
+  datamask_read = X_MASK | V_MASK | Q_MASK | MASK_MASK | DVECTOR_MASK | TYPE_MASK | RMASS_MASK | TAG_MASK;
+  datamask_modify = DVECTOR_MASK;
 }
 
 /* ---------------------------------------------------------------------- */
