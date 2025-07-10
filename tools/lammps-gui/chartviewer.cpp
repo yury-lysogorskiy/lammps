@@ -162,12 +162,16 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     xrange->setLow(0);
     xrange->setHigh(SLIDER_RANGE);
     xrange->setToolTip("Adjust x-axis data range");
+    xrange->setTickPosition(QSlider::TicksBothSides);
+    xrange->setTickInterval(100);
     yrange = new RangeSlider;
     yrange->setMinimum(0);
     yrange->setMaximum(SLIDER_RANGE);
     yrange->setLow(0);
     yrange->setHigh(SLIDER_RANGE);
     yrange->setToolTip("Adjust y-axis data range");
+    yrange->setTickPosition(QSlider::TicksBothSides);
+    yrange->setTickInterval(100);
     row2->addWidget(new QLabel("X:"));
     row2->addWidget(xrange);
     row2->addWidget(new QLabel("Y:"));
