@@ -62,6 +62,18 @@ const QList<QBrush> mybrushes = {
     QBrush(QColor(100, 200, 100)), // green
     QBrush(QColor(120, 120, 120)), // grey
 };
+
+// convenience class
+
+class QHline : public QFrame {
+public:
+    QHline(QWidget *parent = nullptr) : QFrame(parent)
+    {
+        setGeometry(QRect(0, 0, 100, 3));
+        setFrameShape(QFrame::HLine);
+        setFrameShadow(QFrame::Sunken);
+    }
+};
 } // namespace
 
 ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
@@ -75,10 +87,12 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     auto *row1 = new QHBoxLayout;
     auto *row2 = new QHBoxLayout;
     top->addLayout(row1);
+    top->addWidget(new QHline);
     top->addLayout(row2);
+    top->addWidget(new QHline);
 
     menu->addMenu(file);
-    menu->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
+    menu->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
 
     // workaround for incorrect highlight bug on macOS
     auto *dummy = new QPushButton(QIcon(), "");
