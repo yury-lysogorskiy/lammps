@@ -471,7 +471,21 @@ void LammpsGui::new_document()
     if (lammps.is_running()) {
         stop_run();
         runner->wait();
+        delete runner;
+        runner = nullptr;
     }
+    // close windows
+    delete chartwindow;
+    delete logwindow;
+    delete slideshow;
+    delete imagewindow;
+    delete varwindow;
+    chartwindow = nullptr;
+    logwindow   = nullptr;
+    slideshow   = nullptr;
+    imagewindow = nullptr;
+    varwindow   = nullptr;
+
     lammps.close();
     lammpsstatus->hide();
     setWindowTitle("LAMMPS-GUI - Editor - *unknown*");
@@ -698,6 +712,25 @@ void LammpsGui::update_variables()
 // open file and switch CWD to path of file
 void LammpsGui::open_file(const QString &fileName)
 {
+    if (lammps.is_running()) {
+        stop_run();
+        runner->wait();
+        delete runner;
+        runner = nullptr;
+    }
+    // close windows
+    delete chartwindow;
+    delete logwindow;
+    delete slideshow;
+    delete imagewindow;
+    delete varwindow;
+    chartwindow = nullptr;
+    logwindow   = nullptr;
+    slideshow   = nullptr;
+    imagewindow = nullptr;
+    varwindow   = nullptr;
+    lammps.close();
+
     purge_inspect_list();
     ui->textEdit->setStyleSheet("");
     if (ui->textEdit->document()->isModified()) {
@@ -760,22 +793,6 @@ void LammpsGui::open_file(const QString &fileName)
     status->setText("Ready.");
     cpuuse->hide();
 
-    if (slideshow) {
-        delete slideshow;
-        slideshow = nullptr;
-    }
-    if (imagewindow) {
-        delete imagewindow;
-        imagewindow = nullptr;
-    }
-    if (chartwindow) {
-        delete chartwindow;
-        chartwindow = nullptr;
-    }
-    if (logwindow) {
-        delete logwindow;
-        logwindow = nullptr;
-    }
     update_variables();
     lammps.close();
 }
@@ -1208,16 +1225,21 @@ void LammpsGui::modified()
 
 void LammpsGui::run_done()
 {
-    if (logupdater) logupdater->stop();
-    delete logupdater;
-    logupdater = nullptr;
+    if (logupdater) {
+        logupdater->stop();
+        delete logupdater;
+        logupdater = nullptr;
+    }
     progress->setValue(1000);
     ui->textEdit->setHighlight(CodeEditor::NO_HIGHLIGHT, false);
 
     capturer->EndCapture();
-    auto log = capturer->GetCapture();
-    logwindow->insertPlainText(log.c_str());
-    logwindow->moveCursor(QTextCursor::End);
+
+    if (logwindow) {
+        auto log = capturer->GetCapture();
+        logwindow->insertPlainText(log.c_str());
+        logwindow->moveCursor(QTextCursor::End);
+    }
 
     // check stdout capture buffer utilization and print warning message if large
 
@@ -1228,13 +1250,12 @@ void LammpsGui::run_done()
         int update_val     = QSettings().value("updfreq", 100).toInt();
         int update_suggest = std::max(1, update_val / 5);
 
-        QString mesg(
-            "<p align=\"justified\">The I/O buffer for capturing the LAMMPS screen output was used "
-            "by up to %1%.</p> <p align=\"justified\"><b>This can slow down the "
-            "simulation.</b></p> <p align=\"justified\">Please consider reducing the amount of "
-            "output to the screen, for example by increasing the thermo interval in the input "
-            "from %2 to %3, or reducing the data update interval in the preferences from %4 to %5, "
-            "or something similar.</p>");
+        QString mesg("<p align=\"justified\">The I/O buffer for capturing the LAMMPS screen output "
+                     "was used by up to %1%.</p> <p align=\"justified\"><b>This can slow down the "
+                     "simulation.</b></p> <p align=\"justified\">Please consider reducing the "
+                     "amount of output to the screen, for example by increasing the thermo "
+                     "interval in the input from %2 to %3, or reducing the data update interval in "
+                     "the preferences from %4 to %5, or something similar.</p>");
 
         QMessageBox::critical(this, " Warning: High I/O Buffer Usage",
                               mesg.arg((int)(100.0 * bufferuse))
