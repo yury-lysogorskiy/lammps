@@ -78,8 +78,7 @@ class PairSNAPKokkos : public PairSNAP {
   typedef ArrayTypes<DeviceType> AT;
   typedef EV_FLOAT value_type;
 
-  static constexpr LAMMPS_NS::ExecutionSpace execution_space = ExecutionSpaceFromDevice<DeviceType>::space;
-  static constexpr int host_flag = (execution_space == LAMMPS_NS::Host);
+  static constexpr int host_flag = (ExecutionSpaceFromDevice<DeviceType>::space == LAMMPS_NS::Host);
   static constexpr int vector_length = vector_length_;
   using real_type = real_type_;
   using complex = SNAComplex<real_type>;

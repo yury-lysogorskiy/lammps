@@ -206,7 +206,7 @@ class ComputeSNAGridKokkos : public ComputeSNAGrid {
 
   SNAKokkos<DeviceType, real_type, vector_length> snaKK;
 
-  int max_neighs, chunk_size, chunk_offset;
+  int max_neighs, chunk_size, chunk_offset, nprocs;
   int host_flag;
   int ntotal;
   int total_range; // total number of loop iterations in grid
@@ -234,12 +234,7 @@ class ComputeSNAGridKokkos : public ComputeSNAGrid {
   typename AT::t_x_array_randomread x;
   typename AT::t_int_1d_randomread type;
   DAT::tdual_float_2d k_grid;
-  DAT::tdual_float_2d k_gridall;
   typename AT::t_float_2d d_grid;
-  typename AT::t_float_2d d_gridall;
-
-  DAT::tdual_float_4d k_gridlocal;
-  typename AT::t_float_4d d_gridlocal;
 
 
   // Utility routine which wraps computing per-team scratch size requirements for
