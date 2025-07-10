@@ -33,8 +33,8 @@ public:
     double get_bufferuse() const;
 
 private:
-    enum PIPES { READ, WRITE, BUFSZ };
-    int m_pipe[BUFSZ];
+    enum PIPES { READ, WRITE, PIPE_COUNT };
+    int m_pipe[PIPE_COUNT];
     int m_oldStdOut;
     bool m_capturing;
     std::string m_captured;

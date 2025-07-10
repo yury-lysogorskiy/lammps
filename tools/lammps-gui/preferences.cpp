@@ -275,7 +275,6 @@ GeneralTab::GeneralTab(QSettings *_settings, LammpsWrapper *_lammps, QWidget *pa
     QWidget(parent), settings(_settings), lammps(_lammps)
 {
     auto *layout = new QGridLayout;
-    ;
 
     auto *echo = new QCheckBox("Echo input to output buffer");
     echo->setObjectName("echo");
