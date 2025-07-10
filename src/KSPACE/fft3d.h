@@ -43,6 +43,7 @@ typedef fftwf_complex FFT_DATA;
 #define FFT_KISS
 #endif
 #define kiss_fft_scalar float
+// NOLINTBEGIN
 typedef struct {
   kiss_fft_scalar re;
   kiss_fft_scalar im;
@@ -50,6 +51,7 @@ typedef struct {
 
 struct kiss_fft_state;
 typedef struct kiss_fft_state *kiss_fft_cfg;
+// NOLINTEND
 #endif
 
 // -------------------------------------------------------------------------
@@ -80,6 +82,7 @@ typedef fftw_complex FFT_DATA;
 #define FFT_KISS
 #endif
 #define kiss_fft_scalar double
+// NOLINTBEGIN
 typedef struct {
   kiss_fft_scalar re;
   kiss_fft_scalar im;
@@ -87,6 +90,7 @@ typedef struct {
 
 struct kiss_fft_state;
 typedef struct kiss_fft_state *kiss_fft_cfg;
+// NOLINTEND
 #endif
 
 #else
