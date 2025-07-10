@@ -1836,10 +1836,10 @@ QWizardPage *LammpsGui::tutorial_directory(const int ntutorial)
     grid->setColumnStretch(0, 0);
     grid->setColumnStretch(1, 100);
 
-    // we have tutorials 1 to 7 currently available online
+    // we have tutorials 1 to 8 currently available online
 
     QCheckBox *webval = nullptr;
-    if ((ntutorial > 0) && (ntutorial < 8)) {
+    if ((ntutorial > 0) && (ntutorial < 9)) {
         grid->addWidget(new QLabel, 2, 0, 1, 2, Qt::AlignVCenter);
         webval = new QCheckBox;
         webval->setCheckState(settings.value("webpage", true).toBool() ? Qt::Checked
