@@ -147,13 +147,13 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     xrange->setMaximum(SLIDER_RANGE);
     xrange->setLow(0);
     xrange->setHigh(SLIDER_RANGE);
-    xrange->setTickInterval(100);
+    xrange->setToolTip("Adjust x-axis data range");
     yrange = new RangeSlider;
     yrange->setMinimum(0);
     yrange->setMaximum(SLIDER_RANGE);
     yrange->setLow(0);
     yrange->setHigh(SLIDER_RANGE);
-    yrange->setTickInterval(100);
+    xrange->setToolTip("Adjust y-axis data range");
     row2->addWidget(new QLabel("X:"));
     row2->addWidget(xrange);
     row2->addWidget(new QLabel("Y:"));
