@@ -122,19 +122,15 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     row1->addWidget(menu);
     row1->addWidget(dummy);
     row2->addWidget(dummy);
-    auto *stopme = new QPushButton(QIcon(":/icons/process-stop.png"), "");
-    stopme->setToolTip("Stop LAMMPS");
-    row2->addWidget(stopme);
-
     row1->addWidget(new QLabel("Title:"));
     row1->addWidget(chartTitle);
     row1->addWidget(new QLabel("Y-Axis:"));
     row1->addWidget(chartYlabel);
-    row2->addWidget(new QLabel(" "));
+    row2->addWidget(new QLabel("        "));
 
     units = new QLabel("Units: (unknown)");
     row2->addWidget(units);
-    row2->addWidget(new QLabel("Norm:"));
+    row2->addWidget(new QLabel("Normalized: "));
     norm = new QCheckBox("");
     norm->setChecked(Qt::Unchecked);
     norm->setEnabled(false);
@@ -174,13 +170,12 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     connect(smooth, SIGNAL(currentIndexChanged(int)), this, SLOT(select_smooth(int)));
     connect(window, &QAbstractSpinBox::editingFinished, this, &ChartWindow::update_smooth);
     connect(order, &QAbstractSpinBox::editingFinished, this, &ChartWindow::update_smooth);
-    connect(stopme,  &QPushButton::released, this, &ChartWindow::stop_run);
     connect(window, QOverload<int>::of(&QSpinBox::valueChanged), this, &ChartWindow::update_smooth);
     connect(order, QOverload<int>::of(&QSpinBox::valueChanged), this, &ChartWindow::update_smooth);
     connect(columns, SIGNAL(currentIndexChanged(int)), this, SLOT(change_chart(int)));
     installEventFilter(this);
 
-    resize(settings.value("chartx", 640).toInt(), settings.value("charty", 480).toInt());
+    resize(settings.value("chartx", 500).toInt(), settings.value("charty", 320).toInt());
 }
 
 int ChartWindow::get_step() const
