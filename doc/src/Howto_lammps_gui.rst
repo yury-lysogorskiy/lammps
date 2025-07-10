@@ -248,8 +248,8 @@ editor buffer, which may contain multiple :doc:`run <run>` or
 
 LAMMPS runs in a separate thread, so the GUI stays responsive and is
 able to interact with the running calculation and access data it
-produces.  It is important to note that running LAMMPS this way is
-using the contents of the input buffer for the run (via the
+produces.  It is important to note that running LAMMPS this way is using
+the contents of the input buffer for the run (via the
 :cpp:func:`lammps_commands_string()` function of the LAMMPS C-library
 interface), and **not** the original file it was read from.  Thus, if
 there are unsaved changes in the buffer, they *will* be used.  As an
@@ -258,8 +258,11 @@ of a file from the *Run LAMMPS from File* menu entry or with
 `Ctrl-Shift-Enter`.  This option may be required in some rare cases
 where the input uses some functionality that is not compatible with
 running LAMMPS from a string buffer.  For consistency, any unsaved
-changes in the buffer must be either saved to the file or undone
-before LAMMPS can be run from a file.
+changes in the buffer must be either saved to the file or undone before
+LAMMPS can be run from a file.
+
+The line number of the currently executed command is highlighted in
+green in the line number display for the *Editor* Window.
 
 .. image:: JPG/lammps-gui-running.png
    :align: center
@@ -273,9 +276,6 @@ indicates the number of active threads (in case thread-parallel
 acceleration was selected in the *Preferences* dialog).  On the right
 side, a progress bar is shown that displays the estimated progress for
 the current :doc:`run <run>` or :doc:`minimize <minimize>` command.
-
-The line number of the currently executed command is highlighted in
-green in the line number display for the *Editor* Window.
 
 .. admonition:: CPU Utilization
    :class: note
@@ -305,8 +305,8 @@ green in the line number display for the *Editor* Window.
 If an error occurs (in the example below the command :doc:`label
 <label>` was incorrectly capitalized as "Label"), an error message
 dialog is shown and the line of the input which triggered the error is
-highlighted.  The state of LAMMPS in the status bar is set to "Failed."
-instead of "Ready."
+highlighted in red.  The state of LAMMPS in the status bar is set to
+"Failed."  instead of "Ready."
 
 .. image:: JPG/lammps-gui-run-error.png
    :align: center
