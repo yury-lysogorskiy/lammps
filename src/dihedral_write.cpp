@@ -31,7 +31,6 @@
 #include <cmath>
 using namespace LAMMPS_NS;
 using MathConst::DEG2RAD;
-using MathConst::RAD2DEG;
 
 static constexpr double epsilon = 6.5e-6;
 static constexpr int MAXLINE = 1024;
@@ -199,5 +198,6 @@ void DihedralWrite::command(int narg, char **arg)
     delete writer;
     fclose(fp);
   }
-  MPI_Comm_free(&singlecomm);
+  if (singlecomm != MPI_COMM_NULL)
+    MPI_Comm_free(&singlecomm);
 }

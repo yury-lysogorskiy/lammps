@@ -70,7 +70,7 @@ ComputeChunkSpreadAtom(LAMMPS *lmp, int narg, char **arg) :
     if ((val.which == ArgInfo::UNKNOWN) || (val.which == ArgInfo::NONE) || (argi.get_dim() > 1))
       error->all(FLERR, val.iarg, "Illegal compute chunk/spread/atom argument: {}", arg[iarg]);
 
-    values.push_back(val);
+    values.push_back(std::move(val));
   }
 
   // if wildcard expansion occurred, free earg memory from expand_args()

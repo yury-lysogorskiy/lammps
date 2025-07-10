@@ -33,7 +33,6 @@
 #include "eapod.h"
 
 using namespace LAMMPS_NS;
-using MathSpecial::powint;
 
 static constexpr int MAXLINE = 1024;
 static constexpr double SMALL = 1.0e-10;
@@ -1692,7 +1691,7 @@ void FitPOD::least_squares_fit(const datastruct &data)
   fastpodptr->mknewcoeff(desc.c, nCoeffAll);
 }
 
-double latticevolume(double *lattice)
+static double latticevolume(double *lattice)
 {
   double *v1 = &lattice[0];
   double *v2 = &lattice[3];

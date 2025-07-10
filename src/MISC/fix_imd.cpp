@@ -453,7 +453,7 @@ struct commdata {
   float x,y,z;
 };
 
-MPI_Datatype MPI_CommData;
+static MPI_Datatype MPI_CommData;
 
 /***************************************************************
  * create class and parse arguments in LAMMPS script.

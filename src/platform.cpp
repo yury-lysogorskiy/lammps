@@ -803,7 +803,7 @@ std::vector<std::string> platform::list_directory(const std::string &dir)
   while (FindNextFile(handle, &fd)) {
     std::string entry(fd.cFileName);
     if ((entry == "..") || (entry == ".")) continue;
-    files.push_back(entry);
+    files.push_back(std::move(entry));
   }
   FindClose(handle);
 #else
@@ -814,7 +814,7 @@ std::vector<std::string> platform::list_directory(const std::string &dir)
   while ((fd = readdir(handle)) != nullptr) {
     std::string entry(fd->d_name);
     if ((entry == "..") || (entry == ".")) continue;
-    files.push_back(entry);
+    files.push_back(std::move(entry));
   }
   closedir(handle);
 #endif

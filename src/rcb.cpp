@@ -27,8 +27,8 @@ static constexpr int DELTA = 16384;
 
 // prototypes for non-class functions
 
-void box_merge(void *, void *, int *, MPI_Datatype *);
-void median_merge(void *, void *, int *, MPI_Datatype *);
+static void box_merge(void *, void *, int *, MPI_Datatype *);
+static void median_merge(void *, void *, int *, MPI_Datatype *);
 
 // NOTE: if want to have reuse flag, need to sum Tree across procs
 
