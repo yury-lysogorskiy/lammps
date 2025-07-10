@@ -195,6 +195,8 @@ set(PROJECT_SOURCES
   slideshow.h
   slideshow.cpp
   stdcapture.cpp
+  rangeslider.h
+  rangeslider.cpp
   ${PLUGIN_LOADER_SRC}
   ${ICON_RC_FILE}
 )
