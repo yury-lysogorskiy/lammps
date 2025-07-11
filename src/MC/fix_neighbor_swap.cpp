@@ -415,6 +415,7 @@ void FixNeighborSwap::pre_exchange()
 
 int FixNeighborSwap::attempt_swap()
 {
+  tagint *id = atom->tag;
   if (niswap == 0) return 0;
 
   // pre-swap energy
@@ -444,9 +445,9 @@ int FixNeighborSwap::attempt_swap()
   if (i >= atom->nlocal)
     error->one(FLERR, Error::NOLASTLINE, "Invalid i index {} chosen for swap. nlocal = {}", i,
                atom->nlocal);
-  if (j >= (atom->nlocal + atom->nghost))
+  if (j >= (atom->nlocal))
     error->one(FLERR, Error::NOLASTLINE, "Invalid j index {} chosen for swap. nall = {}", j,
-               atom->nlocal + atom->nghost);
+               atom->nlocal);
 
   // swap their properties
   if (i >= 0) {
@@ -502,7 +503,7 @@ int FixNeighborSwap::attempt_swap()
   // swap not accepted, return 0
   // restore the swapped itype & jtype atoms
   // do not need to re-call comm->borders() and rebuild neighbor list
-  //   since will be done on next cycle or in Verlet when this fix finishes
+  // since will be done on next cycle or in Verlet when this fix finishes
 
   if (i >= 0) {
     atom->type[i] = itype;
@@ -560,7 +561,7 @@ int FixNeighborSwap::pick_i_swap_atom()
 
     int iwhichlocal = iwhichglobal - niswap_before;
 
-    int i = local_swap_iatom_list[iwhichlocal];
+    i = local_swap_iatom_list[iwhichlocal];
     id_center = id[i];
     root_rank = comm->me;
   }
