@@ -38,6 +38,8 @@
 #include <stdint.h> /* for int64_t */
 #endif
 
+// NOLINTBEGIN
+
 /** Data type constants for extracting data from atoms, computes and fixes
  *
  * Must be kept in sync with the equivalent constants in ``python/lammps/constants.py``,
@@ -300,13 +302,11 @@ int64_t lammps_encode_image_flags(int ix, int iy, int iz);
 void lammps_decode_image_flags(int64_t image, int *flags);
 #endif
 
-// BEGIN_NOLINT
 #if defined(LAMMPS_BIGBIG)
 typedef void (*FixExternalFnPtr)(void *, int64_t, int, int64_t *, double **, double **);
 #else
 typedef void (*FixExternalFnPtr)(void *, int64_t, int, int *, double **, double **);
 #endif
-// END_NOLINT
 
 void lammps_set_fix_external_callback(void *handle, const char *id, FixExternalFnPtr funcptr,
                                       void *ptr);
@@ -330,6 +330,7 @@ int lammps_get_last_error_message(void *handle, char *buffer, int buf_size);
 int lammps_set_show_error(void *handle, const int flag);
 
 int lammps_python_api_version();
+// NOLINTBEGIN
 
 #ifdef __cplusplus
 }
