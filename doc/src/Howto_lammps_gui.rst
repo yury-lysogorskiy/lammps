@@ -3,6 +3,7 @@ Using LAMMPS-GUI
 
 .. image:: JPG/lammps-gui-banner.png
    :align: center
+   :scale: 75%
 
 LAMMPS-GUI is a graphical text editor programmed using the `Qt Framework
 <https://www.qt.io/>`_ and customized for editing and running LAMMPS

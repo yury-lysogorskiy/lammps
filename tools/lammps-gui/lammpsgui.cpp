@@ -77,8 +77,9 @@ constexpr int MAX_DEFAULT_THREADS = 16;
 const QString blank(" ");
 const QString citeme("# When using LAMMPS-GUI in your project, please cite: "
                      "https://arxiv.org/abs/2503.14020\n");
-const QString bannerstyle("CodeEditor {background-position: center center;"
-                          "background-repeat: no-repeat;"
+const QString bannerstyle("CodeEditor {background-position: center center; "
+                          "padding: 0px; "
+                          "background-repeat: no-repeat; "
                           "background-image: url(:/icons/lammps-gui-banner.png);}");
 } // namespace
 
