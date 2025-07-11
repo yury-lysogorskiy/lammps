@@ -332,17 +332,11 @@ void FixNeighborSwap::init()
     }
   }
 
-  if (ke_flag) {
-    if (atom->rmass) {
-      error->all(FLERR, Error::NOLASTLINE, "Per-atom masses are not curently supported while ke = yes.");
-    } else {
-      memory->create(sqrt_mass_ratio, atom->ntypes + 1, atom->ntypes + 1,
-                    "neighbor/swap:sqrt_mass_ratio");
-      for (int itype = 1; itype <= atom->ntypes; itype++)
-        for (int jtype = 1; jtype <= atom->ntypes; jtype++)
-          sqrt_mass_ratio[itype][jtype] = sqrt(atom->mass[itype] / atom->mass[jtype]);
-    }
-  }
+  memory->create(sqrt_mass_ratio, atom->ntypes + 1, atom->ntypes + 1,
+                 "neighbor/swap:sqrt_mass_ratio");
+  for (int itype = 1; itype <= atom->ntypes; itype++)
+    for (int jtype = 1; jtype <= atom->ntypes; jtype++)
+      sqrt_mass_ratio[itype][jtype] = sqrt(atom->mass[itype] / atom->mass[jtype]);
 
   // check to see if itype and jtype cutoffs are the same
   // if not, reneighboring will be needed between swaps
