@@ -2008,13 +2008,12 @@ void Atom::set_mass(const char *file, int line, const char *str, int type_offset
 
 /* ----------------------------------------------------------------------
    set a mass and flag it as set
-   called from EAM pair routine
+   called from EAM, MEAM, BOP, MGPT, RANN pair routines
 ------------------------------------------------------------------------- */
 
 void Atom::set_mass(const char *file, int line, int itype, double value)
 {
-  if (mass == nullptr)
-    error->all(file,line, "Cannot set per-type mass for atom style {}", atom_style);
+  // sanity checks
   if (itype < 1 || itype > ntypes)
     error->all(file,line,"Invalid type {} for atom mass {}", itype, value);
   if (value <= 0.0) {
@@ -2022,9 +2021,23 @@ void Atom::set_mass(const char *file, int line, int itype, double value)
       error->warning(file,line,"Ignoring invalid mass value {} for atom type {}", value, itype);
     return;
   }
-  mass[itype] = value;
-  mass_setflag[itype] = 1;
+
+  // set per-type mass
+  if (mass != nullptr) {
+    mass[itype] = value;
+    mass_setflag[itype] = 1;
+  }
+
+  // set per-atom mass
+  if (rmass != nullptr) {
+    for (int i = 0; i < atom->nlocal; ++i) {
+      if (atom->type[i] == itype) {
+        atom->rmass[i] = value;
+      }
+    }
+  }
 }
+
 
 /* ----------------------------------------------------------------------
    set one or more masses and flag them as set
