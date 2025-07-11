@@ -69,7 +69,7 @@ static const char cite_fix_neighbor_swap[] =
 
 FixNeighborSwap::FixNeighborSwap(LAMMPS *lmp, int narg, char **arg) :
     Fix(lmp, narg, arg), region(nullptr), idregion(nullptr), type_list(nullptr), rate_list(nullptr),
-    qtype(nullptr), sqrt_mass_ratio(nullptr), voro_neighbor_list(nullptr),
+    qtype(nullptr), mtype(nullptr), sqrt_mass_ratio(nullptr), voro_neighbor_list(nullptr),
     local_swap_iatom_list(nullptr), local_swap_neighbor_list(nullptr),
     local_swap_type_list(nullptr), local_swap_probability(nullptr), random_equal(nullptr),
     id_voro(nullptr), c_voro(nullptr), c_pe(nullptr)
@@ -164,6 +164,7 @@ FixNeighborSwap::~FixNeighborSwap()
   memory->destroy(type_list);
   memory->destroy(rate_list);
   memory->destroy(qtype);
+  memory->destroy(mtype);
   memory->destroy(sqrt_mass_ratio);
   memory->destroy(local_swap_iatom_list);
   memory->destroy(local_swap_neighbor_list);
@@ -329,14 +330,67 @@ void FixNeighborSwap::init()
       MPI_Allreduce(&qtype[iswaptype], &qmin, 1, MPI_DOUBLE, MPI_MIN, world);
       if (qmax != qmin)
         error->all(FLERR, Error::NOLASTLINE, "All atoms of a swapped type must have same charge.");
+      qtype[iswaptype] = qmax;
     }
   }
 
-  memory->create(sqrt_mass_ratio, atom->ntypes + 1, atom->ntypes + 1,
-                 "neighbor/swap:sqrt_mass_ratio");
-  for (int itype = 1; itype <= atom->ntypes; itype++)
-    for (int jtype = 1; jtype <= atom->ntypes; jtype++)
-      sqrt_mass_ratio[itype][jtype] = sqrt(atom->mass[itype] / atom->mass[jtype]);
+  // if we have per-atom masses, check that rmass is consistent with type,
+  // and set per-type mass to that value
+  if (ke_flag && (atom->rmass != nullptr)) {
+    double mmax, mmin;
+    int firstall, first;
+    memory->create(mtype, nswaptypes, "neighbor/swap:mtype");
+    for (int iswaptype = 0; iswaptype < nswaptypes; iswaptype++) {
+      first = 1;
+      for (int i = 0; i < atom->nlocal; i++) {
+        if (atom->mask[i] & groupbit) {
+          if (type[i] == type_list[iswaptype]) {
+            if (first > 0) {
+              mtype[iswaptype] = atom->rmass[i];
+              first = 0;
+            } else if (mtype[iswaptype] != atom->rmass[i])
+              first = -1;
+          }
+        }
+      }
+      MPI_Allreduce(&first, &firstall, 1, MPI_INT, MPI_MIN, world);
+      if (firstall < 0)
+        error->all(FLERR, Error::NOLASTLINE,
+                   "All atoms of a swapped type must have the same per-atom mass");
+      if (firstall > 0)
+        error->all(FLERR, Error::NOLASTLINE,
+                   "At least one atom of each swapped type must be present to define masses");
+      if (first) mtype[iswaptype] = -DBL_MAX;
+      MPI_Allreduce(&mtype[iswaptype], &mmax, 1, MPI_DOUBLE, MPI_MAX, world);
+      if (first) mtype[iswaptype] = DBL_MAX;
+      MPI_Allreduce(&mtype[iswaptype], &mmin, 1, MPI_DOUBLE, MPI_MIN, world);
+      if (mmax != mmin)
+        error->all(FLERR, Error::NOLASTLINE, "All atoms of a swapped type must have same mass.");
+      mtype[iswaptype] = mmax;
+    }
+  }
+
+  if (ke_flag) {
+    memory->create(sqrt_mass_ratio, atom->ntypes + 1, atom->ntypes + 1,
+                   "neighbor/swap:sqrt_mass_ratio");
+    if (atom->rmass != nullptr) {
+      for (int itype = 1; itype <= atom->ntypes; itype++)
+        for (int jtype = 1; jtype <= atom->ntypes; jtype++) sqrt_mass_ratio[itype][jtype] = 1.0;
+      for (int iswaptype = 0; iswaptype < nswaptypes; iswaptype++) {
+        int itype = type_list[iswaptype];
+        for (int jswaptype = 0; jswaptype < nswaptypes; jswaptype++) {
+          int jtype = type_list[jswaptype];
+          sqrt_mass_ratio[itype][jtype] = sqrt(mtype[iswaptype] / mtype[jswaptype]);
+        }
+      }
+    } else {
+      for (int itype = 1; itype <= atom->ntypes; itype++) {
+        for (int jtype = 1; jtype <= atom->ntypes; jtype++) {
+          sqrt_mass_ratio[itype][jtype] = sqrt(atom->mass[itype] / atom->mass[jtype]);
+        }
+      }
+    }
+  }
 
   // check to see if itype and jtype cutoffs are the same
   // if not, reneighboring will be needed between swaps
@@ -453,10 +507,12 @@ int FixNeighborSwap::attempt_swap()
   if (i >= 0) {
     atom->type[i] = jtype;
     if (atom->q_flag) atom->q[i] = qtype[jtype_selected];
+    if (atom->rmass_flag) atom->rmass[i] = mtype[jtype_selected];
   }
   if (j >= 0) {
     atom->type[j] = itype;
     if (atom->q_flag) atom->q[j] = qtype[0];
+    if (atom->rmass_flag) atom->rmass[j] = mtype[0];
   }
 
   // if unequal_cutoffs, call comm->borders() and rebuild neighbor list
@@ -480,7 +536,7 @@ int FixNeighborSwap::attempt_swap()
   double energy_after = energy_full();
 
   // if swap accepted, return 1
-  // if ke_flag, rescale atom velocities
+  // if ke_flag, rescale atom velocities first
 
   if (random_equal->uniform() < exp(beta * (energy_before - energy_after))) {
     update_iswap_atoms_list();
@@ -508,10 +564,12 @@ int FixNeighborSwap::attempt_swap()
   if (i >= 0) {
     atom->type[i] = itype;
     if (atom->q_flag) atom->q[i] = qtype[0];
+    if (atom->rmass_flag) atom->rmass[i] = mtype[0];
   }
   if (j >= 0) {
     atom->type[j] = jtype;
     if (atom->q_flag) atom->q[j] = qtype[jtype_selected];
+    if (atom->rmass_flag) atom->rmass[j] = mtype[jtype_selected];
   }
 
   return 0;

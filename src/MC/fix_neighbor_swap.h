@@ -70,7 +70,7 @@ class FixNeighborSwap : public Fix {
   double local_probability;     // Total swap probability stored on this proc
   double global_probability;    // Total swap probability across all proc
   double prev_probability;      // Swap probability on proc < this proc
-  double *qtype;
+  double *qtype, *mtype;
   double energy_stored;
   double **sqrt_mass_ratio;
   double **voro_neighbor_list;
