@@ -48,7 +48,7 @@
  * Modification refered from
  * https://gist.github.com/Riateche/27e36977f7d5ea72cf4f
  */
-RangeSlider::RangeSlider(Qt::Orientation ot, QWidget *parent) : QSlider(ot)
+RangeSlider::RangeSlider(Qt::Orientation ot, QWidget *parent) : QSlider(ot, parent)
 {
     lowLimit        = minimum();
     highLimit       = maximum();
@@ -61,7 +61,7 @@ RangeSlider::RangeSlider(Qt::Orientation ot, QWidget *parent) : QSlider(ot)
 }
 
 // based on http://qt.gitorious.org/qt/qt/blobs/master/src/gui/widgets/qslider.cpp
-void RangeSlider::paintEvent(QPaintEvent *ev)
+void RangeSlider::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
     QStyleOptionSlider opt;

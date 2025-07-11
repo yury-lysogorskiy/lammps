@@ -176,12 +176,12 @@ LammpsGui::LammpsGui(QWidget *parent, const QString &filename) :
     settings.setValue("intelprec", intelprec);
 
     // Check and initialize nthreads setting for when OpenMP support is compiled in.
-    // Default is to use OMP_NUM_THREADS setting, if that is not available, then
-    // half of max (assuming hyperthreading is enabled) and no more than 16.
-    // is no preference but do not override OMP_NUM_THREADS
+    // Default is to use OMP_NUM_THREADS setting, if that is not available, thenhalf of max
+    // (assuming hyper-threading is enabled) and no more than MAX_DEFAULT_THREADS (=16).
+    // This is only if there is no preference set but do not override OMP_NUM_THREADS
     nthreads = 1;
 #if defined(_OPENMP)
-    int default_threads = std::min(QThread::idealThreadCount() / 2, 16);
+    int default_threads = std::min(QThread::idealThreadCount() / 2, MAX_DEFAULT_THREADS);
     default_threads     = std::max(default_threads, 1);
     if (qEnvironmentVariableIsSet("OMP_NUM_THREADS"))
         default_threads = qEnvironmentVariable("OMP_NUM_THREADS").toInt();
