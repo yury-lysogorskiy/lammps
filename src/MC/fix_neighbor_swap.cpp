@@ -615,18 +615,15 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
   // Allocate local_swap_neighbor_list size
 
-  memory->sfree(local_swap_neighbor_list);
+  memory->destroy(local_swap_neighbor_list);
   atom_swap_nmax = atom->nmax;
-  local_swap_neighbor_list =
-      (int *) memory->smalloc(atom_swap_nmax * sizeof(int), "MCSWAP:local_swap_neighbor_list");
+  memory->create(local_swap_neighbor_list, atom_swap_nmax, "MCSWAP:local_swap_neighbor_list");
 
-  memory->sfree(local_swap_probability);
-  local_swap_probability = (double *) memory->smalloc(atom_swap_nmax * sizeof(double),
-                                                      "MCSWAP:local_swap_probability_list");
+  memory->destroy(local_swap_probability);
+  memory->create(local_swap_probability, atom_swap_nmax, "MCSWAP:local_swap_probability_list");
 
-  memory->sfree(local_swap_type_list);
-  local_swap_type_list =
-      (int *) memory->smalloc(atom_swap_nmax * sizeof(int), "MCSWAP:local_swap_type_list");
+  memory->destroy(local_swap_type_list);
+  memory->create(local_swap_type_list, atom_swap_nmax, "MCSWAP:local_swap_type_list");
 
   // Compute voronoi and access neighbor list
 
@@ -796,10 +793,9 @@ void FixNeighborSwap::update_iswap_atoms_list()
   double **x = atom->x;
 
   if (atom->nmax > atom_swap_nmax) {
-    memory->sfree(local_swap_iatom_list);
+    memory->destroy(local_swap_iatom_list);
     atom_swap_nmax = atom->nmax;
-    local_swap_iatom_list =
-        (int *) memory->smalloc(atom_swap_nmax * sizeof(int), "MCSWAP:local_swap_iatom_list");
+    memory->create(local_swap_iatom_list, atom_swap_nmax, "MCSWAP:local_swap_iatom_list");
   }
 
   niswap_local = 0;
