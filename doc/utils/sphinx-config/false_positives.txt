@@ -3207,6 +3207,7 @@ queryargs
 Queteschiner
 quickmin
 quintic
+qval
 qw
 qx
 qy
