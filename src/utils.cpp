@@ -2161,7 +2161,7 @@ enum {
   RX_NOT_WHITESPACE /*, BRANCH */
 };
 
-// BEGIN_NOLINT
+// NOLINTBEGIN
 typedef struct regex_t {
   unsigned char type; /* CHAR, STAR, etc.                      */
   union {
@@ -2176,7 +2176,7 @@ typedef struct regex_context_t {
   regex_t re_compiled[MAX_REGEXP_OBJECTS];
   unsigned char ccl_buf[MAX_CHAR_CLASS_LEN];
 } regex_context_t;
-// END_NOLINT
+// NOLINTEND
 
 int re_match(const char *text, const char *pattern)
 {
