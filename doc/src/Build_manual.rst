@@ -57,6 +57,8 @@ Python interpreter version 3.8 or later, the ``doxygen`` tools and
 internet access to download additional files and tools are required.
 This download is usually only required once or after the documentation
 folder is returned to a pristine state with ``make clean-all``.
+You can also upgrade those packages to their latest available versions
+with ``make upgrade``.
 
 For the documentation build a python virtual environment is set up in
 the folder ``doc/docenv`` and various python packages are installed into
@@ -82,6 +84,7 @@ folder.  The following ``make`` commands are available:
 
    make clean         # remove intermediate RST files created by HTML build
    make clean-all     # remove entire build folder and any cached data
+   make upgrade       # upgrade the python packages in the virtual environment
 
    make anchor_check  # check for duplicate anchor labels
    make style_check   # check for complete and consistent style lists
