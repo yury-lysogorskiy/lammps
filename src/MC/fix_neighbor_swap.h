@@ -53,7 +53,7 @@ class FixNeighborSwap : public Fix {
 
   int nswaptypes;
   int jtype_selected;
-  int id_center;
+  tagint id_center;
   double x_center;
   double y_center;
   double z_center;

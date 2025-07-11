@@ -566,7 +566,7 @@ int FixNeighborSwap::pick_i_swap_atom()
 
   MPI_Allreduce(MPI_IN_PLACE, &root_rank, 1, MPI_INT, MPI_MAX, world);
 
-  MPI_Bcast(&id_center, 1, MPI_INT, root_rank, world);
+  MPI_Bcast(&id_center, 1, MPI_LMP_TAGINT, root_rank, world);
 
   return i;
 }
