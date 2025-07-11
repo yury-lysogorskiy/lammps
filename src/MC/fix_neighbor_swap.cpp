@@ -550,18 +550,17 @@ double FixNeighborSwap::energy_full()
 int FixNeighborSwap::pick_i_swap_atom()
 {
   tagint *id = atom->tag;
-  int i, root_rank = -1;
-  int rank;
-  MPI_Comm_rank(world, &rank);
+  int i = -1;
+  int root_rank = -1;
 
   int iwhichglobal = static_cast<int>(niswap * random_equal->uniform());
   if ((iwhichglobal >= niswap_before) && (iwhichglobal < niswap_before + niswap_local)) {
 
     int iwhichlocal = iwhichglobal - niswap_before;
 
-    i = local_swap_iatom_list[iwhichlocal];
+    int i = local_swap_iatom_list[iwhichlocal];
     id_center = id[i];
-    root_rank = rank;
+    root_rank = comm->me;
   }
 
   MPI_Allreduce(MPI_IN_PLACE, &root_rank, 1, MPI_INT, MPI_MAX, world);
