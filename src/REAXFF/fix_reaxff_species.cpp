@@ -248,8 +248,8 @@ FixReaxFFSpecies::FixReaxFFSpecies(LAMMPS *lmp, int narg, char **arg) :
           error->all(FLERR, iarg + 1, "Fix reaxff/species: Variable {} is not equal-style",
                      delete_Nlimit_varname);
       } else
-        delete_Nlimit = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
-      delete_Nsteps = utils::numeric(FLERR, arg[iarg + 2], false, lmp);
+        delete_Nlimit = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
+      delete_Nsteps = utils::inumeric(FLERR, arg[iarg + 2], false, lmp);
       iarg += 3;
       // position of molecules
     } else if (strcmp(arg[iarg], "position") == 0) {
@@ -956,7 +956,7 @@ void FixReaxFFSpecies::DeleteSpecies(int Nmole, int Nspec)
     }
     ndeletions = delete_Tcount[0] - delete_Tcount[delete_Nsteps - 1];
     if (delete_Nlimit_varid > -1)
-      delete_Nlimit = input->variable->compute_equal(delete_Nlimit_varid);
+      delete_Nlimit = (int) input->variable->compute_equal(delete_Nlimit_varid);
     headroom = MAX(0, delete_Nlimit - ndeletions);
     if (headroom == 0) {
       for (i = delete_Nsteps - 1; i > 0; i--) delete_Tcount[i] = delete_Tcount[i - 1];
@@ -1117,11 +1117,11 @@ void FixReaxFFSpecies::DeleteSpecies(int Nmole, int Nspec)
     } else {
       int writeflag = 0;
       for (i = 0; i < ndelspec; i++)
-        if (deletecount[i]) writeflag = 1;
+        if (deletecount[i] != 0.0) writeflag = 1;
 
       if (writeflag) {
         utils::print(fdel, "{}", update->ntimestep);
-        for (i = 0; i < ndelspec; i++) { fprintf(fdel, "\t%g", deletecount[i]); }
+        for (i = 0; i < ndelspec; i++) fprintf(fdel, "\t%g", deletecount[i]);
         fprintf(fdel, "\n");
         fflush(fdel);
       }

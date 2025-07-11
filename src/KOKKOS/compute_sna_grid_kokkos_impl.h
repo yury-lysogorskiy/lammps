@@ -133,7 +133,13 @@ ComputeSNAGridKokkos<DeviceType, real_type, vector_length>::~ComputeSNAGridKokko
   if (copymode) return;
 
   memoryKK->destroy_kokkos(k_cutsq,cutsq);
-  memoryKK->destroy_kokkos(k_gridall, gridall);
+  memoryKK->destroy_kokkos(k_grid, grid);
+  memory->destroy(gridall);
+  if (gridlocal_allocated) {
+    gridlocal_allocated = 0;
+    memory->destroy4d_offset(gridlocal, nzlo, nylo, nxlo);
+  }
+  array = nullptr;
 }
 
 // Setup
@@ -148,15 +154,16 @@ void ComputeSNAGridKokkos<DeviceType, real_type, vector_length>::setup()
   ComputeGrid::set_grid_local();
 
   // allocate arrays
-  memoryKK->create_kokkos(k_gridall, gridall, size_array_rows, size_array_cols, "grid:gridall");
+  memoryKK->create_kokkos(k_grid, grid, size_array_rows, size_array_cols, "grid:grid");
+  memory->create(gridall, size_array_rows, size_array_cols, "grid:gridall");
+  if (nxlo <= nxhi && nylo <= nyhi && nzlo <= nzhi) {
+    gridlocal_allocated = 1;
+    memory->create4d_offset(gridlocal, size_array_cols, nzlo, nzhi, nylo, nyhi, nxlo, nxhi,
+                            "grid:gridlocal");
+  }
 
-  // do not use or allocate gridlocal for now
-
-  gridlocal_allocated = 0;
   array = gridall;
-
-  d_gridlocal = k_gridlocal.template view<DeviceType>();
-  d_gridall = k_gridall.template view<DeviceType>();
+  d_grid = k_grid.template view<DeviceType>();
 }
 
 // Compute
@@ -183,6 +190,8 @@ void ComputeSNAGridKokkos<DeviceType, real_type, vector_length>::compute_array()
 
   // max_neighs is defined here - think of more elaborate methods.
   max_neighs = 100;
+
+  nprocs = comm->nprocs;
 
   // Pair snap/kk uses grow_ij with some max number of neighs but compute sna/grid uses total
   // number of atoms.
@@ -328,11 +337,11 @@ void ComputeSNAGridKokkos<DeviceType, real_type, vector_length>::compute_array()
 
   copymode = 0;
 
-  k_gridlocal.template modify<DeviceType>();
-  k_gridlocal.template sync<LMPHostType>();
+  k_grid.template modify<DeviceType>();
+  k_grid.template sync<LMPHostType>();
 
-  k_gridall.template modify<DeviceType>();
-  k_gridall.template sync<LMPHostType>();
+  MPI_Allreduce(&grid[0][0], &gridall[0][0], size_array_rows * size_array_cols, MPI_DOUBLE, MPI_SUM,
+                world);
 }
 
 /* ----------------------------------------------------------------------
@@ -720,9 +729,9 @@ void ComputeSNAGridKokkos<DeviceType, real_type, vector_length>::operator() (Tag
   const F_FLOAT xtmp = xgrid[0];
   const F_FLOAT ytmp = xgrid[1];
   const F_FLOAT ztmp = xgrid[2];
-  d_gridall(igrid,0) = xtmp;
-  d_gridall(igrid,1) = ytmp;
-  d_gridall(igrid,2) = ztmp;
+  d_grid(igrid,0) = xtmp/nprocs;
+  d_grid(igrid,1) = ytmp/nprocs;
+  d_grid(igrid,2) = ztmp/nprocs;
 
   const auto idxb_max = snaKK.idxb_max;
 
@@ -731,7 +740,7 @@ void ComputeSNAGridKokkos<DeviceType, real_type, vector_length>::operator() (Tag
   for (int icoeff = 0; icoeff < ncoeff; icoeff++) {
     const auto idxb = icoeff % idxb_max;
     const auto idx_chem = icoeff / idxb_max;
-    d_gridall(igrid,icoeff+3) = snaKK.blist(ii,idx_chem,idxb);
+    d_grid(igrid,icoeff+3) = snaKK.blist(ii,idx_chem,idxb);
   }
 
 }

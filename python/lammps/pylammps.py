@@ -134,7 +134,7 @@ class AtomList(object):
         atom = Atom2D(self._pylmp, index)
       else:
         atom = Atom(self._pylmp, index)
-        self._loaded[index] = atom
+      self._loaded[index] = atom
     return self._loaded[index]
 
   def __len__(self):

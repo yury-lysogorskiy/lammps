@@ -375,15 +375,15 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
                                       "'rate_limit' has too few arguments");
         rate_limit[0][rxn] = 1; // serves as flag for rate_limit keyword
         if (strncmp(arg[iarg+1],"v_",2) == 0) read_variable_keyword(&arg[iarg+1][2],NRATE,rxn);
-        else rate_limit[1][rxn] = utils::numeric(FLERR,arg[iarg+1],false,lmp);
-        rate_limit[2][rxn] = utils::numeric(FLERR,arg[iarg+2],false,lmp);
+        else rate_limit[1][rxn] = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
+        rate_limit[2][rxn] = utils::inumeric(FLERR,arg[iarg+2],false,lmp);
         iarg += 3;
       } else if (strcmp(arg[iarg],"stabilize_steps") == 0) {
         if (stabilization_flag == 0) error->all(FLERR,"Stabilize_steps keyword "
                                                 "used without stabilization keyword");
         if (iarg+2 > narg) error->all(FLERR,"Illegal fix bond/react command: "
                                       "'stabilize_steps' has too few arguments");
-        limit_duration[rxn] = utils::numeric(FLERR,arg[iarg+1],false,lmp);
+        limit_duration[rxn] = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
         stabilize_steps_flag[rxn] = 1;
         iarg += 2;
       } else if (strcmp(arg[iarg],"custom_charges") == 0) {
@@ -2764,7 +2764,7 @@ void FixBondReact::dedup_mega_gloves(int dedup_mode)
   // let's randomly mix up our reaction instances first
   // then we can feel okay about ignoring ones we've already deleted (or accepted)
   // based off std::shuffle
-  double *temp_rxn = new double[max_natoms+cuff];
+  auto *temp_rxn = new double[max_natoms+cuff];
   for (int i = dedup_size-1; i > 0; --i) { //dedup_size
     // choose random entry to swap current one with
     int k = floor(random[0]->uniform()*(i+1));
@@ -4291,7 +4291,7 @@ void FixBondReact::ReadConstraints(char *line, int myrxn)
   double tmp[MAXCONARGS];
   char **strargs,*ptr,*lptr;
   memory->create(strargs,MAXCONARGS,MAXLINE,"bond/react:strargs");
-  auto constraint_type = new char[MAXLINE];
+  auto *constraint_type = new char[MAXLINE];
   strcpy(constraintstr[myrxn],"("); // string for boolean constraint logic
   for (int i = 0; i < nconstraints[myrxn]; i++) {
     readline(line);

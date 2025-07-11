@@ -259,7 +259,7 @@ void FixAtomWeightAPIP::init()
     error->all(FLERR, "fix lambda required to approximate weight of pair style lambda/zone");
 
   // This fix is evaluated in pre_exchange, but needs to be evaluated before load-balancing fixes.
-  for (auto ifix : modify->get_fix_list()) {
+  for (auto *ifix : modify->get_fix_list()) {
     if (strcmp(id, ifix->id) == 0) {
       // The remaining fixes are called after fix atom_load_lambda and ,thus, are not of interest.
       break;

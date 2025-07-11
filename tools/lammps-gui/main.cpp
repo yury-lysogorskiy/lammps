@@ -44,6 +44,9 @@ int main(int argc, char *argv[])
     qputenv("LC_ALL", "en_US.UTF-8");
 #endif
 
+    // disable processor affinity for threads by default
+    qputenv("OMP_PROC_BIND", "false");
+
     QApplication app(argc, argv);
     QCoreApplication::setOrganizationName("The LAMMPS Developers");
     QCoreApplication::setOrganizationDomain("lammps.org");
@@ -80,10 +83,10 @@ int main(int argc, char *argv[])
 
     QString infile;
     QStringList args = parser.positionalArguments();
-    if (args.size() > 0) infile = args[0];
+    if (!args.empty()) infile = args[0];
     LammpsGui w(nullptr, infile);
     w.show();
-    return app.exec();
+    return QApplication::exec();
 }
 
 // Local Variables:

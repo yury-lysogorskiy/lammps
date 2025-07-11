@@ -181,7 +181,7 @@ void FixSpringChunk::post_force(int /*vflag*/)
     r = sqrt(dx*dx + dy*dy + dz*dz);
     r = MAX(r,SMALL);
 
-    if (masstotal[m]) {
+    if (masstotal[m] != 0.0) {
       fcom[m][0] = k_spring*dx/r / masstotal[m];
       fcom[m][1] = k_spring*dy/r / masstotal[m];
       fcom[m][2] = k_spring*dz/r / masstotal[m];
@@ -256,7 +256,7 @@ void FixSpringChunk::write_restart(FILE *fp)
 
 void FixSpringChunk::restart(char *buf)
 {
-  auto list = (double *) buf;
+  auto *list = (double *) buf;
   int n = list[0];
 
   memory->destroy(com0);
