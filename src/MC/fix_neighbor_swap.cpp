@@ -544,18 +544,24 @@ double FixNeighborSwap::energy_full()
 int FixNeighborSwap::pick_i_swap_atom()
 {
   tagint *id = atom->tag;
-  int i = -1;
+  int i, root_rank = -1;
+  int rank;
+  MPI_Comm_rank(world, &rank);
 
   int iwhichglobal = static_cast<int>(niswap * random_equal->uniform());
   if ((iwhichglobal >= niswap_before) && (iwhichglobal < niswap_before + niswap_local)) {
+    
     int iwhichlocal = iwhichglobal - niswap_before;
+    
     i = local_swap_iatom_list[iwhichlocal];
-    MPI_Allreduce(&id[i], &id_center, 1, MPI_INT, MPI_MAX, world);
-  } else {
-    // TODO: i == -1 and thus the following line causes a memory access violation - RETURN, need to sync with MPI_Allreduce above when i=-1 to send id_center to all procs. Find new/proper MPI call.
-    // and its result is bogus. i must be: 0 <= i < nlocal
-    MPI_Allreduce(&id[i], &id_center, 1, MPI_INT, MPI_MAX, world);
+    id_center = id[i];
+    root_rank = rank;
+  
   }
+
+  MPI_Allreduce(MPI_IN_PLACE, &root_rank, 1, MPI_INT, MPI_MAX, world);
+
+  MPI_Bcast(&id_center, 1, MPI_INT, root_rank, world);
 
   return i;
 }
