@@ -438,7 +438,13 @@ int FixNeighborSwap::attempt_swap()
   int jtype = jtype_selected;
 
   // Accept swap if types are equal, no change to system
-  if (itype == jtype) { return 1; }
+  if (itype == jtype) return 1;
+
+  // error out when pick_i_swap_atom() or pick_j_swap_neighbor() picked invalid indices
+  if (i >= atom->nlocal)
+     error->one(FLERR, Error::NOLASTLINE, "Invalid i index {} chosen for swap. nlocal = {}", i, atom->nlocal);
+  if (j >= (atom->nlocal + atom->nghost))
+     error->one(FLERR, Error::NOLASTLINE, "Invalid j index {} chosen for swap. nall = {}", j, atom->nlocal+atom->nghost);
 
   // swap their properties
   if (i >= 0) {
@@ -550,13 +556,12 @@ int FixNeighborSwap::pick_i_swap_atom()
 
   int iwhichglobal = static_cast<int>(niswap * random_equal->uniform());
   if ((iwhichglobal >= niswap_before) && (iwhichglobal < niswap_before + niswap_local)) {
-    
+
     int iwhichlocal = iwhichglobal - niswap_before;
-    
+
     i = local_swap_iatom_list[iwhichlocal];
     id_center = id[i];
     root_rank = rank;
-  
   }
 
   MPI_Allreduce(MPI_IN_PLACE, &root_rank, 1, MPI_INT, MPI_MAX, world);
