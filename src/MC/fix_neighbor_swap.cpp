@@ -442,9 +442,11 @@ int FixNeighborSwap::attempt_swap()
 
   // error out when pick_i_swap_atom() or pick_j_swap_neighbor() picked invalid indices
   if (i >= atom->nlocal)
-     error->one(FLERR, Error::NOLASTLINE, "Invalid i index {} chosen for swap. nlocal = {}", i, atom->nlocal);
+    error->one(FLERR, Error::NOLASTLINE, "Invalid i index {} chosen for swap. nlocal = {}", i,
+               atom->nlocal);
   if (j >= (atom->nlocal + atom->nghost))
-     error->one(FLERR, Error::NOLASTLINE, "Invalid j index {} chosen for swap. nall = {}", j, atom->nlocal+atom->nghost);
+    error->one(FLERR, Error::NOLASTLINE, "Invalid j index {} chosen for swap. nall = {}", j,
+               atom->nlocal + atom->nghost);
 
   // swap their properties
   if (i >= 0) {
@@ -896,7 +898,9 @@ double FixNeighborSwap::compute_vector(int n)
 
 double FixNeighborSwap::memory_usage()
 {
-  double bytes = (double) atom_swap_nmax * sizeof(int);
+  double bytes = (double) atom_swap_nmax * sizeof(int) * 3;    // local_swap_*list
+  bytes += (double) atom_swap_nmax * sizeof(double);           // local_swap_probability_list
+  bytes += (double) nswaptypes * sizeof(double);               // qtype
   return bytes;
 }
 

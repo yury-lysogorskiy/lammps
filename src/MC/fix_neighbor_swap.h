@@ -42,7 +42,7 @@ class FixNeighborSwap : public Fix {
   int nevery, seed;
   int ke_flag;       // yes = conserve ke, no = do not conserve ke
   int diff_flag;     // yes = simulate diffusion of central atom, no = swap only to certain types
-  int rates_flag;    // yes = use modified type rates, no = swap rates are equivilent across types
+  int rates_flag;    // yes = use modified type rates, no = swap rates are equivalent across types
   int ncycles;
   int niswap, njswap;                  // # of i,j swap atoms on all procs
   int niswap_local, njswap_local;      // # of swap atoms on this proc
