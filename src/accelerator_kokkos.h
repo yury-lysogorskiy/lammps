@@ -56,7 +56,7 @@ class KokkosLMP {
   int ngpus;
 
   KokkosLMP(class LAMMPS *, int, char **) { kokkos_exists = 0; }
-  ~KokkosLMP() {}
+  ~KokkosLMP() = default;
   static void finalize() {}
   void accelerator(int, char **) {}
   int neigh_list_kokkos(int) { return 0; }
