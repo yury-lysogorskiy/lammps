@@ -184,11 +184,10 @@ When this fix is used with a :doc:`hybrid pair style <pair_hybrid>`
 system, only swaps between atom types of the same sub-style (or
 combination of sub-styles) are permitted.
 
-This fix cannot be used with systems that do not have per-type masses
-(e.g. atom style sphere) since the implemented algorithm pre-computes
-velocity rescaling factors from per-type masses and ignores any per-atom
-masses, if present.  In case both, per-type and per-atom masses are
-present, a warning is printed.
+This fix can be used with systems that have per-atom masses
+(e.g. atom style sphere) provided all atoms of the types handled
+by this fix have the same mass per type. The fix will check for that.
+In case both, per-type and per-atom masses are present, a warning is printed.
 
 Related commands
 """"""""""""""""
