@@ -116,7 +116,10 @@ charge would not be conserved. As a consequence, no checks on atomic
 charges are performed, and successful switches update the atom type but
 not the atom charge. While it is possible to use *semi-grand* with
 groups of atoms that have different charges, these charges will not be
-changed when the atom types change.
+changed when the atom types change.  The same applies for systems
+with per-atom masses: non *semi-grand* will swap atom masses, but
+the masses have to be the same each for the atom types.  When using
+*semi-grand* no per-atom masses are changed.
 
 Since this fix computes total potential energies before and after
 proposed swaps, even complicated potential energy calculations are
