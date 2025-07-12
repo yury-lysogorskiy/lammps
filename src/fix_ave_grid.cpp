@@ -1275,7 +1275,7 @@ void FixAveGrid::normalize_atom(int numsamples, GridData *grid)
       for (iy = nylo_in; iy <= nyhi_in; iy++)
         for (ix = nxlo_in; ix <= nxhi_in; ix++) {
           count = count2d[iy][ix];
-          if (count) {
+          if (count != 0.0) {
             if (which[0] == ArgInfo::DENSITY_NUMBER)
               norm = density_number_norm;
             else if (which[0] == ArgInfo::DENSITY_MASS)
@@ -1295,7 +1295,7 @@ void FixAveGrid::normalize_atom(int numsamples, GridData *grid)
       for (iy = nylo_in; iy <= nyhi_in; iy++)
         for (ix = nxlo_in; ix <= nxhi_in; ix++) {
           count = count2d[iy][ix];
-          if (count) {
+          if (count != 0.0) {
             for (m = 0; m < nvalues; m++) {
               if (which[m] == ArgInfo::DENSITY_NUMBER)
                 norm = density_number_norm;
@@ -1322,7 +1322,7 @@ void FixAveGrid::normalize_atom(int numsamples, GridData *grid)
         for (iy = nylo_in; iy <= nyhi_in; iy++)
           for (ix = nxlo_in; ix <= nxhi_in; ix++) {
             count = count3d[iz][iy][ix];
-            if (count) {
+            if (count != 0.0) {
               if (which[0] == ArgInfo::DENSITY_NUMBER)
                 norm = density_number_norm;
               else if (which[0] == ArgInfo::DENSITY_MASS)
@@ -1343,7 +1343,7 @@ void FixAveGrid::normalize_atom(int numsamples, GridData *grid)
         for (iy = nylo_in; iy <= nyhi_in; iy++)
           for (ix = nxlo_in; ix <= nxhi_in; ix++) {
             count = count3d[iz][iy][ix];
-            if (count) {
+            if (count != 0.0) {
               for (m = 0; m < nvalues; m++) {
                 if (which[m] == ArgInfo::DENSITY_NUMBER)
                   norm = density_number_norm;

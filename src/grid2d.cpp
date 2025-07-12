@@ -28,8 +28,9 @@
 using namespace LAMMPS_NS;
 
 static constexpr int DELTA = 16;
-
 static constexpr int OFFSET = 16384;
+
+// NOLINTBEGIN (*-float-conversion)
 
 /* ----------------------------------------------------------------------
    NOTES:
@@ -1964,3 +1965,5 @@ void Grid2d::partition_tiled(int proc, int proclower, int procupper, int *box)
     partition_tiled(proc,procmid,procupper,box);
   }
 }
+
+// NOLINTEND (*-float-conversion)

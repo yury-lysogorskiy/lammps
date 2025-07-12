@@ -225,7 +225,7 @@ tagint *taginthash_keys(taginthash_t *tptr) {
   tagint *keys;
   taginthash_node_t *node;
 
-  keys = (tagint *)calloc(tptr->entries, sizeof(tagint));
+  keys = (tagint *)calloc(tptr->entries + 1, sizeof(tagint));
 
   for (tagint i=0; i < tptr->size; ++i) {
     for (node=tptr->bucket[i]; node != nullptr; node=node->next) {
