@@ -39,11 +39,8 @@ using namespace FixConst;
 enum{NOBIAS,BIAS};
 enum{CONSTANT,EQUAL,ATOM};
 
-//#define GLE_DEBUG 1
-
 /* syntax for fix_gle:
  * fix nfix id-group gle ns Tstart Tstop seed amatrix [noneq cmatrix] [every nmts]
- *
  *                                                                        */
 
 /* ---------------------------------------------------------------------- */
@@ -74,12 +71,7 @@ static void StabCholesky(int n, const double* MMt, double* M)
     for (k=0; k<i; ++k) D[i]-=L[midx(n,i,k)]*L[midx(n,i,k)]*D[k];
   }
 
-  for (i=0; i<n; ++i) {
-#ifdef GLE_DEBUG
-    if (D[i]<0) fprintf(stderr,"GLE Cholesky: Negative diagonal term %le, has been set to zero.\n", D[i]);
-#endif
-    D[i]=(D[i]>0.0) ? sqrt(D[i]):0.0;
-  }
+  for (i=0; i<n; ++i) D[i]=(D[i]>0.0) ? sqrt(D[i]):0.0;
 
   for (i=0; i<n; ++i)
     for (j=0; j<n; j++) M[midx(n,i,j)]=L[midx(n,i,j)]*D[j];
@@ -147,11 +139,6 @@ static inline void AkMult(const int n, const int m, const int r,
 static void MyTrans(int n, const double* A, double* AT)
 {
    for (int i=0; i<n; ++i) for (int j=0; j<n; ++j) AT[j*n+i]=A[i*n+j];
-}
-
-static void MyPrint(int n, const double* A)
-{
-   for (int k=0; k<n*n; ++k) { printf("%10.5e ", A[k]); if ((k+1)%n==0) printf("\n");}
 }
 
 //matrix exponential by scaling and squaring.
@@ -275,13 +262,6 @@ FixGLE::FixGLE(LAMMPS *lmp, int narg, char **arg) :
     for (int i=0; i < ns1sq; ++i) C[i] *= cfac;
   }
 
-#ifdef GLE_DEBUG
-  printf("A Matrix\n");
-  GLE::MyPrint(ns+1,A);
-  printf("C Matrix\n");
-  GLE::MyPrint(ns+1,C);
-#endif
-
   // initialize Marsaglia RNG with processor-unique seed
   // NB: this means runs will not be the same with different numbers of processors
   if (seed <= 0) error->all(FLERR,"Illegal fix gle command");
@@ -384,13 +364,6 @@ void FixGLE::init_gle()
 
   GLE::StabCholesky(ns+1, tmp1, S);   //!TODO use symmetric square root, which is more stable.
 
-#ifdef GLE_DEBUG
-  printf("T Matrix\n");
-  GLE::MyPrint(ns+1,T);
-  printf("S Matrix\n");
-  GLE::MyPrint(ns+1,S);
-#endif
-
   // transposed evolution matrices to have fast index multiplication in gle_integrate
   GLE::MyTrans(ns+1,T,TT);
   GLE::MyTrans(ns+1,S,ST);
@@ -458,10 +431,6 @@ void FixGLE::gle_integrate()
   int nlocal = atom->nlocal;
   if (igroup == atom->firstgroup) nlocal = atom->nfirst;
 
-#ifdef GLE_DEBUG
-  printf("!MC! GLE THERMO STEP dt=%f\n",update->dt);
-#endif
-
   // loads momentum data (mass-scaled) into the temporary vectors for the propagation
   int nk=0, ni=0; double deltae=0.0;
   for (int i = 0; i < nlocal; i++) {
@@ -528,11 +497,6 @@ void FixGLE::initial_integrate(int /*vflag*/)
   gle_step--;
   if (dogle && gle_step<1) gle_integrate();
 
-#ifdef GLE_DEBUG
-  printf("!MC! GLE P1 STEP dt=%f\n",dtv);
-  printf("!MC! GLE Q STEP\n");
-#endif
-
   if (rmass) {
     for (int i = 0; i < nlocal; i++)
       if (mask[i] & groupbit) {
@@ -593,9 +557,6 @@ void FixGLE::final_integrate()
       }
   }
 
-#ifdef GLE_DEBUG
-  printf("!MC! GLE P2 STEP dt=%f\n",dtv);
-#endif
   if (dogle && gle_step<1) { gle_integrate(); gle_step=gle_every; }
 
   // Change the temperature for the next step
