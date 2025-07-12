@@ -68,7 +68,6 @@ MLIAPDescriptorACE::MLIAPDescriptorACE(LAMMPS *_lmp, char *yacefilename) :
       max_num = acemlimpl->basis_set->total_basis_size_rank1[mu] +
           acemlimpl->basis_set->total_basis_size[mu];
     }
-        acemlimpl->basis_set->total_basis_size[mu];
   }
 
   ndescriptors = max_num;
