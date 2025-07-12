@@ -515,7 +515,7 @@ void ImageViewer::do_recenter()
                            .arg(group);
     lammps->commands_string(commands);
     xcenter = lammps->extract_variable("LAMMPSGUI_CX");
-    ycenter = lammps->extract_variable("LAMMPSGUI_CZ");
+    ycenter = lammps->extract_variable("LAMMPSGUI_CY");
     zcenter = lammps->extract_variable("LAMMPSGUI_CZ");
     lammps->commands_string("variable LAMMPSGUI_CX delete\n"
                             "variable LAMMPSGUI_CY delete\n"

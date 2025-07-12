@@ -1314,6 +1314,7 @@ be called without a valid LAMMPS object handle (it is ignored).
 * :ref:`System sizes <extract_system_sizes>`
 * :ref:`Neighbor list settings <extract_neighbor_settings>`
 * :ref:`Atom style flags <extract_atom_flags>`
+* :ref:`Thermo settings <extract_thermo_settings>`
 
 .. _extract_integer_sizes:
 
@@ -1517,6 +1518,21 @@ internally by the :doc:`Fortran interface <Fortran>` and are not likely to be us
    * - angmom_flag
      - 1 if the atom style can store per-atom angular momentum. See :doc:`atom_style`.
 
+.. _extract_thermo_settings:
+
+**Thermo settings**
+
+.. list-table::
+   :header-rows: 1
+   :widths: 15 85
+
+   * - Keyword
+     - Description / Return value
+   * - thermo_every
+     - The current interval of thermo output. See :doc:`thermo`.
+   * - thermo_norm
+     - 1 if the thermo output is normalized. See :doc:`thermo_modify`.
+
 *See also*
    :cpp:func:`lammps_extract_global`
 
@@ -1603,6 +1619,9 @@ int lammps_extract_setting(void *handle, const char *keyword)
   if (strcmp(keyword,"torque_flag") == 0) return lmp->atom->torque_flag;
   if (strcmp(keyword,"angmom_flag") == 0) return lmp->atom->angmom_flag;
   if (strcmp(keyword,"peri_flag") == 0) return lmp->atom->peri_flag;
+
+  if (strcmp(keyword,"thermo_every") == 0) return lmp->output->thermo_every;
+  if (strcmp(keyword,"thermo_norm") == 0) return lmp->output->thermo->normflag;
 
   return -1;
 }

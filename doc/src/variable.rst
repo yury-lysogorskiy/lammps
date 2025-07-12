@@ -763,14 +763,14 @@ is the nearest integer to its argument.
 
    Evaluate only selected argument
 
-The ternary(x,y,z) function is the equivalent of the ternary operator
-(? and :) in C or C++.  It takes 3 arguments.  The first argument is a
+The ternary(x,y,z) function is the equivalent of the ternary operator (?
+and :) in C or C++.  It takes 3 arguments.  The first argument is a
 conditional.  The result of the function is y if x evaluates to true
-(non-zero).  The result is z if x evaluates to false (zero).  Same as
-in C or C++ only the selected argument y or z is evaluated, so this
+(non-zero).  The result is z if x evaluates to false (zero).  Same as in
+C or C++ only the selected argument y or z is evaluated, so this
 function can be used to protect against crashes from evaluating invalid
-arguments, e.g. in the following example where qval is a variable with
-an expression that may become slightly negative due to floating-point
+arguments, e.g. in the following example where "qval" is a variable with
+an expression that may become (slightly) negative due to floating-point
 math limitations.:
 
 .. code-block:: LAMMPS

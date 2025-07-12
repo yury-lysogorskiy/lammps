@@ -258,7 +258,7 @@ TEST(Utils, split_words_quoted)
 
 TEST(Utils, split_words_partially_quoted)
 {
-    auto list = utils::split_words("one 'two \"three\"");
+    auto list = utils::split_words("one \'two \"three\"");
     ASSERT_EQ(list.size(), 2);
     ASSERT_THAT(list[0], StrEq("one"));
     ASSERT_THAT(list[1], StrEq("two \"three\""));

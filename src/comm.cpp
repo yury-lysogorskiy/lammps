@@ -945,7 +945,7 @@ rendezvous_irregular(int n, char *inbuf, int insize, int inorder, int *procs,
   auto *inbuf_rvous = (char *) memory->smalloc((bigint) nrvous*insize+1, "rendezvous:inbuf");
   irregular->exchange_data(inbuf,insize,inbuf_rvous);
 
-  bigint irregular1_bytes = irregular->memory_usage();
+  bigint irregular1_bytes = irregular->memory_usage(); // NOLINT
   irregular->destroy_data();
   delete irregular;
 
@@ -978,7 +978,7 @@ rendezvous_irregular(int n, char *inbuf, int insize, int inorder, int *procs,
   outbuf = (char *) memory->smalloc((bigint) nout*outsize+1, "rendezvous:outbuf");
   irregular->exchange_data(outbuf_rvous,outsize,outbuf);
 
-  bigint irregular2_bytes = irregular->memory_usage();
+  bigint irregular2_bytes = irregular->memory_usage(); // NOLINT
   irregular->destroy_data();
   delete irregular;
 

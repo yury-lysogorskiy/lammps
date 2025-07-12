@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
     if (!args.empty()) infile = args[0];
     LammpsGui w(nullptr, infile);
     w.show();
-    return QApplication::exec();
+    return app.exec();
 }
 
 // Local Variables:
