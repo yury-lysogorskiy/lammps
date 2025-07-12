@@ -63,8 +63,10 @@ class LammpsGui : public QMainWindow {
     Q_OBJECT
 
     friend class CodeEditor;
+    friend class AcceleratorTab;
     friend class GeneralTab;
     friend class TutorialWizard;
+    friend class Preferences;
 
 public:
     LammpsGui(QWidget *parent = nullptr, const QString &filename = QString());
@@ -82,6 +84,7 @@ protected:
     void inspect_file(const QString &filename);
     void write_file(const QString &filename);
     void update_recents(const QString &filename = "");
+    void clear_variables();
     void update_variables();
     void do_run(bool use_buffer);
     void start_lammps();
@@ -118,7 +121,7 @@ private slots:
     void findandreplace();
     void run_buffer() { do_run(true); }
     void run_file() { do_run(false); }
-    void restart_lammps() { lammps.close(); };
+    void restart_lammps();
 
     void edit_variables();
     void render_image();
@@ -152,6 +155,7 @@ private:
     Highlighter *highlighter;
     StdCapture *capturer;
     QLabel *status;
+    QLabel *cpuuse;
     LogWindow *logwindow;
     ImageViewer *imagewindow;
     ChartWindow *chartwindow;
@@ -183,6 +187,9 @@ private:
     bool is_running;
     int run_counter;
     std::vector<char *> lammps_args;
+
+protected:
+    int nthreads;
 };
 
 class TutorialWizard : public QWizard {

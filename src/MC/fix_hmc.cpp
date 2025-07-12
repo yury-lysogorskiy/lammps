@@ -69,8 +69,8 @@ FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
 
   // required arguments
 
-  nevery = utils::numeric(FLERR, arg[3], false, lmp);
-  int seed = utils::numeric(FLERR, arg[4], false, lmp);
+  nevery = utils::inumeric(FLERR, arg[3], false, lmp);
+  int seed = utils::inumeric(FLERR, arg[4], false, lmp);
   double temp = utils::numeric(FLERR, arg[5], false, lmp);
 
   if (seed <= 0) error->all(FLERR, 4, "Fix hmc seed must be > 0");
@@ -102,8 +102,9 @@ FixHMC::FixHMC(LAMMPS *lmp, int narg, char **arg) :
       auto *ifix = modify->get_fix_by_id(id_rigid);
       if (!ifix) error->all(FLERR, iarg + 1, "Unknown rigid fix id {} for fix hmc", id_rigid);
       fix_rigid = dynamic_cast<FixRigidSmall *>(ifix);
-      if (!fix_rigid || !utils::strmatch(ifix->style, "^rigid/small") ||
-          !utils::strmatch(ifix->style, "^rigid/nve/small"))
+      if (!fix_rigid ||
+          (!utils::strmatch(ifix->style, "^rigid/small") &&
+           !utils::strmatch(ifix->style, "^rigid/nve/small")))
         error->all(FLERR, Error::NOLASTLINE,
                    "Fix ID {} for fix hmc does not point to fix rigid/small or rigid/nve/small",
                    id_rigid);
@@ -302,8 +303,9 @@ void FixHMC::init()
     if (!ifix)
       error->all(FLERR, Error::NOLASTLINE, "Unknown rigid fix id {} for fix hmc", id_rigid);
     fix_rigid = dynamic_cast<FixRigidSmall *>(ifix);
-    if (!fix_rigid || !utils::strmatch(ifix->style, "^rigid/small") ||
-        !utils::strmatch(ifix->style, "^rigid/nve/small"))
+    if (!fix_rigid ||
+        (!utils::strmatch(ifix->style, "^rigid/small") &&
+         !utils::strmatch(ifix->style, "^rigid/nve/small")))
       error->all(FLERR, Error::NOLASTLINE,
                  "Fix ID {} for fix hmc does not point to fix rigid/small or rigid/nve/small",
                  id_rigid);

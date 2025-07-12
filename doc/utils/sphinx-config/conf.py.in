@@ -396,8 +396,8 @@ latex_elements = {
       \vfill
       {\LARGE \lammpsversion \par}
       \vfill
-      {\LARGE The LAMMPS Developers \par}
-      {\Large developers@lammps.org $^*$ \par}
+      {\LARGE The LAMMPS Developers$^*$ \par}
+      {\Large developers@lammps.org \par}
       \vfill\vfill\vfill
       {\normalsize ${}^*$ see
         \sphinxhref{https://www.lammps.org/authors.html}{https://www.lammps.org/authors.html}

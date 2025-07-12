@@ -1533,7 +1533,7 @@ int Modify::read_restart(FILE *fp)
 
   // allocate space for each entry
 
-  if (nfix_restart_global) {
+  if (nfix_restart_global > 0) {
     id_restart_global = new char *[nfix_restart_global];
     style_restart_global = new char *[nfix_restart_global];
     state_restart_global = new char *[nfix_restart_global];
