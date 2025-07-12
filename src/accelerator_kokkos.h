@@ -109,6 +109,7 @@ class ModifyKokkos : public Modify {
   ModifyKokkos(class LAMMPS *lmp) : Modify(lmp) {}
 };
 
+// NOLINTBEGIN
 class DAT {
  public:
   typedef double tdual_xfloat_1d;
@@ -116,6 +117,7 @@ class DAT {
   typedef int tdual_int_1d;
   typedef int tdual_int_2d;
 };
+// NOLINTEND
 
 }    // namespace LAMMPS_NS
 

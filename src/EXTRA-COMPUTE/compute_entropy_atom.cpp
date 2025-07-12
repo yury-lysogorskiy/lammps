@@ -242,7 +242,7 @@ void ComputeEntropyAtom::compute_peratom()
         if (rsq < cutsq) {
           // contribute to gofr
           double r=sqrt(rsq);
-          int bin=floor(r/deltar);
+          int bin=floor(r/deltar); // NOLINT
           int minbin, maxbin;
           minbin=bin - deltabin;
           if (minbin < 0) minbin=0;
