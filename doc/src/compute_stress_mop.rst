@@ -129,7 +129,7 @@ package <Build_package>` doc page on for more info.
 
 The method is implemented for orthogonal simulation boxes whose
 size does not change in time, and axis-aligned planes.
- 
+
 Compute *stress/mop* and *stress/mop/profile* do not work with manybody
 non-bonded interactions, long range (kspace) interactions and
 improper intramolecular interactions. The reason is that the current
