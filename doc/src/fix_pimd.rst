@@ -237,7 +237,7 @@ If *fmmode* is *normal*, then the fictitious mass is
 
 where :math:`\lambda_i` is the eigenvalue of the :math:`i`-th normal mode.
 
-In *pimd/langevin/bosinic*, *fmmode* should not be used, and would raise an error if set to
+In *pimd/langevin/bosonic*, *fmmode* should not be used, and would raise an error if set to
 a value other than *physical*, due to the lack of support for bosonic normal modes.
 
 .. note::
