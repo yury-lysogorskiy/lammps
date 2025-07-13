@@ -131,7 +131,7 @@ Here, :math:`E^{[N-K+1,N]}` is the spring energy of the ring polymer
 obtained by connecting the beads of particles :math:`N - k + 1, N - k +
 2, ..., N` in a cycle.
 The implementation of the potential and forces evaluation uses the algorithm developed by Feldman and Hirshberg, which scales like :math:`N^2+PN`
-:ref:`(Feldman) <Feldman>`.  
+:ref:`(Feldman) <Feldman>`.
 The minimum-image convention is employed on
 the springs to account for periodic boundary conditions; an elaborate
 discussion of the validity of the approximation is available in
