@@ -84,9 +84,6 @@ class PairSNAPKokkos : public PairSNAP {
   using real_type = real_type_;
   using complex = SNAComplex<real_type>;
 
-  // extra padding factor
-  static constexpr int padding_factor = host_flag ? 1 : 4;
-
   // Static team/tile sizes for device offload
 
 #ifdef KOKKOS_ENABLE_HIP
@@ -104,9 +101,10 @@ class PairSNAPKokkos : public PairSNAP {
   static constexpr int team_size_compute_fused_deidrj = 2;
   static constexpr int team_size_compute_fused_deidrj_all = 1;
 
-  static constexpr int ui_batch = 1;
-  static constexpr int yi_batch = 1;
-  static constexpr bool use_deidrj_all = false; // whether or not to use the directionally fused deidrj
+  static constexpr int padding_factor = host_flag ? 1 : 4; // extra padding factor
+  static constexpr int ui_batch = host_flag ? 1 : 2;
+  static constexpr int yi_batch = host_flag ? 1 : 4;
+  static constexpr bool use_deidrj_all = true; // whether or not to use the directionally fused deidrj
 #elif defined(KOKKOS_ENABLE_SYCL)
   static constexpr int team_size_compute_neigh = 4;
   static constexpr int tile_size_compute_ck = 4;
@@ -122,8 +120,9 @@ class PairSNAPKokkos : public PairSNAP {
   static constexpr int team_size_compute_fused_deidrj = 4;
   static constexpr int team_size_compute_fused_deidrj_all = 1;
 
+  static constexpr int padding_factor = host_flag ? 1 : 2; // extra padding factor
+  static constexpr int ui_batch = 1;
   static constexpr int yi_batch = host_flag ? 1 : 2;
-  static constexpr int yi_batch = 1;
   static constexpr bool use_deidrj_all = false; // whether or not to use the directionally fused deidrj
 #else
   static constexpr int team_size_compute_neigh = 4;
@@ -142,6 +141,7 @@ class PairSNAPKokkos : public PairSNAP {
   static constexpr int min_blocks_compute_zi = 2;
   static constexpr int min_blocks_compute_yi = 2;
 
+  static constexpr int padding_factor = host_flag ? 1 : 4; // extra padding factor
   static constexpr int ui_batch = host_flag ? 1 : 4;
   static constexpr int yi_batch = host_flag ? 1 : 4;
   static constexpr bool use_deidrj_all = true; // whether or not to use the directionally fused deidrj
