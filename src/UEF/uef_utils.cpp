@@ -311,7 +311,7 @@ void col_sort(double b[3][3],int r[3][3],int ri[3][3])
 ------------------------------------------------------------------------- */
 void red12(double b[3][3],int r[3][3],int ri[3][3])
 {
-  int y = round(col_prod(b,0,1)/col_prod(b,0,0));
+  int y = round(col_prod(b,0,1)/col_prod(b,0,0)); // NOLINT
   b[0][1] -= y*b[0][0];
   b[1][1] -= y*b[1][0];
   b[2][1] -= y*b[2][0];

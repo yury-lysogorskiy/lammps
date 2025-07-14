@@ -15,10 +15,12 @@
 
 #include "helpers.h"
 #include "lammpsgui.h"
+#include "rangeslider.h"
 
 #include <QAction>
 #include <QApplication>
 #include <QChart>
+#include <QCheckBox>
 #include <QCloseEvent>
 #include <QComboBox>
 #include <QEvent>
@@ -45,9 +47,15 @@
 
 using namespace QtCharts;
 
+namespace {
+
+// Set RangeSlider resolution to 1000 steps
+constexpr int SLIDER_RANGE       = 1000;
+constexpr double SLIDER_FRACTION = 1.0 / (double)SLIDER_RANGE;
+
 // brush color index must be kept in sync with preferences
 
-static const QList<QBrush> mybrushes = {
+const QList<QBrush> mybrushes = {
     QBrush(QColor(0, 0, 0)),       // black
     QBrush(QColor(100, 150, 255)), // blue
     QBrush(QColor(255, 125, 125)), // red
@@ -55,16 +63,36 @@ static const QList<QBrush> mybrushes = {
     QBrush(QColor(120, 120, 120)), // grey
 };
 
+// convenience class
+
+class QHline : public QFrame {
+public:
+    QHline(QWidget *parent = nullptr) : QFrame(parent)
+    {
+        setGeometry(QRect(0, 0, 100, 3));
+        setFrameShape(QFrame::HLine);
+        setFrameShadow(QFrame::Sunken);
+    }
+};
+} // namespace
+
 ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     QWidget(parent), menu(new QMenuBar), file(new QMenu("&File")), saveAsAct(nullptr),
     exportCsvAct(nullptr), exportDatAct(nullptr), exportYamlAct(nullptr), closeAct(nullptr),
     stopAct(nullptr), quitAct(nullptr), smooth(nullptr), window(nullptr), order(nullptr),
-    chartTitle(nullptr), chartYlabel(nullptr), filename(_filename)
+    chartTitle(nullptr), chartYlabel(nullptr), units(nullptr), norm(nullptr), filename(_filename)
 {
     QSettings settings;
-    auto *top = new QHBoxLayout;
+    auto *top  = new QVBoxLayout;
+    auto *row1 = new QHBoxLayout;
+    auto *row2 = new QHBoxLayout;
+    top->addLayout(row1);
+    top->addWidget(new QHline);
+    top->addLayout(row2);
+    top->addWidget(new QHline);
+
     menu->addMenu(file);
-    menu->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
+    menu->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
 
     // workaround for incorrect highlight bug on macOS
     auto *dummy = new QPushButton(QIcon(), "");
@@ -112,26 +140,49 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     order->setToolTip("Smoothing Order");
     settings.endGroup();
 
-    auto *normal = new QPushButton(QIcon(":/icons/gtk-zoom-fit.png"), "");
-    normal->setToolTip("Reset zoom to normal");
-
     columns = new QComboBox;
-    top->addWidget(menu);
-    top->addSpacerItem(new QSpacerItem(1, 1, QSizePolicy::Expanding, QSizePolicy::Minimum));
-    top->addWidget(dummy);
-    top->addWidget(new QLabel("Title:"));
-    top->addWidget(chartTitle);
-    top->addWidget(new QLabel("Y:"));
-    top->addWidget(chartYlabel);
-    top->addWidget(new QLabel("Plot:"));
-    top->addWidget(smooth);
-    top->addWidget(new QLabel(" Smooth:"));
-    top->addWidget(window);
-    top->addWidget(order);
-    top->addWidget(new QLabel(" "));
-    top->addWidget(normal);
-    top->addWidget(new QLabel(" Data:"));
-    top->addWidget(columns);
+    row1->addWidget(menu);
+    row1->addWidget(dummy);
+    row2->addWidget(dummy);
+    row1->addWidget(new QLabel("Title:"));
+    row1->addWidget(chartTitle);
+    row1->addWidget(new QLabel("Y-Axis:"));
+    row1->addWidget(chartYlabel);
+
+    units = new QLabel("Units:");
+    row2->addWidget(units);
+    row2->addWidget(new QLabel("Norm:"));
+    norm = new QCheckBox("");
+    norm->setChecked(Qt::Unchecked);
+    norm->setEnabled(false);
+    row2->addWidget(norm);
+    xrange = new RangeSlider;
+    xrange->setMinimum(0);
+    xrange->setMaximum(SLIDER_RANGE);
+    xrange->setLow(0);
+    xrange->setHigh(SLIDER_RANGE);
+    xrange->setToolTip("Adjust x-axis data range");
+    xrange->setTickPosition(QSlider::TicksBothSides);
+    xrange->setTickInterval(100);
+    yrange = new RangeSlider;
+    yrange->setMinimum(0);
+    yrange->setMaximum(SLIDER_RANGE);
+    yrange->setLow(0);
+    yrange->setHigh(SLIDER_RANGE);
+    yrange->setToolTip("Adjust y-axis data range");
+    yrange->setTickPosition(QSlider::TicksBothSides);
+    yrange->setTickInterval(100);
+    row2->addWidget(new QLabel("X:"));
+    row2->addWidget(xrange);
+    row2->addWidget(new QLabel("Y:"));
+    row2->addWidget(yrange);
+    row2->addWidget(new QLabel("Plot:"));
+    row2->addWidget(smooth);
+    row2->addWidget(new QLabel(" Smooth:"));
+    row2->addWidget(window);
+    row2->addWidget(order);
+    row1->addWidget(new QLabel(" Data:"));
+    row1->addWidget(columns);
     saveAsAct = file->addAction("&Save Graph As...", this, &ChartWindow::saveAs);
     saveAsAct->setIcon(QIcon(":/icons/document-save-as.png"));
     exportCsvAct = file->addAction("&Export data to CSV...", this, &ChartWindow::exportCsv);
@@ -161,11 +212,12 @@ ChartWindow::ChartWindow(const QString &_filename, QWidget *parent) :
     connect(order, &QAbstractSpinBox::editingFinished, this, &ChartWindow::update_smooth);
     connect(window, QOverload<int>::of(&QSpinBox::valueChanged), this, &ChartWindow::update_smooth);
     connect(order, QOverload<int>::of(&QSpinBox::valueChanged), this, &ChartWindow::update_smooth);
-    connect(normal, &QPushButton::released, this, &ChartWindow::reset_zoom);
     connect(columns, SIGNAL(currentIndexChanged(int)), this, SLOT(change_chart(int)));
-    installEventFilter(this);
+    connect(xrange, &RangeSlider::sliderMoved, this, &ChartWindow::update_xrange);
+    connect(yrange, &RangeSlider::sliderMoved, this, &ChartWindow::update_yrange);
 
-    resize(settings.value("chartx", 500).toInt(), settings.value("charty", 320).toInt());
+    installEventFilter(this);
+    resize(settings.value("chartx", 640).toInt(), settings.value("charty", 480).toInt());
 }
 
 int ChartWindow::get_step() const
@@ -218,19 +270,20 @@ void ChartWindow::add_data(int step, double data, int index)
         if (c->get_index() == index) c->add_data(step, data);
 }
 
+void ChartWindow::set_units(const QString &_units)
+{
+    units->setText(_units);
+}
+
+void ChartWindow::set_norm(bool _norm)
+{
+    norm->setChecked(_norm ? Qt::Checked : Qt::Unchecked);
+}
+
 void ChartWindow::quit()
 {
     auto *main = dynamic_cast<LammpsGui *>(get_main_widget());
     if (main) main->quit();
-}
-
-void ChartWindow::reset_zoom()
-{
-    int choice = columns->currentData().toInt();
-    if ((choice >= 0) && (choice < charts.size())) {
-        charts[choice]->update_smooth();
-        charts[choice]->reset_zoom();
-    }
 }
 
 void ChartWindow::stop_run()
@@ -280,6 +333,33 @@ void ChartWindow::update_ylabel()
 {
     for (auto &c : charts) {
         if (c->isVisible()) c->set_ylabel(chartYlabel->text());
+    }
+}
+
+void ChartWindow::update_xrange(int low, int high)
+{
+    for (auto &c : charts) {
+        if (c->isVisible()) {
+            auto axes   = c->get_axes();
+            auto ranges = c->get_minmax();
+            double xmin = ranges.left() + (double)low * SLIDER_FRACTION * ranges.width();
+            double xmax = ranges.left() + (double)high * SLIDER_FRACTION * ranges.width();
+            axes[0]->setRange(xmin, xmax);
+        }
+    }
+}
+
+void ChartWindow::update_yrange(int low, int high)
+{
+    for (auto &c : charts) {
+        if (c->isVisible()) {
+            constexpr double fraction = 1.0 / (double)SLIDER_RANGE;
+            auto axes                 = c->get_axes();
+            auto ranges               = c->get_minmax();
+            double ymin = ranges.bottom() - (double)low * SLIDER_FRACTION * ranges.height();
+            double ymax = ranges.bottom() - (double)high * SLIDER_FRACTION * ranges.height();
+            axes[1]->setRange(ymin, ymax);
+        }
     }
 }
 
@@ -408,6 +488,12 @@ void ChartWindow::change_chart(int)
             c->hide();
         }
     }
+
+    // reset plot range selection
+    xrange->setLow(0);
+    xrange->setHigh(SLIDER_RANGE);
+    yrange->setLow(0);
+    yrange->setHigh(SLIDER_RANGE);
 }
 
 void ChartWindow::closeEvent(QCloseEvent *event)
@@ -462,7 +548,7 @@ ChartViewer::ChartViewer(const QString &title, int _index, QWidget *parent) :
 
     setRenderHint(QPainter::Antialiasing);
     setChart(chart);
-    setRubberBand(QChartView::RectangleRubberBand);
+    setRubberBand(QChartView::NoRubberBand);
     last_update = QTime::currentTime();
     update_smooth();
 }
@@ -498,7 +584,7 @@ void ChartViewer::add_data(int step, double data)
 
 /* -------------------------------------------------------------------- */
 
-void ChartViewer::reset_zoom()
+QRectF ChartViewer::get_minmax() const
 {
     auto points = series->points();
 
@@ -548,8 +634,16 @@ void ChartViewer::reset_zoom()
         }
     }
 
-    xaxis->setRange(xmin, xmax);
-    yaxis->setRange(ymin, ymax);
+    return QRectF(xmin, ymax, xmax - xmin, ymin - ymax);
+}
+
+/* -------------------------------------------------------------------- */
+
+void ChartViewer::reset_zoom()
+{
+    auto ranges = get_minmax();
+    xaxis->setRange(ranges.left(), ranges.right());
+    yaxis->setRange(ranges.bottom(), ranges.top());
 }
 
 /* -------------------------------------------------------------------- */

@@ -250,6 +250,15 @@ link_check : $(VENV) html
 		deactivate ;\
 	)
 
+upgrade: $(VENV)
+	@(\
+		. $(VENV)/bin/activate; \
+		pip $(PIP_OPTIONS) install --upgrade pip; \
+		pip $(PIP_OPTIONS) install --upgrade wheel; \
+		pip $(PIP_OPTIONS) install --upgrade -r $(BUILDDIR)/utils/requirements.txt; \
+		deactivate;\
+	)
+
 xmlgen : doxygen/xml/index.xml
 
 doxygen/Doxyfile: doxygen/Doxyfile.in
