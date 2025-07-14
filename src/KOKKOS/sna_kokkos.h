@@ -86,7 +86,7 @@ struct MultiWignerWrapper {
   KOKKOS_INLINE_FUNCTION
   complex_array get(const int& ma) const {
     complex_array store;
-    #pragma unroll (num_elems)
+    #pragma unroll num_elems
     for (int d = 0; d < num_elems; d++)
       store[d] = complex(buffer[offset + 2 * num_elems * vector_length * ma + (2 * d) * vector_length],
                          buffer[offset + 2 * num_elems * vector_length * ma + (2 * d + 1) * vector_length]);
@@ -95,7 +95,7 @@ struct MultiWignerWrapper {
 
   KOKKOS_INLINE_FUNCTION
   void set(const int& ma, const complex_array& store) const {
-    #pragma unroll (num_elems)
+    #pragma unroll num_elems
     for (int d = 0; d < num_elems; d++) {
       buffer[offset + 2 * num_elems * vector_length * ma + (2 * d) * vector_length] = store[d].re;
       buffer[offset + 2 * num_elems * vector_length * ma + (2 * d + 1) * vector_length] = store[d].im;
@@ -105,7 +105,7 @@ struct MultiWignerWrapper {
   // special function to initialize all elements to the same value
   KOKKOS_INLINE_FUNCTION
   void set_all(const int& ma, const complex& store) const {
-    #pragma unroll (num_elems)
+    #pragma unroll num_elems
     for (int d = 0; d < num_elems; d++) {
       buffer[offset + 2 * num_elems * vector_length * ma + (2 * d) * vector_length] = store.re;
       buffer[offset + 2 * num_elems * vector_length * ma + (2 * d + 1) * vector_length] = store.im;
@@ -337,7 +337,7 @@ class SNAKokkos {
   // special function that just does a "vectorized" loop
   template<int batch, typename Functor> KOKKOS_FORCEINLINE_FUNCTION
   void register_loop(Functor&& f) const {
-    #pragma unroll (batch)
+    #pragma unroll batch
     for (int n = 0; n < batch; n++)
       f(n);
   }
