@@ -1374,12 +1374,12 @@ void PairAmoeba::polar_kspace()
           hsq = h1*h1 + h2*h2 + h3*h3;
           term = -pterm * hsq;
           expterm = 0.0;
-          if (term > -50.0 && hsq != 0.0) {
+          if ((term > -50.0) && (hsq != 0.0)) {
             denom = volterm*hsq*bsmod1[i]*bsmod2[j]*bsmod3[k];
             if (denom != 0.0) expterm = exp(term) / denom;
             struc2 = gridfft[n]*gridfft[n] + gridfft[n+1]*gridfft[n+1];
             eterm = 0.5 * felec * expterm * struc2;
-            vterm = (hsq != 0) ? (2.0/hsq) * (1.0-term) * eterm : 0.0;
+            vterm = (2.0/hsq) * (1.0-term) * eterm;
             vxx -= h1*h1*vterm - eterm;
             vyy -= h2*h2*vterm - eterm;
             vzz -= h3*h3*vterm - eterm;
