@@ -90,9 +90,6 @@ target_link_libraries(nve2plugin PRIVATE lammps)
 add_library(helloplugin MODULE helloplugin.cpp)
 target_link_libraries(helloplugin PRIVATE lammps)
 
-add_library(debugplugin MODULE debugplugin.cpp)
-target_link_libraries(debugplugin PRIVATE lammps)
-
 add_library(zero2plugin MODULE zero2plugin.cpp pair_zero2.cpp bond_zero2.cpp
                                angle_zero2.cpp dihedral_zero2.cpp improper_zero2.cpp)
 target_link_libraries(zero2plugin PRIVATE lammps)
@@ -103,24 +100,24 @@ target_link_libraries(kspaceplugin PRIVATE lammps)
 add_library(runminplugin MODULE runminplugin.cpp min_cg2.cpp verlet2.cpp)
 target_link_libraries(runminplugin PRIVATE lammps)
 
-set_target_properties(morse2plugin nve2plugin helloplugin debugplugin zero2plugin kspaceplugin runminplugin PROPERTIES PREFIX "" SUFFIX ".so")
+set_target_properties(morse2plugin nve2plugin helloplugin zero2plugin kspaceplugin runminplugin PROPERTIES PREFIX "" SUFFIX ".so")
 
 # MacOS seems to need this
 if(CMAKE_SYSTEM_NAME STREQUAL Darwin)
-  set_target_properties(morse2plugin nve2plugin helloplugin debugplugin zero2plugin kspaceplugin runminplugin
+  set_target_properties(morse2plugin nve2plugin helloplugin zero2plugin
     PROPERTIES LINK_FLAGS "-Wl,-undefined,dynamic_lookup")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 # tell CMake to export all symbols to a .dll on Windows with special case for MinGW cross-compilers
-  set_target_properties(morse2plugin nve2plugin helloplugin debugplugin zero2plugin kspaceplugin runminplugin
+  set_target_properties(morse2plugin nve2plugin helloplugin zero2plugin
     PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
   if(CMAKE_CROSSCOMPILING)
-    set_target_properties(morse2plugin nve2plugin helloplugin debugplugin zero2plugin kspaceplugin runminplugin
+    set_target_properties(morse2plugin nve2plugin helloplugin zero2plugin kspaceplugin runminplugin
       PROPERTIES LINK_FLAGS "-Wl,--export-all-symbols")
   endif()
 else()
-  set_target_properties(morse2plugin nve2plugin helloplugin zero2plugin debugplugin kspaceplugin runminplugin PROPERTIES
+  set_target_properties(morse2plugin nve2plugin helloplugin zero2plugin kspaceplugin runminplugin PROPERTIES
     LINK_FLAGS "-rdynamic")
 endif()
 
 add_custom_target(plugins ALL ${CMAKE_COMMAND} -E echo "Building Plugins"
-  DEPENDS morse2plugin nve2plugin helloplugin zero2plugin debugplugin morse2plugin kspaceplugin runminplugin)
+  DEPENDS morse2plugin nve2plugin helloplugin zero2plugin morse2plugin kspaceplugin runminplugin)
