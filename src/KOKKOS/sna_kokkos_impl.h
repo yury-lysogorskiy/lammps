@@ -597,14 +597,14 @@ void SNAKokkos<DeviceType, real_type, vector_length>::evaluate_ui_jbend(
   //   compute r0 = (x,y,z,z0)
   //   utot(j,ma,mb) += u(r0;j,ma,mb) for all j,ma,mb
 
-  // level 0 is just 1; it's now pre-initialized
-  //{
-  //  Kokkos::Array<complex, ui_batch> ulist_accum;
-  //  register_loop<ui_batch>([&] (int n) -> void {
-  //    ulist_accum[n] = complex::one();
-  //  });
-  //  ulist_wrapper.set(0, ulist_accum);
-  //}
+  // This routine assumes makes two assumptions about `ulist_wrapper`:
+  // 1. It has been pre-initialized to 1 for all legal `ui_batch` (atom, neighbor) pairs,
+  //    where 1 corresponds to the value of u^0_{0,0}, which is independent of `a` and `b`.
+  // 2. It has been pre-initialized to 0 for any components that don't correspond to a
+  //    "real" (atom, neighbor) pair. This can happen if the number of neighbors of the
+  //    atom `iatom` isn't divided evenly by `ui_batch`. By initializing the corresponding
+  //    components of `ui_batch` to zero, we guarantee that all subsequent u^j_{m,m'} values
+  //    are also zero and as such there are no spurious contributions to `ulisttot`.
 
   // j from before the bend, don't store, mb == 0
   for (int j = 1; j <= j_bend; j++) {
@@ -1496,7 +1496,9 @@ auto SNAKokkos<DeviceType, real_type, vector_length>::evaluate_duidrj_jbend(cons
     dedr_full_sum[d] = 0;
   });
 
-  // level 0 is just 1, 0
+  // u^0_{0,0} is 1 and du^0_{0,0} is 0 for any values of `a`, `b`, etc.
+  // In contrast to `evaluate_ui_jbend`, each thread only handles one (atom, neighbor) pair
+  // and as such we just initialize `ulist_wrapper` and `dulist_wrapper` here.
   ulist_wrapper.set(0, complex::one());
   dulist_wrapper.set_all(0, complex::zero());
 
