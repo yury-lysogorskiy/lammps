@@ -685,6 +685,19 @@ void KokkosLMP::newton_check()
 
   if (neigh_thread && force->newton)
     error->all(FLERR,"Must use 'newton off' with KOKKOS package option 'neigh/thread on'");
+
+  if (!neigh_thread) {
+    if (threads_per_atom_set)
+      error->all(FLERR,"Must use KOKKOS package option 'neigh/thread on' with 'threads/per/atom'");
+    if (pair_team_size_set)
+      error->all(FLERR,"Must use KOKKOS package option 'neigh/thread on' with 'pair/team/size'");
+    if (nbin_atoms_per_bin_set)
+      error->all(FLERR,"Must use KOKKOS package option 'neigh/thread on' with 'nbin/atoms/per/bin'");
+    if (nbor_block_size_set)
+      error->all(FLERR,"Must use KOKKOS package option 'neigh/thread on' with 'nbor/block/size'");
+    if (bond_block_size_set)
+      error->all(FLERR,"Must use KOKKOS package option 'neigh/thread on' with 'bond/block/size'");
+  }
 }
 
 /* ----------------------------------------------------------------------
