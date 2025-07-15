@@ -147,15 +147,21 @@ class PairSNAPKokkos : public PairSNAP {
   static constexpr bool use_deidrj_all = true; // whether or not to use the directionally fused deidrj
 #endif
 
-  // debugging for ComputeFusedDeidrj
+  // Total number of dimensions in the fully fused `ComputeFusedDeidrj`.
   static constexpr int dims = 3;
 
-  // get the final batch size for ComputeUi
+  // Determine the final batch size for ComputeUi. This convention guarantees that each "team"
+  // launched by ComputeUi requests the same amount of scratchpad memory independent of the
+  // value of `ui_batch`.
   static constexpr int team_size_compute_ui = base_team_size_compute_ui / ui_batch;
   static_assert(team_size_compute_ui > 0, "ui_batch is too large for team_size_compute_ui");
   static_assert(base_team_size_compute_ui % ui_batch == 0, "ComputeUi batch size must divide into the team size");
 
-  // check yi_batch divides into padding_factor
+  // Check that `yi_batch` evenly divides into `padding_factor`. This guarantees that all data structures are appropriately
+  // padded for routines that process `yi_batch` atoms per thread. For the time being, `yi_batch` is re-used across
+  // `ComputeYi`, `ComputeZi`, `ComputeYiWithZlist`, and `ComputeBi`. In theory different values could be used across
+  // each of these routines, and `padding_factor` would have to be the least common factor of all of these values (or a
+  // multiple thereof).
   static_assert((padding_factor / yi_batch) * yi_batch == padding_factor, "yi_batch must divide into padding_factor");
 
   // Custom MDRangePolicy, Rank3, to reduce verbosity of kernel launches
