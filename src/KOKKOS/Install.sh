@@ -164,6 +164,8 @@ action fix_dpd_energy_kokkos.cpp fix_dpd_energy.cpp
 action fix_dpd_energy_kokkos.h fix_dpd_energy.h
 action fix_dt_reset_kokkos.cpp
 action fix_dt_reset_kokkos.h
+action fix_electron_stopping_kokkos.cpp fix_electron_stopping.cpp
+action fix_electron_stopping_kokkos.h fix_electron_stopping.h
 action fix_enforce2d_kokkos.cpp
 action fix_enforce2d_kokkos.h
 action fix_efield_kokkos.cpp
