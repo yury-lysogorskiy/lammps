@@ -554,6 +554,7 @@ fix_grem.html fix grem
 fix_halt.html fix halt
 fix_heat_flow.html fix heat/flow
 fix_heat.html fix heat
+fix_hmc.html fix hmc
 fix_hyper_global.html fix hyper/global
 fix_hyper_local.html fix hyper/local
 fix_imd.html fix imd

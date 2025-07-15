@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(lammps-gui VERSION 1.6.14 LANGUAGES CXX)
+project(lammps-gui VERSION 1.7.0 LANGUAGES CXX)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -195,6 +195,8 @@ set(PROJECT_SOURCES
   slideshow.h
   slideshow.cpp
   stdcapture.cpp
+  rangeslider.h
+  rangeslider.cpp
   ${PLUGIN_LOADER_SRC}
   ${ICON_RC_FILE}
 )
@@ -282,6 +284,9 @@ if(APPLE)
     MACOSX_BUNDLE_COPYRIGHT "(c) 2003 - 2025, The LAMMPS Developers"
     MACOSX_BUNDLE TRUE
   )
+  # purge app bundle directory during configure
+  file(REMOVE_RECURSE ${CMAKE_BINARY_DIR}/lammps-gui.app)
+
   # additional targets to populate the bundle tree and create the .dmg image file
   set(APP_CONTENTS ${CMAKE_BINARY_DIR}/lammps-gui.app/Contents)
   if(BUILD_TOOLS)

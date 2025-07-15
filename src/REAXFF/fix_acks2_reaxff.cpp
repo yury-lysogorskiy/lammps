@@ -412,7 +412,7 @@ void FixACKS2ReaxFF::init_matvec()
 
 /* ---------------------------------------------------------------------- */
 
-void FixACKS2ReaxFF::compute_X()
+void FixACKS2ReaxFF::compute_X() // NOLINT
 {
   int jnum;
   int i, j, ii, jj, flag;

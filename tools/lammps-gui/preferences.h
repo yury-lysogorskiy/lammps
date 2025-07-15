@@ -74,6 +74,10 @@ class AcceleratorTab : public QWidget {
 public:
     explicit AcceleratorTab(QSettings *settings, LammpsWrapper *lammps, QWidget *parent = nullptr);
     enum { None, Opt, OpenMP, Intel, Kokkos, Gpu };
+    enum { Double, Mixed, Single };
+
+private slots:
+    void update_accel();
 
 private:
     QSettings *settings;
