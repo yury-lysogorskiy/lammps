@@ -1,8 +1,11 @@
 .. index:: fix electron/stopping
+.. index:: fix electron/stopping/kk
 .. index:: fix electron/stopping/fit
 
 fix electron/stopping command
 =============================
+
+Accelerator Variants: *electron/stopping/kk*
 
 fix electron/stopping/fit command
 =================================
@@ -156,6 +159,18 @@ electronic stopping data predicted by, for example, SRIM or TD-DFT. Multiple
 of the atom types. There is an examples/PACKAGES/electron_stopping/ directory,
 which illustrates uses of this command. Details of this implementation are
 further described in :ref:`Stewart2018 <Stewart2018>` and :ref:`Lee2020 <Lee2020>`.
+
+----------
+
+.. include:: accel_styles.rst
+
+.. note::
+
+  The region keyword is supported by Kokkos, but a Kokkos-enabled
+  region must be used. See the region :doc:`region <region>` command for
+  more information.
+
+----------
 
 Restart, fix_modify, output, run start/stop, minimize info
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""
