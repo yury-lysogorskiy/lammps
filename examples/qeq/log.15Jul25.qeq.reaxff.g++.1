@@ -1,5 +1,5 @@
-LAMMPS (21 Nov 2023)
-OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:98)
+LAMMPS (12 Jun 2025 - Development - patch_12Jun2025-747-g3fabe8e766-modified)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread.
   using 1 OpenMP thread(s) per MPI task
 # This example demonstrates the use of various fix qeq variants with pair reaxff
 # You can comment in/out various versions below
@@ -17,10 +17,10 @@ atom_style	charge
 read_data	data.CHO
 Reading data file ...
   orthogonal box = (0 0 0) to (25 25 25)
-  1 by 2 by 2 MPI processor grid
+  1 by 1 by 1 MPI processor grid
   reading atoms ...
   105 atoms
-  read_data CPU = 0.000 seconds
+  read_data CPU = 0.002 seconds
 
 pair_style	reaxff NULL checkqeq no
 pair_coeff	* * ffield.reax.cho H C O
@@ -96,7 +96,7 @@ Neighbor list info ...
   2 neighbor lists, perpetual/occasional/extra = 2 0 0
   (1) pair reaxff, perpetual
       attributes: half, newton off, ghost
-      pair build: half/bin/newtoff/ghost
+      pair build: half/bin/ghost/newtoff
       stencil: full/ghost/bin/3d
       bin: standard
   (2) fix qeq/reax, perpetual, copy from (1)
@@ -104,43 +104,43 @@ Neighbor list info ...
       pair build: copy
       stencil: none
       bin: none
-Per MPI rank memory allocation (min/avg/max) = 9.845 | 10.57 | 11.28 Mbytes
+Per MPI rank memory allocation (min/avg/max) = 14.54 | 14.54 | 14.54 Mbytes
    Step         PotEng          c_q1           c_q2           c_q3          v_qtot    
-         0  -10226.557      0.095633904   -0.15658758    -0.091167237   -8.8817842e-16
-         1  -10225.799      0.095650278   -0.1566235     -0.091171458   -1.7763568e-15
-         2  -10223.656      0.095669806   -0.15666728    -0.091175321    0            
-         3  -10220.276      0.095691215   -0.15671588    -0.091178792    1.7763568e-15
-         4  -10215.894      0.09571392    -0.15676795    -0.091181826    1.7763568e-15
-         5  -10210.804      0.095734058   -0.15681436    -0.091184227    1.3322676e-15
-         6  -10205.342      0.095751113   -0.15685409    -0.091185731   -4.4408921e-16
-         7  -10199.848      0.095762524   -0.15688062    -0.091186803   -1.3322676e-15
-         8  -10194.646      0.095766647   -0.15689045    -0.091186875    2.8865799e-15
-         9  -10190.016      0.095760978   -0.15687772    -0.09118579    -4.4408921e-16
-        10  -10186.168      0.095747037   -0.15684594    -0.091183687   -1.5543122e-15
-Loop time of 0.00732332 on 4 procs for 10 steps with 105 atoms
+         0  -10226.557      0.095633909   -0.15658753    -0.091167311   -2.8865799e-15
+         1  -10225.799      0.095650157   -0.15662321    -0.091171465    5.3290705e-15
+         2  -10223.656      0.095669727   -0.15666713    -0.091175264   -2.8865799e-15
+         3  -10220.276      0.095691262   -0.15671593    -0.09117887     4.6629367e-15
+         4  -10215.894      0.095714037   -0.15676816    -0.091181914    4.4408921e-16
+         5  -10210.804      0.095733939   -0.15681378    -0.091184589   -3.9968029e-15
+         6  -10205.342      0.09575102    -0.15685378    -0.091185835   -3.5527137e-15
+         7  -10199.848      0.095762356   -0.1568802     -0.091186815    2.220446e-15 
+         8  -10194.646      0.095766731   -0.15689071    -0.091186805   -3.9968029e-15
+         9  -10190.016      0.095761083   -0.15687817    -0.091185537   -2.6645353e-15
+        10  -10186.168      0.095747444   -0.15684695    -0.091183644   -1.5543122e-15
+Loop time of 0.0181878 on 1 procs for 10 steps with 105 atoms
 
-Performance: 29.495 ns/day, 0.814 hours/ns, 1365.500 timesteps/s, 143.378 katom-step/s
-99.2% CPU use with 4 MPI tasks x 1 OpenMP threads
+Performance: 11.876 ns/day, 2.021 hours/ns, 549.820 timesteps/s, 57.731 katom-step/s
+98.9% CPU use with 1 MPI tasks x 1 OpenMP threads
 
 MPI task timing breakdown:
 Section |  min time  |  avg time  |  max time  |%varavg| %total
 ---------------------------------------------------------------
-Pair    | 0.0033186  | 0.0038166  | 0.0041063  |   0.5 | 52.12
+Pair    | 0.010846   | 0.010846   | 0.010846   |   0.0 | 59.63
 Neigh   | 0          | 0          | 0          |   0.0 |  0.00
-Comm    | 0.0002671  | 0.00057126 | 0.0010608  |   0.0 |  7.80
-Output  | 0.00019157 | 0.0002237  | 0.00028058 |   0.0 |  3.05
-Modify  | 0.0026446  | 0.0026528  | 0.0026604  |   0.0 | 36.22
-Other   |            | 5.9e-05    |            |       |  0.81
+Comm    | 8.4851e-05 | 8.4851e-05 | 8.4851e-05 |   0.0 |  0.47
+Output  | 0.00015646 | 0.00015646 | 0.00015646 |   0.0 |  0.86
+Modify  | 0.0070844  | 0.0070844  | 0.0070844  |   0.0 | 38.95
+Other   |            | 1.648e-05  |            |       |  0.09
 
-Nlocal:          26.25 ave          35 max          15 min
-Histogram: 1 0 0 1 0 0 0 0 0 2
-Nghost:            300 ave         357 max         239 min
-Histogram: 2 0 0 0 0 0 0 0 0 2
-Neighs:        1025.25 ave        1468 max         405 min
-Histogram: 1 0 0 0 1 0 0 0 0 2
+Nlocal:            105 ave         105 max         105 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:            512 ave         512 max         512 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:           3417 ave        3417 max        3417 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
 
-Total # of neighbors = 4101
-Ave neighs/atom = 39.057143
+Total # of neighbors = 3417
+Ave neighs/atom = 32.542857
 Neighbor list builds = 0
 Dangerous builds = 0
 Total wall time: 0:00:00
