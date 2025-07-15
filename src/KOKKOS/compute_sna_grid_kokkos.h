@@ -255,7 +255,6 @@ class ComputeSNAGridKokkos : public ComputeSNAGrid {
   double lo0, lo1, lo2;
 
   // Make SNAKokkos a friend
-  // the 1 is because ComputeSNAGridKokkos does not support padded vectorization yet
   friend class SNAKokkos<DeviceType, real_type, vector_length>;
 };
 
