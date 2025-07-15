@@ -340,7 +340,6 @@ void SNAKokkos<DeviceType, real_type, vector_length>::grow_rij(int newnatom, int
  * GPU routines
  * ----------------------------------------------------------------------*/
 
-
 /* ----------------------------------------------------------------------
    Precompute the Cayley-Klein parameters and the derivatives thereof.
    This routine better exploits parallelism than the GPU ComputeUi and
@@ -1193,7 +1192,6 @@ void SNAKokkos<DeviceType, real_type, vector_length>::compute_beta_quadratic(con
   }
 }
 
-
 /* ----------------------------------------------------------------------
    Compute Yi from Ui without storing Zi, looping over zlist indices.
 ------------------------------------------------------------------------- */
@@ -1383,7 +1381,6 @@ auto SNAKokkos<DeviceType, real_type, vector_length>::evaluate_beta_scaled(const
    Fused calculation of the derivative of Ui w.r.t. atom j
    and accumulation into dEidRj. GPU only.
 ------------------------------------------------------------------------- */
-
 
 // Version of the code that exposes additional parallelism by threading over `j_bend` values
 template<class DeviceType, typename real_type, int vector_length>
@@ -2162,7 +2159,6 @@ void SNAKokkos<DeviceType, real_type, vector_length>::init_rootpqarray()
       h_rootpqarray(p,q) = static_cast<real_type>(sqrt(static_cast<double>(p)/q));
   Kokkos::deep_copy(rootpqarray,h_rootpqarray);
 }
-
 
 /* ---------------------------------------------------------------------- */
 

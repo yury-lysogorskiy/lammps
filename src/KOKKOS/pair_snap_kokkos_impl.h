@@ -62,7 +62,6 @@ PairSNAPKokkos<DeviceType, real_type, vector_length>::~PairSNAPKokkos()
   memoryKK->destroy_kokkos(k_vatom,vatom);
 }
 
-
 /* ----------------------------------------------------------------------
    init specific to this pair style
 ------------------------------------------------------------------------- */
@@ -427,7 +426,6 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::compute(int eflag_in,
   }
 }
 
-
 /* ----------------------------------------------------------------------
    allocate all arrays
 ------------------------------------------------------------------------- */
@@ -443,7 +441,6 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::allocate()
   MemKK::realloc_kokkos(k_cutsq,"PairSNAPKokkos::cutsq",n+1,n+1);
   rnd_cutsq = k_cutsq.template view<DeviceType>();
 }
-
 
 /* ----------------------------------------------------------------------
    init for one type pair i,j and corresponding j,i
@@ -802,7 +799,6 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::operator() (TagPairSN
     int first_jnbor = ui_batch * jnbor_batch;
     if (first_jnbor >= ninside) return;
 
-
     snaKK.template compute_ui_large<chemsnap, ui_batch>(team, iatom_mod, first_jnbor, ninside, iatom_div);
   });
 }
@@ -1131,7 +1127,6 @@ void PairSNAPKokkos<DeviceType, real_type, vector_length>::operator() (TagPairSN
   matrices U. These routines are GPU only and use scratch memory
   staging.
 ------------------------------------------------------------------------- */
-
 
 template<class DeviceType, typename real_type, int vector_length>
 template<int dir>
@@ -1480,8 +1475,6 @@ int PairSNAPKokkos<DeviceType, real_type, vector_length>::scratch_size_helper(in
 
   return ScratchViewType::shmem_size(values_per_team);
 }
-
-
 
 /* ----------------------------------------------------------------------
    routines used by template reference classes
