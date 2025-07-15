@@ -969,6 +969,9 @@ EV_FLOAT pair_compute_neighlist (PairStyle* fpair, std::enable_if_t<(NEIGHFLAG&P
       int max_vectorsize = 32;
   #endif
 
+      if (fpair->lmp->kokkos->threads_per_atom_set)
+        vectorsize = fpair->lmp->kokkos->threads_per_atom;
+
       vectorsize = MIN(vectorsize,max_vectorsize);
 
       if (fpair->atom->ntypes > MAX_TYPES_STACKPARAMS) {
@@ -983,6 +986,10 @@ EV_FLOAT pair_compute_neighlist (PairStyle* fpair, std::enable_if_t<(NEIGHFLAG&P
     int teamsize_max = teamsize_max_for;
     if (fpair->eflag || fpair->vflag)
       teamsize_max = teamsize_max_reduce;
+
+    if (fpair->lmp->kokkos->pair_team_size_set)
+      teamsize_max = fpair->lmp->kokkos->pair_team_size;
+
     atoms_per_team = teamsize_max/vectorsize;
 #else
     vectorsize = 1;

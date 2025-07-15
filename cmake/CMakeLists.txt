@@ -3,9 +3,6 @@
 # CMake build system
 # This file is part of LAMMPS
 cmake_minimum_required(VERSION 3.16)
-if(CMAKE_VERSION VERSION_LESS 3.20)
-  message(WARNING "LAMMPS is planning to require at least CMake version 3.20 by Summer 2025. Please upgrade!")
-endif()
 ########################################
 # initialize version variables with project command
 if(POLICY CMP0048)
@@ -155,9 +152,6 @@ if(NOT CMAKE_CXX_STANDARD)
 endif()
 if(CMAKE_CXX_STANDARD LESS 11)
   message(FATAL_ERROR "C++ standard must be set to at least 11")
-endif()
-if(CMAKE_CXX_STANDARD LESS 17)
-  message(WARNING "Selecting C++17 standard is preferred over C++${CMAKE_CXX_STANDARD}")
 endif()
 if(PKG_KOKKOS AND (CMAKE_CXX_STANDARD LESS 17))
   set(CMAKE_CXX_STANDARD 17)
@@ -359,17 +353,6 @@ set(SUFFIX_PACKAGES CORESHELL GPU KOKKOS OPT INTEL OPENMP)
 
 foreach(PKG ${STANDARD_PACKAGES} ${SUFFIX_PACKAGES})
   option(PKG_${PKG} "Build ${PKG} Package" OFF)
-endforeach()
-
-set(DEPRECATED_PACKAGES AWPMD ATC POEMS)
-foreach(PKG ${DEPRECATED_PACKAGES})
-  if(PKG_${PKG})
-    message(WARNING
-          "The ${PKG} package will be removed from LAMMPS in Summer 2025 due to lack of "
-          "maintenance and use of code constructs that conflict with modern C++ compilers "
-          "and standards.  Please contact developers@lammps.org if you have any concerns "
-          "about this step.")
-  endif()
 endforeach()
 
 ######################################################
