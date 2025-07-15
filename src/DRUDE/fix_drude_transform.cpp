@@ -87,7 +87,7 @@ void FixDrudeTransform<inverse>::setup(int) {
   if (!rmass) {
     if (!mcoeff) mcoeff = new double[ntypes+1];
     auto *mcoeff_loc = new double[ntypes+1];
-    for (int itype=0; itype<=ntypes; itype++) mcoeff_loc[itype] = 2.; // an impossible value: mcoeff is at most 1.
+    for (int itype=0; itype<=ntypes; itype++) mcoeff_loc[itype] = 2.0; // an impossible value: mcoeff is at most 1.
     for (int i=0; i<nlocal; i++) {
       if (drudetype[type[i]] == DRUDE_TYPE) {
         int j = atom->map(drudeid[i]);
@@ -235,7 +235,7 @@ void FixDrudeTransform<inverse>::reduced_to_real()
         mcore = rmass[icore];
         coeff = mdrude / (mcore + mdrude);
       } else {
-        if (mcoeff[type[icore]] != 0.0) { // TODO: should it be > 1.5 ?
+        if (mcoeff[type[icore]] == 0.0) { // TODO: should it be > 1.5 ?
           double s = sqrt(1.0 - mass[type[idrude]] / mass[type[icore]]);
           mass[type[idrude]] = 0.5 * mass[type[icore]] * (1.0 - s);
           mdrude = mass[type[idrude]];
