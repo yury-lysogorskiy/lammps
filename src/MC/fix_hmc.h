@@ -86,9 +86,7 @@ class FixHMC : public Fix {
   int press_flag;
   int pressatom_flag;
 
-  int comm_flag;
   int nvalues;
-  int ncommrev;
 };
 
 }    // namespace LAMMPS_NS

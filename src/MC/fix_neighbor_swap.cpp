@@ -469,7 +469,6 @@ void FixNeighborSwap::pre_exchange()
 
 int FixNeighborSwap::attempt_swap()
 {
-  tagint *id = atom->tag;
   if (niswap == 0) return 0;
 
   // pre-swap energy
