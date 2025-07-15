@@ -13,7 +13,8 @@
 ------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------
-   Contributing authors: Christian Trott (SNL), Stan Moore (SNL)
+   Contributing authors: Christian Trott (SNL), Stan Moore (SNL),
+    Evan Weinberg (NVIDIA)
 ------------------------------------------------------------------------- */
 
 #include "sna_kokkos.h"
