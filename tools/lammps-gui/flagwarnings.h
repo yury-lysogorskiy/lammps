@@ -25,7 +25,15 @@ class FlagWarnings : public QSyntaxHighlighter {
     Q_OBJECT
 
 public:
-    FlagWarnings(QLabel *label = 0, QTextDocument *parent = 0);
+    explicit FlagWarnings(QLabel *label = nullptr, QTextDocument *parent = nullptr);
+    ~FlagWarnings() override = default;
+
+    FlagWarnings()                                = delete;
+    FlagWarnings(const FlagWarnings &)            = delete;
+    FlagWarnings(FlagWarnings &&)                 = delete;
+    FlagWarnings &operator=(const FlagWarnings &) = delete;
+    FlagWarnings &operator=(FlagWarnings &&)      = delete;
+
     int get_nwarnings() const { return nwarnings; }
 
 protected:
@@ -33,10 +41,12 @@ protected:
 
 private:
     QRegularExpression isWarning;
+    QRegularExpression isURL;
     QTextCharFormat formatWarning;
+    QTextCharFormat formatURL;
     QLabel *summary;
     QTextDocument *document;
-    int nwarnings, nlines;
+    int nwarnings, oldwarnings, nlines, oldlines;
 };
 #endif
 // Local Variables:
