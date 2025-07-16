@@ -1044,6 +1044,40 @@ TEST(Utils, getsyserror)
 #endif
 }
 
+static void BEGIN_CAPTURE_OUTPUT()
+{
+    ::testing::internal::CaptureStdout();
+}
+
+static std::string END_CAPTURE_OUTPUT()
+{
+    return ::testing::internal::GetCapturedStdout();
+}
+
+TEST(Utils, print)
+{
+    BEGIN_CAPTURE_OUTPUT();
+    utils::print("hello, world!\n");
+    auto text = END_CAPTURE_OUTPUT();
+    EXPECT_THAT(text, StrEq("hello, world!\n"));
+
+    BEGIN_CAPTURE_OUTPUT();
+    utils::print(stdout, "hello, world!\n");
+    text = END_CAPTURE_OUTPUT();
+    EXPECT_THAT(text, StrEq("hello, world!\n"));
+
+    const auto world = "world";
+    BEGIN_CAPTURE_OUTPUT();
+    utils::print("hello, {:>20}!\n", world);
+    text = END_CAPTURE_OUTPUT();
+    EXPECT_THAT(text, StrEq("hello,                world!\n"));
+
+    BEGIN_CAPTURE_OUTPUT();
+    utils::print(stdout, "hello, {:<20}!\n", world);
+    text = END_CAPTURE_OUTPUT();
+    EXPECT_THAT(text, StrEq("hello, world               !\n"));
+}
+
 TEST(Utils, potential_file)
 {
     FILE *fp;
