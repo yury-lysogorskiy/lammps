@@ -106,6 +106,50 @@ TEST_F(SetTest, NoBoxNoAtoms)
                  command("compute 1 all property/atom mol"););
 }
 
+TEST_F(SetTest, velocity)
+{
+    atomic_system("atomic", "real");
+    ASSERT_EQ(atom->natoms, 8);
+
+    BEGIN_HIDE_OUTPUT();
+    command("velocity all create 200 123513 loop geom");
+    command("run 0 post no");
+    END_HIDE_OUTPUT();
+    auto *temp = lmp->modify->get_compute_by_id("thermo_temp");
+    EXPECT_DOUBLE_EQ(temp->compute_scalar(), 200.0);
+    BEGIN_HIDE_OUTPUT();
+    command("velocity all scale 300.0");
+    command("run 0 post no");
+    END_HIDE_OUTPUT();
+    EXPECT_DOUBLE_EQ(temp->compute_scalar(), 300.0);
+    BEGIN_HIDE_OUTPUT();
+    command("velocity all set 0.0 0.0 0.0");
+    command("run 0 post no");
+    END_HIDE_OUTPUT();
+    EXPECT_DOUBLE_EQ(temp->compute_scalar(), 0.0);
+    BEGIN_HIDE_OUTPUT();
+    command("velocity all ramp vx 0.01 0.2 x 0.0 2.0");
+    command("run 0 post no");
+    END_HIDE_OUTPUT();
+    EXPECT_DOUBLE_EQ(temp->compute_scalar(), 3238.9377014185811);
+    BEGIN_HIDE_OUTPUT();
+    command("velocity all zero linear");
+    command("run 0 post no");
+    END_HIDE_OUTPUT();
+    EXPECT_DOUBLE_EQ(temp->compute_scalar(), 1033.7682579098041);
+    BEGIN_HIDE_OUTPUT();
+    command("velocity top set -0.01 0.0 0.0 sum yes");
+    command("velocity bottom set 0.01 0.0 0.0 sum yes");
+    command("run 0 post no");
+    END_HIDE_OUTPUT();
+    EXPECT_DOUBLE_EQ(temp->compute_scalar(), 1079.5862416398786);
+    BEGIN_HIDE_OUTPUT();
+    command("velocity all zero angular");
+    command("run 0 post no");
+    END_HIDE_OUTPUT();
+    EXPECT_DOUBLE_EQ(temp->compute_scalar(), 1056.6772497748414);
+}
+
 TEST_F(SetTest, StylesTypes)
 {
     if (!Info::has_package("MOLECULE")) GTEST_SKIP();
