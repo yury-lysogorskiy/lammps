@@ -11,6 +11,7 @@
    See the README file in the top-level LAMMPS directory.
 ------------------------------------------------------------------------- */
 
+#include "atom.h"
 #include "lmptype.h"
 #include "pointers.h"
 #include "tokenizer.h"
@@ -987,6 +988,16 @@ TEST(Utils, boundsbig_case3)
     utils::bounds(FLERR, "3*:2", -10, 5, nlo, nhi, nullptr);
     ASSERT_EQ(nlo, -1);
     ASSERT_EQ(nhi, -1);
+}
+
+TEST(Utils, bounds_typelabel_forward)
+{
+    int nlo, nhi;
+
+    nlo = nhi = -1;
+    utils::bounds_typelabel(FLERR, "2*9", 0, 10, nlo, nhi, nullptr, Atom::ATOM);
+    ASSERT_EQ(nlo, 2);
+    ASSERT_EQ(nhi, 9);
 }
 
 TEST(Utils, parse_grid_id)

@@ -91,6 +91,10 @@ TEST_F(AdvancedUtils, bounds_int_fail)
                  utils::bounds(FLERR, "?", -10, 5, nlo, nhi, error););
     TEST_FAILURE("ERROR: Invalid range string: 3\\*:2 ",
                  utils::bounds(FLERR, "3*:2", -10, 5, nlo, nhi, error););
+    TEST_FAILURE("ERROR: Numeric index 1 is out of bounds \\(5-6\\).*",
+                 utils::bounds(FLERR, "1*4", 5, 6, nlo, nhi, error););
+    TEST_FAILURE("ERROR: Numeric index 4 is out of bounds \\(1-3\\).*",
+                 utils::bounds(FLERR, "1*4", 1, 3, nlo, nhi, error););
 }
 
 TEST_F(AdvancedUtils, bounds_bigint_fail)
@@ -108,6 +112,10 @@ TEST_F(AdvancedUtils, bounds_bigint_fail)
                  utils::bounds(FLERR, "?", -10, 5, nlo, nhi, error););
     TEST_FAILURE("ERROR: Invalid range string: 3\\*:2 ",
                  utils::bounds(FLERR, "3*:2", -10, 5, nlo, nhi, error););
+    TEST_FAILURE("ERROR: Numeric index 1 is out of bounds \\(5-6\\).*",
+                 utils::bounds(FLERR, "1*4", 5, 6, nlo, nhi, error););
+    TEST_FAILURE("ERROR: Numeric index 4 is out of bounds \\(1-3\\).*",
+                 utils::bounds(FLERR, "1*4", 1, 3, nlo, nhi, error););
 }
 
 TEST_F(AdvancedUtils, expand_args)
