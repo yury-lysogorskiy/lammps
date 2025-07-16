@@ -1,6 +1,7 @@
-// unit tests for utils:: functions requiring a LAMMPS
+// unit tests for utils:: functions requiring a LAMMPS instance
 
 #include "error.h"
+#include "info.h"
 #include "input.h"
 #include "lammps.h"
 #include "memory.h"
@@ -12,11 +13,13 @@
 
 #include <string>
 
+using ::testing::StrEq;
+
 // whether to print verbose output (i.e. not capturing LAMMPS screen output).
 bool verbose = false;
 
 namespace LAMMPS_NS {
-class Advanced_utils : public LAMMPSTest {
+class AdvancedUtils : public LAMMPSTest {
 protected:
     Error *error;
 
@@ -47,7 +50,7 @@ protected:
     }
 };
 
-TEST_F(Advanced_utils, missing_cmd_args)
+TEST_F(AdvancedUtils, missing_cmd_args)
 {
     auto output = CAPTURE_OUTPUT([&] {
         utils::missing_cmd_args(FLERR, "dummy", nullptr);
@@ -58,7 +61,7 @@ TEST_F(Advanced_utils, missing_cmd_args)
                  utils::missing_cmd_args(FLERR, "dummy", error););
 };
 
-TEST_F(Advanced_utils, logmesg)
+TEST_F(AdvancedUtils, logmesg)
 {
     auto output = CAPTURE_OUTPUT([&] {
         utils::logmesg(lmp, "test message");
@@ -72,7 +75,7 @@ TEST_F(Advanced_utils, logmesg)
 };
 
 // death tests only. the other cases are tested in the basic utils unit tester
-TEST_F(Advanced_utils, bounds_int_fail)
+TEST_F(AdvancedUtils, bounds_int_fail)
 {
     int nlo, nhi;
     TEST_FAILURE("ERROR: Invalid range string: 1x ",
@@ -89,7 +92,7 @@ TEST_F(Advanced_utils, bounds_int_fail)
                  utils::bounds(FLERR, "3*:2", -10, 5, nlo, nhi, error););
 }
 
-TEST_F(Advanced_utils, bounds_bigint_fail)
+TEST_F(AdvancedUtils, bounds_bigint_fail)
 {
     bigint nlo, nhi;
     TEST_FAILURE("ERROR: Invalid range string: 1x ",
@@ -106,7 +109,7 @@ TEST_F(Advanced_utils, bounds_bigint_fail)
                  utils::bounds(FLERR, "3*:2", -10, 5, nlo, nhi, error););
 }
 
-TEST_F(Advanced_utils, expand_args)
+TEST_F(AdvancedUtils, expand_args)
 {
     atomic_system();
     BEGIN_CAPTURE_OUTPUT();
@@ -243,6 +246,42 @@ TEST_F(Advanced_utils, expand_args)
         delete[] args[i];
     delete[] args;
 }
+
+TEST_F(AdvancedUtils, check_packages_for_style)
+{
+    auto mesg = utils::check_packages_for_style("pair", "unknown", lmp);
+    EXPECT_THAT(mesg, StrEq("Unrecognized pair style 'unknown'"));
+
+    // try styles from multiple packages that are rarely installed in
+    // the hope that one of them triggers the error message about the missing package
+    if (!Info::has_package("ADIOS")) {
+        auto mesg = utils::check_packages_for_style("dump", "atom/adios", lmp);
+        EXPECT_THAT(mesg, StrEq("Unrecognized dump style 'atom/adios' is part of the ADIOS "
+                                "package which is not enabled in this LAMMPS binary.\n"
+                                "For more information see https://docs.lammps.org/err0010"));
+    }
+
+    if (!Info::has_package("SCAFACOS")) {
+        auto mesg = utils::check_packages_for_style("kspace", "scafacos", lmp);
+        EXPECT_THAT(mesg, StrEq("Unrecognized kspace style 'scafacos' is part of the SCAFACOS "
+                                "package which is not enabled in this LAMMPS binary.\n"
+                                "For more information see https://docs.lammps.org/err0010"));
+    }
+
+    // try styles from multiple packages that are commonly installed in
+    // the hope that one of them triggers the error message about the dependency
+    if (Info::has_package("MANYBODY")) {
+        auto mesg = utils::check_packages_for_style("pair", "tersoff", lmp);
+        EXPECT_THAT(mesg, StrEq("Unrecognized pair style 'tersoff' is part of the MANYBODY "
+                                "package, but seems to be missing because of a dependency"));
+    }
+    if (Info::has_package("MOLECULE")) {
+        auto mesg = utils::check_packages_for_style("bond", "harmonic", lmp);
+        EXPECT_THAT(mesg, StrEq("Unrecognized bond style 'harmonic' is part of the MOLECULE "
+                                "package, but seems to be missing because of a dependency"));
+    }
+}
+
 } // namespace LAMMPS_NS
 
 int main(int argc, char **argv)
