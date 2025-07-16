@@ -313,7 +313,7 @@ TEST_F(AdvancedUtils, logical)
         caught = true;
     } catch (std::exception &e) {
         END_HIDE_OUTPUT();
-        GTEST_FAIL() << "Incorrect exception\n";
+        GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
     }
     ASSERT_TRUE(caught);
 
@@ -327,7 +327,7 @@ TEST_F(AdvancedUtils, logical)
         caught = true;
     } catch (std::exception &e) {
         END_HIDE_OUTPUT();
-        GTEST_FAIL() << "Incorrect exception\n";
+        GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
     }
     ASSERT_TRUE(caught);
 };
@@ -351,7 +351,7 @@ TEST_F(AdvancedUtils, numeric)
         caught = true;
     } catch (std::exception &e) {
         END_HIDE_OUTPUT();
-        GTEST_FAIL() << "Incorrect exception\n";
+        GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
     }
     ASSERT_TRUE(caught);
 
@@ -365,7 +365,7 @@ TEST_F(AdvancedUtils, numeric)
         caught = true;
     } catch (std::exception &e) {
         END_HIDE_OUTPUT();
-        GTEST_FAIL() << "Incorrect exception\n";
+        GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
     }
     ASSERT_TRUE(caught);
 };
@@ -389,7 +389,7 @@ TEST_F(AdvancedUtils, inumeric)
         caught = true;
     } catch (std::exception &e) {
         END_HIDE_OUTPUT();
-        GTEST_FAIL() << "Incorrect exception\n";
+        GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
     }
     ASSERT_TRUE(caught);
 
@@ -403,7 +403,7 @@ TEST_F(AdvancedUtils, inumeric)
         caught = true;
     } catch (std::exception &e) {
         END_HIDE_OUTPUT();
-        GTEST_FAIL() << "Incorrect exception\n";
+        GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
     }
     ASSERT_TRUE(caught);
     try {
@@ -416,7 +416,7 @@ TEST_F(AdvancedUtils, inumeric)
         caught = true;
     } catch (std::exception &e) {
         END_HIDE_OUTPUT();
-        GTEST_FAIL() << "Incorrect exception\n";
+        GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
     }
     ASSERT_TRUE(caught);
 
@@ -430,7 +430,7 @@ TEST_F(AdvancedUtils, inumeric)
         caught = true;
     } catch (std::exception &e) {
         END_HIDE_OUTPUT();
-        GTEST_FAIL() << "Incorrect exception\n";
+        GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
     }
     ASSERT_TRUE(caught);
 };
@@ -456,7 +456,7 @@ TEST_F(AdvancedUtils, bnumeric)
         caught = true;
     } catch (std::exception &e) {
         END_HIDE_OUTPUT();
-        GTEST_FAIL() << "Incorrect exception\n";
+        GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
     }
     ASSERT_TRUE(caught);
 
@@ -470,7 +470,7 @@ TEST_F(AdvancedUtils, bnumeric)
         caught = true;
     } catch (std::exception &e) {
         END_HIDE_OUTPUT();
-        GTEST_FAIL() << "Incorrect exception\n";
+        GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
     }
     ASSERT_TRUE(caught);
     try {
@@ -483,7 +483,7 @@ TEST_F(AdvancedUtils, bnumeric)
         caught = true;
     } catch (std::exception &e) {
         END_HIDE_OUTPUT();
-        GTEST_FAIL() << "Incorrect exception\n";
+        GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
     }
     ASSERT_TRUE(caught);
 
@@ -497,7 +497,7 @@ TEST_F(AdvancedUtils, bnumeric)
         caught = true;
     } catch (std::exception &e) {
         END_HIDE_OUTPUT();
-        GTEST_FAIL() << "Incorrect exception\n";
+        GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
     }
     ASSERT_TRUE(caught);
 };
@@ -523,7 +523,7 @@ TEST_F(AdvancedUtils, tnumeric)
             caught = true;
         } catch (std::exception &e) {
             END_HIDE_OUTPUT();
-            GTEST_FAIL() << "Incorrect exception\n";
+            GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
         }
         ASSERT_TRUE(caught);
 
@@ -537,7 +537,7 @@ TEST_F(AdvancedUtils, tnumeric)
             caught = true;
         } catch (std::exception &e) {
             END_HIDE_OUTPUT();
-            GTEST_FAIL() << "Incorrect exception\n";
+            GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
         }
         ASSERT_TRUE(caught);
         try {
@@ -550,7 +550,7 @@ TEST_F(AdvancedUtils, tnumeric)
             caught = true;
         } catch (std::exception &e) {
             END_HIDE_OUTPUT();
-            GTEST_FAIL() << "Incorrect exception\n";
+            GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
         }
         ASSERT_TRUE(caught);
 
@@ -564,7 +564,7 @@ TEST_F(AdvancedUtils, tnumeric)
             caught = true;
         } catch (std::exception &e) {
             END_HIDE_OUTPUT();
-            GTEST_FAIL() << "Incorrect exception\n";
+            GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
         }
         ASSERT_TRUE(caught);
     } else if (sizeof(tagint) == 8) {
@@ -585,7 +585,7 @@ TEST_F(AdvancedUtils, tnumeric)
             caught = true;
         } catch (std::exception &e) {
             END_HIDE_OUTPUT();
-            GTEST_FAIL() << "Incorrect exception\n";
+            GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
         }
         ASSERT_TRUE(caught);
 
@@ -599,7 +599,7 @@ TEST_F(AdvancedUtils, tnumeric)
             caught = true;
         } catch (std::exception &e) {
             END_HIDE_OUTPUT();
-            GTEST_FAIL() << "Incorrect exception\n";
+            GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
         }
         ASSERT_TRUE(caught);
         try {
@@ -612,7 +612,7 @@ TEST_F(AdvancedUtils, tnumeric)
             caught = true;
         } catch (std::exception &e) {
             END_HIDE_OUTPUT();
-            GTEST_FAIL() << "Incorrect exception\n";
+            GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
         }
         ASSERT_TRUE(caught);
 
@@ -626,7 +626,7 @@ TEST_F(AdvancedUtils, tnumeric)
             caught = true;
         } catch (std::exception &e) {
             END_HIDE_OUTPUT();
-            GTEST_FAIL() << "Incorrect exception\n";
+            GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";;
         }
         ASSERT_TRUE(caught);
     }
