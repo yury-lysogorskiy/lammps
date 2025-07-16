@@ -1070,6 +1070,12 @@ bool Info::has_exceptions() {
   return true;
 }
 
+
+/** Return true if a LAMMPS package is enabled in this binary
+ *
+ * \param pkg name of package
+ * \return true if yes, else false
+ */
 bool Info::has_package(const std::string &package_name) {
   for (int i = 0; LAMMPS::installed_packages[i] != nullptr; ++i) {
     if (package_name == LAMMPS::installed_packages[i]) {

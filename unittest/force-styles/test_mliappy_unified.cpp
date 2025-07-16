@@ -117,7 +117,7 @@ TEST(MliapUnified, VersusLJMeltGhost)
 
 TEST(MliapUnified, VersusLJMeltKokkos)
 {
-    if (!LAMMPS::is_installed_pkg("KOKKOS")) GTEST_SKIP();
+    if (!Info::has_package("KOKKOS")) GTEST_SKIP();
     // test either OpenMP or Serial
     if (!Info::has_accelerator_feature("KOKKOS", "api", "serial") &&
         !Info::has_accelerator_feature("KOKKOS", "api", "openmp"))
@@ -168,7 +168,7 @@ TEST(MliapUnified, VersusLJMeltKokkos)
 
 TEST(MliapUnified, VersusLJMeltGhostKokkos)
 {
-    if (!LAMMPS::is_installed_pkg("KOKKOS")) GTEST_SKIP();
+    if (!Info::has_package("KOKKOS")) GTEST_SKIP();
     // test either OpenMP or Serial
     if (!Info::has_accelerator_feature("KOKKOS", "api", "openmp") &&
         !Info::has_accelerator_feature("KOKKOS", "api", "serial"))

@@ -269,7 +269,7 @@ void generate_yaml_file(const char *outfile, const TestConfig &config)
 
 TEST(FixTimestep, plain)
 {
-    if (!LAMMPS::is_installed_pkg("MOLECULE")) GTEST_SKIP();
+    if (!Info::has_package("MOLECULE")) GTEST_SKIP();
     if (test_config.skip_tests.count(test_info_->name())) GTEST_SKIP();
 #if defined(USING_STATIC_LIBS)
     if (test_config.skip_tests.count("static")) GTEST_SKIP();
@@ -580,8 +580,8 @@ TEST(FixTimestep, plain)
 
 TEST(FixTimestep, omp)
 {
-    if (!LAMMPS::is_installed_pkg("OPENMP")) GTEST_SKIP();
-    if (!LAMMPS::is_installed_pkg("MOLECULE")) GTEST_SKIP();
+    if (!Info::has_package("OPENMP")) GTEST_SKIP();
+    if (!Info::has_package("MOLECULE")) GTEST_SKIP();
     if (test_config.skip_tests.count(test_info_->name())) GTEST_SKIP();
 #if defined(USING_STATIC_LIBS)
     if (test_config.skip_tests.count("static")) GTEST_SKIP();
@@ -892,7 +892,7 @@ TEST(FixTimestep, omp)
 
 TEST(FixTimestep, kokkos_omp)
 {
-    if (!LAMMPS::is_installed_pkg("KOKKOS")) GTEST_SKIP();
+    if (!Info::has_package("KOKKOS")) GTEST_SKIP();
     if (test_config.skip_tests.count(test_info_->name())) GTEST_SKIP();
     // test either OpenMP or Serial
     if (!Info::has_accelerator_feature("KOKKOS", "api", "serial") &&

@@ -438,7 +438,7 @@ TEST(BondStyle, plain)
 
 TEST(BondStyle, omp)
 {
-    if (!LAMMPS::is_installed_pkg("OPENMP")) GTEST_SKIP();
+    if (!Info::has_package("OPENMP")) GTEST_SKIP();
     if (test_config.skip_tests.count(test_info_->name())) GTEST_SKIP();
 
     LAMMPS::argv args = {"BondStyle", "-log", "none", "-echo", "screen", "-nocite",
@@ -551,7 +551,7 @@ TEST(BondStyle, omp)
 
 TEST(BondStyle, kokkos_omp)
 {
-    if (!LAMMPS::is_installed_pkg("KOKKOS")) GTEST_SKIP();
+    if (!Info::has_package("KOKKOS")) GTEST_SKIP();
     if (test_config.skip_tests.count(test_info_->name())) GTEST_SKIP();
     // test either OpenMP or Serial
     if (!Info::has_accelerator_feature("KOKKOS", "api", "serial") &&
@@ -678,7 +678,7 @@ TEST(BondStyle, kokkos_omp)
 
 TEST(BondStyle, numdiff)
 {
-    if (!LAMMPS::is_installed_pkg("EXTRA-FIX")) GTEST_SKIP();
+    if (!Info::has_package("EXTRA-FIX")) GTEST_SKIP();
     if (test_config.skip_tests.count(test_info_->name())) GTEST_SKIP();
 
     LAMMPS::argv args = {"BondStyle", "-log", "none", "-echo", "screen", "-nocite"};

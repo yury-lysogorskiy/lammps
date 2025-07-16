@@ -556,7 +556,7 @@ TEST_F(SimpleCommandsTest, CiteMe)
 
 TEST_F(SimpleCommandsTest, Geturl)
 {
-    if (!LAMMPS::is_installed_pkg("EXTRA-COMMAND")) GTEST_SKIP();
+    if (!Info::has_package("EXTRA-COMMAND")) GTEST_SKIP();
     platform::unlink("index.html");
     platform::unlink("myindex.html");
     if (Info::has_curl_support()) {
