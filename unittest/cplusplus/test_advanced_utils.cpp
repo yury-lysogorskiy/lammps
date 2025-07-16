@@ -11,6 +11,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+#include <cmath>
 #include <string>
 
 using ::testing::StrEq;
@@ -281,6 +282,347 @@ TEST_F(AdvancedUtils, check_packages_for_style)
                                 "package, but seems to be missing because of a dependency"));
     }
 }
+
+TEST_F(AdvancedUtils, logical)
+{
+    bool caught = false;
+    EXPECT_EQ(utils::logical(FLERR, "yes", false, lmp), true);
+    EXPECT_EQ(utils::logical(FLERR, "no", false, lmp), false);
+    EXPECT_EQ(utils::logical(FLERR, "on", false, lmp), true);
+    EXPECT_EQ(utils::logical(FLERR, "off", false, lmp), false);
+    EXPECT_EQ(utils::logical(FLERR, "1", false, lmp), true);
+    EXPECT_EQ(utils::logical(FLERR, "0", false, lmp), false);
+    EXPECT_EQ(utils::logical(FLERR, "true", false, lmp), true);
+    EXPECT_EQ(utils::logical(FLERR, "false", false, lmp), false);
+
+    try {
+        BEGIN_HIDE_OUTPUT();
+        utils::logical(FLERR, "YES", true, lmp);
+    } catch (LAMMPSAbortException &e) {
+        END_HIDE_OUTPUT();
+        EXPECT_THAT(e.what(), ContainsRegex("ERROR on proc 0: Expected boolean parameter "
+                                            "instead of 'YES' in input script or data file "));
+        caught = true;
+    } catch (std::exception &e) {
+        END_HIDE_OUTPUT();
+        GTEST_FAIL() << "Incorrect exception\n";
+    }
+    ASSERT_TRUE(caught);
+
+    try {
+        BEGIN_HIDE_OUTPUT();
+        utils::logical(FLERR, "1.0e-2", false, lmp);
+    } catch (LAMMPSException &e) {
+        END_HIDE_OUTPUT();
+        EXPECT_THAT(e.what(), ContainsRegex("ERROR: Expected boolean parameter instead "
+                                            "of '1.0e-2' in input script or data file "));
+        caught = true;
+    } catch (std::exception &e) {
+        END_HIDE_OUTPUT();
+        GTEST_FAIL() << "Incorrect exception\n";
+    }
+    ASSERT_TRUE(caught);
+};
+
+TEST_F(AdvancedUtils, numeric)
+{
+    bool caught = false;
+    EXPECT_DOUBLE_EQ(utils::numeric(FLERR, "0.0", false, lmp), 0.0);
+    EXPECT_DOUBLE_EQ(utils::numeric(FLERR, "-1", false, lmp), -1.0);
+    EXPECT_DOUBLE_EQ(utils::numeric(FLERR, "2.1e-1", false, lmp), 0.21);
+    EXPECT_DOUBLE_EQ(utils::numeric(FLERR, "2.23e-308", false, lmp), 2.23e-308);
+    EXPECT_DOUBLE_EQ(utils::numeric(FLERR, "1.79e308", false, lmp), 1.79e308);
+
+    try {
+        BEGIN_HIDE_OUTPUT();
+        utils::numeric(FLERR, "text", true, lmp);
+    } catch (LAMMPSAbortException &e) {
+        END_HIDE_OUTPUT();
+        EXPECT_THAT(e.what(), ContainsRegex("ERROR on proc 0: Expected floating point parameter "
+                                            "instead of 'text' in input script or data file "));
+        caught = true;
+    } catch (std::exception &e) {
+        END_HIDE_OUTPUT();
+        GTEST_FAIL() << "Incorrect exception\n";
+    }
+    ASSERT_TRUE(caught);
+
+    try {
+        BEGIN_HIDE_OUTPUT();
+        utils::numeric(FLERR, "1.0d-2", false, lmp);
+    } catch (LAMMPSException &e) {
+        END_HIDE_OUTPUT();
+        EXPECT_THAT(e.what(), ContainsRegex("ERROR: Expected floating point parameter instead "
+                                            "of '1.0d-2' in input script or data file "));
+        caught = true;
+    } catch (std::exception &e) {
+        END_HIDE_OUTPUT();
+        GTEST_FAIL() << "Incorrect exception\n";
+    }
+    ASSERT_TRUE(caught);
+};
+
+TEST_F(AdvancedUtils, inumeric)
+{
+    bool caught = false;
+    EXPECT_EQ(utils::inumeric(FLERR, "0", false, lmp), 0);
+    EXPECT_EQ(utils::inumeric(FLERR, "-1", false, lmp), -1);
+    EXPECT_EQ(utils::inumeric(FLERR, "+11", false, lmp), 11);
+    EXPECT_EQ(utils::inumeric(FLERR, "2147483647", false, lmp), 2147483647);
+    EXPECT_EQ(utils::inumeric(FLERR, "-2147483648", false, lmp), -2147483648);
+
+    try {
+        BEGIN_HIDE_OUTPUT();
+        utils::inumeric(FLERR, "2147483648", true, lmp);
+    } catch (LAMMPSAbortException &e) {
+        END_HIDE_OUTPUT();
+        EXPECT_THAT(e.what(), ContainsRegex("ERROR on proc 0: Integer 2147483648 in input "
+                                            "script or data file is out of range"));
+        caught = true;
+    } catch (std::exception &e) {
+        END_HIDE_OUTPUT();
+        GTEST_FAIL() << "Incorrect exception\n";
+    }
+    ASSERT_TRUE(caught);
+
+    try {
+        BEGIN_HIDE_OUTPUT();
+        utils::inumeric(FLERR, "-2147483649", false, lmp);
+    } catch (LAMMPSException &e) {
+        END_HIDE_OUTPUT();
+        EXPECT_THAT(e.what(), ContainsRegex("Integer -2147483649 in input script "
+                                            "or data file is out of range"));
+        caught = true;
+    } catch (std::exception &e) {
+        END_HIDE_OUTPUT();
+        GTEST_FAIL() << "Incorrect exception\n";
+    }
+    ASSERT_TRUE(caught);
+    try {
+        BEGIN_HIDE_OUTPUT();
+        utils::inumeric(FLERR, "--10", true, lmp);
+    } catch (LAMMPSAbortException &e) {
+        END_HIDE_OUTPUT();
+        EXPECT_THAT(e.what(), ContainsRegex("ERROR on proc 0: Expected integer parameter "
+                                            "instead of '--10' in input script or data file "));
+        caught = true;
+    } catch (std::exception &e) {
+        END_HIDE_OUTPUT();
+        GTEST_FAIL() << "Incorrect exception\n";
+    }
+    ASSERT_TRUE(caught);
+
+    try {
+        BEGIN_HIDE_OUTPUT();
+        utils::inumeric(FLERR, "1.0", false, lmp);
+    } catch (LAMMPSException &e) {
+        END_HIDE_OUTPUT();
+        EXPECT_THAT(e.what(), ContainsRegex("ERROR: Expected integer parameter instead "
+                                            "of '1.0' in input script or data file "));
+        caught = true;
+    } catch (std::exception &e) {
+        END_HIDE_OUTPUT();
+        GTEST_FAIL() << "Incorrect exception\n";
+    }
+    ASSERT_TRUE(caught);
+};
+
+// bigint is *always* 64-bit
+
+TEST_F(AdvancedUtils, bnumeric)
+{
+    bool caught = false;
+    EXPECT_EQ(utils::bnumeric(FLERR, "0", false, lmp), 0);
+    EXPECT_EQ(utils::bnumeric(FLERR, "-1", false, lmp), -1);
+    EXPECT_EQ(utils::bnumeric(FLERR, "+11", false, lmp), 11);
+    EXPECT_EQ(utils::bnumeric(FLERR, "2147483647000", false, lmp), 2147483647000);
+    EXPECT_EQ(utils::bnumeric(FLERR, "-2147483648000", false, lmp), -2147483648000);
+
+    try {
+        BEGIN_HIDE_OUTPUT();
+        utils::bnumeric(FLERR, "9223372036854775808", true, lmp);
+    } catch (LAMMPSAbortException &e) {
+        END_HIDE_OUTPUT();
+        EXPECT_THAT(e.what(), ContainsRegex("ERROR on proc 0: Integer 9223372036854775808 in "
+                                            "input script or data file is out of range"));
+        caught = true;
+    } catch (std::exception &e) {
+        END_HIDE_OUTPUT();
+        GTEST_FAIL() << "Incorrect exception\n";
+    }
+    ASSERT_TRUE(caught);
+
+    try {
+        BEGIN_HIDE_OUTPUT();
+        utils::bnumeric(FLERR, "-9223372036854775809", false, lmp);
+    } catch (LAMMPSException &e) {
+        END_HIDE_OUTPUT();
+        EXPECT_THAT(e.what(), ContainsRegex("Integer -9223372036854775809 in input script "
+                                            "or data file is out of range"));
+        caught = true;
+    } catch (std::exception &e) {
+        END_HIDE_OUTPUT();
+        GTEST_FAIL() << "Incorrect exception\n";
+    }
+    ASSERT_TRUE(caught);
+    try {
+        BEGIN_HIDE_OUTPUT();
+        utils::bnumeric(FLERR, "text", true, lmp);
+    } catch (LAMMPSAbortException &e) {
+        END_HIDE_OUTPUT();
+        EXPECT_THAT(e.what(), ContainsRegex("ERROR on proc 0: Expected integer parameter "
+                                            "instead of 'text' in input script or data file "));
+        caught = true;
+    } catch (std::exception &e) {
+        END_HIDE_OUTPUT();
+        GTEST_FAIL() << "Incorrect exception\n";
+    }
+    ASSERT_TRUE(caught);
+
+    try {
+        BEGIN_HIDE_OUTPUT();
+        utils::bnumeric(FLERR, "1.0", false, lmp);
+    } catch (LAMMPSException &e) {
+        END_HIDE_OUTPUT();
+        EXPECT_THAT(e.what(), ContainsRegex("ERROR: Expected integer parameter instead "
+                                            "of '1.0' in input script or data file "));
+        caught = true;
+    } catch (std::exception &e) {
+        END_HIDE_OUTPUT();
+        GTEST_FAIL() << "Incorrect exception\n";
+    }
+    ASSERT_TRUE(caught);
+};
+
+TEST_F(AdvancedUtils, tnumeric)
+{
+    if (sizeof(tagint) == 4) {
+
+        bool caught = false;
+        EXPECT_EQ(utils::tnumeric(FLERR, "0", false, lmp), 0);
+        EXPECT_EQ(utils::tnumeric(FLERR, "-1", false, lmp), -1);
+        EXPECT_EQ(utils::tnumeric(FLERR, "+11", false, lmp), 11);
+        EXPECT_EQ(utils::tnumeric(FLERR, "2147483647", false, lmp), 2147483647);
+        EXPECT_EQ(utils::tnumeric(FLERR, "-2147483648", false, lmp), -2147483648);
+
+        try {
+            BEGIN_HIDE_OUTPUT();
+            utils::tnumeric(FLERR, "2147483648", true, lmp);
+        } catch (LAMMPSAbortException &e) {
+            END_HIDE_OUTPUT();
+            EXPECT_THAT(e.what(), ContainsRegex("ERROR on proc 0: Integer 2147483648 in input "
+                                                "script or data file is out of range"));
+            caught = true;
+        } catch (std::exception &e) {
+            END_HIDE_OUTPUT();
+            GTEST_FAIL() << "Incorrect exception\n";
+        }
+        ASSERT_TRUE(caught);
+
+        try {
+            BEGIN_HIDE_OUTPUT();
+            utils::tnumeric(FLERR, "-2147483649", false, lmp);
+        } catch (LAMMPSException &e) {
+            END_HIDE_OUTPUT();
+            EXPECT_THAT(e.what(), ContainsRegex("Integer -2147483649 in input script "
+                                                "or data file is out of range"));
+            caught = true;
+        } catch (std::exception &e) {
+            END_HIDE_OUTPUT();
+            GTEST_FAIL() << "Incorrect exception\n";
+        }
+        ASSERT_TRUE(caught);
+        try {
+            BEGIN_HIDE_OUTPUT();
+            utils::tnumeric(FLERR, "--10", true, lmp);
+        } catch (LAMMPSAbortException &e) {
+            END_HIDE_OUTPUT();
+            EXPECT_THAT(e.what(), ContainsRegex("ERROR on proc 0: Expected integer parameter "
+                                                "instead of '--10' in input script or data file "));
+            caught = true;
+        } catch (std::exception &e) {
+            END_HIDE_OUTPUT();
+            GTEST_FAIL() << "Incorrect exception\n";
+        }
+        ASSERT_TRUE(caught);
+
+        try {
+            BEGIN_HIDE_OUTPUT();
+            utils::tnumeric(FLERR, "1.0", false, lmp);
+        } catch (LAMMPSException &e) {
+            END_HIDE_OUTPUT();
+            EXPECT_THAT(e.what(), ContainsRegex("ERROR: Expected integer parameter instead "
+                                                "of '1.0' in input script or data file "));
+            caught = true;
+        } catch (std::exception &e) {
+            END_HIDE_OUTPUT();
+            GTEST_FAIL() << "Incorrect exception\n";
+        }
+        ASSERT_TRUE(caught);
+    } else if (sizeof(tagint) == 8) {
+        bool caught = false;
+        EXPECT_EQ(utils::tnumeric(FLERR, "0", false, lmp), 0);
+        EXPECT_EQ(utils::tnumeric(FLERR, "-1", false, lmp), -1);
+        EXPECT_EQ(utils::tnumeric(FLERR, "+11", false, lmp), 11);
+        EXPECT_EQ(utils::tnumeric(FLERR, "2147483647000", false, lmp), 2147483647000);
+        EXPECT_EQ(utils::tnumeric(FLERR, "-2147483648000", false, lmp), -2147483648000);
+
+        try {
+            BEGIN_HIDE_OUTPUT();
+            utils::tnumeric(FLERR, "9223372036854775808", true, lmp);
+        } catch (LAMMPSAbortException &e) {
+            END_HIDE_OUTPUT();
+            EXPECT_THAT(e.what(), ContainsRegex("ERROR on proc 0: Integer 9223372036854775808 in "
+                                                "input script or data file is out of range"));
+            caught = true;
+        } catch (std::exception &e) {
+            END_HIDE_OUTPUT();
+            GTEST_FAIL() << "Incorrect exception\n";
+        }
+        ASSERT_TRUE(caught);
+
+        try {
+            BEGIN_HIDE_OUTPUT();
+            utils::tnumeric(FLERR, "-9223372036854775809", false, lmp);
+        } catch (LAMMPSException &e) {
+            END_HIDE_OUTPUT();
+            EXPECT_THAT(e.what(), ContainsRegex("Integer -9223372036854775809 in input script "
+                                                "or data file is out of range"));
+            caught = true;
+        } catch (std::exception &e) {
+            END_HIDE_OUTPUT();
+            GTEST_FAIL() << "Incorrect exception\n";
+        }
+        ASSERT_TRUE(caught);
+        try {
+            BEGIN_HIDE_OUTPUT();
+            utils::tnumeric(FLERR, "text", true, lmp);
+        } catch (LAMMPSAbortException &e) {
+            END_HIDE_OUTPUT();
+            EXPECT_THAT(e.what(), ContainsRegex("ERROR on proc 0: Expected integer parameter "
+                                                "instead of 'text' in input script or data file "));
+            caught = true;
+        } catch (std::exception &e) {
+            END_HIDE_OUTPUT();
+            GTEST_FAIL() << "Incorrect exception\n";
+        }
+        ASSERT_TRUE(caught);
+
+        try {
+            BEGIN_HIDE_OUTPUT();
+            utils::tnumeric(FLERR, "1.0", false, lmp);
+        } catch (LAMMPSException &e) {
+            END_HIDE_OUTPUT();
+            EXPECT_THAT(e.what(), ContainsRegex("ERROR: Expected integer parameter instead "
+                                                "of '1.0' in input script or data file "));
+            caught = true;
+        } catch (std::exception &e) {
+            END_HIDE_OUTPUT();
+            GTEST_FAIL() << "Incorrect exception\n";
+        }
+        ASSERT_TRUE(caught);
+    }
+};
 
 } // namespace LAMMPS_NS
 
