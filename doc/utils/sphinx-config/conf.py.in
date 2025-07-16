@@ -58,7 +58,8 @@ extensions = [
     'table_from_list',
     'tab_or_note',
     'breathe',
-    'sphinx_design'
+    'sphinx_design',
+    'sphinx_sitemap'
 ]
 
 images_config = {
@@ -529,6 +530,11 @@ breathe_domain_by_extension = { 'h'   : 'cpp',
                                 'cpp' : 'cpp',
                                 'c'   : 'c',
                                 }
+
+# sitemap configuration
+
+sitemap_url_scheme = "{link}"
+sitemap_filename = "sitemap.xml"
 
 # allows showing multiple versions
 try:
