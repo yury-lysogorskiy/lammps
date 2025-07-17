@@ -625,7 +625,7 @@ void MEAM::get_tavref(double* t11av, double* t21av, double* t31av, double* t12av
                       double t11, double t21, double t31, double t12, double t22, double t32, double r, int a,
                       int b, MEAM::lattice_t latt)
 {
-  double rhoa01, rhoa02, a1, a2, rho01 /*,rho02*/;
+  double rhoa01, rhoa02, a1, a2;
 
   //     For ialloy = 2, no averaging is done
   if (ialloy == 2) {
@@ -663,13 +663,20 @@ void MEAM::get_tavref(double* t11av, double* t21av, double* t31av, double* t12av
       rhoa01 = rho0_meam[a] * MathSpecial::fm_exp(-beta0_meam[a] * a1);
       rhoa02 = rho0_meam[b] * MathSpecial::fm_exp(-beta0_meam[b] * a2);
       if (latt == L12) {
-        rho01 = 8 * rhoa01 + 4 * rhoa02;
-        *t11av = (8 * t11 * rhoa01 + 4 * t12 * rhoa02) / rho01;
+        double rho01 = 8 * rhoa01 + 4 * rhoa02;
         *t12av = t11;
-        *t21av = (8 * t21 * rhoa01 + 4 * t22 * rhoa02) / rho01;
         *t22av = t21;
-        *t31av = (8 * t31 * rhoa01 + 4 * t32 * rhoa02) / rho01;
         *t32av = t31;
+        if (rho01 > 0.0) {
+          *t11av = (8 * t11 * rhoa01 + 4 * t12 * rhoa02) / rho01;
+          *t21av = (8 * t21 * rhoa01 + 4 * t22 * rhoa02) / rho01;
+          *t31av = (8 * t31 * rhoa01 + 4 * t32 * rhoa02) / rho01;
+        } else {
+          // limit for rhoa01 and rhoa02 -> 0.0. Should not happen.
+          *t11av = (2.0 * t11 + t12) / 3.0;
+          *t21av = (2.0 * t21 + t22) / 3.0;
+          *t31av = (2.0 * t31 + t32) / 3.0;
+        }
       } else {
         //      call error('Lattice not defined in get_tavref.')
       }

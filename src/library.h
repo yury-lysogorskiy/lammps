@@ -330,7 +330,8 @@ int lammps_get_last_error_message(void *handle, char *buffer, int buf_size);
 int lammps_set_show_error(void *handle, const int flag);
 
 int lammps_python_api_version();
-// NOLINTBEGIN
+
+// NOLINTEND
 
 #ifdef __cplusplus
 }

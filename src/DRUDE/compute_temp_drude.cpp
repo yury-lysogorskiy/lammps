@@ -103,7 +103,7 @@ void ComputeTempDrude::dof_compute()
   dof_drude_loc *= dim;
   MPI_Allreduce(&dof_core_loc, &dof_core, 1, MPI_LMP_BIGINT, MPI_SUM, world);
   MPI_Allreduce(&dof_drude_loc, &dof_drude, 1, MPI_LMP_BIGINT, MPI_SUM, world);
-  dof_core -= fix_dof;
+  dof_core -= fix_dof; // NOLINT
   vector[2] = dof_core;
   vector[3] = dof_drude;
 }

@@ -23,13 +23,13 @@ FixStyle(reaxff/species,FixReaxFFSpecies);
 
 #include "fix.h"
 
-#define BUFLEN 1000
-
 namespace LAMMPS_NS {
 
+// NOLINTBEGIN
 typedef struct {
   double x, y, z;
 } AtomCoord;
+// NOLINTEND
 
 class FixReaxFFSpecies : public Fix {
  public:

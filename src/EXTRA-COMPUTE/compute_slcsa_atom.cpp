@@ -357,7 +357,7 @@ void ComputeSLCSAAtom::compute_peratom()
           classification[i][j] = sqrt(prodleft);
         }
         // 6th step : Sanity check
-        int locclass = classification[i][nclasses];
+        int locclass = classification[i][nclasses]; // NOLINT
 
         if (classification[i][locclass] > maha_thresholds[locclass]) {
           classification[i][nclasses] = -1.0;

@@ -814,7 +814,8 @@ void MLIAP_SO3::spectrum(int nlocal, int *numneighs, int *jelems, double *wjelem
   bigint totaln = 0;
   bigint totali;
   double Ylm_r, Ylm_i;
-  int weight, neighbor;
+  int neighbor;
+  double weight;
   double x, y, z, r;
   double r_int;
   int twolmax = 2 * (lmax + 1);
@@ -909,8 +910,8 @@ void MLIAP_SO3::spectrum(int nlocal, int *numneighs, int *jelems, double *wjelem
 
       totali = (bigint) nmax * m_numYlms;
       for (bigint tn = 0; tn < totali; tn++) {
-        m_clist_r[tn] = m_clist_r[tn] * double(weight);
-        m_clist_i[tn] = m_clist_i[tn] * double(weight);
+        m_clist_r[tn] = m_clist_r[tn] * weight;
+        m_clist_i[tn] = m_clist_i[tn] * weight;
       }
 
       for (bigint tn = 0; tn < totali; tn++) {
@@ -946,7 +947,8 @@ void MLIAP_SO3::spectrum_dxdr(int nlocal, int *numneighs, int *jelems, double *w
   int findex;
   bigint gindex;
 
-  int numps, weight, neighbor;
+  int numps, neighbor;
+  double weight;
 
   double x, y, z, r;
 
@@ -1044,8 +1046,8 @@ void MLIAP_SO3::spectrum_dxdr(int nlocal, int *numneighs, int *jelems, double *w
 
       totali = (bigint) nmax * m_numYlms;
       for (bigint tn = 0; tn < totali; tn++) {
-        m_clist_r[tn] = m_clist_r[tn] * double(weight);
-        m_clist_i[tn] = m_clist_i[tn] * double(weight);
+        m_clist_r[tn] = m_clist_r[tn] * weight;
+        m_clist_i[tn] = m_clist_i[tn] * weight;
       }
 
       for (bigint tn = 0; tn < totali; tn++) {
@@ -1211,8 +1213,8 @@ void MLIAP_SO3::spectrum_dxdr(int nlocal, int *numneighs, int *jelems, double *w
 
       totali = (bigint) nmax * m_numYlms * 3;
       for (bigint tn = 0; tn < totali; tn++) {
-        m_dclist_r[tn] = m_dclist_r[tn] * double(weight);
-        m_dclist_i[tn] = m_dclist_i[tn] * double(weight);
+        m_dclist_r[tn] = m_dclist_r[tn] * weight;
+        m_dclist_i[tn] = m_dclist_i[tn] * weight;
       }
 
       totali = (bigint) numps * 3;

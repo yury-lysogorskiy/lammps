@@ -17,7 +17,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include "ptm_graph_data.h"
 
 namespace ptm {
-
+// NOLINTBEGIN
 typedef struct {
   int type;
   int num_nbrs;
@@ -206,6 +206,7 @@ const refdata_t structure_graphene = {
     mapping_graphene_conventional,    //.mapping_conventional
     template_indices_graphene,        //.template_indices
 };
+// NOLINTEND
 }    // namespace ptm
 
 #ifdef __cplusplus

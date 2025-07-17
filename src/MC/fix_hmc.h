@@ -25,6 +25,11 @@ FixStyle(hmc,FixHMC)
 
 namespace LAMMPS_NS {
 
+// forward declarations
+class Compute;
+class FixRigidSmall;
+class RanPark;
+
 class FixHMC : public Fix {
  public:
   FixHMC(class LAMMPS *, int, char **);
@@ -52,15 +57,15 @@ class FixHMC : public Fix {
   int first_init_complete, first_setup_complete;
 
   char *id_rigid;
-  class FixRigidSmall *fix_rigid;
+  FixRigidSmall *fix_rigid;
 
   int nattempts, naccepts;
   double KT, mbeta;
   double PE, KE;
   double DeltaPE, DeltaKE;
 
-  class RanPark *random;
-  class RanPark *random_equal;
+  RanPark *random;
+  RanPark *random_equal;
 
   int ne;
   int neg;
@@ -71,19 +76,17 @@ class FixHMC : public Fix {
   double **vglobal;
   double ***vglobalptr;
 
-  class Compute *pe;
-  class Compute *ke;
-  class Compute *peatom;
-  class Compute *press;
-  class Compute *pressatom;
+  Compute *pe;
+  Compute *ke;
+  Compute *peatom;
+  Compute *press;
+  Compute *pressatom;
 
   int peatom_flag;
   int press_flag;
   int pressatom_flag;
 
-  int comm_flag;
   int nvalues;
-  int ncommrev;
 };
 
 }    // namespace LAMMPS_NS

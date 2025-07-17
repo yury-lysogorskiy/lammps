@@ -58,7 +58,8 @@ extensions = [
     'table_from_list',
     'tab_or_note',
     'breathe',
-    'sphinx_design'
+    'sphinx_design',
+    'sphinx_sitemap'
 ]
 
 images_config = {
@@ -218,7 +219,7 @@ html_css_files = ['css/lammps.css',]
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
 # directly to the root of the documentation.
-#html_extra_path = []
+html_extra_path = ['_extra',]
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
@@ -529,6 +530,11 @@ breathe_domain_by_extension = { 'h'   : 'cpp',
                                 'cpp' : 'cpp',
                                 'c'   : 'c',
                                 }
+
+# sitemap configuration
+
+sitemap_url_scheme = "{link}"
+sitemap_filename = "sitemap.xml"
 
 # allows showing multiple versions
 try:

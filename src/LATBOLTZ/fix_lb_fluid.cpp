@@ -1025,12 +1025,13 @@ void FixLbFluid::initializeLB()
 {
   for (int i = 0; i < subNbx + 3; i++) {
 
+    // NOLINTBEGIN
     int ix;
     if (i == subNbx + 2)
       ix = round(((domain->sublo[0] - domain->boxlo[0]) / dx_lb)) - 2;
     else
       ix = round(((domain->sublo[0] - domain->boxlo[0]) / dx_lb)) + (i - 1);
-
+    // NOLINTEND
     for (int j = 0; j < subNby + 3; j++)
       for (int k = 0; k < subNbz + 3; k++) {
 
@@ -1040,12 +1041,13 @@ void FixLbFluid::initializeLB()
         else
           density_lb[i][j][k] = densityinit;
 
+        // NOLINTBEGIN
         int iz;
         if (k == subNbz + 2)
           iz = round(((domain->sublo[2] - domain->boxlo[2]) / dx_lb)) - 2;
         else
           iz = round(((domain->sublo[2] - domain->boxlo[2]) / dx_lb)) + (k - 1);
-
+        // NOLINTEND
         u_lb[i][j][k][0] = 0.0;
         if (lin_init)
           u_lb[i][j][k][1] = vwbt +

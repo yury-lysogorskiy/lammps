@@ -34,7 +34,6 @@ class FixAveTime : public Fix {
   void init() override;
   void setup(int) override;
   void end_of_step() override;
-  int modify_param(int, char **) override;
   double compute_scalar() override;
   double compute_vector(int) override;
   double compute_array(int, int) override;
@@ -72,8 +71,6 @@ class FixAveTime : public Fix {
   char *format;
   char *title1, *title2, *title3;
   bigint filepos;
-
-  std::map<std::string, int> key2col;
 
   int norm, iwindow, window_limit;
   double *vector;

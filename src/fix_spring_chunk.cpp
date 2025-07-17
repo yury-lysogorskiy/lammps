@@ -244,7 +244,7 @@ void FixSpringChunk::write_restart(FILE *fp)
     // size in bytes of doubles data to follow in restart.
     // first of data block is the number of chunks (for sanity check), then the COMs
     int size = (3*nchunk + 1) * sizeof(double);
-    double n = (double) nchunk;
+    auto n = (double) nchunk;
     fwrite(&size,sizeof(int),1,fp);
     fwrite(&n,sizeof(double),1,fp);
     fwrite(&com0[0][0],3*sizeof(double),nchunk,fp);

@@ -199,12 +199,12 @@ void Region2VMD::command(int narg, char **arg)
 
     if (thisarg == "color") {
       color = arg[iarg];
-      if (const auto &search = vmdcolors.find(color); search == vmdcolors.end())
+      if (vmdcolors.find(color) == vmdcolors.end())
         error->all(FLERR, iarg, "Color {} is not a known VMD color", color);
 
     } else if (thisarg == "material") {
       material = arg[iarg];
-      if (const auto &search = vmdmaterials.find(material); search == vmdmaterials.end())
+      if (vmdmaterials.find(material) == vmdmaterials.end())
         error->all(FLERR, iarg, "Material {} is not a known VMD material", material);
 
     } else if (thisarg == "command") {

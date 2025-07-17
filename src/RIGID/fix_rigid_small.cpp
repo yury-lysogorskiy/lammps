@@ -2772,7 +2772,7 @@ void FixRigidSmall::resample_momenta(int groupbit, int mom_flag, class RanPark *
     MathExtra::matvec(b->ex_space, b->ey_space, b->ez_space, wbody, b->omega);
   }
 
-  if (mom_flag) {
+  if (mom_flag && (total_mass > 0.0)) {
     for (int j = 0; j < 3; j++) vcm[j] /= total_mass;
     for (int ibody = 0; ibody < nlocal; ibody++) {
       if (mask[b->ilocal] & groupbit) {
