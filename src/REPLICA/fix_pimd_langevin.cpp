@@ -44,6 +44,7 @@
 
 #include <cmath>
 #include <cstring>
+#include <map>
 
 using namespace LAMMPS_NS;
 using namespace FixConst;
@@ -53,12 +54,14 @@ using MathConst::MY_SQRT2;
 using MathConst::THIRD;
 using MathSpecial::powint;
 
-static std::map<int, std::string> Barostats{{FixPIMDLangevin::MTTK, "MTTK"},
-                                            {FixPIMDLangevin::BZP, "BZP"}};
-static std::map<int, std::string> Ensembles{{FixPIMDLangevin::NVE, "NVE"},
-                                            {FixPIMDLangevin::NVT, "NVT"},
-                                            {FixPIMDLangevin::NPH, "NPH"},
-                                            {FixPIMDLangevin::NPT, "NPT"}};
+namespace {
+std::map<int, std::string> Barostats{{FixPIMDLangevin::MTTK, "MTTK"},
+                                     {FixPIMDLangevin::BZP, "BZP"}};
+std::map<int, std::string> Ensembles{{FixPIMDLangevin::NVE, "NVE"},
+                                     {FixPIMDLangevin::NVT, "NVT"},
+                                     {FixPIMDLangevin::NPH, "NPH"},
+                                     {FixPIMDLangevin::NPT, "NPT"}};
+}    // namespace
 
 /* ---------------------------------------------------------------------- */
 

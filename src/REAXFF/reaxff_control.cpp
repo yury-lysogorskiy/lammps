@@ -28,7 +28,6 @@
 #include "reaxff_api.h"
 
 #include "error.h"
-#include "utils.h"
 #include "text_file_reader.h"
 
 #include <exception>

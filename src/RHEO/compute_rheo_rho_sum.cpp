@@ -28,6 +28,8 @@
 #include "neigh_request.h"
 #include "neighbor.h"
 
+#include <cmath>
+
 using namespace LAMMPS_NS;
 
 /* ---------------------------------------------------------------------- */

@@ -35,7 +35,6 @@
 #include "improper.h"
 #include "input.h"
 #include "json.h"
-#include "lmpfftsettings.h"
 #include "modify.h"
 #include "neighbor.h"
 #include "output.h"

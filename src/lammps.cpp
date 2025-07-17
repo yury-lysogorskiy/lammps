@@ -49,7 +49,6 @@
 #include "neighbor.h"
 #include "output.h"
 #include "suffix.h"
-#include "timer.h"
 #include "universe.h"
 #include "update.h"
 #include "variable.h"

@@ -32,10 +32,11 @@
 #include "random_mars.h"
 #include "update.h"
 
+#include <algorithm>
 #include <cfloat>
 #include <cmath>
 #include <cstring>
-#include <vector>
+#include <utility>
 
 #include "latboltz_const.h"
 

@@ -36,6 +36,7 @@
 #include <cstring>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 
 using namespace LAMMPS_NS;
 using namespace FixConst;

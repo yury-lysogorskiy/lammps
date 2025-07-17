@@ -15,7 +15,6 @@
 #include "error.h"
 
 #include "accelerator_kokkos.h"
-#include "input.h"
 #include "output.h"
 #include "universe.h"
 #include "update.h"

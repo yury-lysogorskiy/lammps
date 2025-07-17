@@ -27,7 +27,6 @@
 #include "neigh_list.h"
 #include "neighbor.h"
 #include "suffix.h"
-#include "update.h"
 
 #include <cmath>
 

@@ -24,7 +24,6 @@
 #include "error.h"
 #include "memory.h"
 #include "modify.h"
-#include "neigh_list.h"
 #include "potential_file_reader.h"
 #include "update.h"
 

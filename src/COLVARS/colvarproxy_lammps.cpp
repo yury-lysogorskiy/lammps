@@ -13,9 +13,7 @@
 #include "domain.h"
 #include "error.h"
 #include "force.h"
-#include "lammps.h"             // includes <cstdio>, <mpi.h>, <string>, <vector>
 #include "update.h"
-#include "utils.h"
 
 #include "colvarmodule.h"
 #include "colvarproxy.h"

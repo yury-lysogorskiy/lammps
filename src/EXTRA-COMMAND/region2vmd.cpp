@@ -16,12 +16,10 @@
 
 #include "region2vmd.h"
 
-#include "atom.h"
 #include "comm.h"
 #include "domain.h"
 #include "error.h"
 #include "math_const.h"
-#include "math_extra.h"
 #include "region.h"
 #include "safe_pointers.h"
 

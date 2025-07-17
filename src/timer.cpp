@@ -21,7 +21,6 @@
 #include "tokenizer.h"
 
 #include <array>
-#include <cstring>
 #include <ctime>
 
 using namespace LAMMPS_NS;

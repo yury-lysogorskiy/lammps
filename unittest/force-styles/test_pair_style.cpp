@@ -15,9 +15,7 @@
 
 #include "error_stats.h"
 #include "test_config.h"
-#include "test_config_reader.h"
 #include "test_main.h"
-#include "yaml_reader.h"
 #include "yaml_writer.h"
 
 #include "gmock/gmock.h"
@@ -26,28 +24,18 @@
 #include "atom.h"
 #include "compute.h"
 #include "domain.h"
-#include "exceptions.h"
 #include "force.h"
 #include "info.h"
 #include "input.h"
-#include "kspace.h"
-#include "lammps.h"
 #include "modify.h"
 #include "pair.h"
-#include "platform.h"
-#include "universe.h"
-#include "utils.h"
 
-#include <cctype>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <mpi.h>
+#include <cmath>
 
-#include <map>
-#include <string>
+#include <exception>
+#include <iostream>
+#include <set>
 #include <utility>
-#include <vector>
 
 using ::testing::HasSubstr;
 using ::testing::StartsWith;

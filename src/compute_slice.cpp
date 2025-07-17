@@ -22,6 +22,8 @@
 #include "update.h"
 #include "variable.h"
 
+#include <utility>
+
 using namespace LAMMPS_NS;
 
 /* ---------------------------------------------------------------------- */

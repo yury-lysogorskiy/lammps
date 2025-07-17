@@ -33,8 +33,6 @@
 #include "memory.h"
 #include "modify.h"
 #include "neigh_list.h"
-#include "neighbor.h"
-#include "utils.h"
 
 #include <cmath>
 

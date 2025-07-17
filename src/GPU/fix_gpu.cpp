@@ -20,7 +20,6 @@
 #include "error.h"
 #include "force.h"
 #include "gpu_extra.h"
-#include "modify.h"
 #include "neighbor.h"
 #include "pair.h"
 #include "pair_hybrid.h"

@@ -28,7 +28,8 @@
 #include "update.h"
 #include "variable.h"
 
-#include <algorithm>
+#include <cmath>
+#include <cstring>
 #include <utility>
 
 using namespace LAMMPS_NS;
