@@ -23,6 +23,7 @@
 #ifndef FMT_STATIC_THOUSANDS_SEPARATOR
 #include "fmt/chrono.h"
 #endif
+#include "info.h"
 #include "input.h"
 #include "label_map.h"
 #include "memory.h"
@@ -449,7 +450,7 @@ std::string utils::check_packages_for_style(const std::string &style, const std:
 
   if (pkg) {
     errmsg += fmt::format(" is part of the {} package", pkg);
-    if (LAMMPS::is_installed_pkg(pkg))
+    if (Info::has_package(pkg))
       errmsg += ", but seems to be missing because of a dependency";
     else
       errmsg += " which is not enabled in this LAMMPS binary." + utils::errorurl(10);

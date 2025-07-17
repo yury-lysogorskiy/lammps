@@ -175,7 +175,7 @@ protected:
 
         // only run this test fixture with omp suffix if OPENMP package is installed
 
-        if (LAMMPS::is_installed_pkg("OPENMP"))
+        if (Info::has_package("OPENMP"))
             lmp = new LAMMPS(args, MPI_COMM_WORLD);
         else
             GTEST_SKIP();
@@ -264,7 +264,7 @@ protected:
 
         if (Info::has_accelerator_feature("KOKKOS", "api", "openmp")) args[10] = "2";
 
-        if (LAMMPS::is_installed_pkg("KOKKOS")) {
+        if (Info::has_package("KOKKOS")) {
             ::testing::internal::CaptureStdout();
             lmp = new LAMMPS(args, MPI_COMM_WORLD);
             ::testing::internal::GetCapturedStdout();
@@ -329,7 +329,7 @@ TEST_F(LAMMPS_kokkos, InitMembers)
 
 TEST(LAMMPS_init, OpenMP)
 {
-    if (!LAMMPS::is_installed_pkg("OPENMP")) GTEST_SKIP();
+    if (!Info::has_package("OPENMP")) GTEST_SKIP();
     if (platform::openmp_standard() == "OpenMP not enabled") GTEST_SKIP();
 
     FILE *fp = fopen("in.lammps_empty", "w");

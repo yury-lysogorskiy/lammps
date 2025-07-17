@@ -1142,19 +1142,6 @@ void _noopt LAMMPS::init_pkg_lists()
 #undef REGION_CLASS
 }
 
-/** Return true if a LAMMPS package is enabled in this binary
- *
- * \param pkg name of package
- * \return true if yes, else false
- */
-bool LAMMPS::is_installed_pkg(const char *pkg)
-{
-  for (int i=0; installed_packages[i] != nullptr; ++i)
-    if (strcmp(installed_packages[i],pkg) == 0) return true;
-
-  return false;
-}
-
 #define check_for_match(style,list,name)                                \
   if (strcmp(list,#style) == 0) {                                       \
     std::map<std::string,std::string> &styles(pkg_lists-> style ## _styles); \
