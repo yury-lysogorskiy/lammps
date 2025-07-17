@@ -60,9 +60,9 @@ or in the LAMMPS data file.
 
 The values of :math:`Z_i` and :math:`Z_j` are normally equal to the
 atomic numbers of the two atom types. Thus, the user may optionally
-specify only the coefficients for each :math:`i==i` pair, and rely on
+specify only the coefficients for each :math:`i==j` pair, and rely on
 the obvious mixing rule for cross interactions (see below).  Note that
-when :math:`i==i` it is required that :math:`Z_i == Z_j`.  When used
+when :math:`i==j` it is required that :math:`Z_i == Z_j`.  When used
 with :doc:`hybrid/overlay <pair_hybrid>` and pairs are assigned to more
 than one sub-style, the mixing rule is not used and each pair of types
 interacting with the ZBL sub-style must be included in a pair_coeff
@@ -88,13 +88,14 @@ Mixing, shift, table, tail correction, restart, rRESPA info
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 For atom type pairs *i,j* and :math:`i \neq j`, the :math:`Z_i` and
-:math:`Z_j` coefficients can be mixed by taking :math:`Z_i` and
-:math:`Z_j` from the values specified for :math:`i == i` and :math:`j ==
-j` cases. When used with :doc:`hybrid/overlay <pair_hybrid>` and pairs
-are assigned to more than one sub-style, the mixing rule is not used and
-each pair of types interacting with the ZBL sub-style must be included
-in a pair_coeff command.  The :doc:`pair_modify <pair_modify>` mix
-option has no effect on the mixing behavior
+:math:`Z_j` coefficients can be mixed by taking :math:`Z_a` and
+:math:`Z_b` from the values specified for the two cases where :math:`i
+== j` and thus :math:`Z_a = Z_i == Z_j` and :math:`Z_b = Z_i == Z_j` for
+different elements.  When used with :doc:`hybrid/overlay <pair_hybrid>`
+and pairs are assigned to more than one sub-style, the mixing rule is
+not used and each pair of types interacting with the ZBL sub-style must
+be included in a pair_coeff command.  The :doc:`pair_modify
+<pair_modify>` mix option has no effect on the mixing behavior
 
 The ZBL pair style does not support the :doc:`pair_modify <pair_modify>`
 shift option, since the ZBL interaction is already smoothed to 0.0 at
