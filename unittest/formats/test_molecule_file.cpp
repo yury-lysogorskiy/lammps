@@ -676,7 +676,7 @@ TEST_F(MoleculeFileTest, labelmap)
 
 TEST_F(MoleculeFileTest, bonds)
 {
-    if (!LAMMPS::is_installed_pkg("MOLECULE")) GTEST_SKIP();
+    if (!Info::has_package("MOLECULE")) GTEST_SKIP();
     BEGIN_CAPTURE_OUTPUT();
     command("atom_style bond");
     command("region box block 0 1 0 1 0 1");
@@ -727,7 +727,7 @@ TEST_F(MoleculeFileTest, bonds)
 
 TEST_F(MoleculeFileTest, dipoles)
 {
-    if (!LAMMPS::is_installed_pkg("DIPOLE")) GTEST_SKIP();
+    if (!Info::has_package("DIPOLE")) GTEST_SKIP();
     BEGIN_CAPTURE_OUTPUT();
     command("atom_style dipole");
     command("region box block 0 1 0 1 0 1");

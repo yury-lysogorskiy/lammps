@@ -13,6 +13,7 @@
 
 #include "lammps.h"
 
+#include "atom.h"
 #include "citeme.h"
 #include "comm.h"
 #include "force.h"
@@ -556,7 +557,7 @@ TEST_F(SimpleCommandsTest, CiteMe)
 
 TEST_F(SimpleCommandsTest, Geturl)
 {
-    if (!LAMMPS::is_installed_pkg("EXTRA-COMMAND")) GTEST_SKIP();
+    if (!Info::has_package("EXTRA-COMMAND")) GTEST_SKIP();
     platform::unlink("index.html");
     platform::unlink("myindex.html");
     if (Info::has_curl_support()) {
@@ -597,6 +598,63 @@ TEST_F(SimpleCommandsTest, Geturl)
     platform::unlink("myindex.html");
 }
 
+TEST_F(SimpleCommandsTest, run)
+{
+    bool caught = false;
+    try {
+        BEGIN_HIDE_OUTPUT();
+        command("run 0");
+    } catch (LAMMPSException &e) {
+        END_HIDE_OUTPUT();
+        EXPECT_THAT(e.what(), ContainsRegex("ERROR: Run command before simulation box is defined"));
+        caught = true;
+    } catch (std::exception &e) {
+        END_HIDE_OUTPUT();
+        GTEST_FAIL() << "Invalid exception: " << e.what() << "\n";
+    }
+    ASSERT_TRUE(caught);
+
+    BEGIN_HIDE_OUTPUT();
+    command("region box block 0 1 0 1 0 1");
+    command("create_box 1 box");
+    command("mass 1 1.0");
+    command("run 10 post no");
+    END_HIDE_OUTPUT();
+    EXPECT_EQ(lmp->update->ntimestep, 10);
+    BEGIN_HIDE_OUTPUT();
+    command("run 15 upto post yes");
+    END_HIDE_OUTPUT();
+    EXPECT_EQ(lmp->update->ntimestep, 15);
+
+    TEST_FAILURE(".*ERROR: Illegal run start command: missing arg.*", command("run 10 start"););
+    TEST_FAILURE(".*ERROR: Illegal run stop command: missing arg.*", command("run 10 stop"););
+    TEST_FAILURE(".*ERROR: Illegal run every command: missing arg.*", command("run 10 every"););
+    TEST_FAILURE(".*ERROR: Unknown run keyword: xxx", command("run 10 xxx"););
+    TEST_FAILURE(".*ERROR: Invalid run command upto value: 10.*", command("run 10 upto"););
+    TEST_FAILURE(".*ERROR: Invalid run command start value: -10.*", command("run 10 start -10"););
+    TEST_FAILURE(".*ERROR: Run command start value 20 is after start of run at step 15.*",
+                 command("run 10 start 20"););
+    TEST_FAILURE(".*ERROR: Invalid run command stop value: -10.*", command("run 10 stop -10"););
+    TEST_FAILURE(".*ERROR: Run command stop value 20 is before end of run at step 25.*",
+                 command("run 10 stop 20"););
+
+    BEGIN_HIDE_OUTPUT();
+    command("run 15 post no start 0 stop 100");
+    END_HIDE_OUTPUT();
+    EXPECT_EQ(lmp->update->ntimestep, 30);
+
+    EXPECT_DOUBLE_EQ(lmp->atom->mass[1], 1.0);
+    BEGIN_HIDE_OUTPUT();
+    command("run 10 post no every 5 \"mass 1 2.0\"");
+    END_HIDE_OUTPUT();
+    EXPECT_EQ(lmp->update->ntimestep, 40);
+    EXPECT_DOUBLE_EQ(lmp->atom->mass[1], 2.0);
+
+    BEGIN_HIDE_OUTPUT();
+    command("run 20 post no every 5 NULL");
+    END_HIDE_OUTPUT();
+    EXPECT_EQ(lmp->update->ntimestep, 60);
+}
 } // namespace LAMMPS_NS
 
 int main(int argc, char **argv)
