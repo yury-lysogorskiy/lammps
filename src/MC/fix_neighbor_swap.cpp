@@ -23,7 +23,6 @@
 #include "citeme.h"
 #include "comm.h"
 #include "compute.h"
-#include "compute_voronoi_atom.h"
 #include "dihedral.h"
 #include "domain.h"
 #include "error.h"

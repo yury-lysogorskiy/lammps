@@ -31,6 +31,7 @@
 #include <cmath>
 #include <exception>
 #include <map>
+#include <utility>
 
 using namespace LAMMPS_NS;
 

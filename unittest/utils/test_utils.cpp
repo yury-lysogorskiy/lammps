@@ -12,7 +12,6 @@
 ------------------------------------------------------------------------- */
 
 #include "atom.h"
-#include "lmptype.h"
 #include "pointers.h"
 #include "tokenizer.h"
 
@@ -20,8 +19,6 @@
 #include "gtest/gtest.h"
 
 #include <cerrno>
-#include <string>
-#include <vector>
 
 using namespace LAMMPS_NS;
 using ::testing::EndsWith;

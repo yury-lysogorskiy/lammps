@@ -31,8 +31,6 @@
 #include "input.h"
 #include "modify.h"
 
-#include <mpi.h>
-
 #include <iostream>
 #include <set>
 #include <utility>

@@ -38,6 +38,7 @@
 #include "timer.h"
 #include "update.h"
 
+#include <algorithm>
 #include <cstring>
 #include <limits>
 

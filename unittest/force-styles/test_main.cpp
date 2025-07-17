@@ -22,6 +22,9 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+#include <cstring>
+#include <ctime>
+#include <iostream>
 #include <set>
 #include <utility>
 #include <vector>

@@ -29,8 +29,8 @@
 #include "potential_file_reader.h"
 
 #include <algorithm>
+#include <exception>
 #include <cstring>
-#include <memory>
 
 using namespace LAMMPS_NS;
 

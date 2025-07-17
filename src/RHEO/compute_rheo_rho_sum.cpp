@@ -25,7 +25,6 @@
 #include "fix_rheo.h"
 #include "force.h"
 #include "neigh_list.h"
-#include "neigh_request.h"
 #include "neighbor.h"
 
 #include <cmath>

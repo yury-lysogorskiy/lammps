@@ -16,16 +16,12 @@
 #include "atom.h"
 #include "domain.h"
 #include "error.h"
-#include "info.h"
-#include "input.h"
-#include "lammps.h"
 #include "update.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-#include <cstdio>
-#include <mpi.h>
-#include <string>
+#include <cstring>
+#include <fstream>
 
 using namespace LAMMPS_NS;
 

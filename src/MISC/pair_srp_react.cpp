@@ -32,7 +32,7 @@ There is an example script for this package in examples/PACKAGES/srp_react/.
 #include "citeme.h"
 #include "comm.h"
 #include "error.h"
-#include "fix_srp_react.h"
+#include "fix.h"
 #include "force.h"
 #include "modify.h"
 #include "neighbor.h"

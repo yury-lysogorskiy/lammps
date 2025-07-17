@@ -26,7 +26,6 @@
 #include "memory.h"
 #include "mf_oxdna.h"
 #include "neighbor.h"
-#include "neigh_list.h"
 #include "potential_file_reader.h"
 
 #include <cmath>
