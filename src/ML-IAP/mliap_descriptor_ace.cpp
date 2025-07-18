@@ -25,15 +25,9 @@
 
 #include "atom.h"
 #include "comm.h"
-#include "error.h"
 #include "memory.h"
 #include "mliap_data.h"
-#include "neigh_list.h"
 #include "pair_mliap.h"
-#include "tokenizer.h"
-
-#include <cmath>
-#include <cstring>
 
 namespace LAMMPS_NS {
 struct ACE_ML_impl {

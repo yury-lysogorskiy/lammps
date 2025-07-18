@@ -1,18 +1,15 @@
 // unit tests for utils:: functions requiring a LAMMPS instance
 
-#include "error.h"
+#include "exceptions.h"
 #include "info.h"
 #include "input.h"
-#include "lammps.h"
 #include "memory.h"
-#include "utils.h"
 
 #include "../testing/core.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-#include <cmath>
-#include <string>
+#include <cstring>
 
 using ::testing::StrEq;
 
@@ -20,6 +17,8 @@ using ::testing::StrEq;
 bool verbose = false;
 
 namespace LAMMPS_NS {
+class Error;
+
 class AdvancedUtils : public LAMMPSTest {
 protected:
     Error *error;
@@ -626,7 +625,8 @@ TEST_F(AdvancedUtils, tnumeric)
             caught = true;
         } catch (std::exception &e) {
             END_HIDE_OUTPUT();
-            GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";;
+            GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
+            ;
         }
         ASSERT_TRUE(caught);
     }
