@@ -72,4 +72,4 @@ namespace RANN {
 }    // namespace RANN
 }    // namespace LAMMPS_NS
 
-#endif /* ACTIVATION_SIGI_H_ */
+#endif /* ACTIVATION_SIGI_H */

@@ -66,4 +66,4 @@ namespace RANN {
 }    // namespace RANN
 }    // namespace LAMMPS_NS
 
-#endif /* ACTIVATION_LINEAR_H_ */
+#endif /* ACTIVATION_LINEAR_H */

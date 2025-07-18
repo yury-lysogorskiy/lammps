@@ -166,4 +166,4 @@ inline void SO3Math::LUPSolve(int n, double *A, double *B, int *P)
   }
 }
 
-#endif /* LMP_MLIAP_SO3_MATH_H_ */
+#endif /* LMP_MLIAP_SO3_MATH_H */
