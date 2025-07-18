@@ -97,7 +97,7 @@ set of files ``gran_sub_mod_custom.h``:
 
 .. code-block:: c++
 
-   #ifdef GranSubMod_CLASS
+   #ifdef GRAN_SUB_MOD_CLASS
    // clang-format off
    GranSubModStyle(hooke/piecewise,GranSubModNormalHookePiecewise,NORMAL);
    // clang-format on
