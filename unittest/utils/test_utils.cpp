@@ -1037,8 +1037,9 @@ TEST(Utils, parse_grid_id)
 
 TEST(Utils, errorurl)
 {
-    auto errmesg = utils::errorurl(10);
-    ASSERT_THAT(errmesg, Eq("\nFor more information see https://docs.lammps.org/err0010"));
+    ASSERT_THAT(utils::errorurl(10), StrEq("\nFor more information see https://docs.lammps.org/err0010"));
+    ASSERT_THAT(utils::errorurl(0), StrEq("\nFor more information see https://docs.lammps.org/Errors_details.html"));
+    ASSERT_THAT(utils::errorurl(-1), StrEq(""));
 }
 
 TEST(Utils, getsyserror)
