@@ -262,7 +262,7 @@ void MLIAP_SO3::init()
 
   for (i = 0; i < m_ldim; i++) m_idxu_block[i] = 0;
 
-  totali =(m_lmax + 2) * (m_lmax + 2);
+  totali = (m_lmax + 2) * (m_lmax + 2);
   memory->destroy(m_idxylm);
   memory->create(m_idxylm, totali, "MLIAP_SO3:idxylm");
   alloc_init += totali * sizeof(double);
