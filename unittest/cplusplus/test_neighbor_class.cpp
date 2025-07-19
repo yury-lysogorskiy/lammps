@@ -1,5 +1,6 @@
 // unit tests for neighbor list functionality
 
+#include "library.h"
 #include "utils.h"
 
 #include "../testing/core.h"
@@ -86,6 +87,20 @@ TEST_F(NeighborListsBin, one_atomic_half_list_newton)
         EXPECT_THAT(neigh_info[9], ContainsRegex("pair build: half/bin/atomonly/newton"));
         EXPECT_THAT(neigh_info[10], ContainsRegex("stencil: half/bin/3d"));
         EXPECT_THAT(neigh_info[11], ContainsRegex("bin: standard"));
+        int idx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
+        EXPECT_EQ(idx, 0);
+        int nlocal = lammps_extract_setting(lmp, "nlocal");
+        int inum = lammps_neighlist_num_elements(lmp, idx);
+        EXPECT_EQ(nlocal, inum);
+        int numneigh = -1;
+        int iatom = -1;
+        int *neighbors = nullptr;
+        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 0);
+        EXPECT_EQ(numneigh, 191);
+        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 1);
+        EXPECT_EQ(numneigh, 206);
     } else {
         GTEST_FAIL() << "No suitable neighbor list info found";
     }
@@ -107,6 +122,20 @@ TEST_F(NeighborListsBin, one_atomic_half_list_nonewton)
         EXPECT_THAT(neigh_info[9], ContainsRegex("pair build: half/bin/atomonly/newtoff"));
         EXPECT_THAT(neigh_info[10], ContainsRegex("stencil: full/bin/3d"));
         EXPECT_THAT(neigh_info[11], ContainsRegex("bin: standard"));
+        int idx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
+        EXPECT_EQ(idx, 0);
+        int nlocal = lammps_extract_setting(lmp, "nlocal");
+        int inum = lammps_neighlist_num_elements(lmp, idx);
+        EXPECT_EQ(nlocal, inum);
+        int numneigh = -1;
+        int iatom = -1;
+        int *neighbors = nullptr;
+        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 0);
+        EXPECT_EQ(numneigh, 738);
+        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 1);
+        EXPECT_EQ(numneigh, 737);
     } else {
         GTEST_FAIL() << "No suitable neighbor list info found";
     }
@@ -128,6 +157,20 @@ TEST_F(NeighborListsBin, one_atomic_full)
         EXPECT_THAT(neigh_info[9], ContainsRegex("pair build: full/bin/atomonly"));
         EXPECT_THAT(neigh_info[10], ContainsRegex("stencil: full/bin/3d"));
         EXPECT_THAT(neigh_info[11], ContainsRegex("bin: standard"));
+        int idx = lammps_find_pair_neighlist(lmp, "sw", 1, 0, 0);
+        EXPECT_EQ(idx, 0);
+        int nlocal = lammps_extract_setting(lmp, "nlocal");
+        int inum = lammps_neighlist_num_elements(lmp, idx);
+        EXPECT_EQ(nlocal, inum);
+        int numneigh = -1;
+        int iatom = -1;
+        int *neighbors = nullptr;
+        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 0);
+        EXPECT_EQ(numneigh, 798);
+        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 1);
+        EXPECT_EQ(numneigh, 798);
     } else {
         GTEST_FAIL() << "No suitable neighbor list info found";
     }
@@ -149,6 +192,20 @@ TEST_F(NeighborListsNsq, one_atomic_half_list_newton)
         EXPECT_THAT(neigh_info[8], ContainsRegex("pair build: half/nsq/newton"));
         EXPECT_THAT(neigh_info[9], ContainsRegex("stencil: none"));
         EXPECT_THAT(neigh_info[10], ContainsRegex("bin: none"));
+        int idx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
+        EXPECT_EQ(idx, 0);
+        int nlocal = lammps_extract_setting(lmp, "nlocal");
+        int inum = lammps_neighlist_num_elements(lmp, idx);
+        EXPECT_EQ(nlocal, inum);
+        int numneigh = -1;
+        int iatom = -1;
+        int *neighbors = nullptr;
+        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 0);
+        EXPECT_EQ(numneigh, 393);
+        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 1);
+        EXPECT_EQ(numneigh, 402);
     } else {
         GTEST_FAIL() << "No suitable neighbor list info found";
     }
@@ -170,6 +227,20 @@ TEST_F(NeighborListsNsq, one_atomic_half_list_nonewton)
         EXPECT_THAT(neigh_info[8], ContainsRegex("pair build: half/nsq/newtoff"));
         EXPECT_THAT(neigh_info[9], ContainsRegex("stencil: none"));
         EXPECT_THAT(neigh_info[10], ContainsRegex("bin: none"));
+        int idx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
+        EXPECT_EQ(idx, 0);
+        int nlocal = lammps_extract_setting(lmp, "nlocal");
+        int inum = lammps_neighlist_num_elements(lmp, idx);
+        EXPECT_EQ(nlocal, inum);
+        int numneigh = -1;
+        int iatom = -1;
+        int *neighbors = nullptr;
+        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 0);
+        EXPECT_EQ(numneigh, 738);
+        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 1);
+        EXPECT_EQ(numneigh, 737);
     } else {
         GTEST_FAIL() << "No suitable neighbor list info found";
     }
@@ -191,6 +262,20 @@ TEST_F(NeighborListsNsq, one_atomic_full)
         EXPECT_THAT(neigh_info[8], ContainsRegex("pair build: full/nsq"));
         EXPECT_THAT(neigh_info[9], ContainsRegex("stencil: none"));
         EXPECT_THAT(neigh_info[10], ContainsRegex("bin: none"));
+        int idx = lammps_find_pair_neighlist(lmp, "sw", 1, 0, 0);
+        EXPECT_EQ(idx, 0);
+        int nlocal = lammps_extract_setting(lmp, "nlocal");
+        int inum = lammps_neighlist_num_elements(lmp, idx);
+        EXPECT_EQ(nlocal, inum);
+        int numneigh = -1;
+        int iatom = -1;
+        int *neighbors = nullptr;
+        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 0);
+        EXPECT_EQ(numneigh, 798);
+        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 1);
+        EXPECT_EQ(numneigh, 798);
     } else {
         GTEST_FAIL() << "No suitable neighbor list info found";
     }
