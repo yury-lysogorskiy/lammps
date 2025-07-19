@@ -69,6 +69,16 @@ protected:
             return std::vector<std::string>();
         }
     }
+
+    int find_first_line(const std::vector<std::string> &list)
+    {
+        int idx = 0;
+        for (const auto &line : list) {
+            if (utils::strmatch(line, "neighbor lists")) return idx;
+            ++idx;
+        }
+        return 0;
+    }
 };
 
 class NeighborListsNsq : public NeighborListsBin {
@@ -98,25 +108,26 @@ TEST_F(NeighborListsBin, one_atomic_half_list_newton)
     command("run 0 post no");
     auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
     if (neigh_info.size() >= 12) {
-        EXPECT_THAT(neigh_info[6], ContainsRegex("1 neighbor lists"));
-        EXPECT_THAT(neigh_info[6], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
-        EXPECT_THAT(neigh_info[7], ContainsRegex(".1. pair lj/cut, perpetual"));
-        EXPECT_THAT(neigh_info[8], ContainsRegex("attributes: half, newton on"));
-        EXPECT_THAT(neigh_info[9], ContainsRegex("pair build: half/bin/atomonly/newton"));
-        EXPECT_THAT(neigh_info[10], ContainsRegex("stencil: half/bin/3d"));
-        EXPECT_THAT(neigh_info[11], ContainsRegex("bin: standard"));
-        int idx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
-        EXPECT_EQ(idx, 0);
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("1 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/atomonly/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: half/bin/3d"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
+        EXPECT_EQ(nlidx, 0);
         int nlocal = lammps_extract_setting(lmp, "nlocal");
-        int inum   = lammps_neighlist_num_elements(lmp, idx);
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
         EXPECT_EQ(nlocal, inum);
         int numneigh   = -1;
         int iatom      = -1;
         int *neighbors = nullptr;
-        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 0);
         EXPECT_EQ(numneigh, 26);
-        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 1);
         EXPECT_EQ(numneigh, 29);
     } else {
@@ -133,25 +144,102 @@ TEST_F(NeighborListsBin, one_atomic_half_list_nonewton)
     command("run 0 post no");
     auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
     if (neigh_info.size() >= 12) {
-        EXPECT_THAT(neigh_info[6], ContainsRegex("1 neighbor lists"));
-        EXPECT_THAT(neigh_info[6], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
-        EXPECT_THAT(neigh_info[7], ContainsRegex(".1. pair lj/cut, perpetual"));
-        EXPECT_THAT(neigh_info[8], ContainsRegex("attributes: half, newton off"));
-        EXPECT_THAT(neigh_info[9], ContainsRegex("pair build: half/bin/atomonly/newtoff"));
-        EXPECT_THAT(neigh_info[10], ContainsRegex("stencil: full/bin/3d"));
-        EXPECT_THAT(neigh_info[11], ContainsRegex("bin: standard"));
-        int idx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
-        EXPECT_EQ(idx, 0);
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("1 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton off$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/atomonly/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: full/bin/3d"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
+        EXPECT_EQ(nlidx, 0);
         int nlocal = lammps_extract_setting(lmp, "nlocal");
-        int inum   = lammps_neighlist_num_elements(lmp, idx);
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
         EXPECT_EQ(nlocal, inum);
         int numneigh   = -1;
         int iatom      = -1;
         int *neighbors = nullptr;
-        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 0);
         EXPECT_EQ(numneigh, 80);
-        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 1);
+        EXPECT_EQ(numneigh, 79);
+    } else {
+        GTEST_FAIL() << "No suitable neighbor list info found";
+    }
+}
+
+TEST_F(NeighborListsBin, one_atomic_half_list_newton_respa)
+{
+    atomic_system("atomic", "real", "on");
+    BEGIN_CAPTURE_OUTPUT();
+    command("pair_style lj/cut 3.5");
+    command("pair_coeff * * 0.01 2.0");
+    command("run_style respa 3 2 2 inner 1 1.0 1.5 middle 2 2.0 2.5 outer 3");
+    command("run 0 post no");
+    auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
+    if (neigh_info.size() >= 12) {
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("1 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++],
+                    ContainsRegex("attributes: half, newton on, respa outer/middle/inner$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/respa/bin/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: half/bin/3d"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
+        EXPECT_EQ(nlidx, 0);
+        int nlocal = lammps_extract_setting(lmp, "nlocal");
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
+        EXPECT_EQ(nlocal, inum);
+        int numneigh   = -1;
+        int iatom      = -1;
+        int *neighbors = nullptr;
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 0);
+        EXPECT_EQ(numneigh, 26);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 1);
+        EXPECT_EQ(numneigh, 29);
+    } else {
+        GTEST_FAIL() << "No suitable neighbor list info found";
+    }
+}
+
+TEST_F(NeighborListsBin, one_atomic_half_list_nonewton_respa)
+{
+    atomic_system("atomic", "real", "off");
+    BEGIN_CAPTURE_OUTPUT();
+    command("pair_style lj/cut 3.5");
+    command("pair_coeff * * 0.01 2.0");
+    command("run_style respa 3 2 2 inner 1 1.0 1.5 middle 2 2.0 2.5 outer 3");
+    command("run 0 post no");
+    auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
+    if (neigh_info.size() >= 12) {
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("1 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++],
+                    ContainsRegex("attributes: half, newton off, respa outer/middle/inner$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/respa/bin/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: full/bin/3d"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
+        EXPECT_EQ(nlidx, 0);
+        int nlocal = lammps_extract_setting(lmp, "nlocal");
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
+        EXPECT_EQ(nlocal, inum);
+        int numneigh   = -1;
+        int iatom      = -1;
+        int *neighbors = nullptr;
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 0);
+        EXPECT_EQ(numneigh, 80);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 1);
         EXPECT_EQ(numneigh, 79);
     } else {
@@ -169,25 +257,26 @@ TEST_F(NeighborListsBin, one_atomic_full)
     command("run 0 post no");
     auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
     if (neigh_info.size() >= 12) {
-        EXPECT_THAT(neigh_info[6], ContainsRegex("1 neighbor lists"));
-        EXPECT_THAT(neigh_info[6], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
-        EXPECT_THAT(neigh_info[7], ContainsRegex(".1. pair sw, perpetual"));
-        EXPECT_THAT(neigh_info[8], ContainsRegex("attributes: full, newton on"));
-        EXPECT_THAT(neigh_info[9], ContainsRegex("pair build: full/bin/atomonly"));
-        EXPECT_THAT(neigh_info[10], ContainsRegex("stencil: full/bin/3d"));
-        EXPECT_THAT(neigh_info[11], ContainsRegex("bin: standard"));
-        int idx = lammps_find_pair_neighlist(lmp, "sw", 1, 0, 0);
-        EXPECT_EQ(idx, 0);
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("1 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair sw, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: full, newton on$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: full/bin/atomonly"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: full/bin/3d"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "sw", 1, 0, 0);
+        EXPECT_EQ(nlidx, 0);
         int nlocal = lammps_extract_setting(lmp, "nlocal");
-        int inum   = lammps_neighlist_num_elements(lmp, idx);
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
         EXPECT_EQ(nlocal, inum);
         int numneigh   = -1;
         int iatom      = -1;
         int *neighbors = nullptr;
-        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 0);
         EXPECT_EQ(numneigh, 92);
-        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 1);
         EXPECT_EQ(numneigh, 92);
     } else {
@@ -206,25 +295,26 @@ TEST_F(NeighborListsBin, one_atomic_full_ghost)
     command("run 0 post no");
     auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
     if (neigh_info.size() >= 12) {
-        EXPECT_THAT(neigh_info[6], ContainsRegex("1 neighbor lists"));
-        EXPECT_THAT(neigh_info[6], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
-        EXPECT_THAT(neigh_info[7], ContainsRegex(".1. pair airebo, perpetual"));
-        EXPECT_THAT(neigh_info[8], ContainsRegex("attributes: full, newton on"));
-        EXPECT_THAT(neigh_info[9], ContainsRegex("pair build: full/bin/ghost"));
-        EXPECT_THAT(neigh_info[10], ContainsRegex("stencil: full/ghost/bin/3d"));
-        EXPECT_THAT(neigh_info[11], ContainsRegex("bin: standard"));
-        int idx = lammps_find_pair_neighlist(lmp, "airebo", 1, 0, 0);
-        EXPECT_EQ(idx, 0);
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("1 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair airebo, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: full, newton on, ghost$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: full/bin/ghost"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: full/ghost/bin/3d"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "airebo", 1, 0, 0);
+        EXPECT_EQ(nlidx, 0);
         int nlocal = lammps_extract_setting(lmp, "nlocal");
-        int inum   = lammps_neighlist_num_elements(lmp, idx);
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
         EXPECT_EQ(nlocal, inum);
         int numneigh   = -1;
         int iatom      = -1;
         int *neighbors = nullptr;
-        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 0);
         EXPECT_EQ(numneigh, 948);
-        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 1);
         EXPECT_EQ(numneigh, 948);
     } else {
@@ -242,40 +332,41 @@ TEST_F(NeighborListsBin, two_atomic_half_full)
     command("run 0 post no");
     auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
     if (neigh_info.size() >= 17) {
-        EXPECT_THAT(neigh_info[6], ContainsRegex("2 neighbor lists"));
-        EXPECT_THAT(neigh_info[6], ContainsRegex("perpetual/occasional/extra = 2 0 0"));
-        EXPECT_THAT(neigh_info[7], ContainsRegex(".1. pair meam, perpetual"));
-        EXPECT_THAT(neigh_info[8], ContainsRegex("attributes: full, newton on"));
-        EXPECT_THAT(neigh_info[9], ContainsRegex("pair build: full/bin/atomonly"));
-        EXPECT_THAT(neigh_info[10], ContainsRegex("stencil: full/bin/3d"));
-        EXPECT_THAT(neigh_info[11], ContainsRegex("bin: standard"));
-        EXPECT_THAT(neigh_info[12], ContainsRegex(".2. pair meam, perpetual"));
-        EXPECT_THAT(neigh_info[13], ContainsRegex("attributes: half, newton on"));
-        EXPECT_THAT(neigh_info[14], ContainsRegex("pair build: halffull/newton"));
-        EXPECT_THAT(neigh_info[15], ContainsRegex("stencil: none"));
-        EXPECT_THAT(neigh_info[16], ContainsRegex("bin: none"));
-        int idx = lammps_find_pair_neighlist(lmp, "meam", 1, 0, 1);
-        EXPECT_EQ(idx, 0);
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("2 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 2 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair meam, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: full, newton on$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: full/bin/atomonly"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: full/bin/3d"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".2. pair meam, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: halffull/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "meam", 1, 0, 1);
+        EXPECT_EQ(nlidx, 0);
         int nlocal = lammps_extract_setting(lmp, "nlocal");
-        int inum   = lammps_neighlist_num_elements(lmp, idx);
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
         EXPECT_EQ(nlocal, inum);
         int numneigh   = -1;
         int iatom      = -1;
         int *neighbors = nullptr;
-        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 0);
         EXPECT_EQ(numneigh, 122);
-        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 1);
         EXPECT_EQ(numneigh, 122);
-        idx = lammps_find_pair_neighlist(lmp, "meam", 1, 0, 2);
-        EXPECT_EQ(idx, 1);
-        inum = lammps_neighlist_num_elements(lmp, idx);
+        nlidx = lammps_find_pair_neighlist(lmp, "meam", 1, 0, 2);
+        EXPECT_EQ(nlidx, 1);
+        inum = lammps_neighlist_num_elements(lmp, nlidx);
         EXPECT_EQ(nlocal, inum);
-        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 0);
         EXPECT_EQ(numneigh, 61);
-        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 1);
         EXPECT_EQ(numneigh, 61);
     } else {
@@ -293,25 +384,26 @@ TEST_F(NeighborListsBin, one_molecular_half_list_newton)
     command("run 0 post no");
     auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
     if (neigh_info.size() >= 12) {
-        EXPECT_THAT(neigh_info[6], ContainsRegex("1 neighbor lists"));
-        EXPECT_THAT(neigh_info[6], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
-        EXPECT_THAT(neigh_info[7], ContainsRegex(".1. pair lj/cut, perpetual"));
-        EXPECT_THAT(neigh_info[8], ContainsRegex("attributes: half, newton on"));
-        EXPECT_THAT(neigh_info[9], ContainsRegex("pair build: half/bin/newton"));
-        EXPECT_THAT(neigh_info[10], ContainsRegex("stencil: half/bin/3d"));
-        EXPECT_THAT(neigh_info[11], ContainsRegex("bin: standard"));
-        int idx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
-        EXPECT_EQ(idx, 0);
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("1 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: half/bin/3d"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
+        EXPECT_EQ(nlidx, 0);
         int nlocal = lammps_extract_setting(lmp, "nlocal");
-        int inum   = lammps_neighlist_num_elements(lmp, idx);
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
         EXPECT_EQ(nlocal, inum);
         int numneigh   = -1;
         int iatom      = -1;
         int *neighbors = nullptr;
-        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 0);
         EXPECT_EQ(numneigh, 26);
-        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 1);
         EXPECT_EQ(numneigh, 23);
     } else {
@@ -329,25 +421,26 @@ TEST_F(NeighborListsBin, one_molecular_half_list_nonewton)
     command("run 0 post no");
     auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
     if (neigh_info.size() >= 12) {
-        EXPECT_THAT(neigh_info[6], ContainsRegex("1 neighbor lists"));
-        EXPECT_THAT(neigh_info[6], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
-        EXPECT_THAT(neigh_info[7], ContainsRegex(".1. pair lj/cut, perpetual"));
-        EXPECT_THAT(neigh_info[8], ContainsRegex("attributes: half, newton off"));
-        EXPECT_THAT(neigh_info[9], ContainsRegex("pair build: half/bin/newtoff"));
-        EXPECT_THAT(neigh_info[10], ContainsRegex("stencil: full/bin/3d"));
-        EXPECT_THAT(neigh_info[11], ContainsRegex("bin: standard"));
-        int idx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
-        EXPECT_EQ(idx, 0);
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("1 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton off$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: full/bin/3d"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
+        EXPECT_EQ(nlidx, 0);
         int nlocal = lammps_extract_setting(lmp, "nlocal");
-        int inum   = lammps_neighlist_num_elements(lmp, idx);
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
         EXPECT_EQ(nlocal, inum);
         int numneigh   = -1;
         int iatom      = -1;
         int *neighbors = nullptr;
-        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 0);
         EXPECT_EQ(numneigh, 80);
-        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 1);
         EXPECT_EQ(numneigh, 62);
     } else {
@@ -364,25 +457,26 @@ TEST_F(NeighborListsNsq, one_atomic_half_list_newton)
     command("run 0 post no");
     auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
     if (neigh_info.size() >= 11) {
-        EXPECT_THAT(neigh_info[5], ContainsRegex("1 neighbor lists"));
-        EXPECT_THAT(neigh_info[5], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
-        EXPECT_THAT(neigh_info[6], ContainsRegex(".1. pair lj/cut, perpetual"));
-        EXPECT_THAT(neigh_info[7], ContainsRegex("attributes: half, newton on"));
-        EXPECT_THAT(neigh_info[8], ContainsRegex("pair build: half/nsq/newton"));
-        EXPECT_THAT(neigh_info[9], ContainsRegex("stencil: none"));
-        EXPECT_THAT(neigh_info[10], ContainsRegex("bin: none"));
-        int idx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
-        EXPECT_EQ(idx, 0);
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("1 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
+        EXPECT_EQ(nlidx, 0);
         int nlocal = lammps_extract_setting(lmp, "nlocal");
-        int inum   = lammps_neighlist_num_elements(lmp, idx);
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
         EXPECT_EQ(nlocal, inum);
         int numneigh   = -1;
         int iatom      = -1;
         int *neighbors = nullptr;
-        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 0);
         EXPECT_EQ(numneigh, 46);
-        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 1);
         EXPECT_EQ(numneigh, 53);
     } else {
@@ -399,25 +493,102 @@ TEST_F(NeighborListsNsq, one_atomic_half_list_nonewton)
     command("run 0 post no");
     auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
     if (neigh_info.size() >= 11) {
-        EXPECT_THAT(neigh_info[5], ContainsRegex("1 neighbor lists"));
-        EXPECT_THAT(neigh_info[5], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
-        EXPECT_THAT(neigh_info[6], ContainsRegex(".1. pair lj/cut, perpetual"));
-        EXPECT_THAT(neigh_info[7], ContainsRegex("attributes: half, newton off"));
-        EXPECT_THAT(neigh_info[8], ContainsRegex("pair build: half/nsq/newtoff"));
-        EXPECT_THAT(neigh_info[9], ContainsRegex("stencil: none"));
-        EXPECT_THAT(neigh_info[10], ContainsRegex("bin: none"));
-        int idx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
-        EXPECT_EQ(idx, 0);
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("1 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton off$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
+        EXPECT_EQ(nlidx, 0);
         int nlocal = lammps_extract_setting(lmp, "nlocal");
-        int inum   = lammps_neighlist_num_elements(lmp, idx);
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
         EXPECT_EQ(nlocal, inum);
         int numneigh   = -1;
         int iatom      = -1;
         int *neighbors = nullptr;
-        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 0);
         EXPECT_EQ(numneigh, 80);
-        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 1);
+        EXPECT_EQ(numneigh, 79);
+    } else {
+        GTEST_FAIL() << "No suitable neighbor list info found";
+    }
+}
+
+TEST_F(NeighborListsNsq, one_atomic_half_list_newton_respa)
+{
+    atomic_system("atomic", "real", "on");
+    BEGIN_CAPTURE_OUTPUT();
+    command("pair_style lj/cut 3.5");
+    command("pair_coeff * * 0.01 2.0");
+    command("run_style respa 3 2 2 inner 1 1.0 1.5 middle 2 2.0 2.5 outer 3");
+    command("run 0 post no");
+    auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
+    if (neigh_info.size() >= 12) {
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("1 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++],
+                    ContainsRegex("attributes: half, newton on, respa outer/middle/inner$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/respa/nsq/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
+        EXPECT_EQ(nlidx, 0);
+        int nlocal = lammps_extract_setting(lmp, "nlocal");
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
+        EXPECT_EQ(nlocal, inum);
+        int numneigh   = -1;
+        int iatom      = -1;
+        int *neighbors = nullptr;
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 0);
+        EXPECT_EQ(numneigh, 46);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 1);
+        EXPECT_EQ(numneigh, 53);
+    } else {
+        GTEST_FAIL() << "No suitable neighbor list info found";
+    }
+}
+
+TEST_F(NeighborListsNsq, one_atomic_half_list_nonewton_respa)
+{
+    atomic_system("atomic", "real", "off");
+    BEGIN_CAPTURE_OUTPUT();
+    command("pair_style lj/cut 3.5");
+    command("pair_coeff * * 0.01 2.0");
+    command("run_style respa 3 2 2 inner 1 1.0 1.5 middle 2 2.0 2.5 outer 3");
+    command("run 0 post no");
+    auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
+    if (neigh_info.size() >= 12) {
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("1 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++],
+                    ContainsRegex("attributes: half, newton off, respa outer/middle/inner$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/respa/nsq/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
+        EXPECT_EQ(nlidx, 0);
+        int nlocal = lammps_extract_setting(lmp, "nlocal");
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
+        EXPECT_EQ(nlocal, inum);
+        int numneigh   = -1;
+        int iatom      = -1;
+        int *neighbors = nullptr;
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 0);
+        EXPECT_EQ(numneigh, 80);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 1);
         EXPECT_EQ(numneigh, 79);
     } else {
@@ -434,25 +605,26 @@ TEST_F(NeighborListsNsq, one_atomic_full)
     command("run 0 post no");
     auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
     if (neigh_info.size() >= 12) {
-        EXPECT_THAT(neigh_info[5], ContainsRegex("1 neighbor lists"));
-        EXPECT_THAT(neigh_info[5], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
-        EXPECT_THAT(neigh_info[6], ContainsRegex(".1. pair sw, perpetual"));
-        EXPECT_THAT(neigh_info[7], ContainsRegex("attributes: full, newton on"));
-        EXPECT_THAT(neigh_info[8], ContainsRegex("pair build: full/nsq"));
-        EXPECT_THAT(neigh_info[9], ContainsRegex("stencil: none"));
-        EXPECT_THAT(neigh_info[10], ContainsRegex("bin: none"));
-        int idx = lammps_find_pair_neighlist(lmp, "sw", 1, 0, 0);
-        EXPECT_EQ(idx, 0);
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("1 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair sw, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: full, newton on$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: full/nsq"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "sw", 1, 0, 0);
+        EXPECT_EQ(nlidx, 0);
         int nlocal = lammps_extract_setting(lmp, "nlocal");
-        int inum   = lammps_neighlist_num_elements(lmp, idx);
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
         EXPECT_EQ(nlocal, inum);
         int numneigh   = -1;
         int iatom      = -1;
         int *neighbors = nullptr;
-        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 0);
         EXPECT_EQ(numneigh, 92);
-        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 1);
         EXPECT_EQ(numneigh, 92);
     } else {
@@ -469,40 +641,41 @@ TEST_F(NeighborListsNsq, two_atomic_half_full)
     command("run 0 post no");
     auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
     if (neigh_info.size() >= 16) {
-        EXPECT_THAT(neigh_info[5], ContainsRegex("2 neighbor lists"));
-        EXPECT_THAT(neigh_info[5], ContainsRegex("perpetual/occasional/extra = 2 0 0"));
-        EXPECT_THAT(neigh_info[6], ContainsRegex(".1. pair meam, perpetual"));
-        EXPECT_THAT(neigh_info[7], ContainsRegex("attributes: full, newton on"));
-        EXPECT_THAT(neigh_info[8], ContainsRegex("pair build: full/nsq"));
-        EXPECT_THAT(neigh_info[9], ContainsRegex("stencil: none"));
-        EXPECT_THAT(neigh_info[10], ContainsRegex("bin: none"));
-        EXPECT_THAT(neigh_info[11], ContainsRegex(".2. pair meam, perpetual"));
-        EXPECT_THAT(neigh_info[12], ContainsRegex("attributes: half, newton on"));
-        EXPECT_THAT(neigh_info[13], ContainsRegex("pair build: halffull/newton"));
-        EXPECT_THAT(neigh_info[14], ContainsRegex("stencil: none"));
-        EXPECT_THAT(neigh_info[15], ContainsRegex("bin: none"));
-        int idx = lammps_find_pair_neighlist(lmp, "meam", 1, 0, 1);
-        EXPECT_EQ(idx, 0);
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("2 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 2 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair meam, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: full, newton on$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: full/nsq"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".2. pair meam, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: halffull/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "meam", 1, 0, 1);
+        EXPECT_EQ(nlidx, 0);
         int nlocal = lammps_extract_setting(lmp, "nlocal");
-        int inum   = lammps_neighlist_num_elements(lmp, idx);
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
         EXPECT_EQ(nlocal, inum);
         int numneigh   = -1;
         int iatom      = -1;
         int *neighbors = nullptr;
-        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 0);
         EXPECT_EQ(numneigh, 122);
-        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 1);
         EXPECT_EQ(numneigh, 122);
-        idx = lammps_find_pair_neighlist(lmp, "meam", 1, 0, 2);
-        EXPECT_EQ(idx, 1);
-        inum = lammps_neighlist_num_elements(lmp, idx);
+        nlidx = lammps_find_pair_neighlist(lmp, "meam", 1, 0, 2);
+        EXPECT_EQ(nlidx, 1);
+        inum = lammps_neighlist_num_elements(lmp, nlidx);
         EXPECT_EQ(nlocal, inum);
-        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 0);
         EXPECT_EQ(numneigh, 61);
-        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 1);
         EXPECT_EQ(numneigh, 61);
     } else {
@@ -521,25 +694,26 @@ TEST_F(NeighborListsNsq, one_atomic_full_ghost)
     command("run 0 post no");
     auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
     if (neigh_info.size() >= 12) {
-        EXPECT_THAT(neigh_info[5], ContainsRegex("1 neighbor lists"));
-        EXPECT_THAT(neigh_info[5], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
-        EXPECT_THAT(neigh_info[6], ContainsRegex(".1. pair airebo, perpetual"));
-        EXPECT_THAT(neigh_info[7], ContainsRegex("attributes: full, newton on"));
-        EXPECT_THAT(neigh_info[8], ContainsRegex("pair build: full/nsq/ghost"));
-        EXPECT_THAT(neigh_info[9], ContainsRegex("stencil: none"));
-        EXPECT_THAT(neigh_info[10], ContainsRegex("bin: none"));
-        int idx = lammps_find_pair_neighlist(lmp, "airebo", 1, 0, 0);
-        EXPECT_EQ(idx, 0);
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("1 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair airebo, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: full, newton on, ghost$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: full/nsq/ghost"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "airebo", 1, 0, 0);
+        EXPECT_EQ(nlidx, 0);
         int nlocal = lammps_extract_setting(lmp, "nlocal");
-        int inum   = lammps_neighlist_num_elements(lmp, idx);
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
         EXPECT_EQ(nlocal, inum);
         int numneigh   = -1;
         int iatom      = -1;
         int *neighbors = nullptr;
-        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 0);
         EXPECT_EQ(numneigh, 948);
-        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 1);
         EXPECT_EQ(numneigh, 948);
     } else {
@@ -557,25 +731,26 @@ TEST_F(NeighborListsNsq, one_molecular_half_list_newton)
     command("run 0 post no");
     auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
     if (neigh_info.size() >= 12) {
-        EXPECT_THAT(neigh_info[5], ContainsRegex("1 neighbor lists"));
-        EXPECT_THAT(neigh_info[5], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
-        EXPECT_THAT(neigh_info[6], ContainsRegex(".1. pair lj/cut, perpetual"));
-        EXPECT_THAT(neigh_info[7], ContainsRegex("attributes: half, newton on"));
-        EXPECT_THAT(neigh_info[8], ContainsRegex("pair build: half/nsq/newton"));
-        EXPECT_THAT(neigh_info[9], ContainsRegex("stencil: none"));
-        EXPECT_THAT(neigh_info[10], ContainsRegex("bin: none"));
-        int idx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
-        EXPECT_EQ(idx, 0);
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("1 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
+        EXPECT_EQ(nlidx, 0);
         int nlocal = lammps_extract_setting(lmp, "nlocal");
-        int inum   = lammps_neighlist_num_elements(lmp, idx);
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
         EXPECT_EQ(nlocal, inum);
         int numneigh   = -1;
         int iatom      = -1;
         int *neighbors = nullptr;
-        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 0);
         EXPECT_EQ(numneigh, 46);
-        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 1);
         EXPECT_EQ(numneigh, 42);
     } else {
@@ -593,25 +768,26 @@ TEST_F(NeighborListsNsq, one_molecular_half_list_nonewton)
     command("run 0 post no");
     auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
     if (neigh_info.size() >= 12) {
-        EXPECT_THAT(neigh_info[5], ContainsRegex("1 neighbor lists"));
-        EXPECT_THAT(neigh_info[5], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
-        EXPECT_THAT(neigh_info[6], ContainsRegex(".1. pair lj/cut, perpetual"));
-        EXPECT_THAT(neigh_info[7], ContainsRegex("attributes: half, newton off"));
-        EXPECT_THAT(neigh_info[8], ContainsRegex("pair build: half/nsq/newtoff"));
-        EXPECT_THAT(neigh_info[9], ContainsRegex("stencil: none"));
-        EXPECT_THAT(neigh_info[10], ContainsRegex("bin: none"));
-        int idx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
-        EXPECT_EQ(idx, 0);
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("1 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton off$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
+        EXPECT_EQ(nlidx, 0);
         int nlocal = lammps_extract_setting(lmp, "nlocal");
-        int inum   = lammps_neighlist_num_elements(lmp, idx);
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
         EXPECT_EQ(nlocal, inum);
         int numneigh   = -1;
         int iatom      = -1;
         int *neighbors = nullptr;
-        lammps_neighlist_element_neighbors(lmp, idx, 0, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 0);
         EXPECT_EQ(numneigh, 80);
-        lammps_neighlist_element_neighbors(lmp, idx, 1, &iatom, &numneigh, &neighbors);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
         EXPECT_EQ(iatom, 1);
         EXPECT_EQ(numneigh, 62);
     } else {
