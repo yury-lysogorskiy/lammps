@@ -92,8 +92,8 @@ class Pointers {
     atomKK(ptr->atomKK),
     memoryKK(ptr->memoryKK),
     python(ptr->python) {}
-  virtual ~Pointers() noexcept(false) {
-  }  // NOLINT cannot use = default here due to broken GCC on RHEL 8
+  virtual ~Pointers() noexcept(false) {  // NOLINT
+  }  // cannot use = default here due to broken GCC on RHEL 8
 
   // remove other default members where possible
 
