@@ -448,6 +448,82 @@ TEST_F(NeighborListsBin, one_molecular_half_list_nonewton)
     }
 }
 
+TEST_F(NeighborListsBin, one_molecular_half_list_newton_respa)
+{
+    if (!lammps_config_has_package("MOLECULE")) GTEST_SKIP() << "Missing MOLECULE package for test";
+    atomic_system("molecular", "real", "on");
+    BEGIN_CAPTURE_OUTPUT();
+    command("pair_style lj/cut 3.5");
+    command("pair_coeff * * 0.01 2.0");
+    command("run_style respa 2 2 bond 1 pair 2");
+    command("run 0 post no");
+    auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
+    if (neigh_info.size() >= 12) {
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("1 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: half/bin/3d"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
+        EXPECT_EQ(nlidx, 0);
+        int nlocal = lammps_extract_setting(lmp, "nlocal");
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
+        EXPECT_EQ(nlocal, inum);
+        int numneigh   = -1;
+        int iatom      = -1;
+        int *neighbors = nullptr;
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 0);
+        EXPECT_EQ(numneigh, 26);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 1);
+        EXPECT_EQ(numneigh, 23);
+    } else {
+        GTEST_FAIL() << "No suitable neighbor list info found";
+    }
+}
+
+TEST_F(NeighborListsBin, one_molecular_half_list_nonewton_respa)
+{
+    if (!lammps_config_has_package("MOLECULE")) GTEST_SKIP() << "Missing MOLECULE package for test";
+    atomic_system("molecular", "real", "off");
+    BEGIN_CAPTURE_OUTPUT();
+    command("pair_style lj/cut 3.5");
+    command("pair_coeff * * 0.01 2.0");
+    command("run_style respa 2 2 bond 1 pair 2");
+    command("run 0 post no");
+    auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
+    if (neigh_info.size() >= 12) {
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("1 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton off$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: full/bin/3d"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
+        EXPECT_EQ(nlidx, 0);
+        int nlocal = lammps_extract_setting(lmp, "nlocal");
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
+        EXPECT_EQ(nlocal, inum);
+        int numneigh   = -1;
+        int iatom      = -1;
+        int *neighbors = nullptr;
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 0);
+        EXPECT_EQ(numneigh, 80);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 1);
+        EXPECT_EQ(numneigh, 62);
+    } else {
+        GTEST_FAIL() << "No suitable neighbor list info found";
+    }
+}
+
 TEST_F(NeighborListsNsq, one_atomic_half_list_newton)
 {
     atomic_system("atomic", "real", "on");
@@ -794,7 +870,81 @@ TEST_F(NeighborListsNsq, one_molecular_half_list_nonewton)
         GTEST_FAIL() << "No suitable neighbor list info found";
     }
 }
+TEST_F(NeighborListsNsq, one_molecular_half_list_newton_respa)
+{
+    if (!lammps_config_has_package("MOLECULE")) GTEST_SKIP() << "Missing MOLECULE package for test";
+    atomic_system("molecular", "real", "on");
+    BEGIN_CAPTURE_OUTPUT();
+    command("pair_style lj/cut 3.5");
+    command("pair_coeff * * 0.01 2.0");
+    command("run_style respa 2 2 bond 1 pair 2");
+    command("run 0 post no");
+    auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
+    if (neigh_info.size() >= 12) {
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("1 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
+        EXPECT_EQ(nlidx, 0);
+        int nlocal = lammps_extract_setting(lmp, "nlocal");
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
+        EXPECT_EQ(nlocal, inum);
+        int numneigh   = -1;
+        int iatom      = -1;
+        int *neighbors = nullptr;
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 0);
+        EXPECT_EQ(numneigh, 46);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 1);
+        EXPECT_EQ(numneigh, 42);
+    } else {
+        GTEST_FAIL() << "No suitable neighbor list info found";
+    }
+}
 
+TEST_F(NeighborListsNsq, one_molecular_half_list_nonewton_respa)
+{
+    if (!lammps_config_has_package("MOLECULE")) GTEST_SKIP() << "Missing MOLECULE package for test";
+    atomic_system("molecular", "real", "off");
+    BEGIN_CAPTURE_OUTPUT();
+    command("pair_style lj/cut 3.5");
+    command("pair_coeff * * 0.01 2.0");
+    command("run_style respa 2 2 bond 1 pair 2");
+    command("run 0 post no");
+    auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
+    if (neigh_info.size() >= 12) {
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("1 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton off$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
+        EXPECT_EQ(nlidx, 0);
+        int nlocal = lammps_extract_setting(lmp, "nlocal");
+        int inum   = lammps_neighlist_num_elements(lmp, nlidx);
+        EXPECT_EQ(nlocal, inum);
+        int numneigh   = -1;
+        int iatom      = -1;
+        int *neighbors = nullptr;
+        lammps_neighlist_element_neighbors(lmp, nlidx, 0, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 0);
+        EXPECT_EQ(numneigh, 80);
+        lammps_neighlist_element_neighbors(lmp, nlidx, 1, &iatom, &numneigh, &neighbors);
+        EXPECT_EQ(iatom, 1);
+        EXPECT_EQ(numneigh, 62);
+    } else {
+        GTEST_FAIL() << "No suitable neighbor list info found";
+    }
+}
 } // namespace LAMMPS_NS
 
 int main(int argc, char **argv)
