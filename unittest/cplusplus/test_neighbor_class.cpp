@@ -126,6 +126,16 @@ protected:
     }
 };
 
+TEST_F(NeighborListsBin, none)
+{
+    create_system("atomic", "real", "on");
+    BEGIN_CAPTURE_OUTPUT();
+    command("pair_style none");
+    command("run 0 post no");
+    auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
+    EXPECT_THAT(neigh_info.size() == 0);
+}
+
 TEST_F(NeighborListsBin, one_atomic_half_list_newton)
 {
     create_system("atomic", "real", "on");
