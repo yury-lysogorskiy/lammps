@@ -38,7 +38,7 @@ protected:
         command("region box block -2 2 -2 2 -2 2");
         if ((atom_style == "molecular") || (atom_style == "full")) {
             command(
-                "create_box 2 box bond/types 1 extra/bond/per/atom 10 extra/special/per/atom 50");
+                "create_box 2 box bond/types 1 extra/bond/per/atom 10 extra/special/per/atom 150");
         } else {
             command("create_box 2 box");
         }
@@ -68,6 +68,10 @@ protected:
         if (verbose) utils::print(result);
         auto begin = result.find("Neighbor list info");
         auto end   = result.rfind("Per MPI rank");
+        if (end == std::string::npos) {
+            end = result.rfind("Finding 1-2 1-3 1-4 neighbors");
+        }
+
         if ((begin != std::string::npos) && (end != std::string::npos) && (begin < end)) {
             return utils::split_lines(result.substr(begin, end - begin));
         } else {
@@ -136,7 +140,7 @@ TEST_F(NeighborListsBin, one_atomic_half_list_newton)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/atomonly/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/atomonly/newton$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: half/bin/3d"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -172,7 +176,7 @@ TEST_F(NeighborListsBin, one_atomic_half_list_nonewton)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton off$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/atomonly/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/atomonly/newtoff$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: full/bin/3d"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -210,7 +214,7 @@ TEST_F(NeighborListsBin, one_atomic_half_list_newton_respa)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++],
                     ContainsRegex("attributes: half, newton on, respa outer/middle/inner$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/respa/bin/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/respa/bin/newton$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: half/bin/3d"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -248,7 +252,7 @@ TEST_F(NeighborListsBin, one_atomic_half_list_nonewton_respa)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++],
                     ContainsRegex("attributes: half, newton off, respa outer/middle/inner$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/respa/bin/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/respa/bin/newtoff$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: full/bin/3d"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -285,7 +289,7 @@ TEST_F(NeighborListsBin, one_atomic_half_list_newton_exclude)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/atomonly/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/atomonly/newton$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: half/bin/3d"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -322,7 +326,7 @@ TEST_F(NeighborListsBin, one_atomic_half_list_nonewton_exclude)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton off$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/atomonly/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/atomonly/newtoff$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: full/bin/3d"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -359,7 +363,7 @@ TEST_F(NeighborListsBin, one_hybrid_half_list_newton)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 2 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/atomonly/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/atomonly/newton$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: half/bin/3d"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
         EXPECT_THAT(neigh_info[lidx++],
@@ -412,7 +416,7 @@ TEST_F(NeighborListsBin, one_hybrid_half_list_nonewton)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 2 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton off$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/atomonly/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/atomonly/newtoff$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: full/bin/3d"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
         EXPECT_THAT(neigh_info[lidx++],
@@ -468,7 +472,7 @@ TEST_F(NeighborListsBin, one_trim_half_list_newton)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 2 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/atomonly/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/atomonly/newton$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: half/bin/3d"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".2. pair coul/cut, perpetual, trim from .1."));
@@ -522,7 +526,7 @@ TEST_F(NeighborListsBin, one_trim_half_list_nonewton)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 2 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton off$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/atomonly/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/atomonly/newtoff$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: full/bin/3d"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".2. pair coul/cut, perpetual, trim from .1.$"));
@@ -625,7 +629,7 @@ TEST_F(NeighborListsBin, one_hybrid_full)
         EXPECT_THAT(neigh_info[lidx++],
                     ContainsRegex(".3. neighbor class addition, perpetual, half/full from .4.$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: halffull/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: halffull/newton$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".4. neighbor class addition, perpetual$"));
@@ -722,7 +726,7 @@ TEST_F(NeighborListsBin, two_atomic_half_full)
         EXPECT_THAT(neigh_info[lidx++],
                     ContainsRegex(".2. pair meam, perpetual, half/full from .1.$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: halffull/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: halffull/newton$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
         int nlidx = lammps_find_pair_neighlist(lmp, "meam", 1, 0, 1);
@@ -769,7 +773,7 @@ TEST_F(NeighborListsBin, one_molecular_half_list_newton)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/newton$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: half/bin/3d"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -806,7 +810,7 @@ TEST_F(NeighborListsBin, one_molecular_half_list_nonewton)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton off$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/newtoff$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: full/bin/3d"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -844,7 +848,7 @@ TEST_F(NeighborListsBin, one_molecular_half_list_newton_respa)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/newton$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: half/bin/3d"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -882,7 +886,7 @@ TEST_F(NeighborListsBin, one_molecular_half_list_nonewton_respa)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton off$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/newtoff$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: full/bin/3d"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -904,6 +908,34 @@ TEST_F(NeighborListsBin, one_molecular_half_list_nonewton_respa)
     }
 }
 
+TEST_F(NeighborListsBin, two_command_half_list_newton)
+{
+    if (!lammps_config_has_package("MOLECULE")) GTEST_SKIP() << "Missing MOLECULE package for test";
+    create_system("molecular", "real", "on");
+    BEGIN_CAPTURE_OUTPUT();
+    command("create_bonds many two two 1 1.9 2.1");
+    auto neigh_info = get_neigh_info(END_CAPTURE_OUTPUT());
+    if (neigh_info.size() >= 17) {
+        auto lidx = find_first_line(neigh_info);
+        EXPECT_THAT(neigh_info[lidx], ContainsRegex("2 neighbor lists"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 1 0"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. command create_bonds, occasional$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: full, newton on$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: full/bin$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: full/bin/3d"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".2. pair zero, perpetual$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/bin/newton$"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: half/bin/3d"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: standard"));
+        int nlidx = lammps_find_pair_neighlist(lmp, "zero", 1, 0, 0);
+        EXPECT_EQ(nlidx, -1);
+    } else {
+        GTEST_FAIL() << "No suitable neighbor list info found";
+    }
+}
+
 TEST_F(NeighborListsNsq, one_atomic_half_list_newton)
 {
     create_system("atomic", "real", "on");
@@ -918,7 +950,7 @@ TEST_F(NeighborListsNsq, one_atomic_half_list_newton)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newton$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -954,7 +986,7 @@ TEST_F(NeighborListsNsq, one_atomic_half_list_nonewton)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton off$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newtoff$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -992,7 +1024,7 @@ TEST_F(NeighborListsNsq, one_atomic_half_list_newton_respa)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++],
                     ContainsRegex("attributes: half, newton on, respa outer/middle/inner$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/respa/nsq/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/respa/nsq/newton$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -1030,7 +1062,7 @@ TEST_F(NeighborListsNsq, one_atomic_half_list_nonewton_respa)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++],
                     ContainsRegex("attributes: half, newton off, respa outer/middle/inner$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/respa/nsq/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/respa/nsq/newtoff$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -1067,7 +1099,7 @@ TEST_F(NeighborListsNsq, one_atomic_half_list_newton_exclude)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newton$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -1104,7 +1136,7 @@ TEST_F(NeighborListsNsq, one_atomic_half_list_nonewton_exclude)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton off$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newtoff$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -1190,7 +1222,7 @@ TEST_F(NeighborListsNsq, one_hybrid_full)
         EXPECT_THAT(neigh_info[lidx++],
                     ContainsRegex(".3. neighbor class addition, perpetual, half/full from .4.$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: halffull/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: halffull/newton$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".4. neighbor class addition, perpetual$"));
@@ -1248,7 +1280,7 @@ TEST_F(NeighborListsNsq, two_atomic_half_full)
         EXPECT_THAT(neigh_info[lidx++],
                     ContainsRegex(".2. pair meam, perpetual, half/full from .1.$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: halffull/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: halffull/newton$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
         int nlidx = lammps_find_pair_neighlist(lmp, "meam", 1, 0, 1);
@@ -1333,7 +1365,7 @@ TEST_F(NeighborListsNsq, one_molecular_half_list_newton)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newton$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -1370,7 +1402,7 @@ TEST_F(NeighborListsNsq, one_molecular_half_list_nonewton)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton off$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newtoff$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -1407,7 +1439,7 @@ TEST_F(NeighborListsNsq, one_molecular_half_list_newton_respa)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newton$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -1445,7 +1477,7 @@ TEST_F(NeighborListsNsq, one_molecular_half_list_nonewton_respa)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton off$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/nsq/newtoff$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: none"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: none"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -1483,7 +1515,7 @@ TEST_F(NeighborListsMulti, one_atomic_half_list_newton)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton on$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/multi/atomonly/newton"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/multi/atomonly/newton$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: half/multi/3d"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: multi"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
@@ -1522,7 +1554,7 @@ TEST_F(NeighborListsMulti, one_atomic_half_list_nonewton)
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("perpetual/occasional/extra = 1 0 0"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex(".1. pair lj/cut, perpetual$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("attributes: half, newton off$"));
-        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/multi/atomonly/newtoff"));
+        EXPECT_THAT(neigh_info[lidx++], ContainsRegex("pair build: half/multi/atomonly/newtoff$"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("stencil: full/multi/3d"));
         EXPECT_THAT(neigh_info[lidx++], ContainsRegex("bin: multi"));
         int nlidx = lammps_find_pair_neighlist(lmp, "lj/cut", 1, 0, 0);
