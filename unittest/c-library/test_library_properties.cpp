@@ -110,7 +110,6 @@ TEST_F(LibraryProperties, thermo)
     std::string input = path_join(INPUT_DIR, "in.fourmol");
     ::testing::internal::CaptureStdout();
     lammps_file(lmp, input.c_str());
-
     lammps_command(lmp, "run 2 post no");
     std::string output = ::testing::internal::GetCapturedStdout();
     if (verbose) std::cout << output;

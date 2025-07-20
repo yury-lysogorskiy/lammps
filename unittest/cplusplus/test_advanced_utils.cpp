@@ -626,7 +626,6 @@ TEST_F(AdvancedUtils, tnumeric)
         } catch (std::exception &e) {
             END_HIDE_OUTPUT();
             GTEST_FAIL() << "Incorrect exception: " << e.what() << "\n";
-            ;
         }
         ASSERT_TRUE(caught);
     }

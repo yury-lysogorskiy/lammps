@@ -436,8 +436,8 @@ TEST_F(SimpleCommandsTest, Plugin)
     lmp->input->one("plugin list");
     text = ::testing::internal::GetCapturedStdout();
     if (verbose) std::cout << text;
-    ASSERT_THAT(text,
-                ContainsRegex(".*1: command style plugin hello\n.*2: fix style plugin nve2.*"));
+    ASSERT_THAT(text, ContainsRegex(".*1: command style plugin hello\n.*"));
+    ASSERT_THAT(text, ContainsRegex(".*2: fix style plugin nve2.*"));
 
     ::testing::internal::CaptureStdout();
     lmp->input->one(fmt::format(fmt::runtime(loadfmt), bindir, "hello"));
