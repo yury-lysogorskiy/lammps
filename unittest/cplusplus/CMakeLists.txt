@@ -19,5 +19,8 @@ add_test(NAME ErrorClass COMMAND test_error_class)
 
 add_executable(test_neighbor_class test_neighbor_class.cpp)
 target_link_libraries(test_neighbor_class PRIVATE lammps GTest::GMock)
+if(BUILD_OMP)
+  target_compile_definitions(test_neighbor_class PRIVATE -DLMP_OPENMP)
+endif()
 add_test(NAME NeighborClass COMMAND test_neighbor_class)
 set_tests_properties(NeighborClass PROPERTIES ENVIRONMENT "LAMMPS_POTENTIALS=${LAMMPS_POTENTIALS_DIR}")
