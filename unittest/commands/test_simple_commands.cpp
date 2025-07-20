@@ -477,7 +477,8 @@ TEST_F(SimpleCommandsTest, Plugin)
     lmp->input->one("plugin list");
     text = ::testing::internal::GetCapturedStdout();
     if (verbose) std::cout << text;
-    ASSERT_THAT(text, ContainsRegex(".*Currently loaded plugins: 1.*command style plugin hello.*"));
+    ASSERT_THAT(text, ContainsRegex(".*Currently loaded plugins: 1.*"));
+    ASSERT_THAT(text, ContainsRegex(".*command style plugin hello.*"));
 
     ::testing::internal::CaptureStdout();
     lmp->input->one("plugin clear");
@@ -491,8 +492,8 @@ TEST_F(SimpleCommandsTest, Plugin)
     lmp->input->one("plugin list");
     text = ::testing::internal::GetCapturedStdout();
     if (verbose) std::cout << text;
-    ASSERT_THAT(text, ContainsRegex(".*Plugin symbol lookup failure in file.*noplugin.so:.*"
-                                    "Currently loaded plugins: 0\n$"));
+    ASSERT_THAT(text, ContainsRegex(".*Plugin symbol lookup failure in file.*noplugin.so:.*"));
+    ASSERT_THAT(text, ContainsRegex(".*Currently loaded plugins: 0\n$"));
 
     ::testing::internal::CaptureStdout();
     lmp->input->one(fmt::format("shell putenv LAMMPS_PLUGIN_PATH={}", bindir));
