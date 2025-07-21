@@ -1442,6 +1442,7 @@ TEST_F(NeighborListsNsq, one_hybrid_full)
 
 TEST_F(NeighborListsNsq, two_atomic_half_full)
 {
+    if (!lammps_config_has_package("MEAM")) GTEST_SKIP() << "Missing MEAM package for test";
     create_system("atomic", "metal", "on");
     BEGIN_CAPTURE_OUTPUT();
     command("pair_style meam");
@@ -2964,6 +2965,7 @@ TEST_F(NeighborListsOMPNsq, one_hybrid_full)
 
 TEST_F(NeighborListsOMPNsq, two_atomic_half_full)
 {
+    if (!lammps_config_has_package("MEAM")) GTEST_SKIP() << "Missing MEAM package for test";
     create_system("atomic", "metal", "on");
     BEGIN_CAPTURE_OUTPUT();
     command("pair_style meam");
