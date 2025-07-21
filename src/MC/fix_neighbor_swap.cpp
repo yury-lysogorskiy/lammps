@@ -23,7 +23,6 @@
 #include "citeme.h"
 #include "comm.h"
 #include "compute.h"
-#include "compute_voronoi_atom.h"
 #include "dihedral.h"
 #include "domain.h"
 #include "error.h"
@@ -639,7 +638,7 @@ int FixNeighborSwap::pick_j_swap_neighbor()
   int jtype_selected_local = -1;
 
   // Generate random double from 0 to maximum global probability
-  double selected_prob = static_cast<double>(global_probability * random_equal->uniform());
+  auto selected_prob = static_cast<double>(global_probability * random_equal->uniform());
 
   // Find which local swap atom corresponds to probability
   if ((selected_prob >= prev_probability) &&
@@ -700,10 +699,10 @@ void FixNeighborSwap::build_i_neighbor_list(int i_center)
 
     // Find local voronoi entry with selected central atom
     if ((int) voro_neighbor_list[n][0] == id_center) {
-      temp_j_id = voro_neighbor_list[n][1];
+      temp_j_id = voro_neighbor_list[n][1]; // NOLINT
       temp_j = -1;
     } else if (((int) voro_neighbor_list[n][1] == id_center) && (i_center < 0)) {
-      temp_j_id = voro_neighbor_list[n][0];
+      temp_j_id = voro_neighbor_list[n][0]; // NOLINT
       temp_j = -1;
     } else {
       continue;
@@ -990,7 +989,7 @@ void FixNeighborSwap::write_restart(FILE *fp)
 void FixNeighborSwap::restart(char *buf)
 {
   int n = 0;
-  double *list = (double *) buf;
+  auto *list = (double *) buf;
 
   seed = static_cast<int>(list[n++]);
   random_equal->reset(seed);

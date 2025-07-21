@@ -46,8 +46,10 @@ class ThrOMP {
 
  public:
   ThrOMP(LAMMPS *, int);
-  virtual ~ThrOMP() noexcept(false) {
-  }    // NOLINT  Cannot use = default here due to broken GCC 8 on RHEL 8
+  // clang-format off
+  // Cannot use = default here due to broken GCC 8 on RHEL 8
+  virtual ~ThrOMP() noexcept(false) {} // NOLINT
+  // clang-format on
 
   double memory_usage_thr();
 

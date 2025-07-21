@@ -62,12 +62,12 @@ NPairStyle(full/bin/atomonly/omp,
            NP_NEWTON | NP_NEWTOFF | NP_ORTHO | NP_TRI);
 
 using NPairHalfBinNewtoffAtomonlyOmp = NPairBinOmp<1, 0, 0, 0, 1>;
-NPairStyle(half/bin/newtoff/atomonly/omp,
+NPairStyle(half/bin/atomonly/newtoff/omp,
            NPairHalfBinNewtoffAtomonlyOmp,
            NP_HALF | NP_BIN | NP_OMP | NP_ATOMONLY | NP_NEWTOFF | NP_ORTHO | NP_TRI);
 
 using NPairHalfBinNewtonAtomonlyOmp = NPairBinOmp<1, 1, 0, 0, 1>;
-NPairStyle(half/bin/newton/atomonly/omp,
+NPairStyle(half/bin/atomonly/newton/omp,
            NPairHalfBinNewtonAtomonlyOmp,
            NP_HALF | NP_BIN | NP_OMP | NP_ATOMONLY | NP_NEWTON | NP_ORTHO);
 
@@ -83,12 +83,12 @@ NPairStyle(full/size/bin/atomonly/omp,
            NP_NEWTON | NP_NEWTOFF | NP_ORTHO | NP_TRI);
 
 using NPairHalfSizeBinNewtoffAtomonlyOmp = NPairBinOmp<1, 0, 0, 1, 1>;
-NPairStyle(half/size/bin/newtoff/atomonly/omp,
+NPairStyle(half/size/bin/atomonly/newtoff/omp,
            NPairHalfSizeBinNewtoffAtomonlyOmp,
            NP_HALF | NP_SIZE | NP_BIN | NP_OMP | NP_ATOMONLY | NP_NEWTOFF | NP_ORTHO | NP_TRI);
 
 using NPairHalfSizeBinNewtonAtomonlyOmp = NPairBinOmp<1, 1, 0, 1, 1>;
-NPairStyle(half/size/bin/newton/atomonly/omp,
+NPairStyle(half/size/bin/atomonly/newton/omp,
            NPairHalfSizeBinNewtonAtomonlyOmp,
            NP_HALF | NP_SIZE | NP_BIN | NP_OMP | NP_ATOMONLY | NP_NEWTON | NP_ORTHO);
 

@@ -21,14 +21,12 @@
 #include "comm.h"
 #include "domain.h"
 #include "error.h"
-#include "force.h"
 #include "gpu_extra.h"
 #include "memory.h"
 #include "neigh_list.h"
 #include "neighbor.h"
 #include "potential_file_reader.h"
 #include "suffix.h"
-#include "tokenizer.h"
 
 #include <cmath>
 #include <cstring>

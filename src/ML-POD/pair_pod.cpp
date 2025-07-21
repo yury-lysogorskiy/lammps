@@ -18,7 +18,6 @@
 #include "pair_pod.h"
 
 #include "atom.h"
-#include "comm.h"
 #include "error.h"
 #include "force.h"
 #include "info.h"
@@ -27,11 +26,9 @@
 #include "memory.h"
 #include "neigh_list.h"
 #include "neighbor.h"
-#include "tokenizer.h"
 
+#include <algorithm>
 #include <cmath>
-#include <cstring>
-#include <chrono>
 
 #include "eapod.h"
 

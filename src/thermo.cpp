@@ -453,7 +453,7 @@ void Thermo::compute(int flag)
   // add each thermo value to line with its specific format
   if (update_field_data) {
     lock_cache();
-    if (field_data.size() != nfield) field_data.resize(nfield);
+    if ((int)field_data.size() != nfield) field_data.resize(nfield);
   }
 
   for (ifield = 0; ifield < nfield; ifield++) {

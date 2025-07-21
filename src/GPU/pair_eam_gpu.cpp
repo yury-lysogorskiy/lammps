@@ -21,7 +21,6 @@
 #include "comm.h"
 #include "domain.h"
 #include "error.h"
-#include "force.h"
 #include "gpu_extra.h"
 #include "neigh_list.h"
 #include "neighbor.h"

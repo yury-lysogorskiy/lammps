@@ -19,16 +19,16 @@
 
 #include "comm.h"
 #include "error.h"
-#include "math_special.h"
 #include "memory.h"
 #include "tokenizer.h"
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
+#include <iterator>
 #include <random>
-#include <string>
 #include <unordered_map>
-#include <vector>
+#include <utility>
 
 #include "eapod.h"
 

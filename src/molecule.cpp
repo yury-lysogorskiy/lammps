@@ -30,7 +30,9 @@
 #include "update.h"
 
 #include <cmath>
+#include <cstdint>
 #include <cstring>
+#include <exception>
 
 using namespace LAMMPS_NS;
 using MathSpecial::powint;

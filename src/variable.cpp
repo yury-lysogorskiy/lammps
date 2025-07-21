@@ -45,6 +45,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstring>
+#include <exception>
 #include <functional>
 #include <limits>
 #include <unordered_map>

@@ -32,7 +32,6 @@
 #include "respa.h"
 #include "update.h"
 
-#include <cctype>
 #include <cmath>
 #include <cstring>
 

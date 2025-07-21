@@ -36,16 +36,13 @@
 #include "group.h"
 #include "improper.h"
 #include "kspace.h"
-#include "math_extra.h"
 #include "memory.h"
 #include "modify.h"
-#include "neighbor.h"
-#include "output.h"
 #include "pair.h"
 #include "random_park.h"
 #include "update.h"
 
-#include <cstdlib>
+#include <cmath>
 #include <cstring>
 
 using namespace LAMMPS_NS;

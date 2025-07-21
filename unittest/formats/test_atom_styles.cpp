@@ -20,18 +20,12 @@
 #include "atom_vec_tri.h"
 #include "body.h"
 #include "info.h"
-#include "input.h"
-#include "lammps.h"
 #include "math_const.h"
-#include "utils.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 #include <cmath>
-#include <cstdio>
 #include <cstring>
-#include <mpi.h>
-#include <vector>
 
 #if !defined(_FORTIFY_SOURCE) || (_FORTIFY_SOURCE == 0)
 #if defined(__INTEL_COMPILER) || (__PGI)

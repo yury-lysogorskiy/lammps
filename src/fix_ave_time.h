@@ -22,8 +22,6 @@ FixStyle(ave/time,FixAveTime);
 
 #include "fix.h"
 
-#include <map>
-
 namespace LAMMPS_NS {
 
 class FixAveTime : public Fix {

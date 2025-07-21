@@ -1,16 +1,15 @@
 // unit tests for public member functions of the Error class
 
 #include "error.h"
-#include "info.h"
-#include "lammps.h"
 #include "output.h"
 #include "thermo.h"
+#include "exceptions.h"
 
 #include "../testing/core.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-#include <string>
+#include <cstring>
 
 // whether to print verbose output (i.e. not capturing LAMMPS screen output).
 bool verbose = false;
@@ -163,7 +162,7 @@ TEST_F(ErrorTest, errorpointer)
     delete[] lmp->input->line;
     lmp->input->line = utils::strdup("some command line 'with some blanks'");
     lmp->input->parse();
-    EXPECT_THAT(utils::point_to_error(nullptr,0), StrEq(""));
+    EXPECT_THAT(utils::point_to_error(nullptr, 0), StrEq(""));
     EXPECT_THAT(utils::point_to_error(lmp->input, Error::NOPOINTER),
                 StrEq("Last input line: some command line 'with some blanks'\n"));
     EXPECT_THAT(utils::point_to_error(lmp->input, -1),

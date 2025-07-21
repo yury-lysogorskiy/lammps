@@ -28,9 +28,9 @@
 #include "neigh_list.h"
 #include "neighbor.h"
 #include "potential_file_reader.h"
-#include "update.h"
 
 #include <cmath>
+#include <cstring>
 
 using namespace LAMMPS_NS;
 

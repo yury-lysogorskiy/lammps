@@ -23,13 +23,14 @@
 #include "domain.h"
 #include "error.h"
 #include "force.h"
-#include "input.h"
-#include "modify.h"
 #include "region.h"
 #include "respa.h"
 #include "update.h"
 
 #include <array>
+#include <cmath>
+#include <cstring>
+#include <exception>
 
 #include "Lepton.h"
 #include "lepton_utils.h"

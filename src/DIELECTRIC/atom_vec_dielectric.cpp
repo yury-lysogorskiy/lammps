@@ -23,6 +23,7 @@
 #include "pair_hybrid.h"
 
 #include <cmath>
+#include <cstring>
 
 using namespace LAMMPS_NS;
 

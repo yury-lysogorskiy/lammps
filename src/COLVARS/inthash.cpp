@@ -3,7 +3,6 @@
 
 #include <cstdlib>
 #include <cstring>
-#include <memory>
 
 #include "inthash.h"
 

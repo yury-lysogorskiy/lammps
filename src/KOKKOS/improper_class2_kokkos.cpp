@@ -29,8 +29,6 @@
 
 using namespace LAMMPS_NS;
 
-static constexpr double SMALL = 0.001;
-
 /* ---------------------------------------------------------------------- */
 
 template<class DeviceType>

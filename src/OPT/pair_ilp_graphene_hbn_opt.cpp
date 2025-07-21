@@ -40,12 +40,10 @@
 #include "interlayer_taper.h"
 #include "memory.h"
 #include "neigh_list.h"
-#include "neigh_request.h"
 #include "neighbor.h"
-#include "pointers.h"
 
 #include <cmath>
-#include <cstring>
+#include <utility>
 
 using namespace LAMMPS_NS;
 using namespace InterLayer;

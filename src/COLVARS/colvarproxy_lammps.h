@@ -14,16 +14,12 @@
 
 #include "colvarmodule.h"
 #include "colvarproxy.h"
-#include "colvartypes.h"
-
-#include <mpi.h>
-
-#include "random_park.h"
 
 // forward declarations
 
 namespace LAMMPS_NS {
 class LAMMPS;
+class RanPark;
 }    // namespace LAMMPS_NS
 
 /// \brief Communication between colvars and LAMMPS
@@ -50,6 +46,7 @@ class colvarproxy_lammps : public colvarproxy {
 
   colvarproxy_lammps(LAMMPS_NS::LAMMPS *lmp);
   ~colvarproxy_lammps() override;
+
   // disable default and copy constructor
   colvarproxy_lammps() = delete;
   colvarproxy_lammps(const colvarproxy_lammps &) = delete;
@@ -89,7 +86,7 @@ class colvarproxy_lammps : public colvarproxy {
   cvm::rvector position_distance(cvm::atom_pos const &pos1,
                                  cvm::atom_pos const &pos2) const override;
 
-  cvm::real rand_gaussian() override { return _random->gaussian(); };
+  cvm::real rand_gaussian() override;
 
   int init_atom(int atom_number) override;
   int check_atom_id(int atom_number) override;

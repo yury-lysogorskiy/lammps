@@ -20,6 +20,8 @@
 #include "comm.h"
 #include "error.h"
 
+#include <cstring>
+
 #if defined(LAMMPS_CURL)
 #include <curl/curl.h>
 #endif

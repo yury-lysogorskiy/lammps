@@ -1161,8 +1161,8 @@ void FixRigidNHSmall::compute_dof()
   nf[0] = nf_t;
   nf[1] = nf_r;
   MPI_Allreduce(nf,nfall,2,MPI_DOUBLE,MPI_SUM,world);
-  nf_t = nfall[0];
-  nf_r = nfall[1];
+  nf_t = (int)nfall[0];
+  nf_r = (int)nfall[1];
 
   g_f = nf_t + nf_r;
 }

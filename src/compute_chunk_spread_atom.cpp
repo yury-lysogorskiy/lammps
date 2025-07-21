@@ -25,6 +25,7 @@
 #include "update.h"
 
 #include <cstring>
+#include <utility>
 
 using namespace LAMMPS_NS;
 
