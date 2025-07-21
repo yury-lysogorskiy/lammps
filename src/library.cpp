@@ -6230,7 +6230,7 @@ int lammps_create_atoms(void *handle, int n, const tagint *id, const int *type,
  *
 \verbatim embed:rst
 
-.. versionadded:: TBD
+.. versionadded:: 22Jul2025
 
 This function creates a new molecule template similar to the
 :doc:`molecule command <molecule>`, but uses JSON data passed

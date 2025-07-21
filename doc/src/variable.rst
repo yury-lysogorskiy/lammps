@@ -759,7 +759,7 @@ is the nearest integer to its argument.
 
 .. versionadded:: 7Feb2024
 
-.. versionchanged:: TBD
+.. versionchanged:: 22Jul2025
 
    Evaluate only selected argument
 

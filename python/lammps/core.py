@@ -2175,7 +2175,7 @@ class lammps:
   def create_molecule(self, molid, jsonstr):
     """ Create new molecule template from string with JSON data
 
-    .. versionadded:: TBD
+    .. versionadded:: 22Jul2025
 
     This is a wrapper around the :cpp:func:`lammps_create_molecule` function
     of the library interface.
