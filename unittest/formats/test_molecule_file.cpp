@@ -14,14 +14,15 @@
 #include "../testing/core.h"
 #include "atom.h"
 #include "info.h"
-#include "input.h"
 #include "lammps.h"
 #include "molecule.h"
 #include "platform.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+#include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <mpi.h>
 #include <string>
 

@@ -55,7 +55,7 @@ static constexpr double MY_EPSILON = 10.0*2.220446049250313e-16;
 namespace /* anonymous */
 {
 
-typedef double TimerType;
+using TimerType = double;
 TimerType getTimeStamp() { return platform::walltime(); }
 double getElapsedTime( const TimerType &t0, const TimerType &t1) { return t1-t0; }
 
@@ -1228,7 +1228,7 @@ void FixRX::odeDiagnostics()
   const int numCounters = numDiagnosticCounters-1;
 
   // # of time-steps for averaging.
-  const int nTimes = this->diagnosticCounter[numDiagnosticCounters-1];
+  const int nTimes = this->diagnosticCounter[numDiagnosticCounters-1];  // NOLINT
 
   // # of ODE's per time-step (on average).
   //const int nODEs  = this->diagnosticCounter[AtomSum] / nTimes;

@@ -24,7 +24,6 @@
 #include "force.h"
 #include "gpu_extra.h"
 #include "memory.h"
-#include "modify.h"
 #include "neighbor.h"
 #include "update.h"
 

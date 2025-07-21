@@ -25,10 +25,13 @@
 #include "group.h"
 #include "memory.h"
 #include "modify.h"
-#include "pair.h"
 #include "pair_lambda_input_apip.h"
 #include "pair_lambda_zone_apip.h"
 #include "update.h"
+
+#include <algorithm>
+#include <cmath>
+#include <cstring>
 
 using namespace LAMMPS_NS;
 using namespace FixConst;

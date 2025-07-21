@@ -15,7 +15,6 @@
 
 #include "info.h"
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 const char pickle[] = "python create_pickle here \"\"\"\n"

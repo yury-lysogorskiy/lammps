@@ -20,7 +20,6 @@ FixStyle(hmc,FixHMC)
 #ifndef LMP_FIX_HMC_H
 #define LMP_FIX_HMC_H
 
-#include "atom.h"
 #include "fix.h"
 
 namespace LAMMPS_NS {

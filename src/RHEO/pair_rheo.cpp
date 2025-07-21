@@ -33,10 +33,9 @@
 #include "memory.h"
 #include "modify.h"
 #include "neigh_list.h"
-#include "neighbor.h"
-#include "utils.h"
 
 #include <cmath>
+#include <cstring>
 
 using namespace LAMMPS_NS;
 using namespace RHEO_NS;

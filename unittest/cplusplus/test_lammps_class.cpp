@@ -2,11 +2,6 @@
 
 #include "comm.h"
 #include "info.h"
-#include "lammps.h"
-#include <cstdio>  // for stdin, stdout
-#include <cstdlib> // for setenv
-#include <mpi.h>
-#include <string>
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

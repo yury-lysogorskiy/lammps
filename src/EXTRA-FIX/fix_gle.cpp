@@ -80,22 +80,9 @@ static void StabCholesky(int n, const double* MMt, double* M)
   delete[] L;
 }
 
-void MyMult(int n, int m, int r, const double* A, const double* B, double* C, double cf=0.0)
-{
-   // !! TODO !! should probably call BLAS (or check if some efficient matrix-matrix multiply is implemented somewhere in LAMMPS)
-   // (rows x cols)  :: A is n x r, B is r x m, C is n x m
-   int i,j,k; double *cij;
-   for (i=0; i<n; ++i)
-      for (j=0; j<m; ++j)
-      {
-         cij=&C[midx(m,i,j)]; *cij *= cf;
-         for (k=0; k<r; ++k) *cij+=A[midx(r,i,k)]*B[midx(m,k,j)];
-      }
-}
-
 #define MIN(A,B) ((A) < (B) ? (A) : (B))
-  // BLAS-like version of MyMult(). AK 2014-08-06
 
+// BLAS-like version of MyMult(). AK 2014-08-06
 static inline void AkMult(const int n, const int m, const int r,
                           const double * const A, const double * const B,
                           double * const C, const double cf=0.0)
@@ -159,12 +146,12 @@ static void MatrixExp(int n, const double* M, double* EM, int j=8, int k=8)
 
   //taylor exp of scaled matrix
   for (int p=j-1; p>=0; p--) {
-    MyMult(n, n, n, SM, EM, TMP); for (int i=0; i<n*n; ++i) EM[i]=TMP[i];
+    AkMult(n, n, n, SM, EM, TMP); for (int i=0; i<n*n; ++i) EM[i]=TMP[i];
     for (int i=0; i<n; ++i) EM[midx(n,i,i)]+=tc[p];
   }
 
   for (int p=0; p<k; p++) {
-     MyMult(n, n, n, EM, EM, TMP);
+     AkMult(n, n, n, EM, EM, TMP);
      for (int i=0; i<n*n; ++i) EM[i]=TMP[i];
   }
   delete[] tc;
@@ -356,9 +343,9 @@ void FixGLE::init_gle()
   }
   GLE::MatrixExp(ns+1,tmp1,T);
 
-  GLE::MyMult(ns+1,ns+1,ns+1,T,C,tmp1);
+  GLE::AkMult(ns+1,ns+1,ns+1,T,C,tmp1);
   GLE::MyTrans(ns+1,T,tmp2);
-  GLE::MyMult(ns+1,ns+1,ns+1,tmp1,tmp2,S);
+  GLE::AkMult(ns+1,ns+1,ns+1,tmp1,tmp2,S);
 
   for (int i=0; i<ns1sq; ++i) tmp1[i]=C[i]-S[i];
 

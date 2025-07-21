@@ -26,8 +26,6 @@
 #include "mliap_data.h"
 #include "mliap_unified_couple.h"
 #include "pair_mliap.h"
-#include "python_compat.h"
-#include "utils.h"
 
 using namespace LAMMPS_NS;
 

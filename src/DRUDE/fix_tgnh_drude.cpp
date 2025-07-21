@@ -34,6 +34,7 @@
 #include "respa.h"
 #include "update.h"
 
+#include <algorithm>
 #include <cstring>
 #include <cmath>
 

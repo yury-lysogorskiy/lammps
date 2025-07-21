@@ -50,4 +50,4 @@ namespace RANN {
   };
 }    // namespace RANN
 }    // namespace LAMMPS_NS
-#endif /* RANN_ACTIVATION_H_ */
+#endif /* RANN_ACTIVATION_H */

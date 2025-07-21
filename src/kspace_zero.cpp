@@ -24,7 +24,7 @@
 #include "force.h"
 #include "pair.h"
 
-#include <cstring>
+#include <cmath>
 
 using namespace LAMMPS_NS;
 

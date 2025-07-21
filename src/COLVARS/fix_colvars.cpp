@@ -39,14 +39,17 @@
 #include "modify.h"
 #include "output.h"
 #include "respa.h"
+#if defined(COLVARS_MPI)
 #include "universe.h"
+#endif
 #include "update.h"
 
 #include "colvarmodule.h"
-#include "colvarproxy.h"
 #include "colvarproxy_lammps.h"
 #include "colvars_memstream.h"
 #include "colvarscript.h"
+
+#include <cstring>
 
 /* struct for packed data communication of coordinates and forces. */
 struct LAMMPS_NS::commdata {

@@ -2867,7 +2867,7 @@ void Neighbor::modify_params(int narg, char **arg)
           utils::bounds(FLERR,word,1,ntypes,nlo,nhi,error);
           for (k = nlo; k <= nhi; k++) {
             if (type2collection[k] != -1)
-              error->all(FLERR,"Type specified more than once in collection/type commnd");
+              error->all(FLERR,"Type specified more than once in collection/type command");
             type2collection[k] = i;
           }
         }
@@ -2877,7 +2877,7 @@ void Neighbor::modify_params(int narg, char **arg)
 
       for (i = 1; i <= ntypes; i++){
         if (type2collection[i] == -1) {
-          error->all(FLERR,"Type missing in collection/type commnd");
+          error->all(FLERR,"Type missing in collection/type command");
         }
       }
 

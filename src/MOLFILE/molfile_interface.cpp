@@ -24,8 +24,10 @@
 
 #include "molfile_plugin.h"
 
+#include <cctype>
 #include <cstdio>
 #include <cstring>
+
 
 #if vmdplugin_ABIVERSION < 16
 #error "unsupported VMD molfile plugin ABI version"

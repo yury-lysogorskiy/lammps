@@ -27,17 +27,16 @@
 #include "force.h"
 #include "gran_sub_mod_normal.h"
 #include "granular_model.h"
-#include "input.h"
 #include "math_const.h"
 #include "math_special.h"
-#include "memory.h"
 #include "modify.h"
 #include "neigh_list.h"
 #include "pair.h"
 #include "pair_granular.h"
 #include "region.h"
 #include "update.h"
-#include "variable.h"
+
+#include <cmath>
 
 using namespace LAMMPS_NS;
 using namespace Granular_NS;

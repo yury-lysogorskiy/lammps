@@ -22,6 +22,8 @@
 #include "group.h"
 #include "tokenizer.h"
 
+#include <exception>
+
 using namespace LAMMPS_NS;
 static constexpr int BUFLEN = 4096;
 

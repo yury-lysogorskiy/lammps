@@ -26,9 +26,6 @@
 #include "force.h"
 #include "neighbor.h"
 
-#include "pair_reaxff.h"
-#include "reaxff_api.h"
-
 #include <cmath>
 #include <cstring>
 

@@ -30,10 +30,10 @@
 #include "math_extra.h"
 #include "memory.h"
 #include "neigh_list.h"
-#include "neigh_request.h"
 #include "neighbor.h"
 
-#include "update.h"
+#include <cmath>
+#include <cstring>
 
 using namespace LAMMPS_NS;
 using namespace RHEO_NS;

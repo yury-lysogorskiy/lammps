@@ -30,14 +30,14 @@
 #include "fix_rheo.h"
 #include "fix_update_special_bonds.h"
 #include "force.h"
-#include "math_extra.h"
 #include "memory.h"
 #include "modify.h"
 #include "neigh_list.h"
 #include "neigh_request.h"
 #include "neighbor.h"
-#include "pair.h"
 #include "update.h"
+
+#include <cstring>
 
 using namespace LAMMPS_NS;
 using namespace RHEO_NS;

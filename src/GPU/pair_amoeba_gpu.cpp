@@ -24,16 +24,14 @@
 #include "domain.h"
 #include "error.h"
 #include "fix_store_atom.h"
-#include "force.h"
 #include "gpu_extra.h"
 #include "info.h"
 #include "math_const.h"
-#include "memory.h"
 #include "my_page.h"
 #include "neigh_list.h"
-#include "neigh_request.h"
 #include "neighbor.h"
 #include "suffix.h"
+
 #include <cmath>
 
 using namespace LAMMPS_NS;

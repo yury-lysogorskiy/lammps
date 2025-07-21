@@ -43,6 +43,7 @@
 #include <cmath>
 #include <cstring>
 #include <exception>
+#include <iterator>
 #include <memory>
 #include <utility>
 

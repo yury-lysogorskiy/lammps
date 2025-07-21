@@ -35,7 +35,9 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <cctype>
 #include <unordered_map>
+#include <utility>
 
 using namespace LAMMPS_NS;
 

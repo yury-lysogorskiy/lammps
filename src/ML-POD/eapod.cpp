@@ -25,6 +25,7 @@
 #include "memory.h"
 #include "tokenizer.h"
 
+#include <algorithm>
 #include <cmath>
 
 // header file. Moved down here to avoid polluting other headers with its defines
