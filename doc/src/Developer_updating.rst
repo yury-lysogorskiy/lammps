@@ -660,7 +660,7 @@ This change is **required** or else the code will not compile.
 Use utils::logmesg() instead of error->warning()
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. versionchanged:: TBD
+.. versionchanged:: 22Jul2025
 
 The ``Error::message()`` method has been removed since its functionality
 has been superseded by the :cpp:func:`utils::logmesg` function.

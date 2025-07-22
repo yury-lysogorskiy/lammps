@@ -46,7 +46,7 @@ Examples
 Description
 """""""""""
 
-.. versionadded:: TBD
+.. versionadded:: 22Jul2025
 
 This fix performs Monte-Carlo (MC) evaluations to enable kinetic
 Monte Carlo (kMC)-type behavior during MD simulation by allowing

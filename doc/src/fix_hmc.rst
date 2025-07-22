@@ -36,7 +36,7 @@ Examples
 Description
 """""""""""
 
-.. versionadded:: TBD
+.. versionadded:: 22Jul2025
 
 This fix implements the hybrid or Hamiltonian Monte Carlo (HMC)
 algorithm.  The basic idea is to use molecular dynamics (MD) to
