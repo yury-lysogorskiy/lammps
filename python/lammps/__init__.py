@@ -11,7 +11,6 @@ LAMMPS module global members:
 from .constants import *                # lgtm [py/polluting-import]
 from .core import *                     # lgtm [py/polluting-import]
 from .data import *                     # lgtm [py/polluting-import]
-from .pylammps import *                 # lgtm [py/polluting-import]
 
 # convert installed module string version to numeric version
 def get_version_number():
