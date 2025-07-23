@@ -145,7 +145,7 @@ LAMMPS::LAMMPS(int narg, char **arg, MPI_Comm communicator) :
 
   // append git descriptor info to update string when compiling development or maintenance version
 
-  std::string update_string = UPDATE_STRING;
+  std::string update_string = UPDATE_STRING; // NOLINT
   if (has_git_info() && ((update_string == " - Development") || (update_string == " - Maintenance")))
     update_string += fmt::format(" - {}", git_descriptor());
 
@@ -645,7 +645,7 @@ LAMMPS::LAMMPS(int narg, char **arg, MPI_Comm communicator) :
     }
 
     // screen and logfile messages for universe and world
-    std::string update_string = UPDATE_STRING;
+    std::string update_string = UPDATE_STRING; // NOLINT
     if (has_git_info() && ((update_string == " - Development")
                            || (update_string == " - Maintenance")))
       update_string += fmt::format(" - {}", git_descriptor());

@@ -43,7 +43,7 @@ namespace RANN {
     Fingerprint(PairRANN *);
     virtual ~Fingerprint() = default;
 
-    virtual bool parse_values(std::string, std::vector<std::string>) { return false; }
+    virtual bool parse_values(std::string, std::vector<std::string>) { return false; } // NOLINT
     virtual void write_values(FILE *) {}
 
     virtual void init(int *, int) {}

@@ -166,7 +166,7 @@ void ComputePTMAtom::init() {
 void ComputePTMAtom::init_list(int /* id */, NeighList *ptr) { list = ptr; }
 
 /* ---------------------------------------------------------------------- */
-
+// NOLINTBEGIN
 typedef struct
 {
   double **x;
@@ -184,7 +184,7 @@ typedef struct {
   int index;
   double d;
 } ptmnbr_t;
-
+// NOLINTEND
 static bool sorthelper_compare(ptmnbr_t const &a, ptmnbr_t const &b) {
   return a.d < b.d;
 }
