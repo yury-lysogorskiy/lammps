@@ -2110,7 +2110,7 @@ void PairPOD::blockatomenergyforce(double *ei, double *fij, int Ni, int Nij)
   blockatom_energyforce(ei, fij, Ni, Nij);
 }
 
-void PairPOD::savematrix2binfile(std::string filename, double *A, int nrows, int ncols)
+void PairPOD::savematrix2binfile(const std::string &filename, double *A, int nrows, int ncols)
 {
   FILE *fp = fopen(filename.c_str(), "wb");
   double sz[2];
@@ -2121,7 +2121,7 @@ void PairPOD::savematrix2binfile(std::string filename, double *A, int nrows, int
   fclose(fp);
 }
 
-void PairPOD::saveintmatrix2binfile(std::string filename, int *A, int nrows, int ncols)
+void PairPOD::saveintmatrix2binfile(const std::string &filename, int *A, int nrows, int ncols)
 {
   FILE *fp = fopen(filename.c_str(), "wb");
   int sz[2];
