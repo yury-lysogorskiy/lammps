@@ -34,7 +34,7 @@
 #include <cmath>
 using namespace LAMMPS_NS;
 
-#define MAX_CACHE_ROWS 500
+static constexpr int MAX_CACHE_ROWS = 500;
 
 // Cannot use virtual inheritance on the GPU, so must duplicate code
 
