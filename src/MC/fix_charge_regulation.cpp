@@ -1108,7 +1108,7 @@ int FixChargeRegulation::get_random_particle(int ptype, double charge, double rd
 
   npart_xrd = count_global; // save the number of particles, for use in MC acceptance ratio
   if (count_global > 0) {
-    const int ID_global = floor(random_equal->uniform() * count_global);
+    const int ID_global = floor(random_equal->uniform() * count_global); // NOLINT
     if ((ID_global >= count_before) && (ID_global < (count_before + count_local))) {
       const int ID_local = ID_global - count_before;
       m = ptype_ID[ID_local]; // local ID of the chosen particle
@@ -1288,14 +1288,14 @@ void FixChargeRegulation::restart(char *buf)
 
   seed = static_cast<int>(list[n++]);
   random_unequal->reset(seed);
-
+  // NOLINTBEGIN
   nacid_attempts  = list[n++];
   nacid_successes = list[n++];
   nbase_attempts  = list[n++];
   nbase_successes = list[n++];
   nsalt_attempts  = list[n++];
   nsalt_successes = list[n++];
-
+  // NOLINTEND
   next_reneighbor = (bigint) ubuf(list[n++]).i;
   bigint ntimestep_restart = (bigint) ubuf(list[n++]).i;
   if (ntimestep_restart != update->ntimestep)

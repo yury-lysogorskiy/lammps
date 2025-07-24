@@ -85,6 +85,7 @@ namespace MathEigen {
   /// Implementation details: "real_t<T>" is defined using C++ template
   /// specializations.
 
+  // NOLINTBEGIN
   template <typename T>
   struct realTypeMap {
     typedef T type;
@@ -95,6 +96,7 @@ namespace MathEigen {
   };
   template <typename T>
   using real_t = typename realTypeMap<T>::type;
+  // NOLINTEND
 
 
   // --- Operations on vectors (of real and complex numbers) ---
@@ -158,7 +160,7 @@ namespace MathEigen {
     /// @brief  Change the size of the matrices you want to diagonalize.
     /// @param  n  the size (ie. number of rows) of the (square) matrix.
     void SetSize(int n);
-
+    // NOLINTBEGIN
     // @typedef choose the criteria for sorting eigenvalues and eigenvectors
     typedef enum eSortCriteria {
       DO_NOT_SORT,
@@ -167,7 +169,7 @@ namespace MathEigen {
       SORT_DECREASING_ABS_EVALS,
       SORT_INCREASING_ABS_EVALS
     } SortCriteria;
-
+    // NOLINTEND
     /// @brief Calculate the eigenvalues and eigenvectors of a symmetric matrix
     ///        using the Jacobi eigenvalue algorithm.
     /// @returns 0 if the algorithm converged,

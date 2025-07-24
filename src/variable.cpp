@@ -3099,8 +3099,8 @@ double Variable::collapse_tree(Tree *tree)
     else if (update->ntimestep < ivalue2) {
       bigint offset = update->ntimestep - ivalue1;
       tree->value = ivalue1 + (offset/ivalue3)*ivalue3 + ivalue3;
-      if (tree->value > ivalue2) tree->value = (double) MAXBIGINT_DOUBLE;
-    } else tree->value = (double) MAXBIGINT_DOUBLE;
+      if (tree->value > ivalue2) tree->value = MAXBIGINT_DOUBLE;
+    } else tree->value = MAXBIGINT_DOUBLE;
     return tree->value;
   }
 
@@ -3136,10 +3136,10 @@ double Variable::collapse_tree(Tree *tree)
         if (istep > ivalue5) {
           offset = ivalue5 - ivalue1;
           istep = ivalue1 + (offset/ivalue3)*ivalue3 + ivalue3;
-          if (istep > ivalue2) istep = MAXBIGINT_DOUBLE;
+          if (istep > ivalue2) istep = MAXBIGINT_DOUBLE; // NOLINT
         }
       }
-    } else istep = MAXBIGINT_DOUBLE;
+    } else istep = MAXBIGINT_DOUBLE; // NOLINT
     tree->value = (double)istep;
     return tree->value;
   }
@@ -3479,8 +3479,8 @@ double Variable::eval_tree(Tree *tree, int i)
     else if (update->ntimestep < ivalue2) {
       bigint offset = update->ntimestep - ivalue1;
       arg = ivalue1 + (offset/ivalue3)*ivalue3 + ivalue3;
-      if (arg > ivalue2) arg = (double) MAXBIGINT_DOUBLE;
-    } else arg = (double) MAXBIGINT_DOUBLE;
+      if (arg > ivalue2) arg = MAXBIGINT_DOUBLE;
+    } else arg = MAXBIGINT_DOUBLE;
     return arg;
   }
 
@@ -3511,10 +3511,10 @@ double Variable::eval_tree(Tree *tree, int i)
         if (istep > ivalue5) {
           offset = ivalue5 - ivalue1;
           istep = ivalue1 + (offset/ivalue3)*ivalue3 + ivalue3;
-          if (istep > ivalue2) istep = MAXBIGINT_DOUBLE;
+          if (istep > ivalue2) istep = MAXBIGINT_DOUBLE; // NOLINT
         }
       }
-    } else istep = MAXBIGINT_DOUBLE;
+    } else istep = MAXBIGINT_DOUBLE; // NOLINT
     arg = istep;
     return arg;
   }
@@ -4081,8 +4081,8 @@ int Variable::math_function(char *word, char *contents, Tree **tree, Tree **tree
       else if (update->ntimestep < ivalue2) {
         bigint offset = update->ntimestep - ivalue1;
         value = ivalue1 + (offset/ivalue3)*ivalue3 + ivalue3;
-        if (value > ivalue2) value = (double) MAXBIGINT_DOUBLE;
-      } else value = (double) MAXBIGINT_DOUBLE;
+        if (value > ivalue2) value = MAXBIGINT_DOUBLE;
+      } else value = MAXBIGINT_DOUBLE;
       argstack[nargstack++] = value;
     }
 
@@ -4116,10 +4116,10 @@ int Variable::math_function(char *word, char *contents, Tree **tree, Tree **tree
           if (istep > ivalue5) {
             offset = ivalue5 - ivalue1;
             istep = ivalue1 + (offset/ivalue3)*ivalue3 + ivalue3;
-            if (istep > ivalue2) istep = MAXBIGINT_DOUBLE;
+            if (istep > ivalue2) istep = MAXBIGINT_DOUBLE; // NOLINT
           }
         }
-      } else istep = MAXBIGINT_DOUBLE;
+      } else istep = MAXBIGINT_DOUBLE; // NOLINT
       double value = istep;
       argstack[nargstack++] = value;
     }
