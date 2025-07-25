@@ -487,7 +487,7 @@ Jacobi<Scalar, Vector, Matrix, ConstMatrix>::
 
 template<typename Scalar,typename Vector,typename Matrix,typename ConstMatrix>
 Jacobi<Scalar, Vector, Matrix, ConstMatrix>::
-Jacobi(int n, Scalar **M, int *max_idx_row) {
+Jacobi(int n, Scalar **M, int *max_idx_row) : c(std::sqrt(2.0)), s(std::sqrt(2.0)) , t(1.0) {
   _Jacobi(n, M, max_idx_row);
 }
 

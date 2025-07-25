@@ -43,9 +43,9 @@ namespace RANN {
       style = "linear";
     }
 
-    double activation_function(double A) { return A; }
-    double dactivation_function(double) { return 1.0; }
-    double ddactivation_function(double) { return 0.0; }
+    double activation_function(double A) override { return A; }
+    double dactivation_function(double) override { return 1.0; }
+    double ddactivation_function(double) override { return 0.0; }
   };
 
 }    // namespace RANN
