@@ -615,15 +615,6 @@ if(WITH_SWIG)
 endif()
 
 ########################################################################
-# Basic system tests (standard libraries, headers, functions, types)   #
-########################################################################
-if (NOT ((CMAKE_CXX_COMPILER_ID STREQUAL "Intel") OR (CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")))
-  check_include_file_cxx(cmath FOUND_CMATH)
-  if(NOT FOUND_CMATH)
-    message(FATAL_ERROR "Could not find the required 'cmath' header")
-  endif(NOT FOUND_CMATH)
-endif()
-
 # make the standard math library overrideable and autodetected (for systems that don't have it)
 find_library(STANDARD_MATH_LIB m DOC "Standard Math library")
 mark_as_advanced(STANDARD_MATH_LIB)
