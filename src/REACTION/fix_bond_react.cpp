@@ -908,7 +908,7 @@ void FixBondReact::post_integrate()
   int nevery_check = 1;
   for (int i = 0; i < nreacts; i++) {
     if (var_flag[NEVERY][i])
-      nevery[i] = ceil(input->variable->compute_equal(var_id[NEVERY][i]));
+      nevery[i] = ceil(input->variable->compute_equal(var_id[NEVERY][i])); // NOLINT
     if (nevery[i] <= 0)
       error->all(FLERR,"Illegal fix bond/react command: "
                  "'Nevery' must be a positive integer");
@@ -987,7 +987,7 @@ void FixBondReact::post_integrate()
         int nrxns_delta = reaction_count_total[rxnID] - myrxn_count;
         int my_nrate;
         if (var_flag[NRATE][rxnID] == 1) {
-          my_nrate = input->variable->compute_equal(var_id[NRATE][rxnID]);
+          my_nrate = input->variable->compute_equal(var_id[NRATE][rxnID]); // NOLINT
         } else my_nrate = rate_limit[1][rxnID];
         if (nrxns_delta >= my_nrate) rate_limit_flag = 0;
       }
@@ -1502,7 +1502,7 @@ void FixBondReact::superimpose_algorithm()
         int nrxn_delta = reaction_count_total[i] + delta_rxn[i] - myrxn_count;
         int my_nrate;
         if (var_flag[NRATE][i] == 1) {
-          my_nrate = input->variable->compute_equal(var_id[NRATE][i]);
+          my_nrate = input->variable->compute_equal(var_id[NRATE][i]); // NOLINT
         } else my_nrate = rate_limit[1][i];
         int rate_limit_overstep = nrxn_delta - my_nrate;
         overstep = MAX(overstep,rate_limit_overstep);
@@ -2118,7 +2118,7 @@ int FixBondReact::check_constraints()
       memory->destroy(xmobile);
       if (rmsd > constraints[i][rxnID].par[0]) satisfied[i] = 0;
     } else if (constraints[i][rxnID].type == CUSTOM) {
-      satisfied[i] = custom_constraint(constraints[i][rxnID].str);
+      satisfied[i] = custom_constraint(constraints[i][rxnID].str); // NOLINT
     }
   }
 
@@ -2767,7 +2767,7 @@ void FixBondReact::dedup_mega_gloves(int dedup_mode)
   auto *temp_rxn = new double[max_natoms+cuff];
   for (int i = dedup_size-1; i > 0; --i) { //dedup_size
     // choose random entry to swap current one with
-    int k = floor(random[0]->uniform()*(i+1));
+    int k = floor(random[0]->uniform()*(i+1)); // NOLINT
 
     // swap entries
     for (int j = 0; j < max_natoms+cuff; j++)
@@ -2782,16 +2782,16 @@ void FixBondReact::dedup_mega_gloves(int dedup_mode)
 
   for (int i = 0; i < dedup_size; i++) {
     if (dedup_mask[i] == 0) {
-      int myrxnid1 = dedup_glove[0][i];
+      int myrxnid1 = dedup_glove[0][i]; // NOLINT
       onemol = atom->molecules[unreacted_mol[myrxnid1]];
       for (int j = 0; j < onemol->natoms; j++) {
-        int check1 = dedup_glove[j+cuff][i];
+        int check1 = dedup_glove[j+cuff][i]; // NOLINT
         for (int ii = i + 1; ii < dedup_size; ii++) {
           if (dedup_mask[ii] == 0) {
-            int myrxnid2 = dedup_glove[0][ii];
+            int myrxnid2 = dedup_glove[0][ii]; // NOLINT
             twomol = atom->molecules[unreacted_mol[myrxnid2]];
             for (int jj = 0; jj < twomol->natoms; jj++) {
-              int check2 = dedup_glove[jj+cuff][ii];
+              int check2 = dedup_glove[jj+cuff][ii]; // NOLINT
               if (check2 == check1) {
                 dedup_mask[ii] = 1;
                 break;
