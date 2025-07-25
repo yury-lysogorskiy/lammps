@@ -44,17 +44,17 @@ namespace RANN {
       style = "sigI";
     }
 
-    double activation_function(double in)
+    double activation_function(double in) override
     {
       if (in > 34) return in;
       return 0.1 * in + 0.9 * log(exp(in) + 1);
     }
-    double dactivation_function(double in)
+    double dactivation_function(double in) override
     {
       if (in > 34) return 1;
       return 0.1 + 0.9 / (exp(in) + 1) * exp(in);
     }
-    double ddactivation_function(double in)
+    double ddactivation_function(double in) override
     {
       if (in > 34) return 0;
       return 0.9 * exp(in) / (exp(in) + 1) / (exp(in) + 1);
