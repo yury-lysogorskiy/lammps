@@ -172,7 +172,7 @@ void EAPOD::read_pod_file(const std::string &pod_file)
 
     if (words.size() == 0) continue;
 
-    auto keywd = words[0];
+    const auto &keywd = words[0];
 
     if (keywd == "species") {
       nelements = words.size()-1;
