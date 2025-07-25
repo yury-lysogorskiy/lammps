@@ -522,7 +522,7 @@ to have an executable that will run on this and newer architectures.
    the new hardware.  This is, however, only supported for GPUs of the
    **same** major hardware version and different minor hardware versions,
    e.g. 5.0 and 5.2 but not 5.2 and 6.0.  LAMMPS will abort with an
-   error message indicating a mismatch, if that happens.
+   error message indicating a mismatch, if the major version differs.
 
 The settings discussed below have been tested with LAMMPS and are
 confirmed to work.  Kokkos is an active project with ongoing improvements
@@ -794,23 +794,29 @@ This list was last updated for version 4.6.2 of the Kokkos library.
 
       This will enable FFTs on the GPU using the oneMKL library.
 
-      To simplify compilation, six preset files are included in the
+      To simplify compilation, seven preset files are included in the
       ``cmake/presets`` folder, ``kokkos-serial.cmake``,
       ``kokkos-openmp.cmake``, ``kokkos-cuda.cmake``,
-      ``kokkos-hip.cmake``, ``kokkos-sycl-nvidia.cmake``, and
-      ``kokkos-sycl-intel.cmake``.  They will enable the KOKKOS
-      package and enable some hardware choices.  For GPU support those
-      preset files must be customized to match the hardware used. So
-      to compile with CUDA device parallelization with some common
-      packages enabled, you can do the following:
+      ``kokkos-cuda-nowrapper.cmake``, ``kokkos-hip.cmake``,
+      ``kokkos-sycl-nvidia.cmake``, and ``kokkos-sycl-intel.cmake``.
+      They will enable the KOKKOS package and enable some hardware
+      choices.  For GPU support those preset files may need to be
+      customized to match the hardware used.  For some platforms,
+      e.g. CUDA, the Kokkos library will try to auto-detect a suitable
+      configuration.  So to compile with CUDA device parallelization
+      with some common packages enabled, you can do the following:
 
       .. code-block:: bash
 
          mkdir build-kokkos-cuda
          cd build-kokkos-cuda
          cmake -C ../cmake/presets/basic.cmake \
-               -C ../cmake/presets/kokkos-cuda.cmake ../cmake
+               -C ../cmake/presets/kokkos-cuda-nowrapper.cmake ../cmake
          cmake --build .
+
+      The ``kokkos-openmp.cmake`` preset can be combined with any of the
+      others, but it is not possible to combine multiple GPU
+      acceleration settings (CUDA, HIP, SYCL) into a single executable.
 
    .. tab:: Basic traditional make settings:
 
