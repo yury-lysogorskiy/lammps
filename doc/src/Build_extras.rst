@@ -130,7 +130,7 @@ CMake build
    -D GPU_PREC=value            # precision setting
                                 # value = double or mixed (default) or single
    -D GPU_ARCH=value            # primary GPU hardware choice for GPU_API=cuda
-                                # value = sm_XX (see below, default is sm_50)
+                                # value = sm_XX (see below, default is sm_75)
    -D GPU_DEBUG=value           # enable debug code in the GPU package library,
                                 # mostly useful for developers
                                 # value = yes or no (default)
@@ -138,7 +138,7 @@ CMake build
                                 # GPU_API=HIP
    -D HIP_ARCH=value            # primary GPU hardware choice for GPU_API=hip
                                 # value depends on selected HIP_PLATFORM
-                                # default is 'gfx906' for HIP_PLATFORM=amd and 'sm_50' for
+                                # default is 'gfx906' for HIP_PLATFORM=amd and 'sm_75' for
                                 # HIP_PLATFORM=nvcc
    -D HIP_USE_DEVICE_SORT=value # enables GPU sorting
                                 # value = yes (default) or no
@@ -164,9 +164,12 @@ CMake build
 * ``sm_60`` or ``sm_61`` for Pascal (supported since CUDA 8)
 * ``sm_70`` for Volta (supported since CUDA 9)
 * ``sm_75`` for Turing (supported since CUDA 10)
-* ``sm_80`` or sm_86 for Ampere (supported since CUDA 11, sm_86 since CUDA 11.1)
+* ``sm_80`` or ``sm_86`` for Ampere (supported since CUDA 11, sm_86 since CUDA 11.1)
 * ``sm_89`` for Lovelace (supported since CUDA 11.8)
-* ``sm_90`` for Hopper (supported since CUDA 12.0)
+* ``sm_90`` or ``sm_90a`` for Hopper (supported since CUDA 12.0)
+* ``sm_100`` or ``sm_103`` for Blackwell (supported since CUDA 12.8)
+* ``sm_120`` or ``sm_120a`` for Blackwell (supported since CUDA 12.8)
+* ``sm_121`` for Blackwell (supported since CUDA 12.9)
 
 A more detailed list can be found, for example,
 at `Wikipedia's CUDA article <https://en.wikipedia.org/wiki/CUDA#GPUs_supported>`_
