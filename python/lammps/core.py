@@ -34,6 +34,8 @@ from lammps.constants import LAMMPS_AUTODETECT, LAMMPS_STRING, \
 
 from lammps.data import NeighList
 
+__all__ = ['MPIAbortException', 'ExceptionCheck', 'command_wrapper', 'lammps']
+
 # -------------------------------------------------------------------------
 
 class MPIAbortException(Exception):
