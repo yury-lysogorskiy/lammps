@@ -164,11 +164,11 @@ CMake build
 * ``sm_60`` or ``sm_61`` for Pascal (supported since CUDA 8)
 * ``sm_70`` for Volta (supported since CUDA 9)
 * ``sm_75`` for Turing (supported since CUDA 10)
-* ``sm_80`` or ``sm_86`` for Ampere (supported since CUDA 11, sm_86 since CUDA 11.1)
+* ``sm_80`` or ``sm_86`` for Ampere (supported since CUDA 11, ``sm_86`` since CUDA 11.1)
 * ``sm_89`` for Lovelace (supported since CUDA 11.8)
 * ``sm_90`` or ``sm_90a`` for Hopper (supported since CUDA 12.0)
-* ``sm_100`` or ``sm_103`` for Blackwell (supported since CUDA 12.8)
-* ``sm_120`` or ``sm_120a`` for Blackwell (supported since CUDA 12.8)
+* ``sm_100`` or ``sm_103`` for Blackwell B100/B200/B300 (supported since CUDA 12.8)
+* ``sm_120`` for Blackwell B20x/B40 (supported since CUDA 12.8)
 * ``sm_121`` for Blackwell (supported since CUDA 12.9)
 
 A more detailed list can be found, for example,
