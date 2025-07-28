@@ -109,7 +109,7 @@ found in reference "(Wirnsberger)"#_Wirnsberger.
 
 This fix is different from a thermostat such as :doc:`fix nvt <fix_nh>`
 or :doc:`fix temp/rescale <fix_temp_rescale>` in that energy is
-added/subtracted continually.  Thus if there is not another mechanism
+added/subtracted continually.  Thus if there is no another mechanism
 in place to counterbalance this effect, the entire system will heat or
 cool continuously.
 
@@ -117,9 +117,9 @@ cool continuously.
 
    If heat is subtracted from the system too aggressively so that
    the group's kinetic energy would go to zero, then LAMMPS will halt
-   with an error message. Increasing the value of *nevery* means that
-   heat is added/subtracted less frequently but in larger portions.  The
-   resulting temperature profile will therefore be the same.
+   with an error message.  Increasing the value of *nevery* means that
+   heat is added/subtracted less frequently but in larger portions.
+   The resulting temperature profile will therefore be the same.
 
 This fix will default to :doc:`fix_heat <fix_heat>` (HEX algorithm) if
 the keyword *hex* is specified.
@@ -128,7 +128,8 @@ the keyword *hex* is specified.
 
 **Compatibility with SHAKE and RATTLE (rigid molecules)**\ :
 
-This fix is compatible with :doc:`fix shake <fix_shake>` and :doc:`fix rattle <fix_shake>`. If either of these constraining algorithms is
+This fix is compatible with :doc:`fix shake <fix_shake>` and
+:doc:`fix rattle <fix_shake>`. If either of these constraining algorithms is
 specified in the input script and the keyword *constrain* is set, the
 bond distances will be corrected a second time at the end of the
 integration step.  It is recommended to specify the keyword *com* in
