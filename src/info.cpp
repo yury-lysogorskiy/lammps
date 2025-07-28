@@ -492,6 +492,7 @@ void Info::command(int narg, char **arg)
     }
     utils::print(out,"\nCurrent timestep number = {}\n", update->ntimestep);
     utils::print(out,"Current timestep size = {}\n", update->dt);
+    utils::print(out,"Current simulation time = {}\n", update->atime);
   }
 
   if (domain->box_exist && (flags & COEFFS)) {
