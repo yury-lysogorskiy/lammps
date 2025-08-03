@@ -398,10 +398,10 @@ first will be the value shown and the second the minimum width.
 
 For more details and examples, please consult the `{fmt} syntax
 documentation <https://fmt.dev/latest/syntax/>`_ website.  Since we
-plan to eventually transition to using ``std::format()`` of the C++
-standard library, it is advisable to avoid using any extensions and
-instead follow the (C++20) standard:
-<https://en.cppreference.com/w/cpp/utility/format/format.html>_
+plan to eventually transition from {fmt} to using ``std::format()``
+of the C++ standard library, it is advisable to avoid using any
+extensions beyond what the `C++20 standard offers
+<https://en.cppreference.com/w/cpp/utility/format/format.html>`_.
 
 Memory management
 ^^^^^^^^^^^^^^^^^
