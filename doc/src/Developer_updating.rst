@@ -164,7 +164,7 @@ New:
 .. seealso::
 
    :cpp:func:`utils::count_words() <LAMMPS_NS::utils::count_words>`,
-   :cpp:func:`utils::trim_comments() <LAMMPS_NS::utils::trim_comments>`
+   :cpp:func:`utils::trim_comment() <LAMMPS_NS::utils::trim_comment>`
 
 
 Use utils::numeric() functions instead of force->numeric()
@@ -663,7 +663,8 @@ Use utils::logmesg() instead of error->warning()
 .. versionchanged:: 22Jul2025
 
 The ``Error::message()`` method has been removed since its functionality
-has been superseded by the :cpp:func:`utils::logmesg` function.
+has been superseded by the :cpp:func:`utils::logmesg()
+<LAMMPS_NS::utils::logmesg>` function.
 
 Old:
 

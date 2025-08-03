@@ -293,15 +293,17 @@ processing similar to the "format()" functionality in Python.
 .. note::
 
    For commands like :doc:`fix ave/time <fix_ave_time>` that accept
-   wildcard arguments, the :cpp:func:`utils::expand_args` function
-   may be passed as an optional argument where the function will provide
-   a map to the original arguments from the expanded argument indices.
+   wildcard arguments, the :cpp:func:`utils::expand_args()
+   <LAMMPS_NS::utils::expand_args>` function may be passed as an
+   optional argument where the function will provide a map to the
+   original arguments from the expanded argument indices.
 
 For complex errors, that can have multiple causes and which cannot be
 explained in a single line, you can append to the error message, the
-string created by :cpp:func:`utils::errorurl`, which then provides a
-URL pointing to a paragraph of the :doc:`Errors_details` that
-corresponds to the number provided. Example:
+string created by :cpp:func:`utils::errorurl()
+<LAMMPS_NS::utils::errorurl>`, which then provides a URL pointing to a
+paragraph of the :doc:`Errors_details` that corresponds to the number
+provided. Example:
 
 .. code-block:: c++
 

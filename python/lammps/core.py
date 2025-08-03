@@ -2478,8 +2478,8 @@ class lammps:
   def available_styles(self, category):
     """Returns a list of styles available for a given category
 
-    This is a wrapper around the functions :cpp:func:`lammps_style_count()`
-    and :cpp:func:`lammps_style_name()` of the library interface.
+    This is a wrapper around the functions :cpp:func:`lammps_style_count`
+    and :cpp:func:`lammps_style_name` of the library interface.
 
     :param category: name of category
     :type  category: string
@@ -2529,8 +2529,8 @@ class lammps:
 
     .. versionadded:: 9Oct2020
 
-    This is a wrapper around the functions :cpp:func:`lammps_id_count()`
-    and :cpp:func:`lammps_id_name()` of the library interface.
+    This is a wrapper around the functions :cpp:func:`lammps_id_count`
+    and :cpp:func:`lammps_id_name` of the library interface.
 
     :param category: name of category
     :type  category: string
@@ -2556,8 +2556,8 @@ class lammps:
 
     .. versionadded:: 10Mar2021
 
-    This is a wrapper around the functions :cpp:func:`lammps_plugin_count()`
-    and :cpp:func:`lammps_plugin_name()` of the library interface.
+    This is a wrapper around the functions :cpp:func:`lammps_plugin_count`
+    and :cpp:func:`lammps_plugin_name` of the library interface.
 
     :return: list of style/name pairs of loaded plugins
     :rtype:  list
