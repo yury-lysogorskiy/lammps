@@ -1761,7 +1761,7 @@ within CMake will download the non-commercial use version.
 PLUMED package
 -------------------------------------
 
-.. _plumedinstall: https://plumed.github.io/doc-master/user-doc/html/_installation.html
+.. _plumedinstall: https://www.plumed.org/doc-v2.9/user-doc/html/_installation.html
 
 Before building LAMMPS with this package, you must first build PLUMED.
 PLUMED can be built as part of the LAMMPS build or installed separately

@@ -87,7 +87,7 @@ The URL for the Model Page is constructed from the
 
 .. parsed-literal::
 
-   https://openkim.org/id/extended_KIM_ID
+   `<https://openkim.org/doc/schema/kim-ids/#extended-kim-ids>`_
 
 For example, for the Stillinger-Weber potential listed above the Model Page is
 located at:
