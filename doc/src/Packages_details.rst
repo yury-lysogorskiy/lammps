@@ -782,7 +782,6 @@ algorithm.
 * :doc:`pair_style tdpd <pair_mesodpd>`
 * :doc:`fix mvv/dpd <fix_mvv_dpd>`
 * ``examples/PACKAGES/mesodpd``
-* https://www.lammps.org/movies.html#mesodpd
 
 ----------
 
@@ -1512,7 +1511,6 @@ This package has :ref:`specific installation instructions <machdyn>` on the :doc
 * ``src/MACHDYN/README``
 * `doc/PDF/MACHDYN_LAMMPS_userguide.pdf <PDF/MACHDYN_LAMMPS_userguide.pdf>`_
 * ``examples/PACKAGES/machdyn``
-* https://www.lammps.org/movies.html#smd
 
 ----------
 
@@ -2316,7 +2314,7 @@ Foster (UTSA).
 * :doc:`compute damage/atom <compute_damage_atom>`
 * :doc:`compute plasticity/atom <compute_plasticity_atom>`
 * ``examples/peri``
-* https://www.lammps.org/movies.html#peri
+* https://www.lammps.org/movies.html#impact
 
 ----------
 

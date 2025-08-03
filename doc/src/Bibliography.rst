@@ -1098,9 +1098,6 @@ Bibliography
 **(Parrinello)**
    Parrinello and Rahman, J Appl Phys, 52, 7182 (1981).
 
-**(PASS)**
-   PASS webpage: https://www.sdu.dk/en/DPASS
-
 **(Paula Leite2016)**
    Paula Leite , Freitas, Azevedo, and de Koning, J Chem Phys, 126, 044509 (2016).
 
