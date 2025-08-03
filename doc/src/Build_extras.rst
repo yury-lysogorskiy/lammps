@@ -2388,7 +2388,7 @@ SCAFACOS package
 -----------------------------------------
 
 To build with this package, you must download and build the
-`ScaFaCoS Coulomb solver library <http://www.scafacos.de>`_
+`ScaFaCoS Coulomb solver library <http://www.scafacos.de/>`_
 
 .. tabs::
 

@@ -303,7 +303,7 @@ be multiple tests run automatically:
 
 In addition, there is the option to run a spellcheck on the entire
 manual with ``make spelling``.  This requires `a library called enchant
-<https://github.com/AbiWord/enchant>`_.  To avoid printing out *false
+<https://github.com/rrthomas/enchant>`_.  To avoid printing out *false
 positives* (e.g. keywords, names, abbreviations) those can be added to
 the file ``lammps/doc/utils/sphinx-config/false_positives.txt``.
 

@@ -482,7 +482,7 @@ a :doc:`molecule command file <molecule>` you would then run for example:
    check-jsonschema --schemafile molecule-schema.json tip3p.json
 
 The latest schema files are also maintained and available for download
-at https://download.lammps.org/json .  This enables validation of JSON
+at https://download.lammps.org/json/ .  This enables validation of JSON
 files even if the LAMMPS sources are not locally available. Example:
 
 .. code-block:: sh
