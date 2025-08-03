@@ -89,7 +89,7 @@ folder.  The following ``make`` commands are available:
    make anchor_check  # check for duplicate anchor labels
    make style_check   # check for complete and consistent style lists
    make package_check # check for complete and consistent package lists
-   make link_check    # check for broken or outdated URLs
+   make link_check    # check for broken external URLs
    make spelling      # spell-check the manual
 
 ----------
