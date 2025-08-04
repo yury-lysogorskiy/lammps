@@ -89,7 +89,7 @@ folder.  The following ``make`` commands are available:
    make anchor_check  # check for duplicate anchor labels
    make style_check   # check for complete and consistent style lists
    make package_check # check for complete and consistent package lists
-   make link_check    # check for broken or outdated URLs
+   make link_check    # check for broken external URLs
    make spelling      # spell-check the manual
 
 ----------
@@ -303,7 +303,7 @@ be multiple tests run automatically:
 
 In addition, there is the option to run a spellcheck on the entire
 manual with ``make spelling``.  This requires `a library called enchant
-<https://github.com/AbiWord/enchant>`_.  To avoid printing out *false
+<https://github.com/rrthomas/enchant>`_.  To avoid printing out *false
 positives* (e.g. keywords, names, abbreviations) those can be added to
 the file ``lammps/doc/utils/sphinx-config/false_positives.txt``.
 

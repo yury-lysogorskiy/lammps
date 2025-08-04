@@ -251,7 +251,7 @@ LAMMPS runs in a separate thread, so the GUI stays responsive and is
 able to interact with the running calculation and access data it
 produces.  It is important to note that running LAMMPS this way is using
 the contents of the input buffer for the run (via the
-:cpp:func:`lammps_commands_string()` function of the LAMMPS C-library
+:cpp:func:`lammps_commands_string` function of the LAMMPS C-library
 interface), and **not** the original file it was read from.  Thus, if
 there are unsaved changes in the buffer, they *will* be used.  As an
 alternative, it is also possible to run LAMMPS by reading the contents
@@ -331,7 +331,7 @@ timestep (or iteration for energy minimization) and then complete the
 processing of the buffer while skipping all run or minimize commands.
 This is equivalent to the input script command :doc:`timer timeout 0
 <timer>` and is implemented by calling the
-:cpp:func:`lammps_force_timeout()` function of the LAMMPS C-library
+:cpp:func:`lammps_force_timeout` function of the LAMMPS C-library
 interface.  Please see the corresponding documentation pages to
 understand the implications of this operation.
 

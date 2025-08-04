@@ -254,7 +254,7 @@ dump file(s) and in what format.
 
 Note that *atom*, *custom*, *dcd*, *extxyz*, *xtc*, *xyz*, and *yaml*
 style dump files can be read directly by `VMD
-<https://www.ks.uiuc.edu/Research/vmd>`_, a popular tool for visualizing
+<https://www.ks.uiuc.edu/Research/vmd/>`_, a popular tool for visualizing
 and analyzing trajectories from atomic and molecular systems.  For
 reading *netcdf* style dump files, the netcdf plugin needs to be
 recompiled from source using a NetCDF version compatible with the one

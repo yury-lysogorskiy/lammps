@@ -1098,9 +1098,6 @@ Bibliography
 **(Parrinello)**
    Parrinello and Rahman, J Appl Phys, 52, 7182 (1981).
 
-**(PASS)**
-   PASS webpage: https://www.sdu.dk/en/DPASS
-
 **(Paula Leite2016)**
    Paula Leite , Freitas, Azevedo, and de Koning, J Chem Phys, 126, 044509 (2016).
 
@@ -1213,7 +1210,7 @@ Bibliography
    S. W. Rick, S. J. Stuart, B. J. Berne, J Chem Phys 101, 6141
 
 **(Roberts)**
-   R. Roberts (2019) "Evenly Distributing Points in a Triangle." Extreme Learning.  `<http://extremelearning.com.au/evenly-distributing-points-in-a-triangle/>`_
+   R. Roberts (2019) "Evenly Distributing Points in a Triangle." Extreme Learning.  `<https://extremelearning.com.au/evenly-distributing-points-in-a-triangle/>`_
 
 **(Rohart)**
    Rohart and Thiaville, Physical Review B, 88(18), 184422. (2013).

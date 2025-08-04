@@ -103,7 +103,7 @@ FixNeighborSwap::FixNeighborSwap(LAMMPS *lmp, int narg, char **arg) :
   if (temperature <= 0.0)
     error->all(FLERR, 6, "Illegal fix neighbor/swap command temperature value: {}", temperature);
 
-  double r_0 = utils::inumeric(FLERR, arg[7], false, lmp);
+  double r_0 = utils::numeric(FLERR, arg[7], false, lmp);
   if (r_0 <= 0.0) error->all(FLERR, 7, "Illegal fix neighbor/swap command R0 value: {}", r_0);
 
   beta = 1.0 / (force->boltz * temperature);

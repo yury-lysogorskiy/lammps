@@ -286,7 +286,7 @@ find a heFFTe installation with the correct back end (e.g., FFTW or
 MKL), it will attempt to download and build the library automatically.
 In this case, LAMMPS CMake will also accept all heFFTe specific
 variables listed in the `heFFTe documentation
-<https://mkstoyanov.bitbucket.io/heffte/md_doxygen_installation.html>`_
+<https://icl-utk-edu.github.io/heffte/md_doxygen_installation.html>`_
 and those variables will be passed into the heFFTe build.
 
 ----------
