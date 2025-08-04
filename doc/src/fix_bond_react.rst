@@ -577,16 +577,17 @@ only one value, e.g. bond force. This value is returned by the
 fragment in the pre-reaction template. The fragment must contain
 exactly two atoms, corresponding to the atoms involved in the bond
 whose value should be calculated. An example of a constraint that uses
-the force experienced by a bond is provided below. The 'rxnsum' and
-'rxnave' functions operate over the atoms in a given reaction site,
-and have one mandatory argument and one optional argument. The
-mandatory argument is the identifier for an atom-style variable. The
-second, optional argument is the name of a molecule fragment in the
-pre-reaction template, and can be used to operate over a subset of
-atoms in the reaction site. The 'rxnsum' function sums the atom-style
-variable over the reaction site, while the 'rxnave' returns the
-average value. For example, a constraint on the total potential energy
-of atoms involved in the reaction can be imposed as follows:
+the force experienced by a bond is provided below. When using 'rxnbond',
+at least one atom in the fragment must be an initiator atom. The
+'rxnsum' and 'rxnave' functions operate over the atoms in a given
+reaction site, and have one mandatory argument and one optional
+argument. The mandatory argument is the identifier for an atom-style
+variable. The second, optional argument is the name of a molecule
+fragment in the pre-reaction template, and can be used to operate over a
+subset of atoms in the reaction site. The 'rxnsum' function sums the
+atom-style variable over the reaction site, while the 'rxnave' returns
+the average value. For example, a constraint on the total potential
+energy of atoms involved in the reaction can be imposed as follows:
 
 .. code-block:: LAMMPS
 
