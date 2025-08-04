@@ -289,16 +289,15 @@ currently connected to the rest of a long polymer chain. These are
 referred to as edge atoms, and are also specified in the map file. All
 pre-reaction template atoms should be linked to an initiator atom, via
 at least one path that does not involve edge atoms. When the
-pre-reaction template contains edge atoms, not all atoms, bonds,
-charges, etc. specified in the reaction templates will be updated.
-Specifically, topology that involves only atoms that are "too near" to
-template edges will not be updated. The definition of "too near the
-edge" depends on which interactions are defined in the simulation. If
-the simulation has defined dihedrals, atoms within two bonds of edge
-atoms are considered "too near the edge." If the simulation defines
-angles, but not dihedrals, atoms within one bond of edge atoms are
-considered "too near the edge." If just bonds are defined, only edge
-atoms are considered "too near the edge."
+pre-reaction template contains edge atoms, not all atoms, bonds, etc.
+specified in the reaction templates will be updated. Specifically, topology
+that involves only atoms that are "too near" to template edges will not be
+updated. The definition of "too near the edge" depends on which
+interactions are defined in the simulation. If the simulation has defined
+dihedrals, atoms within two bonds of edge atoms are considered "too near
+the edge." If the simulation defines angles, but not dihedrals, atoms
+within one bond of edge atoms are considered "too near the edge." If just
+bonds are defined, only edge atoms are considered "too near the edge."
 
 .. note::
 
