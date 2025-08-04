@@ -2446,10 +2446,12 @@ double FixBondReact::rxnfunction(const std::string& rxnfunc, const std::string& 
     for (int i = 0; i < onemol->natoms; i++) {
       if (onemol->fragmentmask[ifrag][i]) {
         aset.insert(glove[i][1]);
-        nsum++;
+        if (ibonding[i] == 1 || jbonding[i] == 1) nsum++;
       }
     }
-    if (nsum != 2) error->one(FLERR,"Bond/react: Molecule fragment of reaction special function 'rxnbond' "
+    if (nsum == 0) error->one(FLERR, "Bond/react: When using reaction special function 'rxnbond', "
+                                  "at least one atom in molecule fragment must be an initiator atom");
+    if (aset.size() != 2) error->one(FLERR,"Bond/react: Molecule fragment of reaction special function 'rxnbond' "
                      "must contain exactly two atoms");
 
     if (cperbond->invoked_local != lmp->update->ntimestep)
