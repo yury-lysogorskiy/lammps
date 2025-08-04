@@ -55,11 +55,16 @@
   </provides>
 
   <releases>
+    <release version="1.7.1" timestamp="1754346906">
+      <description>
+        (none)
+      </description>
+    </release>
     <release version="1.7.0" timestamp="1751978344">
       <description>
         Reset minor version number for upcoming stable release and tutorial session.
-        refactor chartviewer title line to have two rows and add display of units and normalization
-        replace rubberband-zoom feature and button to reset zoom with two range sliders
+        Refactor chartviewer title line to have two rows and add display of units and normalization
+        Replace rubberband-zoom feature and button to reset zoom with two range sliders
       </description>
     </release>
     <release version="1.6.15" timestamp="1751751132">
