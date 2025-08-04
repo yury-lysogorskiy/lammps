@@ -619,7 +619,7 @@ Arrhenius constraint that depends on the bond force of a specific bond:
 
    # in Constraints section of map file
 
-   custom "exp(-(v_E_a-rxnbond(c_bondforce,bond1frag)*v_l0)/(2/3*rxnave(v_ke))) < random(0,1,12345)"
+   custom "exp(-(v_E_a-rxnbond(c_bondforce,bond1frag)*v_l0)/(2/3*rxnave(v_ke))) > random(0,1,12345)"
 
 By using an inequality and the 'random(x,y,z)' function, the left-hand
 side can be interpreted as the probability of the reaction occurring,
