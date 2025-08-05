@@ -2446,10 +2446,12 @@ double FixBondReact::rxnfunction(const std::string& rxnfunc, const std::string& 
     for (int i = 0; i < onemol->natoms; i++) {
       if (onemol->fragmentmask[ifrag][i]) {
         aset.insert(glove[i][1]);
-        nsum++;
+        if (ibonding[i] == 1 || jbonding[i] == 1) nsum++;
       }
     }
-    if (nsum != 2) error->one(FLERR,"Bond/react: Molecule fragment of reaction special function 'rxnbond' "
+    if (nsum == 0) error->one(FLERR, "Bond/react: When using reaction special function 'rxnbond', "
+                                  "at least one atom in molecule fragment must be an initiator atom");
+    if (aset.size() != 2) error->one(FLERR,"Bond/react: Molecule fragment of reaction special function 'rxnbond' "
                      "must contain exactly two atoms");
 
     if (cperbond->invoked_local != lmp->update->ntimestep)
@@ -4204,11 +4206,16 @@ void FixBondReact::Equivalences(char *line, int myrxn)
     reverse_equiv[tmp1-1][1][myrxn] = tmp2;
   }
   // sanity check for one-to-one mapping for equivalences
-  for (int i = 0; i < twomol->natoms; i++)
-    for (int j = i+1; j < twomol->natoms; j++)
+  for (int i = 0; i < twomol->natoms; i++) {
+    if (create_atoms[i][myrxn] == 1) continue;
+    for (int j = i+1; j < twomol->natoms; j++) {
+      if (create_atoms[i][myrxn] == 1) continue;
       if (equivalences[i][0][myrxn] == equivalences[j][0][myrxn] ||
-          equivalences[i][1][myrxn] == equivalences[j][1][myrxn])
+          equivalences[i][1][myrxn] == equivalences[j][1][myrxn]) {
         error->one(FLERR,"Fix bond/react: Repeated atoms IDs in Equivalences section");
+      }
+    }
+  }
 }
 
 void FixBondReact::DeleteAtoms(char *line, int myrxn)
