@@ -380,7 +380,7 @@ Bibliography
    Eike and Maginn, Journal of Chemical Physics, 124, 164503 (2006).
 
 **(Elliott)**
-   Elliott, Tadmor and Bernstein, `https://openkim.org/kim-api <https://openkim.org/kim-api>`_ (2011) doi: `https://doi.org/10.25950/FF8F563A <https://doi.org/10.25950/FF8F563A>`_
+   Elliott, Tadmor and Bernstein, `https://openkim.org/kim-api/ <https://openkim.org/kim-api/>`_ (2011) doi: `https://doi.org/10.25950/FF8F563A <https://doi.org/10.25950/FF8F563A>`_
 
 **(Ellis)**
    Ellis, Fiedler, Popoola, Modine, Stephens, Thompson, Cangi, Rajamanickam,  Phys Rev B, 104, 035120, (2021)
