@@ -130,6 +130,7 @@ void DeleteAtoms::command(int narg, char **arg)
   // if non-molecular system and compress flag set:
   // reset atom tags to be contiguous
   // set all atom IDs to 0, call tag_extend()
+  // for molecular system call reset_atoms id, unless there is a fix that stores atom IDs.
 
   if (compress_flag) {
     if (atom->molecular == Atom::ATOMIC) {
@@ -137,8 +138,18 @@ void DeleteAtoms::command(int narg, char **arg)
       int nlocal = atom->nlocal;
       for (int i = 0; i < nlocal; i++) tag[i] = 0;
       atom->tag_extend();
-    } else if (comm->me == 0)
-      error->warning(FLERR, "Ignoring 'compress yes' for molecular system");
+    } else {
+      bool can_compress = true;
+      for (const auto &ifix : modify->get_fix_list())
+        if (ifix->stores_ids) can_compress = false;
+
+      if (can_compress) {
+        input->one("reset_atoms id");
+      } else {
+        if (comm->me == 0)
+          error->warning(FLERR, "Ignoring 'compress yes' because of a fix storing atom IDs");
+      }
+    }
   }
 
   // reset atom->natoms and also topology counts
@@ -865,7 +876,12 @@ void DeleteAtoms::molring(int n, char *cbuf, void *ptr)
 
 void DeleteAtoms::options(int narg, char **arg)
 {
-  compress_flag = 1;
+  // default to "compress yes" for atomic systems and "compress no" for molecular systems
+  if (atom->molecular == Atom::ATOMIC)
+    compress_flag = 1;
+  else
+    compress_flag = 0;
+
   bond_flag = mol_flag = 0;
 
   int iarg = 0;

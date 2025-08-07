@@ -82,6 +82,7 @@ folder.  The following ``make`` commands are available:
 
    make fasthtml      # generate approximate HTML in fasthtml dir using pandoc
 
+   make upgrade       # upgrade sphinx, extensions, and dependencies to latest supported versions
    make clean         # remove intermediate RST files created by HTML build
    make clean-all     # remove entire build folder and any cached data
    make upgrade       # upgrade the python packages in the virtual environment
@@ -89,6 +90,9 @@ folder.  The following ``make`` commands are available:
    make anchor_check  # check for duplicate anchor labels
    make style_check   # check for complete and consistent style lists
    make package_check # check for complete and consistent package lists
+   make char_check    # check for non-ASCII characters
+   make role_check    # check for misformatted role keywords
+
    make link_check    # check for broken external URLs
    make spelling      # spell-check the manual
 

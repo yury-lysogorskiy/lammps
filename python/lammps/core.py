@@ -24,14 +24,7 @@ from ctypes import CDLL, POINTER, RTLD_GLOBAL, CFUNCTYPE, py_object, byref, cast
 from os.path import dirname, abspath, join
 from inspect import getsourcefile
 
-from lammps.constants import LAMMPS_AUTODETECT, LAMMPS_STRING, \
-  LAMMPS_INT, LAMMPS_INT_2D, LAMMPS_DOUBLE, LAMMPS_DOUBLE_2D, LAMMPS_INT64, LAMMPS_INT64_2D, \
-  LMP_STYLE_GLOBAL, LMP_STYLE_ATOM, LMP_STYLE_LOCAL, \
-  LMP_TYPE_SCALAR, LMP_TYPE_VECTOR, LMP_TYPE_ARRAY, \
-  LMP_SIZE_VECTOR, LMP_SIZE_ROWS, LMP_SIZE_COLS, \
-  LMP_VAR_EQUAL, LMP_VAR_ATOM, LMP_VAR_VECTOR, LMP_VAR_STRING, \
-  LMP_BUFSIZE, get_ctypes_int
-
+from lammps.constants import *
 from lammps.data import NeighList
 
 __all__ = ['MPIAbortException', 'ExceptionCheck', 'command_wrapper', 'lammps']
@@ -2532,6 +2525,15 @@ class lammps:
     This is a wrapper around the functions :cpp:func:`lammps_id_count`
     and :cpp:func:`lammps_id_name` of the library interface.
 
+    .. versionchanged:: 22Jul2025
+
+    This function has a different behavior for the "group" category: rather than
+    only listing the available groups, it will return a full list with LMP_MAX_GROUP
+    elements.  This is because the list may have "holes" when groups are deleted.
+    The returned list has either the name of the group or "None" for empty entries.
+    This way, the value of 1 << idx is the groupbit that can be compared to the
+    per-atom "mask" property to determine if an atom is member of a group.
+
     :param category: name of category
     :type  category: string
 
@@ -2539,14 +2541,21 @@ class lammps:
     :rtype:  list
     """
 
-    categories = ['compute','dump','fix','group','molecule','region','variable']
+    categories = ['compute','dump','fix','molecule','region','variable']
     available_ids = []
+    sb = create_string_buffer(LMP_BUFSIZE)
     if category in categories:
       num = self.lib.lammps_id_count(self.lmp, category.encode())
-      sb = create_string_buffer(LMP_BUFSIZE)
       for idx in range(num):
         self.lib.lammps_id_name(self.lmp, category.encode(), idx, sb, LMP_BUFSIZE)
         available_ids.append(sb.value.decode())
+    elif category == 'group':
+      for idx in range(LMP_MAX_GROUP):
+        if self.lib.lammps_id_name(self.lmp, category.encode(), idx, sb, LMP_BUFSIZE):
+          available_ids.append(sb.value.decode())
+        else:
+          available_ids.append(None)
+
     return available_ids
 
   # -------------------------------------------------------------------------
