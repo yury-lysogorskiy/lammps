@@ -23,7 +23,7 @@ __all__ = ['LAMMPS_AUTODETECT', 'LAMMPS_NONE', 'LAMMPS_INT', 'LAMMPS_INT_2D', 'L
            'LMP_TYPE_VECTOR', 'LMP_TYPE_ARRAY', 'LMP_SIZE_VECTOR', 'LMP_SIZE_ROWS',
            'LMP_SIZE_COLS', 'LMP_ERROR_WARNING', 'LMP_ERROR_ONE', 'LMP_ERROR_ALL',
            'LMP_ERROR_WORLD', 'LMP_ERROR_UNIVERSE', 'LMP_VAR_EQUAL', 'LMP_VAR_ATOM',
-           'LMP_VAR_VECTOR', 'LMP_VAR_STRING', 'LMP_BUFSIZE', 'get_ctypes_int']
+           'LMP_VAR_VECTOR', 'LMP_VAR_STRING', 'LMP_BUFSIZE', 'get_ctypes_int', 'LMP_MAX_GROUP']
 
 # these must be kept in sync with the enums in src/library.h, src/lmptype.h,
 # tools/swig/lammps.i, examples/COUPLE/plugin/liblammpsplugin.h,
@@ -63,6 +63,7 @@ LMP_VAR_STRING     = 3
 
 # default buffer size for string buffers
 LMP_BUFSIZE        = 1024
+LMP_MAX_GROUP      = 32
 # -------------------------------------------------------------------------
 
 def get_ctypes_int(size):
