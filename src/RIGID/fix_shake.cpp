@@ -1307,6 +1307,11 @@ void FixShake::partner_info(int *npartner, tagint **partner_tag,
 
   for (m = 0; m < nreturn; m++) {
     i = atom->map(outbuf[m].atomID);
+    // Expected partner atom is not found locally. This can happen when deleting
+    // atoms that are part of a molecule without also deleting the topology and all
+    // other atoms in the molecule (i.e. not using "bond yes mol yes" with delete_atoms)
+    if (i < 0)
+      error->one(FLERR, "Inconsistent topology for atom {} in fix {}", outbuf[m].atomID, style);
     for (j = 0; j < npartner[i]; j++)
       if (partner_tag[i][j] == outbuf[m].partnerID) break;
     partner_mask[i][j] = outbuf[m].mask;
