@@ -144,18 +144,16 @@ explains.
 For molecular systems (see the :doc:`atom_style <atom_style>` command),
 the atom ID re-assignment now calls the :doc:`reset_atoms id
 <reset_atoms>` command internally.  For backward compatibility, the
-default setting is *no* in this case.
-
-A molecular system with fixed bonds, angles, dihedrals, or improper
-interactions, is one where the topology of the interactions is
-typically defined in the data file read by the :doc:`read_data
-<read_data>` command, and where the interactions themselves are
-defined with the :doc:`bond_style <bond_style>`, :doc:`angle_style
-<angle_style>`, etc. commands.
+default setting is *no* in this case.  A molecular system with fixed
+bonds, angles, dihedrals, or improper interactions, is one where the
+topology of the interactions is typically defined in the data file read
+by the :doc:`read_data <read_data>` command, and where the interactions
+themselves are defined with the :doc:`bond_style <bond_style>`,
+:doc:`angle_style <angle_style>`, etc. commands.
 
 .. warning::
 
-   If you delete atoms from a a molecular system, you must be careful
+   If you delete atoms from a molecular system, you must be careful
    not to end up with bonded interactions that are stored by remaining
    atoms but which include deleted atoms.  This will cause LAMMPS to
    generate a "missing atoms" error when the bonded interaction is
