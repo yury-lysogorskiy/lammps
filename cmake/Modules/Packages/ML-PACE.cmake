@@ -47,41 +47,121 @@ endif()
 add_subdirectory(${lib-pace} build-pace)
 set_target_properties(pace PROPERTIES CXX_EXTENSIONS ON OUTPUT_NAME lammps_pace${LAMMPS_MACHINE})
 
-if(NOT TF_LIB_FILE)
-  # get default python
-  execute_process(
-          COMMAND which python
-          OUTPUT_VARIABLE python_name_default
-          OUTPUT_STRIP_TRAILING_WHITESPACE
-  )
-  if(NOT PACE_PYTHON_EXEC)
-    set(PACE_PYTHON_EXEC ${python_name_default})
-  endif()
-  #message("PACE_PYTHON_EXEC=${PACE_PYTHON_EXEC}")
-  execute_process(
-    COMMAND ${PACE_PYTHON_EXEC} -c "import os;import pkgutil;package = pkgutil.get_loader('tensorflow');print(os.path.dirname(package.get_filename()))"
-    OUTPUT_VARIABLE TF_DISCOVER
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-  )
-  #message("TF_DISCOVER=${TF_DISCOVER}")
-  string(STRIP "${TF_DISCOVER}" TF_DISCOVER)
-  set(TF_PATH ${TF_DISCOVER})
-
-  if(APPLE)
-    set(TF_LIB_FILE "${TF_PATH}/libtensorflow_cc.2.dylib")
-  else()
-    set(TF_LIB_FILE "${TF_PATH}/libtensorflow_cc.so.2")
-  endif()
-endif()
-
+# GRACE/TensorFlow is compiled by default
 if(NOT DEFINED NO_GRACE_TF)
+  # We will compile with TF support
+
+  # Check, if TF_LIB_FILE is provided  
+  # TODO: add to doc TF_LIB_FILE and   
+  if(TF_LIB_FILE) 
+    message("User-defined TF_LIB_FILE is provided: ${TF_LIB_FILE}")
+  else()
+    # 1) try to find TensorFlow library  from Python installation (for older versions of TF)
+    
+    # get default python
+    if(NOT PACE_PYTHON_EXEC)
+      find_package(Python COMPONENTS Interpreter QUIET)
+      set(PACE_PYTHON_EXEC ${Python_EXECUTABLE})
+    endif()
+    message("Python interpreter found: ${PACE_PYTHON_EXEC}")
+    execute_process(
+      COMMAND ${PACE_PYTHON_EXEC} -c "import os;import pkgutil;package = pkgutil.get_loader('tensorflow');print(os.path.dirname(package.get_filename()))"
+      OUTPUT_VARIABLE TF_DISCOVER
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    message("TF_DISCOVER=${TF_DISCOVER}")
+    string(STRIP "${TF_DISCOVER}" TF_DISCOVER)
+    set(TF_PATH ${TF_DISCOVER})
+
+    if(APPLE)
+      set(TF_LIB_FILE "${TF_PATH}/libtensorflow_cc.2.dylib")
+    elseif(WIN32)
+      set(TF_LIB_FILE "${TF_PATH}/tensorflow.dll")
+    else()
+      set(TF_LIB_FILE "${TF_PATH}/libtensorflow_cc.so.2")
+    endif()
+  
+
+    # 2) If not found, download it 
+    if(NOT EXISTS ${TF_LIB_FILE})
+      # Define URLs for TensorFlow C++ library for different platforms
+      set(TF_URL_WINDOWS "https://storage.googleapis.com/tensorflow/versions/2.18.1/libtensorflow-cpu-windows-x86_64.zip")
+      set(TF_URL_LINUX   "https://storage.googleapis.com/tensorflow/versions/2.18.0/libtensorflow-gpu-linux-x86_64.tar.gz")
+      set(TF_URL_MACOS   "https://storage.googleapis.com/tensorflow/versions/2.18.0/libtensorflow-cpu-darwin-arm64.tar.gz")
+      set(TF_DOWNLOAD_DIR "${CMAKE_BINARY_DIR}/tensorflow-library-download")
+      
+      message(STATUS "TensorFlow library not found via Python discovery. Attempting to download.")
+
+      if(WIN32)
+        set(TF_URL ${TF_URL_WINDOWS})
+        set(TF_ARCHIVE "${CMAKE_BINARY_DIR}/libtensorflow.zip")
+        set(EXTRACT_COMMAND ${CMAKE_COMMAND} -E tar xf)
+      elseif(APPLE)
+        set(TF_URL ${TF_URL_MACOS})
+        set(TF_ARCHIVE "${CMAKE_BINARY_DIR}/libtensorflow.tar.gz")
+        set(EXTRACT_COMMAND ${CMAKE_COMMAND} -E tar xzf)
+      else() # linux
+        set(TF_URL ${TF_URL_LINUX})
+        set(TF_ARCHIVE "${CMAKE_BINARY_DIR}/libtensorflow.tar.gz")
+        set(EXTRACT_COMMAND ${CMAKE_COMMAND} -E tar xzf)
+      endif()
+
+      if(NOT EXISTS ${TF_ARCHIVE})
+        message(STATUS "Downloading TensorFlow C library from ${TF_URL}")
+        file(DOWNLOAD ${TF_URL} ${TF_ARCHIVE} STATUS DL_STATUS)
+        if(NOT DL_STATUS EQUAL 0)
+          message(FATAL_ERROR "Failed to download TensorFlow from ${TF_URL}")
+        endif()
+      else()
+        message(STATUS "Using already downloaded archive ${TF_ARCHIVE}")
+      endif()
+
+      message(STATUS "Clean folder for archive ${TF_DOWNLOAD_DIR}...")
+      # file(REMOVE_RECURSE ${TF_DOWNLOAD_DIR})
+      message(STATUS "Extracting TensorFlow library archive ${TF_ARCHIVE} to current working dir ${CMAKE_BINARY_DIR}...")
+      execute_process(
+        COMMAND ${EXTRACT_COMMAND} ${TF_ARCHIVE}
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      )
+      # message("Rename ${TF_DOWNLOAD_DIR} to ${CMAKE_BINARY_DIR}/lib")
+      # file(RENAME ${TF_DOWNLOAD_DIR} ${CMAKE_BINARY_DIR}/lib)
+      set(TF_PATH ${CMAKE_BINARY_DIR})
+
+      # setup library path
+      if(WIN32)
+        set(TF_LIB_FILE "${TF_PATH}/lib/tensorflow.dll") # Path inside downloaded archive
+        string(REPLACE ".dll" ".lib" TF_IMPORTS_LIB_FILE "${TF_LIB_FILE}")
+      elseif(APPLE)
+        set(TF_LIB_FILE "${TF_PATH}/libtensorflow_cc.2.dylib")
+      else() # linux
+        set(TF_LIB_FILE "${TF_PATH}/libtensorflow_cc.so.2")      
+      endif()
+
+      # setup include path
+      set(TF_INCLUDE_PATH "${TF_PATH}/include")
+    endif()
+  endif()
+
+
+  # 3) Finally, import library or fail
   if(EXISTS ${TF_LIB_FILE})
     message("-- TensorFlow library is FOUND at ${TF_LIB_FILE}")
     add_library(tensorflow SHARED IMPORTED)
-    set_target_properties(tensorflow PROPERTIES
-            IMPORTED_LOCATION ${TF_LIB_FILE}
-            INTERFACE_INCLUDE_DIRECTORIES "${TF_PATH}/include"
-    )
+    if(WIN32)
+      set_target_properties(tensorflow PROPERTIES
+              IMPORTED_LOCATION "${TF_LIB_FILE}"
+              IMPORTED_IMPLIB "${TF_IMPORTS_LIB_FILE}"
+              INTERFACE_INCLUDE_DIRECTORIES "${TF_INCLUDE_PATH}")
+    elseif(APPLE)
+      set_target_properties(tensorflow PROPERTIES
+              IMPORTED_IMPLIB "${TF_PATH}/lib/tensorflow.lib"
+              INTERFACE_INCLUDE_DIRECTORIES "${TF_INCLUDE_PATH}")
+    else()
+      set_target_properties(tensorflow PROPERTIES
+              IMPORTED_LOCATION ${TF_LIB_FILE}
+              INTERFACE_INCLUDE_DIRECTORIES "${TF_INCLUDE_PATH}")
+    endif()
+    
     ###############################
     # download cppflow
     if(NOT EXISTS ${CMAKE_BINARY_DIR}/cppflow-2.0.0)
@@ -118,7 +198,7 @@ if(NOT DEFINED NO_GRACE_TF)
     set(PACE_TP ON)
     find_package(OpenMP)
   else()
-    message("-- TensorFlow library is NOT found at ${TF_LIB_FILE}")
+    message("-- TensorFlow library is NEITHER found at ${TF_LIB_FILE} NOR downloaded/extracted")
   endif()
 else()
   message("-- NO GRACE/TensorFlow will be compiled (because flag NO_GRACE_TF is set)")
