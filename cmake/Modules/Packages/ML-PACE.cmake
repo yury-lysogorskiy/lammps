@@ -69,7 +69,7 @@ if(NOT DEFINED NO_GRACE_TF)
       OUTPUT_VARIABLE TF_DISCOVER
       OUTPUT_STRIP_TRAILING_WHITESPACE
     )
-    message("TF_DISCOVER=${TF_DISCOVER}")
+    # message("TF_DISCOVER=${TF_DISCOVER}")
     string(STRIP "${TF_DISCOVER}" TF_DISCOVER)
     set(TF_PATH ${TF_DISCOVER})
 
@@ -108,7 +108,7 @@ if(NOT DEFINED NO_GRACE_TF)
 
       if(NOT EXISTS ${TF_ARCHIVE})
         message(STATUS "Downloading TensorFlow C library from ${TF_URL}")
-        file(DOWNLOAD ${TF_URL} ${TF_ARCHIVE} STATUS DL_STATUS)
+        file(DOWNLOAD ${TF_URL} ${TF_ARCHIVE} SHOW_PROGRESS STATUS DL_STATUS)
         if(NOT DL_STATUS EQUAL 0)
           message(FATAL_ERROR "Failed to download TensorFlow from ${TF_URL}")
         endif()
@@ -207,12 +207,27 @@ endif() # if(NOT DEFINED NO_GRACE_TF)
 
 if(CMAKE_PROJECT_NAME STREQUAL "lammps")
   target_link_libraries(lammps PRIVATE pace)
+
   if(DEFINED PACE_TP)
     add_definitions(-DPACE_TP)
     target_link_libraries(lammps PRIVATE tensorflow)
     target_link_libraries(lammps PRIVATE cppflow)
     if(OpenMP_CXX_FOUND)
       target_link_libraries(lammps PUBLIC OpenMP::OpenMP_CXX)
+    endif()
+  endif()
+
+  if(WIN32)
+    if(BUILD_SHARED_LIBS)
+      # Building lammps AND pace/yaml-cpp as shared libs (.dll)
+      # Tell lammps (pair_grace.cpp) to IMPORT symbols from the DLL.
+      message(STATUS "ML-PACE: Configuring 'lammps' for shared library import (YAML_CPP_DLL)")
+      target_compile_definitions(lammps PRIVATE YAML_CPP_DLL)
+    else()
+      # Building lammps AND pace/yaml-cpp as static libs (.lib)
+      # Tell lammps (pair_grace.cpp) it's a STATIC lib.
+      message(STATUS "ML-PACE: Configuring 'lammps' for static library link (YAML_CPP_STATIC_DEFINE)")
+      target_compile_definitions(lammps PRIVATE YAML_CPP_STATIC_DEFINE)
     endif()
   endif()
 

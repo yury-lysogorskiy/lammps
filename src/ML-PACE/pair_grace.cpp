@@ -180,8 +180,7 @@ void PairGRACE::coeff(int narg, char **arg) {
     if (!allocated) allocate();
 
     map_element2type(narg - 3, arg + 3);
-
-    auto potential_path = utils::get_potential_file_path(arg[2]);
+    auto potential_path = std::string(arg[2]);
 
     //load potential file
     delete aceimpl->model;
