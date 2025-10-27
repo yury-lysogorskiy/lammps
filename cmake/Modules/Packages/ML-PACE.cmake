@@ -2,7 +2,7 @@
 
 # set policy to silence warnings about timestamps of downloaded files. review occasionally if it may be set to NEW
 if(POLICY CMP0135)
-    cmake_policy(SET CMP0135 OLD)
+    cmake_policy(SET CMP0135 NEW)
 endif()
 
 set(PACELIB_URL "https://github.com/ICAMS/lammps-user-pace/archive/refs/tags/v.2024.9.11.tar.gz" CACHE STRING "URL for PACE evaluator library sources")
@@ -80,6 +80,8 @@ if(NOT DEFINED NO_GRACE_TF)
     else()
       set(TF_LIB_FILE "${TF_PATH}/libtensorflow_cc.so.2")
     endif()
+    # setup include path
+    set(TF_INCLUDE_PATH "${TF_PATH}/include")
   
 
     # 2) If not found, download it 
@@ -132,9 +134,9 @@ if(NOT DEFINED NO_GRACE_TF)
         set(TF_LIB_FILE "${TF_PATH}/lib/tensorflow.dll") # Path inside downloaded archive
         string(REPLACE ".dll" ".lib" TF_IMPORTS_LIB_FILE "${TF_LIB_FILE}")
       elseif(APPLE)
-        set(TF_LIB_FILE "${TF_PATH}/libtensorflow_cc.2.dylib")
+        set(TF_LIB_FILE "${TF_PATH}/lib/libtensorflow.2.dylib")
       else() # linux
-        set(TF_LIB_FILE "${TF_PATH}/libtensorflow_cc.so.2")      
+        set(TF_LIB_FILE "${TF_PATH}/lib/libtensorflow.so.2")      
       endif()
 
       # setup include path
