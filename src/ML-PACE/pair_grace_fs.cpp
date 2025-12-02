@@ -77,6 +77,8 @@ PairGRACEFS::PairGRACEFS(LAMMPS *lmp) : Pair(lmp) {
     scale = nullptr;
 
     chunksize = 4096;
+
+    centroidstressflag = CENTROID_AVAIL;
 }
 
 /* ----------------------------------------------------------------------
@@ -184,9 +186,9 @@ void PairGRACEFS::compute(int eflag, int vflag) {
         for (jj = 0; jj < jnum; jj++) {
             j = jlist[jj];
             j &= NEIGHMASK;
-            delx = x[j][0] - xtmp;
-            dely = x[j][1] - ytmp;
-            delz = x[j][2] - ztmp;
+            delx = xtmp - x[j][0];
+            dely = ytmp - x[j][1];
+            delz = ztmp - x[j][2];
 
             fij[0] = scale[itype][itype] * aceimpl->ace->neighbours_forces(jj, 0);
             fij[1] = scale[itype][itype] * aceimpl->ace->neighbours_forces(jj, 1);
@@ -201,8 +203,34 @@ void PairGRACEFS::compute(int eflag, int vflag) {
 
             // tally per-atom virial contribution
             if (vflag_either)
-                ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fij[0], fij[1], fij[2], -delx, -dely,
-                             -delz);
+                ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fij[0], fij[1], fij[2], delx, dely,
+                             delz);
+
+                // Centroid Stress
+                if (cvflag_atom) {
+                    double fx=fij[0], fy=fij[1], fz=fij[2];
+
+                    cvatom[i][0] += 0.5*delx * fx; // xx
+                    cvatom[i][1] += 0.5*dely * fy; // yy
+                    cvatom[i][2] += 0.5*delz * fz; // zz
+                    cvatom[i][3] += 0.5*delx * fy;  // xy
+                    cvatom[i][4] += 0.5*delx * fz; // xz
+                    cvatom[i][5] += 0.5*dely * fz; // yz
+                    cvatom[i][6] += 0.5*dely * fx; // yx
+                    cvatom[i][7] += 0.5*delz * fx; // zx
+                    cvatom[i][8] += 0.5*delz * fy; // zy
+
+
+                    cvatom[j][0] += 0.5*delx * fx; // xx
+                    cvatom[j][1] += 0.5*dely * fy; // yy
+                    cvatom[j][2] += 0.5*delz * fz; // zz
+                    cvatom[j][3] += 0.5*delx * fy;  // xy
+                    cvatom[j][4] += 0.5*delx * fz; // xz
+                    cvatom[j][5] += 0.5*dely * fz; // yz
+                    cvatom[j][6] += 0.5*dely * fx; // yx
+                    cvatom[j][7] += 0.5*delz * fx; // zx
+                    cvatom[j][8] += 0.5*delz * fy; // zy
+                }
         }
 
         // tally energy contribution
