@@ -2355,7 +2355,14 @@ double FixGCMC::energy_full()
 
   if (modify->n_pre_force) modify->pre_force(vflag);
 
-  if (force->pair) force->pair->compute(eflag,vflag);
+  if (force->pair) {
+    // if available, set the flag "compute_energy_only" to compute only energies
+    int dim = 0;
+    int* flag_compute_energy_only = (int *)force->pair->extract("compute_energy_only",dim);
+    if (flag_compute_energy_only) *flag_compute_energy_only = 1;
+    force->pair->compute(eflag, vflag);
+    if (flag_compute_energy_only) *flag_compute_energy_only = 0;
+  }
 
   if (atom->molecular != Atom::ATOMIC) {
     if (force->bond) force->bond->compute(eflag,vflag);

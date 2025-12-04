@@ -56,7 +56,8 @@ class PairPACE : public Pair {
 
   virtual void allocate();
   double *corerep_factor;    //per-atom core-rep factor (= 1 - fcut)
-  int flag_corerep_factor;
+  int flag_corerep_factor = 0;
+  int flag_compute_energy_only = 0;
 
   double **scale;
   bool recursive;    // "recursive" option for ACERecursiveEvaluator

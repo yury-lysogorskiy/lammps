@@ -78,6 +78,7 @@ PairPACE::PairPACE(LAMMPS *lmp) : Pair(lmp)
 
   nmax_corerep = 0;
   flag_corerep_factor = 0;
+  flag_compute_energy_only = 0;
   corerep_factor = nullptr;
 
   aceimpl = new ACEImpl;
@@ -162,6 +163,8 @@ void PairPACE::compute(int eflag, int vflag)
   aceimpl->ace->resize_neighbours_cache(max_jnum);
   int* my_neigh_jlist = new int [max_jnum];
 
+  aceimpl->ace->compute_energy_only = flag_compute_energy_only;
+
   //loop over atoms
   for (ii = 0; ii < inum; ii++) {
     i = list->ilist[ii];
@@ -195,54 +198,55 @@ void PairPACE::compute(int eflag, int vflag)
       corerep_factor[i] = 1 - aceimpl->ace->ace_fcut;
 
     // 'compute_atom' will update the `aceimpl->ace->e_atom` and `aceimpl->ace->neighbours_forces(jj, alpha)` arrays
+    if (! flag_compute_energy_only) {
+      for (jj = 0; jj < jnum; jj++) {
+        j = jlist[jj];
+        j &= NEIGHMASK;
+        delx = xtmp - x[j][0];
+        dely = ytmp - x[j][1];
+        delz = ztmp - x[j][2];
 
-    for (jj = 0; jj < jnum; jj++) {
-      j = jlist[jj];
-      j &= NEIGHMASK;
-      delx = xtmp - x[j][0];
-      dely = ytmp - x[j][1];
-      delz = ztmp - x[j][2];
+        fij[0] = scale[itype][itype] * aceimpl->ace->neighbours_forces(jj, 0);
+        fij[1] = scale[itype][itype] * aceimpl->ace->neighbours_forces(jj, 1);
+        fij[2] = scale[itype][itype] * aceimpl->ace->neighbours_forces(jj, 2);
 
-      fij[0] = scale[itype][itype] * aceimpl->ace->neighbours_forces(jj, 0);
-      fij[1] = scale[itype][itype] * aceimpl->ace->neighbours_forces(jj, 1);
-      fij[2] = scale[itype][itype] * aceimpl->ace->neighbours_forces(jj, 2);
+        f[i][0] += fij[0];
+        f[i][1] += fij[1];
+        f[i][2] += fij[2];
+        f[j][0] -= fij[0];
+        f[j][1] -= fij[1];
+        f[j][2] -= fij[2];
 
-      f[i][0] += fij[0];
-      f[i][1] += fij[1];
-      f[i][2] += fij[2];
-      f[j][0] -= fij[0];
-      f[j][1] -= fij[1];
-      f[j][2] -= fij[2];
+        // tally per-atom virial contribution
+        if (vflag_either) {
+          ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fij[0], fij[1], fij[2], delx, dely,
+                       delz);
 
-      // tally per-atom virial contribution
-      if (vflag_either) {
-        ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fij[0], fij[1], fij[2], delx, dely,
-                     delz);
+          // Centroid Stress
+          if (cvflag_atom) {
+            double fx = fij[0], fy = fij[1], fz = fij[2];
 
-        // Centroid Stress
-        if (cvflag_atom) {
-          double fx = fij[0], fy = fij[1], fz = fij[2];
-
-          cvatom[i][0] += 0.5 * delx * fx; // xx
-          cvatom[i][1] += 0.5 * dely * fy; // yy
-          cvatom[i][2] += 0.5 * delz * fz; // zz
-          cvatom[i][3] += 0.5 * delx * fy;  // xy
-          cvatom[i][4] += 0.5 * delx * fz; // xz
-          cvatom[i][5] += 0.5 * dely * fz; // yz
-          cvatom[i][6] += 0.5 * dely * fx; // yx
-          cvatom[i][7] += 0.5 * delz * fx; // zx
-          cvatom[i][8] += 0.5 * delz * fy; // zy
+            cvatom[i][0] += 0.5 * delx * fx; // xx
+            cvatom[i][1] += 0.5 * dely * fy; // yy
+            cvatom[i][2] += 0.5 * delz * fz; // zz
+            cvatom[i][3] += 0.5 * delx * fy;  // xy
+            cvatom[i][4] += 0.5 * delx * fz; // xz
+            cvatom[i][5] += 0.5 * dely * fz; // yz
+            cvatom[i][6] += 0.5 * dely * fx; // yx
+            cvatom[i][7] += 0.5 * delz * fx; // zx
+            cvatom[i][8] += 0.5 * delz * fy; // zy
 
 
-          cvatom[j][0] += 0.5 * delx * fx; // xx
-          cvatom[j][1] += 0.5 * dely * fy; // yy
-          cvatom[j][2] += 0.5 * delz * fz; // zz
-          cvatom[j][3] += 0.5 * delx * fy;  // xy
-          cvatom[j][4] += 0.5 * delx * fz; // xz
-          cvatom[j][5] += 0.5 * dely * fz; // yz
-          cvatom[j][6] += 0.5 * dely * fx; // yx
-          cvatom[j][7] += 0.5 * delz * fx; // zx
-          cvatom[j][8] += 0.5 * delz * fy; // zy
+            cvatom[j][0] += 0.5 * delx * fx; // xx
+            cvatom[j][1] += 0.5 * dely * fy; // yy
+            cvatom[j][2] += 0.5 * delz * fz; // zz
+            cvatom[j][3] += 0.5 * delx * fy;  // xy
+            cvatom[j][4] += 0.5 * delx * fz; // xz
+            cvatom[j][5] += 0.5 * dely * fz; // yz
+            cvatom[j][6] += 0.5 * dely * fx; // yx
+            cvatom[j][7] += 0.5 * delz * fx; // zx
+            cvatom[j][8] += 0.5 * delz * fy; // zy
+          }
         }
       }
     }
@@ -425,8 +429,9 @@ double PairPACE::init_one(int i, int j)
 void *PairPACE::extract(const char *str, int &dim)
 {
   dim = 0;
-  //check if str=="corerep_flag" then compute extrapolation grades on this iteration
   if (strcmp(str, "corerep_flag") == 0) return (void *) &flag_corerep_factor;
+
+  if (strcmp(str, "compute_energy_only") == 0) return (void *) &flag_compute_energy_only;
 
   dim = 2;
   if (strcmp(str, "scale") == 0) return (void *) scale;

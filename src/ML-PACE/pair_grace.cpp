@@ -76,6 +76,7 @@ PairGRACE::PairGRACE(LAMMPS *lmp) : Pair(lmp) {
     tp_timer.init();
 
     no_virial_fdotr_compute = 1;
+    flag_compute_energy_only = 0;
 }
 
 
@@ -339,8 +340,12 @@ double PairGRACE::init_one(int i, int j) {
     extract method for extracting value of scale variable
  ---------------------------------------------------------------------- */
 void *PairGRACE::extract(const char *str, int &dim) {
+    dim = 0;
+    if (strcmp(str, "compute_energy_only") == 0) return (void *) &flag_compute_energy_only;
+
     dim = 2;
     if (strcmp(str, "scale") == 0) return (void *) scale;
+
     return nullptr;
 }
 

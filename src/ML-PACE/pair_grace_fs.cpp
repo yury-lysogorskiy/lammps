@@ -73,6 +73,7 @@ PairGRACEFS::PairGRACEFS(LAMMPS *lmp) : Pair(lmp) {
 
     aceimpl = new ACEImpl;
     flag_compute_extrapolation_grade = 0;
+    flag_compute_energy_only = 0;
     extrapolation_grade_gamma = nullptr;
     scale = nullptr;
 
@@ -148,6 +149,9 @@ void PairGRACEFS::compute(int eflag, int vflag) {
     aceimpl->ace->resize_neighbours_cache(max_jnum);
     int *my_neigh_jlist = new int[max_jnum];
 
+    aceimpl->ace->compute_projections = flag_compute_extrapolation_grade;
+    aceimpl->ace->compute_energy_only = flag_compute_energy_only;
+
     //loop over atoms
     for (ii = 0; ii < inum; ii++) {
         i = list->ilist[ii];
@@ -173,7 +177,6 @@ void PairGRACEFS::compute(int eflag, int vflag) {
             my_neigh_jlist[jj] = jlist[jj] & NEIGHMASK;
         }
         try {
-            aceimpl->ace->compute_projections = flag_compute_extrapolation_grade;
             aceimpl->ace->compute_atom(i, x, type, jnum, my_neigh_jlist);
         } catch (std::exception &e) {
             error->one(FLERR, e.what());
@@ -183,28 +186,29 @@ void PairGRACEFS::compute(int eflag, int vflag) {
         if (flag_compute_extrapolation_grade)
             extrapolation_grade_gamma[i] = aceimpl->ace->max_gamma_grade;
 
-        for (jj = 0; jj < jnum; jj++) {
-            j = jlist[jj];
-            j &= NEIGHMASK;
-            delx = xtmp - x[j][0];
-            dely = ytmp - x[j][1];
-            delz = ztmp - x[j][2];
+        if (! flag_compute_energy_only) {
+            for (jj = 0; jj < jnum; jj++) {
+                j = jlist[jj];
+                j &= NEIGHMASK;
+                delx = xtmp - x[j][0];
+                dely = ytmp - x[j][1];
+                delz = ztmp - x[j][2];
 
-            fij[0] = scale[itype][itype] * aceimpl->ace->neighbours_forces(jj, 0);
-            fij[1] = scale[itype][itype] * aceimpl->ace->neighbours_forces(jj, 1);
-            fij[2] = scale[itype][itype] * aceimpl->ace->neighbours_forces(jj, 2);
+                fij[0] = scale[itype][itype] * aceimpl->ace->neighbours_forces(jj, 0);
+                fij[1] = scale[itype][itype] * aceimpl->ace->neighbours_forces(jj, 1);
+                fij[2] = scale[itype][itype] * aceimpl->ace->neighbours_forces(jj, 2);
 
-            f[i][0] += fij[0];
-            f[i][1] += fij[1];
-            f[i][2] += fij[2];
-            f[j][0] -= fij[0];
-            f[j][1] -= fij[1];
-            f[j][2] -= fij[2];
+                f[i][0] += fij[0];
+                f[i][1] += fij[1];
+                f[i][2] += fij[2];
+                f[j][0] -= fij[0];
+                f[j][1] -= fij[1];
+                f[j][2] -= fij[2];
 
-            // tally per-atom virial contribution
-            if (vflag_either)
-                ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fij[0], fij[1], fij[2], delx, dely,
-                             delz);
+                // tally per-atom virial contribution
+                if (vflag_either)
+                    ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fij[0], fij[1], fij[2], delx, dely,
+                                 delz);
 
                 // Centroid Stress
                 if (cvflag_atom) {
@@ -231,6 +235,7 @@ void PairGRACEFS::compute(int eflag, int vflag) {
                     cvatom[j][7] += 0.5*delz * fx; // zx
                     cvatom[j][8] += 0.5*delz * fy; // zy
                 }
+            }
         }
 
         // tally energy contribution
@@ -405,8 +410,9 @@ double PairGRACEFS::init_one(int i, int j) {
  ---------------------------------------------------------------------- */
 void *PairGRACEFS::extract(const char *str, int &dim) {
     dim = 0;
-    //check if str=="gamma_flag" then compute extrapolation grades on this iteration
     if (strcmp(str, "gamma_flag") == 0) return (void *) &flag_compute_extrapolation_grade;
+
+    if (strcmp(str, "compute_energy_only") == 0) return (void *) &flag_compute_energy_only;
 
     dim = 2;
     if (strcmp(str, "scale") == 0) return (void *) scale;
@@ -426,11 +432,6 @@ void *PairGRACEFS::extract_peratom(const char *str, int &ncol) {
         ncol = 0;
         return (void *) extrapolation_grade_gamma;
     }
-
-//  if (strcmp(str, "corerep") == 0) {
-//    ncol = 0;
-//    return (void *) corerep_factor;
-//  }
 
     return nullptr;
 }
