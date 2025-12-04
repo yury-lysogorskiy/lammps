@@ -31,6 +31,7 @@ Copyright 2021 Yury Lysogorskiy^1, Cas van der Oord^2, Anton Bochkarev^1,
 #include "atom.h"
 #include "comm.h"
 #include "error.h"
+#include "info.h"
 #include "force.h"
 #include "math_const.h"
 #include "memory.h"
@@ -117,7 +118,8 @@ void PairPACE::compute(int eflag, int vflag)
   double fij[3];
   int *ilist, *jlist, *numneigh, **firstneigh;
 
-  ev_init(eflag, vflag);
+  if (copymode) ev_init(eflag, vflag, 0);
+  else ev_init(eflag, vflag, 1);
 
   double **x = atom->x;
   double **f = atom->f;
@@ -133,7 +135,7 @@ void PairPACE::compute(int eflag, int vflag)
   // ilist: list of "i" atoms for which neighbor lists exist
   ilist = list->ilist;
 
-  //numneigh: the length of each these neigbor list
+  //numneigh: the length of each these neighbor list
   numneigh = list->numneigh;
 
   // the pointer to the list of neighbors of "i"
@@ -158,7 +160,7 @@ void PairPACE::compute(int eflag, int vflag)
   }
 
   aceimpl->ace->resize_neighbours_cache(max_jnum);
-  int* my_neigh_jlist = new int [max_jnum];
+  std::vector<int> my_neigh_jlist(max_jnum);
 
   //loop over atoms
   for (ii = 0; ii < inum; ii++) {
@@ -184,7 +186,7 @@ void PairPACE::compute(int eflag, int vflag)
     for (jj = 0; jj < jnum; ++jj)
       my_neigh_jlist[jj]= jlist[jj] & NEIGHMASK;
     try {
-      aceimpl->ace->compute_atom(i, x, type, jnum, my_neigh_jlist);
+      aceimpl->ace->compute_atom(i, x, type, jnum, my_neigh_jlist.data());
     } catch (std::exception &e) {
       error->one(FLERR, e.what());
     }
@@ -254,7 +256,6 @@ void PairPACE::compute(int eflag, int vflag)
   }
 
   if (vflag_fdotr) virial_fdotr_compute();
-  delete[] my_neigh_jlist;
 
   // end modifications YL
 }
@@ -409,7 +410,9 @@ void PairPACE::init_style()
 
 double PairPACE::init_one(int i, int j)
 {
-  if (setflag[i][j] == 0) error->all(FLERR, "All pair coeffs are not set");
+  if (setflag[i][j] == 0)
+    error->all(FLERR, Error::NOLASTLINE,
+               "All pair coeffs are not set. Status:\n" + Info::get_pair_coeff_status(lmp));
   //cutoff from the basis set's radial functions settings
   scale[j][i] = scale[i][j];
   return aceimpl->basis_set->radial_functions->cut(map[i], map[j]);

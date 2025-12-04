@@ -5,17 +5,60 @@ if(CMAKE_CXX_STANDARD LESS 17)
 be set to at least C++17")
 endif()
 
+# Set Kokkos Precision
+set(KOKKOS_PREC "double" CACHE STRING "LAMMPS KOKKOS precision")
+set(KOKKOS_PREC_VALUES double mixed single)
+set_property(CACHE KOKKOS_PREC PROPERTY STRINGS ${KOKKOS_PREC_VALUES})
+validate_option(KOKKOS_PREC KOKKOS_PREC_VALUES)
+string(TOLOWER ${KOKKOS_PREC} KOKKOS_PREC_LOWER)
+string(TOUPPER ${KOKKOS_PREC} KOKKOS_PREC)
+
+if(KOKKOS_PREC STREQUAL "DOUBLE")
+  set(KOKKOS_PREC_SETTING "DOUBLE_DOUBLE")
+elseif(KOKKOS_PREC STREQUAL "MIXED")
+  set(KOKKOS_PREC_SETTING "SINGLE_DOUBLE")
+elseif(KOKKOS_PREC STREQUAL "SINGLE")
+  set(KOKKOS_PREC_SETTING "SINGLE_SINGLE")
+endif()
+
+target_compile_definitions(lammps PRIVATE -DLMP_KOKKOS_${KOKKOS_PREC_SETTING})
+
+# Set Kokkos View Layout
+set(KOKKOS_LAYOUT "legacy" CACHE STRING "LAMMPS KOKKOS view layout")
+set(KOKKOS_LAYOUT_VALUES legacy default)
+set_property(CACHE KOKKOS_LAYOUT PROPERTY STRINGS ${KOKKOS_LAYOUT_VALUES})
+validate_option(KOKKOS_LAYOUT KOKKOS_LAYOUT_VALUES)
+string(TOLOWER ${KOKKOS_LAYOUT} KOKKOS_LAYOUT_LOWER)
+string(TOUPPER ${KOKKOS_LAYOUT} KOKKOS_LAYOUT)
+
+target_compile_definitions(lammps PRIVATE -DLMP_KOKKOS_LAYOUT_${KOKKOS_LAYOUT})
+
+message(STATUS "Using " ${KOKKOS_PREC_LOWER} " precision for KOKKOS package")
+message(STATUS "Using " ${KOKKOS_LAYOUT_LOWER} " view layout for KOKKOS package")
+
 ########################################################################
 # consistency checks and Kokkos options/settings required by LAMMPS
-if(Kokkos_ENABLE_CUDA)
-  message(STATUS "KOKKOS: Enabling CUDA LAMBDA function support")
-  set(Kokkos_ENABLE_CUDA_LAMBDA ON CACHE BOOL "" FORCE)
+if(Kokkos_ENABLE_HIP)
+  option(Kokkos_ENABLE_HIP_MULTIPLE_KERNEL_INSTANTIATIONS "Enable multiple kernel instantiations with HIP" ON)
+  mark_as_advanced(Kokkos_ENABLE_HIP_MULTIPLE_KERNEL_INSTANTIATIONS)
+  option(Kokkos_ENABLE_ROCTHRUST "Use RoCThrust library" ON)
+  mark_as_advanced(Kokkos_ENABLE_ROCTHRUST)
 endif()
+
 # Adding OpenMP compiler flags without the checks done for
 # BUILD_OMP can result in compile failures. Enforce consistency.
 if(Kokkos_ENABLE_OPENMP)
   if(NOT BUILD_OMP)
     message(FATAL_ERROR "Must enable BUILD_OMP with Kokkos_ENABLE_OPENMP")
+  endif()
+endif()
+
+if(Kokkos_ENABLE_SERIAL)
+  if(NOT (Kokkos_ENABLE_OPENMP OR Kokkos_ENABLE_THREADS OR
+    Kokkos_ENABLE_CUDA OR Kokkos_ENABLE_HIP OR Kokkos_ENABLE_SYCL
+    OR Kokkos_ENABLE_OPENMPTARGET))
+  option(Kokkos_ENABLE_ATOMICS_BYPASS "Disable atomics for Kokkos Serial Backend" ON)
+  mark_as_advanced(Kokkos_ENABLE_ATOMICS_BYPASS)
   endif()
 endif()
 ########################################################################
@@ -45,8 +88,8 @@ if(DOWNLOAD_KOKKOS)
   list(APPEND KOKKOS_LIB_BUILD_ARGS "-DCMAKE_CXX_EXTENSIONS=${CMAKE_CXX_EXTENSIONS}")
   list(APPEND KOKKOS_LIB_BUILD_ARGS "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
   include(ExternalProject)
-  set(KOKKOS_URL "https://github.com/kokkos/kokkos/archive/4.3.01.tar.gz" CACHE STRING "URL for KOKKOS tarball")
-  set(KOKKOS_MD5 "243de871b3dc2cf3990c1c404032df83" CACHE STRING "MD5 checksum of KOKKOS tarball")
+  set(KOKKOS_URL "https://github.com/kokkos/kokkos/archive/4.7.01.tar.gz" CACHE STRING "URL for KOKKOS tarball")
+  set(KOKKOS_MD5 "06bc2f6f9804f9d16228059e87c85239" CACHE STRING "MD5 checksum of KOKKOS tarball")
   mark_as_advanced(KOKKOS_URL)
   mark_as_advanced(KOKKOS_MD5)
   GetFallbackURL(KOKKOS_URL KOKKOS_FALLBACK)
@@ -71,7 +114,7 @@ if(DOWNLOAD_KOKKOS)
   add_dependencies(LAMMPS::KOKKOSCORE kokkos_build)
   add_dependencies(LAMMPS::KOKKOSCONTAINERS kokkos_build)
 elseif(EXTERNAL_KOKKOS)
-  find_package(Kokkos 4.3.01 REQUIRED CONFIG)
+  find_package(Kokkos 4.7.01 REQUIRED CONFIG)
   target_link_libraries(lammps PRIVATE Kokkos::kokkos)
 else()
   set(LAMMPS_LIB_KOKKOS_SRC_DIR ${LAMMPS_LIB_SOURCE_DIR}/kokkos)
@@ -168,6 +211,14 @@ if(PKG_KSPACE)
 endif()
 
 if(PKG_ML-IAP)
+  if(NOT (KOKKOS_PREC STREQUAL "DOUBLE"))
+    message(FATAL_ERROR "Must use KOKKOS_PREC=double with package ML-IAP")
+  endif()
+
+  if(NOT (KOKKOS_LAYOUT STREQUAL "LEGACY"))
+    message(FATAL_ERROR "Must use KOKKOS_LAYOUT=legacy with package ML-IAP")
+  endif()
+
   list(APPEND KOKKOS_PKG_SOURCES ${KOKKOS_PKG_SOURCES_DIR}/mliap_data_kokkos.cpp
                                  ${KOKKOS_PKG_SOURCES_DIR}/mliap_descriptor_so3_kokkos.cpp
                                  ${KOKKOS_PKG_SOURCES_DIR}/mliap_model_linear_kokkos.cpp

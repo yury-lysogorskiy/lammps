@@ -17,7 +17,7 @@
                          Julien Tranchida (SNL)
 
    Please cite the related publication:
-   Ivanov, A. V., Uzdin, V. M., & Jónsson, H. (2019). Fast and Robust
+   Ivanov, A. V., Uzdin, V. M., & Jonsson, H. (2019). Fast and Robust
    Algorithm for the Minimisation of the Energy of Spin Systems. arXiv
    preprint arXiv:1904.02669.
 ------------------------------------------------------------------------- */
@@ -43,7 +43,7 @@ using namespace LAMMPS_NS;
 using namespace MathConst;
 
 static const char cite_minstyle_spin_cg[] =
-  "min_style spin/cg command: doi:10.48550/arXiv.1904.02669\n\n"
+  "min_style spin/cg command: https://doi.org/10.48550/arXiv.1904.02669\n\n"
   "@article{ivanov2019fast,\n"
   "title={Fast and Robust Algorithm for the Minimisation of the Energy of "
   "Spin Systems},\n"
