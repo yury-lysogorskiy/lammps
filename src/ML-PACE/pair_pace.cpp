@@ -161,7 +161,7 @@ void PairPACE::compute(int eflag, int vflag)
   }
 
   aceimpl->ace->resize_neighbours_cache(max_jnum);
-  int* my_neigh_jlist = new int [max_jnum];
+  std::vector<int> my_neigh_jlist(max_jnum);
 
   aceimpl->ace->compute_energy_only = flag_compute_energy_only;
 
@@ -189,7 +189,7 @@ void PairPACE::compute(int eflag, int vflag)
     for (jj = 0; jj < jnum; ++jj)
       my_neigh_jlist[jj]= jlist[jj] & NEIGHMASK;
     try {
-      aceimpl->ace->compute_atom(i, x, type, jnum, my_neigh_jlist);
+      aceimpl->ace->compute_atom(i, x, type, jnum, my_neigh_jlist.data());
     } catch (std::exception &e) {
       error->one(FLERR, e.what());
     }
@@ -260,7 +260,6 @@ void PairPACE::compute(int eflag, int vflag)
   }
 
   if (vflag_fdotr) virial_fdotr_compute();
-  delete[] my_neigh_jlist;
 
   // end modifications YL
 }
