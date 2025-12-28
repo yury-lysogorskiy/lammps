@@ -29,10 +29,7 @@ PairStyle(grace,PairGRACE);
 #define LMP_PAIR_GRACE_H
 
 #include "pair.h"
-// CppFlow headers
-#include <cppflow/ops.h>
-#include <cppflow/model.h>
-#include <cppflow/tensor.h>
+
 #include <map>
 #include <set>
 #include "utils_pace.h"
@@ -55,9 +52,14 @@ class PairGRACE : public Pair {
 
  protected:
   struct ACETPImpl *aceimpl;
+
+  std::string DEFAULT_INPUT_PREFIX = "serving_default_";
   bool has_map_atoms_to_structure_op = false;
   bool has_nstruct_total_op = false;
   bool has_mu_i_op = false;
+  bool has_batch_tot_nat = false;
+  bool parallel = false;
+
   virtual void allocate();
 
   double **scale;

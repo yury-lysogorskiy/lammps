@@ -20,13 +20,13 @@ if(LOCAL_ML-PACE)
 else()
   # download library sources to build folder
   if(EXISTS ${CMAKE_BINARY_DIR}/libpace.tar.gz)
-    file(SHA256 ${CMAKE_BINARY_DIR}/libpace.tar.gz DL_MD5)
+    file(SHA256 ${CMAKE_BINARY_DIR}/libpace.tar.gz DL_SHA256)
   endif()
-  if(NOT "${DL_MD5}" STREQUAL "${PACELIB_SHA256}")
+  if(NOT "${DL_SHA256}" STREQUAL "${PACELIB_SHA256}")
     message(STATUS "Downloading ${PACELIB_URL}")
     file(DOWNLOAD ${PACELIB_URL} ${CMAKE_BINARY_DIR}/libpace.tar.gz STATUS DL_STATUS SHOW_PROGRESS)
-    file(SHA256 ${CMAKE_BINARY_DIR}/libpace.tar.gz DL_MD5)
-    if((NOT DL_STATUS EQUAL 0) OR (NOT "${DL_MD5}" STREQUAL "${PACELIB_SHA256}"))
+    file(SHA256 ${CMAKE_BINARY_DIR}/libpace.tar.gz DL_SHA256)
+    if((NOT DL_STATUS EQUAL 0) OR (NOT "${DL_SHA256}" STREQUAL "${PACELIB_SHA256}"))
       message(WARNING "Download from primary URL ${PACELIB_URL} failed\nTrying fallback URL ${PACELIB_FALLBACK}")
       file(DOWNLOAD ${PACELIB_FALLBACK} ${CMAKE_BINARY_DIR}/libpace.tar.gz EXPECTED_HASH SHA256=${PACELIB_SHA256} SHOW_PROGRESS)
     endif()
@@ -90,10 +90,10 @@ if(NOT DEFINED NO_GRACE_TF)
       set(TF_URL_LINUX   "https://storage.googleapis.com/tensorflow/versions/2.18.0/libtensorflow-gpu-linux-x86_64.tar.gz")
       set(TF_URL_MACOS   "https://storage.googleapis.com/tensorflow/versions/2.18.0/libtensorflow-cpu-darwin-arm64.tar.gz")
 
-      # Define MD5 Checksums
-      set(TF_MD5_WINDOWS "28acdcea6c6b34828cf0e95e67802b0f3577d51bc2e8915de811b7aa0b04452d")
-      set(TF_MD5_LINUX   "6ca25aae03548cf76f6f68f00bdf53ec39710f08cee23bf6419b9e6e27feca5c")
-      set(TF_MD5_MACOS   "462257d2792730dcb131fcf21bc826192ae5a2c418535f6347d051f10fc8be8a")
+      # Define SHA256 Checksums
+      set(TF_SHA256_WINDOWS "28acdcea6c6b34828cf0e95e67802b0f3577d51bc2e8915de811b7aa0b04452d")
+      set(TF_SHA256_LINUX   "6ca25aae03548cf76f6f68f00bdf53ec39710f08cee23bf6419b9e6e27feca5c")
+      set(TF_SHA256_MACOS   "462257d2792730dcb131fcf21bc826192ae5a2c418535f6347d051f10fc8be8a")
 
       set(TF_DOWNLOAD_DIR "${CMAKE_BINARY_DIR}/tensorflow-library-download")
 
@@ -101,17 +101,17 @@ if(NOT DEFINED NO_GRACE_TF)
 
       if(WIN32)
         set(TF_URL ${TF_URL_WINDOWS})
-        set(TF_SHA256 ${TF_MD5_WINDOWS})
+        set(TF_SHA256 ${TF_SHA256_WINDOWS})
         set(TF_ARCHIVE "${CMAKE_BINARY_DIR}/libtensorflow.zip")
         set(EXTRACT_COMMAND ${CMAKE_COMMAND} -E tar xf)
       elseif(APPLE)
         set(TF_URL ${TF_URL_MACOS})
-        set(TF_SHA256 ${TF_MD5_MACOS})
+        set(TF_SHA256 ${TF_SHA256_MACOS})
         set(TF_ARCHIVE "${CMAKE_BINARY_DIR}/libtensorflow.tar.gz")
         set(EXTRACT_COMMAND ${CMAKE_COMMAND} -E tar xzf)
       else() # linux
         set(TF_URL ${TF_URL_LINUX})
-        set(TF_SHA256 ${TF_MD5_LINUX})
+        set(TF_SHA256 ${TF_SHA256_LINUX})
         set(TF_ARCHIVE "${CMAKE_BINARY_DIR}/libtensorflow.tar.gz")
         set(EXTRACT_COMMAND ${CMAKE_COMMAND} -E tar xzf)
       endif()
@@ -170,13 +170,10 @@ if(NOT DEFINED NO_GRACE_TF)
               IMPORTED_LOCATION "${TF_LIB_FILE}"
               IMPORTED_IMPLIB "${TF_IMPORTS_LIB_FILE}"
               INTERFACE_INCLUDE_DIRECTORIES "${TF_INCLUDE_PATH}")
-    elseif(APPLE)
-      set_target_properties(tensorflow PROPERTIES
-              IMPORTED_IMPLIB "${TF_PATH}/lib/tensorflow.lib"
-              INTERFACE_INCLUDE_DIRECTORIES "${TF_INCLUDE_PATH}")
     else()
+      # This handles both Linux and macOS correctly
       set_target_properties(tensorflow PROPERTIES
-              IMPORTED_LOCATION ${TF_LIB_FILE}
+              IMPORTED_LOCATION "${TF_LIB_FILE}"
               INTERFACE_INCLUDE_DIRECTORIES "${TF_INCLUDE_PATH}")
     endif()
 
@@ -189,9 +186,9 @@ if(NOT DEFINED NO_GRACE_TF)
 
     # 1. Verify existing file integrity
     if(EXISTS ${CPPFLOW_ARCHIVE})
-      file(MD5 ${CPPFLOW_ARCHIVE} CURRENT_CPPFLOW_MD5)
-      if(NOT CURRENT_CPPFLOW_MD5 STREQUAL CPPFLOW_SHA256)
-        message(WARNING "Existing cppflow archive hash mismatch.\nExpected: ${CPPFLOW_SHA256}\nActual:   ${CURRENT_CPPFLOW_MD5}\nDeleting and re-downloading...")
+      file(SHA256 ${CPPFLOW_ARCHIVE} CURRENT_CPPFLOW_SHA256)
+      if(NOT CURRENT_CPPFLOW_SHA256 STREQUAL CPPFLOW_SHA256)
+        message(WARNING "Existing cppflow archive hash mismatch.\nExpected: ${CPPFLOW_SHA256}\nActual:   ${CURRENT_CPPFLOW_SHA256}\nDeleting and re-downloading...")
         file(REMOVE ${CPPFLOW_ARCHIVE})
       endif()
     endif()
@@ -231,9 +228,7 @@ if(NOT DEFINED NO_GRACE_TF)
     )
 
     target_compile_features(cppflow INTERFACE cxx_std_17)
-    target_link_libraries(cppflow INTERFACE
-            ${tensorflow_LIBRARIES}
-    )
+    target_link_libraries(cppflow INTERFACE tensorflow)
 
     set(PACE_TP ON)
     find_package(OpenMP)
