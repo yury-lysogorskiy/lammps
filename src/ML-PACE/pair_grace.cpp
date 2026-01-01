@@ -2,6 +2,7 @@
 // Created by Yury Lysogorskiy on 01.12.23.
 //
 #ifndef NO_GRACE_TF
+//#define GRACE_PRINT_DEBUG
 
 #include "pair_grace.h"
 
@@ -24,6 +25,7 @@
 #include "ace-evaluator/ace_arraynd.h"
 
 #include "utils_pace.h"
+#include "utils_grace.h"
 
 // CppFlow headers
 #include <cppflow/ops.h>
@@ -379,11 +381,10 @@ double PairGRACE::init_one(int i, int j) {
     if (setflag[i][j] == 0) error->all(FLERR, "All pair coeffs are not set");
     //cutoff from the basis set's radial functions settings
     scale[j][i] = scale[i][j];
-    double factor = (parallel)? 2.0: 1.0;
 
     if (is_custom_cutoffs)
-        return factor*cutoff_matrix_per_lammps_type[i][j];
-    return factor*cutoff;
+        return cutoff_matrix_per_lammps_type[i][j];
+    return cutoff;
 }
 
 /* ----------------------------------------------------------------------
@@ -699,6 +700,10 @@ void PairGRACE::compute(int eflag, int vflag) {
                         cppflow::tensor(bond_vector, {tot_neighbours, 3}));
 
 
+#ifdef GRACE_PRINT_DEBUG
+    print_tf_inputs(inputs, comm->me, lmp, true);
+#endif
+
     data_timer.stop();
     tp_timer.start();
     vector<string> output_names = {
@@ -803,6 +808,11 @@ void PairGRACE::compute(int eflag, int vflag) {
                     fij[2] = -scale[type_i][type_i] * f_data[tot_ind + 2];
                     tot_ind += 3;
 
+#ifdef GRACE_PRINT_DEBUG
+                    // Print pair-specific force mapping
+                    utils::logmesg(lmp, "[GRACE-FORCE] Proc {}: Pair ({}-{}) | Tag ({}-{}) | BondIdx {} | F_tf: [{}, {}, {}]\n",
+                                   comm->me, i, j, atom->tag[i], atom->tag[j], tot_ind/3, f_data[tot_ind-3], f_data[tot_ind-2], f_data[tot_ind-1]);
+#endif
                     f[i][0] += fij[0];
                     f[i][1] += fij[1];
                     f[i][2] += fij[2];
