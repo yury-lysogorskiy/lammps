@@ -130,6 +130,17 @@ namespace LAMMPS_NS {
 
         GRACEParallel::GracePaddingDimension atom_padding_1;
         GRACEParallel::GracePaddingDimension neighbor_padding_1;
+
+        // Buffers for reuse across timesteps
+        std::vector<int32_t> atomic_mu_i_vector;
+        std::vector<int32_t> atomic_mu_i_1_vector;
+        std::vector<int32_t> ind_i_vector;
+        std::vector<int32_t> ind_j_vector;
+        std::vector<int32_t> mu_i_vector;
+        std::vector<int32_t> mu_j_vector;
+        std::vector<double> bond_vector;
+        std::vector<int32_t> ind_i_vector_1;
+        std::vector<int32_t> ind_j_vector_1;
     };
 }
 
@@ -678,13 +689,15 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     // int tot_atoms =  aceimpl->atom_padding.update(nlocal +nshell1);
     int tot_atoms =  aceimpl->atom_padding.update(nlocal +nshell1+nshell2);
     int fake_atom_type = element_type_mapping[type[0]];
-    std::vector<int32_t> atomic_mu_i_vector(tot_atoms, fake_atom_type);
+    // std::vector<int32_t> atomic_mu_i_vector(tot_atoms, fake_atom_type);
+    aceimpl->atomic_mu_i_vector.assign(tot_atoms, fake_atom_type);
+
     int atomic_idx=0;
     for (ii = 0; ii < atom_shell_map.size(); ++ii) {
         i = ilist[ii];
         if (atom_shell_map[i]==0 || atom_shell_map[i]==1 || atom_shell_map[i]==2) {
             // add element_type_mapping[type[i]] to the atomic_mu_i_1_vector
-            atomic_mu_i_vector[atomic_idx] = element_type_mapping[type[i]];
+            aceimpl->atomic_mu_i_vector[atomic_idx] = element_type_mapping[type[i]];
             atomic_idx++;
         }
     }
@@ -696,7 +709,7 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
         throw std::runtime_error(msg);
     }
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "atomic_mu_i" + ":0",
-                       cppflow::tensor(atomic_mu_i_vector, {tot_atoms}));
+                       cppflow::tensor(aceimpl->atomic_mu_i_vector, {tot_atoms}));
 
 #ifdef GRACE_PRINT_DEBUG
     sleep(1);
@@ -704,15 +717,16 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     /////////////////////////////////////////////////////////
     // atomic_mu_i_1: need only real ; no shell 1/2 is needed
     int tot_atoms_1 =  aceimpl->atom_padding_1.update(nlocal);
-    std::vector<int32_t> atomic_mu_i_1_vector(tot_atoms_1, fake_atom_type);
+    // std::vector<int32_t> atomic_mu_i_1_vector(tot_atoms_1, fake_atom_type);
+    aceimpl->atomic_mu_i_1_vector.assign(tot_atoms_1, fake_atom_type);
 
     // first nlocal atoms are all real
     for (ii = 0; ii < nlocal; ++ii) {
-        i = ilist[ii];
-        atomic_mu_i_1_vector.at(i) = element_type_mapping[type[i]];
+        // i = ilist[ii];
+        aceimpl->atomic_mu_i_1_vector[ii] = element_type_mapping[type[ii]];
     }
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "atomic_mu_i_1" + ":0",
-                        cppflow::tensor(atomic_mu_i_1_vector, {tot_atoms_1}));
+                        cppflow::tensor(aceimpl->atomic_mu_i_1_vector, {tot_atoms_1}));
 
 
     // batch_tot_nat_real: number of extened atoms (w/o padding)
@@ -803,15 +817,14 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     utils::logmesg(lmp,"[GRACE-DEBUG, #{}] tot_atoms={}, tot_neighbours={},  tot_neighbours_1={} \n",
         comm->me, tot_atoms,  tot_neighbours, tot_neighbours_1);
 #endif
-    std::vector<int32_t> ind_i_vector(tot_neighbours);
-    std::vector<int32_t> ind_j_vector(tot_neighbours);
+    aceimpl->ind_i_vector.resize(tot_neighbours);
+    aceimpl->ind_j_vector.resize(tot_neighbours);
+    aceimpl->mu_i_vector.resize(tot_neighbours);
+    aceimpl->mu_j_vector.resize(tot_neighbours);
+    aceimpl->bond_vector.resize(3 * tot_neighbours);
 
-    std::vector<int32_t> mu_i_vector(tot_neighbours);
-    std::vector<int32_t> mu_j_vector(tot_neighbours);
-    std::vector<double> bond_vector(3 * tot_neighbours, 1e6);
-
-    std::vector<int32_t> ind_i_vector_1(tot_neighbours_1);
-    std::vector<int32_t> ind_j_vector_1(tot_neighbours_1);
+    aceimpl->ind_i_vector_1.resize(tot_neighbours_1);
+    aceimpl->ind_j_vector_1.resize(tot_neighbours_1);
 
     atomic_idx = atomic_idx_1 = 0;
     int tot_ind_1, tot_ind;
@@ -853,64 +866,67 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
                 double bondy = x[j][1] - x[i][1];
                 double bondz = x[j][2] - x[i][2];
 
-                ind_i_vector[tot_ind] = i;
-                ind_j_vector[tot_ind] = j_local; // must be ==j
-                mu_i_vector[tot_ind] = element_type_mapping[type[i]];
-                mu_j_vector[tot_ind] = element_type_mapping[type[j]];
-                bond_vector[3 * tot_ind + 0] = bondx;
-                bond_vector[3 * tot_ind + 1] = bondy;
-                bond_vector[3 * tot_ind + 2] = bondz;
+                aceimpl->ind_i_vector[tot_ind] = i;
+                aceimpl->ind_j_vector[tot_ind] = j_local; // must be ==j
+                aceimpl->mu_i_vector[tot_ind] = element_type_mapping[type[i]];
+                aceimpl->mu_j_vector[tot_ind] = element_type_mapping[type[j]];
+                aceimpl->bond_vector[3 * tot_ind + 0] = bondx;
+                aceimpl->bond_vector[3 * tot_ind + 1] = bondy;
+                aceimpl->bond_vector[3 * tot_ind + 2] = bondz;
                 ++tot_ind;
 
                 // if also real atoms bond
                 if (tot_ind_1!=-1) {
-                    ind_i_vector_1[tot_ind_1] = i;
-                    ind_j_vector_1[tot_ind_1] = j_local; // must be ==j
+                    aceimpl->ind_i_vector_1[tot_ind_1] = i;
+                    aceimpl->ind_j_vector_1[tot_ind_1] = j_local; // must be ==j
                     ++tot_ind_1;
                 }
             }
         }
     }
 
+
+    if (tot_neighbours > n_real_neighbours) {
+        int fake_atom_ind = tot_atoms - 1;
+        // add fake bonds t
+        // fill the rest of the buffers with fake data for padding
+        std::fill(aceimpl->ind_i_vector.begin() + n_real_neighbours, aceimpl->ind_i_vector.end(), fake_atom_ind);
+        std::fill(aceimpl->ind_j_vector.begin() + n_real_neighbours, aceimpl->ind_j_vector.end(), fake_atom_ind);
+        std::fill(aceimpl->mu_i_vector.begin() + n_real_neighbours, aceimpl->mu_i_vector.end(), fake_atom_type);
+        std::fill(aceimpl->mu_j_vector.begin() + n_real_neighbours, aceimpl->mu_j_vector.end(), fake_atom_type);
+        // fill the rest of the bond_vector with large distance 1e6 for fake bonds
+        std::fill(aceimpl->bond_vector.begin() + 3 * n_real_neighbours, aceimpl->bond_vector.end(), 1e6);
+    }
+
     // vector_offsets: 1
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "bond_vector" + ":0",
-                        cppflow::tensor(bond_vector, {tot_neighbours, 3}));
+                        cppflow::tensor(aceimpl->bond_vector, {tot_neighbours, 3}));
 
-    // add fake bonds t
-    int fake_atom_ind = tot_atoms - 1;
-    for (int tot_ind = n_real_neighbours; tot_ind < tot_neighbours; tot_ind++) {
-        ind_i_vector[tot_ind] = fake_atom_ind; // fake atom ind
-        ind_j_vector[tot_ind] = fake_atom_ind; // fake atom ind
-        mu_i_vector[tot_ind] = fake_atom_type;
-        mu_j_vector[tot_ind] = fake_atom_type;
-    }
+
 
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_i" + ":0",
-                        cppflow::tensor(ind_i_vector, {tot_neighbours}));
+                        cppflow::tensor(aceimpl->ind_i_vector, {tot_neighbours}));
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_j" + ":0",
-                        cppflow::tensor(ind_j_vector, {tot_neighbours}));
+                        cppflow::tensor(aceimpl->ind_j_vector, {tot_neighbours}));
 
-    // add fake bonds t
-    int fake_atom_ind_1 = tot_atoms_1 - 1;
-    // int fake_atom_ind_1 = tot_atoms - 1;
-    for (tot_ind_1 = n_real_neighbours_1; tot_ind_1 < tot_neighbours_1; tot_ind_1++) {
-        ind_i_vector_1[tot_ind_1] = fake_atom_ind_1; // fake atom ind
-        ind_j_vector_1[tot_ind_1] = fake_atom_ind_1; // fake atom ind
+    if (tot_neighbours_1 > n_real_neighbours_1) {
+        int fake_atom_ind_1 = tot_atoms_1 - 1;
+        std::fill(aceimpl->ind_i_vector_1.begin() + n_real_neighbours_1, aceimpl->ind_i_vector_1.end(), fake_atom_ind_1);
+        std::fill(aceimpl->ind_j_vector_1.begin() + n_real_neighbours_1, aceimpl->ind_j_vector_1.end(), fake_atom_ind_1);
     }
 
-
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_i_1" + ":0",
-                        cppflow::tensor(ind_i_vector_1, {tot_neighbours_1}));
+                        cppflow::tensor(aceimpl->ind_i_vector_1, {tot_neighbours_1}));
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_j_1" + ":0",
-                        cppflow::tensor(ind_j_vector_1, {tot_neighbours_1}));
+                        cppflow::tensor(aceimpl->ind_j_vector_1, {tot_neighbours_1}));
 
     // mu_i, mu_j: bonds
     if (has_mu_i_op) {
         inputs.emplace_back(DEFAULT_INPUT_PREFIX + "mu_i" + ":0",
-                            cppflow::tensor(mu_i_vector, {tot_neighbours}));
+                            cppflow::tensor(aceimpl->mu_i_vector, {tot_neighbours}));
     }
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "mu_j" + ":0",
-                        cppflow::tensor(mu_j_vector, {tot_neighbours}));
+                        cppflow::tensor(aceimpl->mu_j_vector, {tot_neighbours}));
 
 #ifdef GRACE_PRINT_DEBUG
     print_tf_inputs(inputs, comm->me, lmp, true);
