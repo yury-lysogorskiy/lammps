@@ -626,10 +626,10 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     double **x = atom->x;
     double **f = atom->f;
     int *type = atom->type;
-//    tagint *tag = atom->tag;
+    tagint *tag = atom->tag;
 
     // number of atoms in cell
-    int nlocal = atom->nlocal;
+    auto nlocal = atom->nlocal;
     if (nlocal==0) return;
     int nghost = atom->nghost;
     int n_real_neighbours,n_real_neighbours_1;
@@ -653,21 +653,21 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     data_timer.start();
     std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
 
-    std::vector<int> atom_type_map = get_atom_shell_mapping(); // atom_type_map[i=ilist[ii]]
+    std::vector<int> atom_shell_map = get_atom_shell_mapping();
+    // atom_shell_map[i=ilist[ii]]
 
 #ifdef GRACE_PRINT_DEBUG
-    print_atomic_neighbours(atom_type_map);
+    print_atomic_neighbours(atom_shell_map);
 #endif
 
     // count real atoms: nlocal, pad to tot_atoms
     // count real+shell1, pad to tot_natoms_shell
-    int nshell1  = std::count(atom_type_map.begin(), atom_type_map.end(), 1);
-    int nshell2  = std::count(atom_type_map.begin(), atom_type_map.end(), 2);
+    int nshell1  = std::count(atom_shell_map.begin(), atom_shell_map.end(), 1);
+    int nshell2  = std::count(atom_shell_map.begin(), atom_shell_map.end(), 2);
 
 #ifdef GRACE_PRINT_DEBUG
     utils::logmesg(lmp,"[GRACE-DEBUG, #{}] nlocal={}/nghost={}, nshell1={}, nshell2={} \n", comm->me, nlocal, nghost, nshell1, nshell2);
     sleep(1);
-
 #endif
 
 
@@ -677,11 +677,12 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     // atomic_mu_i: need only real and shell 1; no shell 2 is needed
     // int tot_atoms =  aceimpl->atom_padding.update(nlocal +nshell1);
     int tot_atoms =  aceimpl->atom_padding.update(nlocal +nshell1+nshell2);
-    std::vector<int32_t> atomic_mu_i_vector(tot_atoms, element_type_mapping[type[0]]);
+    int fake_atom_type = element_type_mapping[type[0]];
+    std::vector<int32_t> atomic_mu_i_vector(tot_atoms, fake_atom_type);
     int atomic_idx=0;
-    for (ii = 0; ii < atom_type_map.size(); ++ii) {
+    for (ii = 0; ii < atom_shell_map.size(); ++ii) {
         i = ilist[ii];
-        if (atom_type_map[i]==0 || atom_type_map[i]==1 || atom_type_map[i]==2) {
+        if (atom_shell_map[i]==0 || atom_shell_map[i]==1 || atom_shell_map[i]==2) {
             // add element_type_mapping[type[i]] to the atomic_mu_i_1_vector
             atomic_mu_i_vector[atomic_idx] = element_type_mapping[type[i]];
             atomic_idx++;
@@ -703,7 +704,7 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     /////////////////////////////////////////////////////////
     // atomic_mu_i_1: need only real ; no shell 1/2 is needed
     int tot_atoms_1 =  aceimpl->atom_padding_1.update(nlocal);
-    std::vector<int32_t> atomic_mu_i_1_vector(tot_atoms_1, element_type_mapping[type[0]]);
+    std::vector<int32_t> atomic_mu_i_1_vector(tot_atoms_1, fake_atom_type);
 
     // first nlocal atoms are all real
     for (ii = 0; ii < nlocal; ++ii) {
@@ -714,20 +715,15 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
                         cppflow::tensor(atomic_mu_i_1_vector, {tot_atoms_1}));
 
 
-    // utils::logmesg(lmp,"[GRACE-DEBUG, #{}] label 2\n", comm->me);
-
     // batch_tot_nat_real: number of extened atoms (w/o padding)
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "batch_tot_nat_real" + ":0",
                         cppflow::tensor(std::vector<int32_t>{nlocal}, {})); //nlocal+nshell1
 
     // ind_i, ind_j: bonds
-    ////
     // ind_i and ind_j - those pairs, where ind_i not in shell 2, but in shell 1
     // ind_i_1 and ind_j_1 - slice of ind_i and ind_j, where ind_i is in real shell
 
-    // utils::logmesg(lmp,"[GRACE-DEBUG, #{}] label 3\n", comm->me);
 
-    ///
     //determine the maximum number of neighbors (within cutoff) for each atom
     std::vector<int> actual_jnum(nlocal + nshell1, 0);
     std::vector<int> actual_jnum_1(nlocal , 0);
@@ -740,7 +736,7 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     for (ii = 0; ii < nall; ii++) {
         i = ilist[ii];
         // atoms from shell2 can NOT be in inds_i
-        if (atom_type_map[i]==2)
+        if (atom_shell_map[i]==2)
             continue;
         type_i = type[i];
         double xtmp = x[i][0];
@@ -766,7 +762,7 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
             }
         }
         actual_jnum[atomic_idx++] = cur_actual_jnum;
-        if (atom_type_map[i]==0) {
+        if (atom_shell_map[i]==0) {
             actual_jnum_1[atomic_idx_1++] = cur_actual_jnum;
         }
     }
@@ -804,12 +800,8 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     int tot_neighbours_1 = aceimpl->neighbor_padding_1.update(n_real_neighbours_1);
 
 #ifdef GRACE_PRINT_DEBUG
-
-    // utils::logmesg(lmp,"[GRACE-DEBUG, #{}] label 4\n", comm->me);
-
     utils::logmesg(lmp,"[GRACE-DEBUG, #{}] tot_atoms={}, tot_neighbours={},  tot_neighbours_1={} \n",
-        comm->me, tot_atoms,  tot_neighbours,
-          tot_neighbours_1);
+        comm->me, tot_atoms,  tot_neighbours, tot_neighbours_1);
 #endif
     std::vector<int32_t> ind_i_vector(tot_neighbours);
     std::vector<int32_t> ind_j_vector(tot_neighbours);
@@ -818,7 +810,6 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     std::vector<int32_t> mu_j_vector(tot_neighbours);
     std::vector<double> bond_vector(3 * tot_neighbours, 1e6);
 
-    //
     std::vector<int32_t> ind_i_vector_1(tot_neighbours_1);
     std::vector<int32_t> ind_j_vector_1(tot_neighbours_1);
 
@@ -827,7 +818,7 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     for (ii = 0; ii < nall; ii++) {
         i = ilist[ii];
         // atoms from shell2 can NOT be in inds_i
-        if (atom_type_map[i]==2)
+        if (atom_shell_map[i]==2)
             continue;
         type_i = type[i];
         const double xtmp = x[i][0];
@@ -838,7 +829,7 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
         tot_ind = actual_jnum_shift[atomic_idx++];
 
         // if real atom
-        if (atom_type_map[i]==0)
+        if (atom_shell_map[i]==0)
             tot_ind_1 = actual_jnum_shift_1[atomic_idx_1++];
         else
             tot_ind_1 = -1;
@@ -857,10 +848,10 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
             const double rsq = delx * delx + dely * dely + delz * delz;
             if (rsq < cutoff_sq) {
                 // remap j to j_local
-                int j_local = atom->map(atom->tag[j]);
-                double bondx = atom->x[j][0] - atom->x[i][0];
-                double bondy = atom->x[j][1] - atom->x[i][1];
-                double bondz = atom->x[j][2] - atom->x[i][2];
+                int j_local = atom->map(tag[j]);
+                double bondx = x[j][0] - x[i][0];
+                double bondy = x[j][1] - x[i][1];
+                double bondz = x[j][2] - x[i][2];
 
                 ind_i_vector[tot_ind] = i;
                 ind_j_vector[tot_ind] = j_local; // must be ==j
@@ -881,8 +872,6 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
         }
     }
 
-    // utils::logmesg(lmp,"[GRACE-DEBUG, #{}] label 5\n", comm->me);
-
     // vector_offsets: 1
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "bond_vector" + ":0",
                         cppflow::tensor(bond_vector, {tot_neighbours, 3}));
@@ -892,11 +881,10 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     for (int tot_ind = n_real_neighbours; tot_ind < tot_neighbours; tot_ind++) {
         ind_i_vector[tot_ind] = fake_atom_ind; // fake atom ind
         ind_j_vector[tot_ind] = fake_atom_ind; // fake atom ind
-        mu_i_vector[tot_ind] = element_type_mapping[type[0]];;
-        mu_j_vector[tot_ind] = element_type_mapping[type[0]];;
+        mu_i_vector[tot_ind] = fake_atom_type;
+        mu_j_vector[tot_ind] = fake_atom_type;
     }
 
-    // utils::logmesg(lmp,"[GRACE-DEBUG, #{}] label 6\n", comm->me);
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_i" + ":0",
                         cppflow::tensor(ind_i_vector, {tot_neighbours}));
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_j" + ":0",
@@ -910,14 +898,12 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
         ind_j_vector_1[tot_ind_1] = fake_atom_ind_1; // fake atom ind
     }
 
-    // utils::logmesg(lmp,"[GRACE-DEBUG, #{}] label 7\n", comm->me);
 
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_i_1" + ":0",
                         cppflow::tensor(ind_i_vector_1, {tot_neighbours_1}));
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_j_1" + ":0",
                         cppflow::tensor(ind_j_vector_1, {tot_neighbours_1}));
 
-    // utils::logmesg(lmp,"[GRACE-DEBUG, #{}] label 8\n", comm->me);
     // mu_i, mu_j: bonds
     if (has_mu_i_op) {
         inputs.emplace_back(DEFAULT_INPUT_PREFIX + "mu_i" + ":0",
@@ -926,11 +912,9 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "mu_j" + ":0",
                         cppflow::tensor(mu_j_vector, {tot_neighbours}));
 
-    ////
 #ifdef GRACE_PRINT_DEBUG
     print_tf_inputs(inputs, comm->me, lmp, true);
 #endif
-    // utils::logmesg(lmp,"[GRACE-DEBUG, #{}] label 9\n", comm->me);
     data_timer.stop();
     tp_timer.start();
     vector<string> output_names = {
@@ -1012,7 +996,7 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
         i = ilist[ii];
 
         // atoms from shell2 can NOT be in inds_i
-        if (atom_type_map[i]==2)
+        if (atom_shell_map[i]==2)
              continue;
 
         type_i = type[i];
@@ -1090,7 +1074,7 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
 
         // tally energy contribution
         if (eflag_either)
-             if (atom_type_map[i]==0) {
+             if (atom_shell_map[i]==0) {
                 // evdwl = energy of atom I
                 evdwl = scale[type_i][type_i] * e_data[i];
                 ev_tally_full(i, 2.0 * evdwl, 0.0, 0.0, 0.0, 0.0, 0.0);
