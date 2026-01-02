@@ -65,7 +65,7 @@ void print_tf_inputs(const std::vector<std::tuple<std::string, cppflow::tensor>>
 
     // --- Python Dictionary Export ---
     if (python_ready) {
-        ss << "\n# Python-ready dictionary (copy-paste for testing)\n";
+        ss << "\n# Proc #"<<me <<" Python-ready dictionary (copy-paste for testing)\n";
         ss << "import numpy as np\n";
         ss << "grace_inputs = {\n";
 
@@ -112,7 +112,10 @@ void print_tf_inputs(const std::vector<std::tuple<std::string, cppflow::tensor>>
             }
             py_shape += ")";
 
-            ss << "]" << np_dtype << ").reshape(" << py_shape << "),\n";
+            if (key=="bond_vector")
+                ss << "]" << np_dtype << ").reshape(" << py_shape << "),\n";
+            else
+                ss << "]" << np_dtype << "),\n";
         }
         ss << "}\n";
     }

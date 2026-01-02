@@ -632,9 +632,7 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     int nlocal = atom->nlocal;
     if (nlocal==0) return;
     int nghost = atom->nghost;
-    int n_fake_atoms; // no fake atoms needed. fake bonds will be 1e6
     int n_real_neighbours,n_real_neighbours_1;
-    int n_fake_neighbours;
 
     int newton_pair = force->newton_pair;
 
@@ -649,9 +647,9 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
 
     // the pointer to the list of neighbors of "i"
     firstneigh = list->firstneigh;
-
+#ifdef GRACE_PRINT_DEBUG
     sleep(comm->me);
-
+#endif
     data_timer.start();
     std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
 
@@ -713,7 +711,7 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
         atomic_mu_i_1_vector.at(i) = element_type_mapping[type[i]];
     }
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "atomic_mu_i_1" + ":0",
-                        cppflow::tensor(atomic_mu_i_1_vector, {nlocal}));
+                        cppflow::tensor(atomic_mu_i_1_vector, {tot_atoms_1}));
 
 
     // utils::logmesg(lmp,"[GRACE-DEBUG, #{}] label 2\n", comm->me);
@@ -894,8 +892,8 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     for (int tot_ind = n_real_neighbours; tot_ind < tot_neighbours; tot_ind++) {
         ind_i_vector[tot_ind] = fake_atom_ind; // fake atom ind
         ind_j_vector[tot_ind] = fake_atom_ind; // fake atom ind
-        mu_i_vector[tot_ind] = 0;
-        mu_j_vector[tot_ind] = 0;
+        mu_i_vector[tot_ind] = element_type_mapping[type[0]];;
+        mu_j_vector[tot_ind] = element_type_mapping[type[0]];;
     }
 
     // utils::logmesg(lmp,"[GRACE-DEBUG, #{}] label 6\n", comm->me);
@@ -905,11 +903,11 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
                         cppflow::tensor(ind_j_vector, {tot_neighbours}));
 
     // add fake bonds t
-    // int fake_atom_ind_1 = tot_atoms_1 - 1;
-    int fake_atom_ind_1 = tot_atoms - 1;
-    for (int tot_ind_1 = n_real_neighbours_1; tot_ind_1 < tot_neighbours_1; tot_ind_1++) {
+    int fake_atom_ind_1 = tot_atoms_1 - 1;
+    // int fake_atom_ind_1 = tot_atoms - 1;
+    for (tot_ind_1 = n_real_neighbours_1; tot_ind_1 < tot_neighbours_1; tot_ind_1++) {
         ind_i_vector_1[tot_ind_1] = fake_atom_ind_1; // fake atom ind
-        ind_j_vector[tot_ind_1] = fake_atom_ind_1; // fake atom ind
+        ind_j_vector_1[tot_ind_1] = fake_atom_ind_1; // fake atom ind
     }
 
     // utils::logmesg(lmp,"[GRACE-DEBUG, #{}] label 7\n", comm->me);
@@ -979,12 +977,12 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     }
 
 
-    for (int k = 0; k < n_real_neighbours; ++k) {
+    for (int k = 0; k < ind_i_vector.size(); ++k) {
         int i = ind_i_vector[k];
         int j = ind_j_vector[k];
 
         // Safety check: ensure indices are within local/ghost range
-        if (i < 0 || i >= nall || j < 0 || j >= nall) continue;
+        //if (i < 0 || i >= nall || j < 0 || j >= nall) continue;
 
         tagint tag_i = atom->tag[i];
         tagint tag_j = atom->tag[j];
@@ -994,7 +992,8 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
         double raw_fz = f_data[3*k + 2];
 
         // Optional: Filter out near-zero forces to reduce noise
-        if (raw_fx*raw_fx + raw_fy*raw_fy + raw_fz*raw_fz > 1e-20) {
+        //if (raw_fx*raw_fx + raw_fy*raw_fy + raw_fz*raw_fz > 1e-20)
+        {
             utils::logmesg(lmp, "{:<4} | {:<4} | {:>8} -> {:<8} | [{: .6f}, {: .6f}, {: .6f}]\n",
                            k, comm->me, tag_i, tag_j, raw_fx, raw_fy, raw_fz);
         }
@@ -1005,6 +1004,8 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
 #endif
 
     tot_ind = 0;
+
+    //TODO: try to reuse bond_vec
 
     // loop only over LOCAL REAL atoms + shell 1 !!
     for (ii = 0; ii < nall; ++ii) {
