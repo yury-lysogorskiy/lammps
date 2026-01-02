@@ -154,11 +154,6 @@ void PairGRACE::settings(int narg, char **arg) {
             iarg += 2;
             if (comm->me == 0)
                 utils::logmesg(lmp, "[GRACE] Reducing padding fraction: {}\n", reducing_neigh_padding_fraction);
-        } else if (strcmp(arg[iarg], "parallel") == 0) {
-            this->parallel = true;
-            iarg += 1;
-            if (comm->me == 0)
-                utils::logmesg(lmp, "[GRACE] Parallel TRUE\n");
         } else
             error->all(FLERR, "[GRACE] Unknown pair_style grace keyword: {}", arg[iarg]);
     }
@@ -306,41 +301,16 @@ void PairGRACE::coeff(int narg, char **arg) {
         this->DEFAULT_INPUT_PREFIX = "compute_";
     }
 
-    if (parallel) {
-        this->DEFAULT_INPUT_PREFIX = "parallel_compute_";
-        if (comm->me == 0)
-            utils::logmesg(lmp, "[GRACE/DEBUG] PARALLEL\n", DEFAULT_INPUT_PREFIX);
-    }
-
-    if (comm->me == 0)
-        utils::logmesg(lmp, "[GRACE/DEBUG] DEFAULT_INPUT_PREFIX={}\n", DEFAULT_INPUT_PREFIX);
-
-
     //
     has_map_atoms_to_structure_op = check_tf_graph_input_presented(aceimpl->model,
                                                                    DEFAULT_INPUT_PREFIX+"map_atoms_to_structure");
 
-    if (comm->me == 0)
-        utils::logmesg(lmp, "[GRACE/DEBUG] has_map_atoms_to_structure_op={}\n", has_map_atoms_to_structure_op);
-
     has_nstruct_total_op = check_tf_graph_input_presented(aceimpl->model,
                                                           DEFAULT_INPUT_PREFIX+"n_struct_total");
-
-    if (comm->me == 0)
-        utils::logmesg(lmp, "[GRACE/DEBUG] has_nstruct_total_op={}\n", has_nstruct_total_op);
-
     has_mu_i_op = check_tf_graph_input_presented(aceimpl->model,
                                                  DEFAULT_INPUT_PREFIX+"mu_i");
-
-    if (comm->me == 0)
-        utils::logmesg(lmp, "[GRACE/DEBUG] has_mu_i_op={}\n", has_mu_i_op);
-
     has_batch_tot_nat = check_tf_graph_input_presented(aceimpl->model,
                                                  DEFAULT_INPUT_PREFIX+"batch_tot_nat");
-
-    if (comm->me == 0)
-        utils::logmesg(lmp, "[GRACE/DEBUG] has_batch_tot_nat={}\n", has_batch_tot_nat);
-
 
 }
 
@@ -353,18 +323,9 @@ void PairGRACE::init_style() {
     if (atom->tag_enable == 0) error->all(FLERR, "Pair style grace requires atom IDs");
     if (force->newton_pair == 0) error->all(FLERR, "Pair style grace requires newton pair on");
 
-    if (parallel) {
-        // request a full neighbor list and GHOST
-        neighbor->add_request(this, NeighConst::REQ_FULL | NeighConst::REQ_GHOST);
-        // comm->cutghostuser is the variable modified by the "comm_modify cutoff" command
-        comm->cutghostuser = 12;
-    } else {
-        // request a full neighbor list
-        neighbor->add_request(this, NeighConst::REQ_FULL);
-    }
 
-
-
+    // request a full neighbor list
+    neighbor->add_request(this, NeighConst::REQ_FULL);
 
     // request atom map (maybe?)
     if (atom->map_style == Atom::MAP_NONE) {
@@ -616,7 +577,7 @@ void PairGRACE::compute(int eflag, int vflag) {
         tot_neighbours = n_real_neighbours;
     }
 
-    utils::logmesg(lmp,"[GRACE-DEBUG, #{}] tot_atoms={}, tot_neighbours={} \n", comm->me, tot_atoms,  tot_neighbours);
+    // utils::logmesg(lmp,"[GRACE-DEBUG, #{}] tot_atoms={}, tot_neighbours={} \n", comm->me, tot_atoms,  tot_neighbours);
 
     std::vector<int32_t> ind_i_vector(tot_neighbours);
     std::vector<int32_t> ind_j_vector(tot_neighbours);
