@@ -2,7 +2,7 @@
 // Created by Yury Lysogorskiy on 01.12.23.
 //
 #ifndef NO_GRACE_TF
-//#define GRACE_PRINT_DEBUG
+#define GRACE_PRINT_DEBUG
 
 #include "pair_grace_parallel.h"
 
@@ -911,6 +911,7 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
 
     if (tot_neighbours_1 > n_real_neighbours_1) {
         int fake_atom_ind_1 = tot_atoms_1 - 1;
+        // int fake_atom_ind_1 = tot_atoms - 1;
         std::fill(aceimpl->ind_i_vector_1.begin() + n_real_neighbours_1, aceimpl->ind_i_vector_1.end(), fake_atom_ind_1);
         std::fill(aceimpl->ind_j_vector_1.begin() + n_real_neighbours_1, aceimpl->ind_j_vector_1.end(), fake_atom_ind_1);
     }
@@ -977,9 +978,9 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     }
 
 
-    for (int k = 0; k < ind_i_vector.size(); ++k) {
-        int i = ind_i_vector[k];
-        int j = ind_j_vector[k];
+    for (int k = 0; k < aceimpl->ind_i_vector.size(); ++k) {
+        int i = aceimpl->ind_i_vector[k];
+        int j = aceimpl->ind_j_vector[k];
 
         // Safety check: ensure indices are within local/ghost range
         //if (i < 0 || i >= nall || j < 0 || j >= nall) continue;
