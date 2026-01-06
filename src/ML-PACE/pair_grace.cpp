@@ -2,6 +2,7 @@
 // Created by Yury Lysogorskiy on 01.12.23.
 //
 #ifndef NO_GRACE_TF
+//#define GRACE_PRINT_DEBUG
 
 #include "pair_grace.h"
 
@@ -24,12 +25,13 @@
 #include "ace-evaluator/ace_arraynd.h"
 
 #include "utils_pace.h"
+#include "utils_grace.h"
 
+// CppFlow headers
+#include <cppflow/ops.h>
+#include <cppflow/model.h>
 #include <cppflow/tensor.h>
-
 #include <tensorflow/c/c_api.h>
-
-const std::string DEFAULT_INPUT_PREFIX = "serving_default_";
 
 
 namespace LAMMPS_NS {
@@ -286,20 +288,30 @@ void PairGRACE::coeff(int narg, char **arg) {
 
     }
 
-//    auto operations_vec = aceimpl->model->get_operations();
-//    std::cout<<"List of operations "<<std::endl;
-//    for(const auto& op_name: operations_vec){
-//        std::cout<<"Operation `"<<op_name<<"`"<<endl;
-//    }
+    // auto operations_vec = aceimpl->model->get_operations();
+    // std::cout<<"List of operations "<<std::endl;
+    // for(const auto& op_name: operations_vec){
+    //     std::cout<<"Operation `"<<op_name<<"`"<<endl;
+    // }
+
+
+
+    if (check_tf_graph_input_presented(aceimpl->model,"serving_default_atomic_mu_i")) {
+        this->DEFAULT_INPUT_PREFIX = "serving_default_";
+    } else if (check_tf_graph_input_presented(aceimpl->model, "compute_atomic_mu_i")) {
+        this->DEFAULT_INPUT_PREFIX = "compute_";
+    }
 
     //
     has_map_atoms_to_structure_op = check_tf_graph_input_presented(aceimpl->model,
-                                                                   "serving_default_map_atoms_to_structure");
+                                                                   DEFAULT_INPUT_PREFIX+"map_atoms_to_structure");
 
     has_nstruct_total_op = check_tf_graph_input_presented(aceimpl->model,
-                                                          "serving_default_n_struct_total");
+                                                          DEFAULT_INPUT_PREFIX+"n_struct_total");
     has_mu_i_op = check_tf_graph_input_presented(aceimpl->model,
-                                                 "serving_default_mu_i");
+                                                 DEFAULT_INPUT_PREFIX+"mu_i");
+    has_batch_tot_nat = check_tf_graph_input_presented(aceimpl->model,
+                                                 DEFAULT_INPUT_PREFIX+"batch_tot_nat");
 
 }
 
@@ -311,6 +323,7 @@ void PairGRACE::coeff(int narg, char **arg) {
 void PairGRACE::init_style() {
     if (atom->tag_enable == 0) error->all(FLERR, "Pair style grace requires atom IDs");
     if (force->newton_pair == 0) error->all(FLERR, "Pair style grace requires newton pair on");
+
 
     // request a full neighbor list
     neighbor->add_request(this, NeighConst::REQ_FULL);
@@ -330,10 +343,10 @@ double PairGRACE::init_one(int i, int j) {
     if (setflag[i][j] == 0) error->all(FLERR, "All pair coeffs are not set");
     //cutoff from the basis set's radial functions settings
     scale[j][i] = scale[i][j];
-    if (is_custom_cutoffs) {
+
+    if (is_custom_cutoffs)
         return cutoff_matrix_per_lammps_type[i][j];
-    } else
-        return cutoff;
+    return cutoff;
 }
 
 /* ----------------------------------------------------------------------
@@ -482,8 +495,10 @@ void PairGRACE::compute(int eflag, int vflag) {
     }
 
     // batch_nat = number of extened atoms + padding
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "batch_tot_nat" + ":0",
-                        cppflow::tensor(std::vector<int32_t>{tot_atoms}, {}));
+    if (has_batch_tot_nat) {
+        inputs.emplace_back(DEFAULT_INPUT_PREFIX + "batch_tot_nat" + ":0",
+                            cppflow::tensor(std::vector<int32_t>{tot_atoms}, {}));
+    }
 
     // batch_nreal_atoms_per_structure: number of extened atoms (w/o padding)
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "batch_tot_nat_real" + ":0",
@@ -567,7 +582,7 @@ void PairGRACE::compute(int eflag, int vflag) {
         tot_neighbours = n_real_neighbours;
     }
 
-//    utils::logmesg(lmp,"[GRACE-DEBUG, #{}] tot_atoms={}, tot_neighbours={} \n", comm->me, tot_atoms,  tot_neighbours);
+    // utils::logmesg(lmp,"[GRACE-DEBUG, #{}] tot_atoms={}, tot_neighbours={} \n", comm->me, tot_atoms,  tot_neighbours);
 
     std::vector<int32_t> ind_i_vector(tot_neighbours);
     std::vector<int32_t> ind_j_vector(tot_neighbours);
@@ -650,6 +665,10 @@ void PairGRACE::compute(int eflag, int vflag) {
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "bond_vector" + ":0",
                         cppflow::tensor(bond_vector, {tot_neighbours, 3}));
 
+
+#ifdef GRACE_PRINT_DEBUG
+    print_tf_inputs(inputs, comm->me, lmp, true);
+#endif
 
     data_timer.stop();
     tp_timer.start();
@@ -755,6 +774,11 @@ void PairGRACE::compute(int eflag, int vflag) {
                     fij[2] = -scale[type_i][type_i] * f_data[tot_ind + 2];
                     tot_ind += 3;
 
+#ifdef GRACE_PRINT_DEBUG
+                    // Print pair-specific force mapping
+                    utils::logmesg(lmp, "[GRACE-FORCE] Proc {}: Pair ({}-{}) | Tag ({}-{}) | BondIdx {} | F_tf: [{}, {}, {}]\n",
+                                   comm->me, i, j, atom->tag[i], atom->tag[j], tot_ind/3, f_data[tot_ind-3], f_data[tot_ind-2], f_data[tot_ind-1]);
+#endif
                     f[i][0] += fij[0];
                     f[i][1] += fij[1];
                     f[i][2] += fij[2];
