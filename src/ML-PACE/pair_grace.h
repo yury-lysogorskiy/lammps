@@ -59,6 +59,7 @@ class PairGRACE : public Pair {
   bool has_mu_i_op = false;
   bool has_batch_tot_nat = false;
   bool parallel = false;
+  bool deny_energy_only_calc = false;
 
   virtual void allocate();
 

@@ -2,7 +2,7 @@
 // Created by Yury Lysogorskiy on 01.12.23.
 //
 #ifndef NO_GRACE_TF
-//#define GRACE_PRINT_DEBUG
+// #define GRACE_PRINT_DEBUG
 
 #include "pair_grace.h"
 
@@ -155,6 +155,9 @@ void PairGRACE::settings(int narg, char **arg) {
             iarg += 2;
             if (comm->me == 0)
                 utils::logmesg(lmp, "[GRACE] Reducing padding fraction: {}\n", reducing_neigh_padding_fraction);
+        } else if (strcmp(arg[iarg], "deny_energy_only_calc") == 0) {
+            deny_energy_only_calc = true;
+            iarg += 1;
         } else
             error->all(FLERR, "[GRACE] Unknown pair_style grace keyword: {}", arg[iarg]);
     }
@@ -462,6 +465,14 @@ void PairGRACE::compute(int eflag, int vflag) {
     // the pointer to the list of neighbors of "i"
     firstneigh = list->firstneigh;
 
+    bool do_energy_only = flag_compute_energy_only & ! deny_energy_only_calc;
+    std::string input_prefix = this->DEFAULT_INPUT_PREFIX;
+    if (do_energy_only) {
+        input_prefix = "z1_compute_energy_only_";
+    }
+
+    // utils::logmesg(lmp, "[GRACE-debug] input_prefix={} \n",input_prefix);
+
     data_timer.start();
     std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
 
@@ -485,23 +496,23 @@ void PairGRACE::compute(int eflag, int vflag) {
     for (i = 0; i < nlocal; ++i)
         atomic_mu_i_vector[i] = element_type_mapping[type[i]];
 
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "atomic_mu_i" + ":0",
+    inputs.emplace_back(input_prefix + "atomic_mu_i" + ":0",
                         cppflow::tensor(atomic_mu_i_vector, {tot_atoms}));
 
     //    map_atoms_to_structure
     if (has_map_atoms_to_structure_op) {
-        inputs.emplace_back(DEFAULT_INPUT_PREFIX + "map_atoms_to_structure" + ":0",
+        inputs.emplace_back(input_prefix + "map_atoms_to_structure" + ":0",
                             cppflow::tensor(std::vector<int32_t>(tot_atoms, 0), {tot_atoms}));
     }
 
     // batch_nat = number of extened atoms + padding
     if (has_batch_tot_nat) {
-        inputs.emplace_back(DEFAULT_INPUT_PREFIX + "batch_tot_nat" + ":0",
+        inputs.emplace_back(input_prefix + "batch_tot_nat" + ":0",
                             cppflow::tensor(std::vector<int32_t>{tot_atoms}, {}));
     }
 
     // batch_nreal_atoms_per_structure: number of extened atoms (w/o padding)
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "batch_tot_nat_real" + ":0",
+    inputs.emplace_back(input_prefix + "batch_tot_nat_real" + ":0",
                         cppflow::tensor(std::vector<int32_t>{nlocal}, {}));
 
     // ind_i, ind_j: bonds
@@ -640,29 +651,29 @@ void PairGRACE::compute(int eflag, int vflag) {
         mu_j_vector[tot_ind] = 0;
     }
 
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_i" + ":0",
+    inputs.emplace_back(input_prefix + "ind_i" + ":0",
                         cppflow::tensor(ind_i_vector, {tot_neighbours}));
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_j" + ":0",
+    inputs.emplace_back(input_prefix + "ind_j" + ":0",
                         cppflow::tensor(ind_j_vector, {tot_neighbours}));
 
 
     // mu_i, mu_j: bonds
     if (has_mu_i_op) {
-        inputs.emplace_back(DEFAULT_INPUT_PREFIX + "mu_i" + ":0",
+        inputs.emplace_back(input_prefix + "mu_i" + ":0",
                             cppflow::tensor(mu_i_vector, {tot_neighbours}));
     }
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "mu_j" + ":0",
+    inputs.emplace_back(input_prefix + "mu_j" + ":0",
                         cppflow::tensor(mu_j_vector, {tot_neighbours}));
 
 
     // num_struc: 1
     if (has_nstruct_total_op) {
-        inputs.emplace_back(DEFAULT_INPUT_PREFIX + "n_struct_total" + ":0",
+        inputs.emplace_back(input_prefix + "n_struct_total" + ":0",
                             cppflow::tensor(std::vector<int32_t>{1}, {}));
     }
 
     // vector_offsets: 1
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "bond_vector" + ":0",
+    inputs.emplace_back(input_prefix + "bond_vector" + ":0",
                         cppflow::tensor(bond_vector, {tot_neighbours, 3}));
 
 
@@ -672,15 +683,23 @@ void PairGRACE::compute(int eflag, int vflag) {
 
     data_timer.stop();
     tp_timer.start();
-    vector<string> output_names = {
+    vector<string> output_names;
+    if (do_energy_only) {
+        output_names = {
+            "StatefulPartitionedCall_2:0", // atomic_energy [nat,1]
+        };
+    } else {
+        output_names = {
             "StatefulPartitionedCall:0", // atomic_energy [nat,1]
             "StatefulPartitionedCall:1", // total_energy [-1, 1]
             "StatefulPartitionedCall:2", // total_f [n_at, 3]
             "StatefulPartitionedCall:3", // virial [6]
-    };
-    // add it optionally
-    if (pair_forces)
-        output_names.emplace_back("StatefulPartitionedCall:4");// pair_f [n_bonds, 3]
+        };
+        // add it optionally
+        if (pair_forces)
+            output_names.emplace_back("StatefulPartitionedCall:4");// pair_f [n_bonds, 3]
+    }
+
 
     //CALL MODEL
     std::vector<cppflow::tensor> output = aceimpl->model->operator()(
@@ -695,145 +714,157 @@ void PairGRACE::compute(int eflag, int vflag) {
     auto e_tens = e_out.get_tensor();
     const double *e_data = static_cast<double *>(TF_TensorData(e_tens.get()));
 
-//    auto &te_out = output[1]; // total_energy
+    if (! do_energy_only) {
+        //    auto &te_out = output[1]; // total_energy
 
-    auto &total_f_out = output[2]; // total_f
-    auto total_f_tens = total_f_out.get_tensor();
-    const double *total_f_data = static_cast<double *>(TF_TensorData(total_f_tens.get()));
-
-
-    if (!pair_forces) {
-        for (ii = 0; ii < inum; ii++) {
-            i = ilist[ii];
-
-            const int itype = type[i];
-            double fx = total_f_data[ii * 3 + 0];
-            double fy = total_f_data[ii * 3 + 1];
-            double fz = total_f_data[ii * 3 + 2];
+        auto &total_f_out = output[2]; // total_f
+        auto total_f_tens = total_f_out.get_tensor();
+        const double *total_f_data = static_cast<double *>(TF_TensorData(total_f_tens.get()));
 
 
-            f[i][0] += scale[itype][itype] * fx;
-            f[i][1] += scale[itype][itype] * fy;
-            f[i][2] += scale[itype][itype] * fz;
+        if (!pair_forces) {
+            for (ii = 0; ii < inum; ii++) {
+                i = ilist[ii];
+
+                const int itype = type[i];
+                double fx = total_f_data[ii * 3 + 0];
+                double fy = total_f_data[ii * 3 + 1];
+                double fz = total_f_data[ii * 3 + 2];
 
 
-            // tally energy contribution
-            if (eflag_either) {
-                // evdwl = energy of atom I
-                evdwl = scale[itype][itype] * e_data[i];
-                ev_tally_full(i, 2.0 * evdwl, 0.0, 0.0, 0.0, 0.0, 0.0);
+                f[i][0] += scale[itype][itype] * fx;
+                f[i][1] += scale[itype][itype] * fy;
+                f[i][2] += scale[itype][itype] * fz;
+
+
+                // tally energy contribution
+                if (eflag_either) {
+                    // evdwl = energy of atom I
+                    evdwl = scale[itype][itype] * e_data[i];
+                    ev_tally_full(i, 2.0 * evdwl, 0.0, 0.0, 0.0, 0.0, 0.0);
+                }
+            } // end for(ii)
+
+            // virial order, seems to be OK
+            if (vflag_global) {
+                auto &v_out = output[3]; // virial
+                auto v_tens = v_out.get_tensor();
+                const double *v_data = static_cast<double *>(TF_TensorData(v_tens.get()));
+
+                //            ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fij[0], fij[1], fij[2], -delx, -dely, -delz);
+                virial[0] += v_data[0];
+                virial[1] += v_data[1];
+                virial[2] += v_data[2];
+                virial[3] += v_data[3];
+                virial[4] += v_data[4];
+                virial[5] += v_data[5];
             }
-        } // end for(ii)
+        } else {
+            // pair forces
+            auto &f_out = output[4];
 
-        // virial order, seems to be OK
-        if (vflag_global) {
-            auto &v_out = output[3]; // virial
-            auto v_tens = v_out.get_tensor();
-            const double *v_data = static_cast<double *>(TF_TensorData(v_tens.get()));
+            auto f_tens = f_out.get_tensor();
+            const double *f_data = static_cast<double *>(TF_TensorData(f_tens.get()));
+            int tot_ind = 0;
+            for (ii = 0; ii < inum; ++ii) {
+                i = ilist[ii];
+                type_i = type[i];
+                const double xtmp = x[i][0];
+                const double ytmp = x[i][1];
+                const double ztmp = x[i][2];
+                jlist = firstneigh[i];
+                jnum = numneigh[i];
 
-//            ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fij[0], fij[1], fij[2], -delx, -dely, -delz);
-            virial[0] += v_data[0];
-            virial[1] += v_data[1];
-            virial[2] += v_data[2];
-            virial[3] += v_data[3];
-            virial[4] += v_data[4];
-            virial[5] += v_data[5];
+                for (jj = 0; jj < jnum; ++jj) {
+                    j = jlist[jj];
+                    j &= NEIGHMASK;
+                    delx = xtmp - x[j][0];
+                    dely = ytmp - x[j][1];
+                    delz = ztmp - x[j][2];
+                    if (is_custom_cutoffs) {
+                        type_j = type[j];
+                        double cur_cutoff = cutoff_matrix_per_lammps_type[type_i][type_j];
+                        cutoff_sq = cur_cutoff * cur_cutoff;
+                    }
+                    const double rsq = delx * delx + dely * dely + delz * delz;
+                    if (rsq < cutoff_sq) {
+                        // why "-" ?
+                        fij[0] = -scale[type_i][type_i] * f_data[tot_ind];
+                        fij[1] = -scale[type_i][type_i] * f_data[tot_ind + 1];
+                        fij[2] = -scale[type_i][type_i] * f_data[tot_ind + 2];
+                        tot_ind += 3;
+
+#ifdef GRACE_PRINT_DEBUG
+                        // Print pair-specific force mapping
+                        utils::logmesg(lmp, "[GRACE-FORCE] Proc {}: Pair ({}-{}) | Tag ({}-{}) | BondIdx {} | F_tf: [{}, {}, {}]\n",
+                                       comm->me, i, j, atom->tag[i], atom->tag[j], tot_ind/3, f_data[tot_ind-3], f_data[tot_ind-2], f_data[tot_ind-1]);
+#endif
+                        f[i][0] += fij[0];
+                        f[i][1] += fij[1];
+                        f[i][2] += fij[2];
+                        f[j][0] -= fij[0];
+                        f[j][1] -= fij[1];
+                        f[j][2] -= fij[2];
+
+                        // tally per-atom virial contribution, OpenMP critical !
+                        if (vflag_either) {
+                            ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fij[0], fij[1], fij[2], delx, dely, delz);
+
+
+                            // Centroid Stress
+                            if (cvflag_atom) {
+                                const double fx = fij[0];
+                                const double fy = fij[1];
+                                const double fz = fij[2];
+
+                                cvatom[i][0] += 0.5 * delx * fx; // xx
+                                cvatom[i][1] += 0.5 * dely * fy; // yy
+                                cvatom[i][2] += 0.5 * delz * fz; // zz
+                                cvatom[i][3] += 0.5 * delx * fy; // xy
+                                cvatom[i][4] += 0.5 * delx * fz; // xz
+                                cvatom[i][5] += 0.5 * dely * fz; // yz
+                                cvatom[i][6] += 0.5 * dely * fx; // yx
+                                cvatom[i][7] += 0.5 * delz * fx; // zx
+                                cvatom[i][8] += 0.5 * delz * fy; // zy
+
+
+                                cvatom[j][0] += 0.5 * delx * fx; // xx
+                                cvatom[j][1] += 0.5 * dely * fy; // yy
+                                cvatom[j][2] += 0.5 * delz * fz; // zz
+                                cvatom[j][3] += 0.5 * delx * fy; // xy
+                                cvatom[j][4] += 0.5 * delx * fz; // xz
+                                cvatom[j][5] += 0.5 * dely * fz; // yz
+                                cvatom[j][6] += 0.5 * dely * fx; // yx
+                                cvatom[j][7] += 0.5 * delz * fx; // zx
+                                cvatom[j][8] += 0.5 * delz * fy; // zy
+                            }
+                        }
+                    }
+                } // loop over neighbours
+
+                // tally energy contribution
+                if (eflag_either) {
+                    // evdwl = energy of atom I
+                    evdwl = scale[type_i][type_i] * e_data[i];
+                    ev_tally_full(i, 2.0 * evdwl, 0.0, 0.0, 0.0, 0.0, 0.0);
+                }
+
+            } // loop over atoms -i
+
+            if (vflag_fdotr) virial_fdotr_compute();
         }
     } else {
-        // pair forces
-        auto &f_out = output[4];
-
-        auto f_tens = f_out.get_tensor();
-        const double *f_data = static_cast<double *>(TF_TensorData(f_tens.get()));
-        int tot_ind = 0;
+        //energy only computes
         for (ii = 0; ii < inum; ++ii) {
             i = ilist[ii];
             type_i = type[i];
-            const double xtmp = x[i][0];
-            const double ytmp = x[i][1];
-            const double ztmp = x[i][2];
-            jlist = firstneigh[i];
-            jnum = numneigh[i];
-
-            for (jj = 0; jj < jnum; ++jj) {
-                j = jlist[jj];
-                j &= NEIGHMASK;
-                delx = xtmp - x[j][0];
-                dely = ytmp - x[j][1];
-                delz = ztmp - x[j][2];
-                if (is_custom_cutoffs) {
-                    type_j = type[j];
-                    double cur_cutoff = cutoff_matrix_per_lammps_type[type_i][type_j];
-                    cutoff_sq = cur_cutoff * cur_cutoff;
-                }
-                const double rsq = delx * delx + dely * dely + delz * delz;
-                if (rsq < cutoff_sq) {
-                    // why "-" ?
-                    fij[0] = -scale[type_i][type_i] * f_data[tot_ind];
-                    fij[1] = -scale[type_i][type_i] * f_data[tot_ind + 1];
-                    fij[2] = -scale[type_i][type_i] * f_data[tot_ind + 2];
-                    tot_ind += 3;
-
-#ifdef GRACE_PRINT_DEBUG
-                    // Print pair-specific force mapping
-                    utils::logmesg(lmp, "[GRACE-FORCE] Proc {}: Pair ({}-{}) | Tag ({}-{}) | BondIdx {} | F_tf: [{}, {}, {}]\n",
-                                   comm->me, i, j, atom->tag[i], atom->tag[j], tot_ind/3, f_data[tot_ind-3], f_data[tot_ind-2], f_data[tot_ind-1]);
-#endif
-                    f[i][0] += fij[0];
-                    f[i][1] += fij[1];
-                    f[i][2] += fij[2];
-                    f[j][0] -= fij[0];
-                    f[j][1] -= fij[1];
-                    f[j][2] -= fij[2];
-
-                    // tally per-atom virial contribution, OpenMP critical !
-                    if (vflag_either) {
-                        ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fij[0], fij[1], fij[2], delx, dely, delz);
-
-
-                        // Centroid Stress
-                        if (cvflag_atom) {
-                            const double fx = fij[0];
-                            const double fy = fij[1];
-                            const double fz = fij[2];
-
-                            cvatom[i][0] += 0.5 * delx * fx; // xx
-                            cvatom[i][1] += 0.5 * dely * fy; // yy
-                            cvatom[i][2] += 0.5 * delz * fz; // zz
-                            cvatom[i][3] += 0.5 * delx * fy; // xy
-                            cvatom[i][4] += 0.5 * delx * fz; // xz
-                            cvatom[i][5] += 0.5 * dely * fz; // yz
-                            cvatom[i][6] += 0.5 * dely * fx; // yx
-                            cvatom[i][7] += 0.5 * delz * fx; // zx
-                            cvatom[i][8] += 0.5 * delz * fy; // zy
-
-
-                            cvatom[j][0] += 0.5 * delx * fx; // xx
-                            cvatom[j][1] += 0.5 * dely * fy; // yy
-                            cvatom[j][2] += 0.5 * delz * fz; // zz
-                            cvatom[j][3] += 0.5 * delx * fy; // xy
-                            cvatom[j][4] += 0.5 * delx * fz; // xz
-                            cvatom[j][5] += 0.5 * dely * fz; // yz
-                            cvatom[j][6] += 0.5 * dely * fx; // yx
-                            cvatom[j][7] += 0.5 * delz * fx; // zx
-                            cvatom[j][8] += 0.5 * delz * fy; // zy
-                        }
-                    }
-                }
-            } // loop over neighbours
-
-            // tally energy contribution
             if (eflag_either) {
                 // evdwl = energy of atom I
                 evdwl = scale[type_i][type_i] * e_data[i];
                 ev_tally_full(i, 2.0 * evdwl, 0.0, 0.0, 0.0, 0.0, 0.0);
             }
-
-        } // loop over atoms -i
-
-        if (vflag_fdotr) virial_fdotr_compute();
+        }
     }
-
 
     data_timer.stop();
     // end modifications YL
