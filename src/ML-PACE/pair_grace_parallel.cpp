@@ -685,7 +685,7 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
 
     // atomic_mu_i*: per-atom species type + padding with type[0]
 
-    // atomic_mu_i: need only real and shell 1; no shell 2 is needed
+    // atomic_mu_i: need only real and shell 1; no shell 2 is needed;
     // int tot_atoms =  aceimpl->atom_padding.update(nlocal +nshell1);
     int tot_atoms =  aceimpl->atom_padding.update(nlocal +nshell1+nshell2);
     int fake_atom_type = element_type_mapping[type[0]];
@@ -734,9 +734,10 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
                         cppflow::tensor(std::vector<int32_t>{nlocal}, {})); //nlocal+nshell1
 
     // ind_i, ind_j: bonds
-    // ind_i and ind_j - those pairs, where ind_i not in shell 2, but in shell 1
+    // ind_i and ind_j - those pairs, where ind_i not in shell 2, but in shell 1 or real; MUST BE COMPACTIFIED!!! reindexed
     // ind_i_1 and ind_j_1 - slice of ind_i and ind_j, where ind_i is in real shell
 
+    //TO_TRY: take ind_i_1 and - renumerate index
 
     //determine the maximum number of neighbors (within cutoff) for each atom
     std::vector<int> actual_jnum(nlocal + nshell1, 0);
@@ -810,9 +811,25 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     std::vector<int> actual_jnum_shift_1(actual_jnum_1.size(), 0);
     std::partial_sum(actual_jnum_1.begin(), actual_jnum_1.end() - 1, actual_jnum_shift_1.begin() + 1);
 
-    int tot_neighbours = aceimpl->neighbor_padding.update(n_real_neighbours);
+    // int tot_neighbours = aceimpl->neighbor_padding.update(n_real_neighbours);
+    // int tot_neighbours_1 = aceimpl->neighbor_padding_1.update(n_real_neighbours_1);
+
+    // 1. Calculate Padded Size for Real Block
     int tot_neighbours_1 = aceimpl->neighbor_padding_1.update(n_real_neighbours_1);
 
+    // 2. Calculate the GAP size (Padding needed for _1 vectors)
+    int padding_gap = tot_neighbours_1 - n_real_neighbours_1;
+
+    // 3. Update Main Padding using (Total Real + Ghost + Gap)
+    //    We effectively hide the gap from the main padding logic by treating it as "required data"
+    int tot_neighbours = aceimpl->neighbor_padding.update(n_real_neighbours + padding_gap);
+
+    // FIX: Shift offsets for Ghost atoms (indices >= nlocal)
+    // The 'atomic_idx' counter in your loop corresponds to entries in actual_jnum.
+    // Real atoms are 0 to nlocal-1. Ghost/Shell1 are nlocal to end.
+    for (int k = nlocal; k < actual_jnum_shift.size(); ++k) {
+        actual_jnum_shift[k] += padding_gap;
+    }
 #ifdef GRACE_PRINT_DEBUG
     utils::logmesg(lmp,"[GRACE-DEBUG, #{}] tot_atoms={}, tot_neighbours={},  tot_neighbours_1={} \n",
         comm->me, tot_atoms,  tot_neighbours, tot_neighbours_1);
@@ -828,6 +845,10 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
 
     atomic_idx = atomic_idx_1 = 0;
     int tot_ind_1, tot_ind;
+
+    // --- NEW: Identify Global Fake Atom Index ---
+    int fake_atom_ind_global = tot_atoms - 1;
+
     for (ii = 0; ii < nall; ii++) {
         i = ilist[ii];
         // atoms from shell2 can NOT be in inds_i
@@ -886,16 +907,29 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     }
 
 
-    if (tot_neighbours > n_real_neighbours) {
-        int fake_atom_ind = tot_atoms - 1;
-        // add fake bonds t
-        // fill the rest of the buffers with fake data for padding
-        std::fill(aceimpl->ind_i_vector.begin() + n_real_neighbours, aceimpl->ind_i_vector.end(), fake_atom_ind);
-        std::fill(aceimpl->ind_j_vector.begin() + n_real_neighbours, aceimpl->ind_j_vector.end(), fake_atom_ind);
-        std::fill(aceimpl->mu_i_vector.begin() + n_real_neighbours, aceimpl->mu_i_vector.end(), fake_atom_type);
-        std::fill(aceimpl->mu_j_vector.begin() + n_real_neighbours, aceimpl->mu_j_vector.end(), fake_atom_type);
-        // fill the rest of the bond_vector with large distance 1e6 for fake bonds
-        std::fill(aceimpl->bond_vector.begin() + 3 * n_real_neighbours, aceimpl->bond_vector.end(), 1e6);
+    // --- 5. FILL THE GAP REGION IN MAIN VECTORS ---
+    // The gap is located at [n_real_neighbours_1, tot_neighbours_1)
+    for (int k = n_real_neighbours_1; k < tot_neighbours_1; ++k) {
+        aceimpl->ind_i_vector[k] = fake_atom_ind_global;
+        aceimpl->ind_j_vector[k] = fake_atom_ind_global;
+        aceimpl->mu_i_vector[k] = fake_atom_type;
+        aceimpl->mu_j_vector[k] = fake_atom_type;
+        aceimpl->bond_vector[3 * k + 0] = 1e6; // Safe distance
+        aceimpl->bond_vector[3 * k + 1] = 1e6;
+        aceimpl->bond_vector[3 * k + 2] = 1e6;
+    }
+
+    // --- 6. FILL FINAL PADDING (After Ghost Bonds) ---
+    // The Ghost bonds end at (n_real_neighbours + padding_gap)
+    // Padding starts there and goes to tot_neighbours
+    int start_padding = n_real_neighbours + padding_gap;
+
+    if (tot_neighbours > start_padding) {
+        std::fill(aceimpl->ind_i_vector.begin() + start_padding, aceimpl->ind_i_vector.end(), fake_atom_ind_global);
+        std::fill(aceimpl->ind_j_vector.begin() + start_padding, aceimpl->ind_j_vector.end(), fake_atom_ind_global);
+        std::fill(aceimpl->mu_i_vector.begin() + start_padding, aceimpl->mu_i_vector.end(), fake_atom_type);
+        std::fill(aceimpl->mu_j_vector.begin() + start_padding, aceimpl->mu_j_vector.end(), fake_atom_type);
+        std::fill(aceimpl->bond_vector.begin() + 3 * start_padding, aceimpl->bond_vector.end(), 1e6);
     }
 
     // vector_offsets: 1
@@ -909,11 +943,11 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_j" + ":0",
                         cppflow::tensor(aceimpl->ind_j_vector, {tot_neighbours}));
 
+    // --- 7. FILL PADDING FOR _1 VECTORS ---
+    // Use the GLOBAL fake atom index (tot_atoms - 1)
     if (tot_neighbours_1 > n_real_neighbours_1) {
-        int fake_atom_ind_1 = tot_atoms_1 - 1;
-        // int fake_atom_ind_1 = tot_atoms - 1;
-        std::fill(aceimpl->ind_i_vector_1.begin() + n_real_neighbours_1, aceimpl->ind_i_vector_1.end(), fake_atom_ind_1);
-        std::fill(aceimpl->ind_j_vector_1.begin() + n_real_neighbours_1, aceimpl->ind_j_vector_1.end(), fake_atom_ind_1);
+        std::fill(aceimpl->ind_i_vector_1.begin() + n_real_neighbours_1, aceimpl->ind_i_vector_1.end(), fake_atom_ind_global);
+        std::fill(aceimpl->ind_j_vector_1.begin() + n_real_neighbours_1, aceimpl->ind_j_vector_1.end(), fake_atom_ind_global);
     }
 
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_i_1" + ":0",
