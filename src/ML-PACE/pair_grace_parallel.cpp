@@ -32,7 +32,7 @@
 
 
 namespace GRACEParallel {
-    bool check_tf_graph_input_presented(cppflow::model *model, const std::string &op_name) {
+    bool check_tf_graph_input_presented(const cppflow::model *model, const std::string &op_name) {
         try {
             auto op_shape = model->get_operation_shape(op_name);
             return true;
@@ -82,7 +82,7 @@ namespace GRACEParallel {
                     // REDUCE: Check if the smallest historical size is too wasteful
                     if (it == padding_history.begin() && can_reduce()) {
                         double waste = (real_count > 0) ?
-                                       (double)(current_padded_size - real_count) / real_count : 0;
+                                       static_cast<double>(current_padded_size - real_count) / real_count : 0;
 
                         if (waste > reduction_threshold_fraction) {
                             current_padded_size = real_count;
@@ -183,8 +183,8 @@ PairGRACEParallel::~PairGRACEParallel() {
         memory->destroy(cutsq);
         memory->destroy(scale);
     }
-    auto data_t = (double) data_timer.as_microseconds();
-    auto tp_t = (double) tp_timer.as_microseconds();
+    auto data_t = static_cast<double>(data_timer.as_microseconds());
+    auto tp_t = static_cast<double>(tp_timer.as_microseconds());
 
     utils::logmesg(lmp,
                    "[GRACE:debug, proc #{:d}]: Data preparation timer: {:g} mcs, graph execution time: {:g} mcs, data preparation time fraction: {:.2f} %\n",
@@ -285,7 +285,7 @@ void PairGRACEParallel::coeff(int narg, char **arg) {
     YAML_PACE::Node metadata_yaml = YAML_PACE::LoadFile(potential_path + "/metadata.yaml");
     auto elements_yaml = metadata_yaml["chemical_symbols"];
     elements_name = elements_yaml.as<std::vector<std::string>>();
-    nelements = (int) elements_name.size();
+    nelements = static_cast<int>(elements_name.size());
     for (int mu = 0; mu < nelements; mu++) {
         elements_to_index_map[elements_name.at(mu)] = mu;
     }
@@ -572,6 +572,17 @@ void PairGRACEParallel::print_atomic_neighbours(const std::vector<int>& atom_typ
     utils::logmesg(lmp, "{}\n", ss.str());
 }
 
+void print_remap(std::vector<int> index_remap, int me, LAMMPS *lmp) {
+    std::stringstream ss_remap;
+    ss_remap << "[GRACE-DEBUG-REMAP] Proc " << me << " Index Remap (LAMMPS->GRACE): ";
+    for (size_t k = 0; k < index_remap.size(); ++k) {
+        ss_remap << k << "->" << index_remap[k];
+        if (k < index_remap.size() - 1) ss_remap << ", ";
+    }
+    ss_remap << "\n";
+    utils::logmesg(lmp, "{}", ss_remap.str());
+}
+
 /* ---------------------------------------------------------------------- */
 /**
 signature_def['parallel_compute']:
@@ -628,7 +639,7 @@ signature_def['parallel_compute']:
  */
 void PairGRACEParallel::compute(int eflag, int vflag) {
     int i, j, ii, jj, inum, jnum;
-    double delx, dely, delz, evdwl;
+    double delx, dely, delz, evdwl, my_cut_sq, xtmp, ytmp, ztmp;
     double fij[3];
     int *ilist, *jlist, *numneigh, **firstneigh;
 
@@ -637,13 +648,14 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     double **x = atom->x;
     double **f = atom->f;
     int *type = atom->type;
+    int type_i;
     tagint *tag = atom->tag;
 
     // number of atoms in cell
-    auto nlocal = atom->nlocal;
+    int nlocal = atom->nlocal;
     if (nlocal==0) return;
-    int nghost = atom->nghost;
-    int n_real_neighbours,n_real_neighbours_1;
+
+    int nall = nlocal + atom->nghost;
 
     int newton_pair = force->newton_pair;
 
@@ -659,72 +671,95 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     // the pointer to the list of neighbors of "i"
     firstneigh = list->firstneigh;
 #ifdef GRACE_PRINT_DEBUG
-    sleep(comm->me);
+    usleep(comm->me * 1000);
 #endif
     data_timer.start();
     std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
 
+    // ------------------------------------------------------------------
+    // 1. Identify Atom Shells
+    // ------------------------------------------------------------------
     std::vector<int> atom_shell_map = get_atom_shell_mapping();
-    // atom_shell_map[i=ilist[ii]]
+
+    // Count shells for tensor sizing
+    int nshell1 = 0;
+    int nshell2 = 0;
+    // Note: iterating over nall to count correctly based on mapping logic
+    for(int k=0; k<nall; k++) {
+        if(atom_shell_map[k] == 1) nshell1++;
+        else if(atom_shell_map[k] == 2) nshell2++;
+    }
 
 #ifdef GRACE_PRINT_DEBUG
+    MPI_Barrier(world);
+    usleep(comm->me * 1000);
     print_atomic_neighbours(atom_shell_map);
 #endif
 
-    // count real atoms: nlocal, pad to tot_atoms
-    // count real+shell1, pad to tot_natoms_shell
-    int nshell1  = std::count(atom_shell_map.begin(), atom_shell_map.end(), 1);
-    int nshell2  = std::count(atom_shell_map.begin(), atom_shell_map.end(), 2);
+  // ------------------------------------------------------------------
+    // 2. Prepare Atomic Species (atomic_mu_i) with WIDENED GAP
+    // ------------------------------------------------------------------
 
-#ifdef GRACE_PRINT_DEBUG
-    utils::logmesg(lmp,"[GRACE-DEBUG, #{}] nlocal={}/nghost={}, nshell1={}, nshell2={} \n", comm->me, nlocal, nghost, nshell1, nshell2);
-    sleep(1);
-#endif
+    // Step A: Determine padding needed for the LOCAL subset first
+    // This dictates how big the "Gap" must be.
+    int tot_atoms_1 = aceimpl->atom_padding_1.update(nlocal);
 
+    // The gap must be large enough to hold all padding for atomic_mu_i_1
+    // gap_size = (padded_local_size) - (actual_real_atoms)
+    // We enforce at least 1 fake atom if you want a guaranteed gap.
+    int gap_size_atom = tot_atoms_1 - nlocal;
+    // if (gap_size < 1) gap_size = 1;
 
+    // Step B: Determine total size (Real + Gap + Shell1 + FinalPadding)
+    // We treat the Gap as "real" occupied space now.
+    int num_real_plus_gap_plus_ghosts = nlocal + gap_size_atom + nshell1;
+    int tot_atoms = aceimpl->atom_padding.update(num_real_plus_gap_plus_ghosts);
 
-    // atomic_mu_i*: per-atom species type + padding with type[0]
+    int fake_atom_type = 0;
 
-    // atomic_mu_i: need only real and shell 1; no shell 2 is needed;
-    // int tot_atoms =  aceimpl->atom_padding.update(nlocal +nshell1);
-    int tot_atoms =  aceimpl->atom_padding.update(nlocal +nshell1+nshell2);
-    int fake_atom_type = element_type_mapping[type[0]];
-    // std::vector<int32_t> atomic_mu_i_vector(tot_atoms, fake_atom_type);
+    // We use the START of the gap as the canonical "fake atom index" for neighbor lists
+    int fake_atom_ind_global = nlocal;
+
     aceimpl->atomic_mu_i_vector.assign(tot_atoms, fake_atom_type);
 
-    int atomic_idx=0;
-    for (ii = 0; ii < atom_shell_map.size(); ++ii) {
-        i = ilist[ii];
-        if (atom_shell_map[i]==0 || atom_shell_map[i]==1 || atom_shell_map[i]==2) {
-            // add element_type_mapping[type[i]] to the atomic_mu_i_1_vector
-            aceimpl->atomic_mu_i_vector[atomic_idx] = element_type_mapping[type[i]];
-            atomic_idx++;
-        }
+    // 1. Fill Real Atoms [0 ... nlocal-1]
+    for (i = 0; i < nlocal; ++i) {
+        aceimpl->atomic_mu_i_vector[i] = element_type_mapping[type[i]];
     }
-    if (atomic_idx != (nlocal + nshell1+nshell2)) {
-        std::string msg = "[GRACE-ERROR, Proc " + std::to_string(comm->me) +
-                          "]: Inconsistent atom_type_map! " +
-                          "Processed atoms (" + std::to_string(atomic_idx) +
-                          ") != Real+Shell1+Shell2 count (" + std::to_string(nlocal + nshell1+nshell2) + ")";
-        throw std::runtime_error(msg);
+
+    // 2. The Gap [nlocal ... nlocal + gap_size - 1]
+    // Is already filled with fake_atom_type by assign().
+    // We don't need to do anything here.
+
+    // 3. Fill Ghost Atoms [nlocal + gap_size ... ]
+    int ghost_start_idx = nlocal + gap_size_atom;
+    int ghost_ptr = ghost_start_idx;
+
+    // Remap vector: maps LAMMPS index -> GRACE index
+    std::vector<int> index_remap(nall, -1);
+    // for (int k = 0; k < nlocal; ++k) index_remap[k] = k; // Real maps 1:1
+
+    for (int ii = nlocal; ii < nall; ++ii) {
+         int k = ilist[ii];
+         if (atom_shell_map[k] == 1 || atom_shell_map[k] == 2) {
+             if (ghost_ptr < tot_atoms) {
+                aceimpl->atomic_mu_i_vector[ghost_ptr] = element_type_mapping[type[k]];
+             }
+             // index_remap[k] = ghost_ptr;
+             ghost_ptr++;
+         }
+         // Shell 2 usually maps to fake or stays -1 depending on needs
     }
+
+    // Input 1: Main Atoms
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "atomic_mu_i" + ":0",
                        cppflow::tensor(aceimpl->atomic_mu_i_vector, {tot_atoms}));
 
-#ifdef GRACE_PRINT_DEBUG
-    sleep(1);
-#endif
-    /////////////////////////////////////////////////////////
-    // atomic_mu_i_1: need only real ; no shell 1/2 is needed
-    int tot_atoms_1 =  aceimpl->atom_padding_1.update(nlocal);
-    // std::vector<int32_t> atomic_mu_i_1_vector(tot_atoms_1, fake_atom_type);
-    aceimpl->atomic_mu_i_1_vector.assign(tot_atoms_1, fake_atom_type);
+    // Input 2: Local Atoms Subset
+    // Now safe to copy prefix because the Gap is wide enough
+    aceimpl->atomic_mu_i_1_vector.assign(aceimpl->atomic_mu_i_vector.begin(),
+                                         aceimpl->atomic_mu_i_vector.begin() + tot_atoms_1);
 
-    // first nlocal atoms are all real
-    for (ii = 0; ii < nlocal; ++ii) {
-        // i = ilist[ii];
-        aceimpl->atomic_mu_i_1_vector[ii] = element_type_mapping[type[ii]];
-    }
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "atomic_mu_i_1" + ":0",
                         cppflow::tensor(aceimpl->atomic_mu_i_1_vector, {tot_atoms_1}));
 
@@ -737,225 +772,189 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     // ind_i and ind_j - those pairs, where ind_i not in shell 2, but in shell 1 or real; MUST BE COMPACTIFIED!!! reindexed
     // ind_i_1 and ind_j_1 - slice of ind_i and ind_j, where ind_i is in real shell
 
-    //TO_TRY: take ind_i_1 and - renumerate index
+   // ------------------------------------------------------------------
+    // 4. Neighbor List Construction
+    // Layout: [Real Bonds] [Gap (Fake)] [Ghost Bonds] [Final Padding]
+    // ------------------------------------------------------------------
 
-    //determine the maximum number of neighbors (within cutoff) for each atom
-    std::vector<int> actual_jnum(nlocal + nshell1, 0);
-    std::vector<int> actual_jnum_1(nlocal , 0);
-    double cutoff_sq = cutoff * cutoff;
-    int type_i, type_j;
-    int nall = atom->nlocal + atom->nghost;
-    atomic_idx = 0;
-    int atomic_idx_1 = 0;
+    // First Pass: Count Neighbors
+    int n_real_bonds = 0;  // Bonds where i is Real
+    int n_ghost_bonds = 0; // Bonds where i is Shell 1
+
+    double cutoff_sq_default = cutoff * cutoff;
+    double rsq;
+
+    ghost_start_idx = nlocal + gap_size_atom;
+    ghost_ptr = ghost_start_idx;
 
     for (ii = 0; ii < nall; ii++) {
         i = ilist[ii];
-        // atoms from shell2 can NOT be in inds_i
-        if (atom_shell_map[i]==2)
-            continue;
+        int shell = atom_shell_map[i];
+        if (shell != 0 && shell != 1) continue; // Skip Shell 2 or OUT
+
         type_i = type[i];
-        double xtmp = x[i][0];
-        double ytmp = x[i][1];
-        double ztmp = x[i][2];
+        xtmp = x[i][0];
+        ytmp = x[i][1];
+        ztmp = x[i][2];
         jlist = firstneigh[i];
         jnum = numneigh[i];
-        int cur_actual_jnum = 0;
+
+        int valid_neighs = 0;
         for (jj = 0; jj < jnum; ++jj) {
-            j = jlist[jj];
-            j &= NEIGHMASK;
+            j = jlist[jj] & NEIGHMASK;
             delx = xtmp - x[j][0];
             dely = ytmp - x[j][1];
             delz = ztmp - x[j][2];
+            rsq = delx * delx + dely * dely + delz * delz;
+
+            my_cut_sq = cutoff_sq_default;
             if (is_custom_cutoffs) {
-                type_j = type[j];
-                double cur_cutoff = cutoff_matrix_per_lammps_type[type_i][type_j];
-                cutoff_sq = cur_cutoff * cur_cutoff;
+                my_cut_sq = cutoff_matrix_per_lammps_type[type_i][type[j]];
+                my_cut_sq *= my_cut_sq;
             }
-            const double rsq = delx * delx + dely * dely + delz * delz;
-            if (rsq < cutoff_sq) {
-                cur_actual_jnum += 1;
+
+            if (rsq < my_cut_sq) {
+                valid_neighs++;
+                if (index_remap[i]==-1) {
+                    if (shell==0) //identity map
+                        index_remap[i] = i;
+                    else  // shell1
+                        index_remap[i] = ghost_ptr++;
+                }
             }
         }
-        actual_jnum[atomic_idx++] = cur_actual_jnum;
-        if (atom_shell_map[i]==0) {
-            actual_jnum_1[atomic_idx_1++] = cur_actual_jnum;
-        }
-    }
-    //assert that idx==nlocal+nshell1
-    if (atomic_idx != (nlocal + nshell1)) {
-        error->one(FLERR,
-            "GRACE Parallel Error: Atom map inconsistency on rank {}.\n"
-            "      Total Processed: {}\n"
-            "      Expected (Real + Shell 1): {}",
-            comm->me, atomic_idx, nlocal + nshell1);
+
+        if (shell == 0) n_real_bonds += valid_neighs;
+        else n_ghost_bonds += valid_neighs;
     }
 
-    //assert that idx_1==nlocal
-    if (atomic_idx_1 != (nlocal)) {
-        error->one(FLERR,
-            "GRACE Parallel Error: Atom map inconsistency on rank {}.\n"
-            "      Total Processed: {}\n"
-            "      Expected (Real ): {}",
-            comm->me, atomic_idx_1, nlocal);
-    }
-
-
-    n_real_neighbours = std::accumulate(actual_jnum.begin(), actual_jnum.end(), 0);
-    n_real_neighbours_1 = std::accumulate(actual_jnum_1.begin(), actual_jnum_1.end(), 0);
-#ifdef GRACE_PRINT_DEBUG
-    utils::logmesg(lmp,"[GRACE-DEBUG, #{}] n_real_neighbours={}, n_real_neighbours_1={}\n", comm->me, n_real_neighbours, n_real_neighbours_1);
-#endif
-    std::vector<int> actual_jnum_shift(actual_jnum.size(), 0);
-    std::partial_sum(actual_jnum.begin(), actual_jnum.end() - 1, actual_jnum_shift.begin() + 1);
-
-    std::vector<int> actual_jnum_shift_1(actual_jnum_1.size(), 0);
-    std::partial_sum(actual_jnum_1.begin(), actual_jnum_1.end() - 1, actual_jnum_shift_1.begin() + 1);
-
-    // int tot_neighbours = aceimpl->neighbor_padding.update(n_real_neighbours);
-    // int tot_neighbours_1 = aceimpl->neighbor_padding_1.update(n_real_neighbours_1);
-
-    // 1. Calculate Padded Size for Real Block
-    int tot_neighbours_1 = aceimpl->neighbor_padding_1.update(n_real_neighbours_1);
-
-    // 2. Calculate the GAP size (Padding needed for _1 vectors)
-    int padding_gap = tot_neighbours_1 - n_real_neighbours_1;
-
-    // 3. Update Main Padding using (Total Real + Ghost + Gap)
-    //    We effectively hide the gap from the main padding logic by treating it as "required data"
-    int tot_neighbours = aceimpl->neighbor_padding.update(n_real_neighbours + padding_gap);
-
-    // FIX: Shift offsets for Ghost atoms (indices >= nlocal)
-    // The 'atomic_idx' counter in your loop corresponds to entries in actual_jnum.
-    // Real atoms are 0 to nlocal-1. Ghost/Shell1 are nlocal to end.
-    for (int k = nlocal; k < actual_jnum_shift.size(); ++k) {
-        actual_jnum_shift[k] += padding_gap;
+    // fill rest of the remap
+    for (ii = nlocal; ii < nall; ii++) {
+        i = ilist[ii];
+        if (index_remap[i] == -1 )
+            index_remap[i] = ghost_ptr++;
     }
 #ifdef GRACE_PRINT_DEBUG
-    utils::logmesg(lmp,"[GRACE-DEBUG, #{}] tot_atoms={}, tot_neighbours={},  tot_neighbours_1={} \n",
-        comm->me, tot_atoms,  tot_neighbours, tot_neighbours_1);
+    print_remap(index_remap, comm->me, lmp);
 #endif
+
+    // Determine Padding Sizes
+    int tot_neighbours_1 = aceimpl->neighbor_padding_1.update(n_real_bonds); // Real + Gap
+    int gap_size_bonds = tot_neighbours_1 - n_real_bonds;
+    int tot_neighbours = aceimpl->neighbor_padding.update(n_real_bonds + gap_size_bonds + n_ghost_bonds); // Total
+#ifdef GRACE_PRINT_DEBUG
+    // --- DEBUG PRINT START ---
+    utils::logmesg(lmp, "[GRACE-DEBUG-PAD] Proc {}: n_real_bonds={}, tot_neighbours_1={} (gap_size_bonds={}), n_ghost_bonds={}, tot_neighbours={}\n",
+                   comm->me, n_real_bonds, tot_neighbours_1, gap_size_bonds, n_ghost_bonds, tot_neighbours);
+    // --- DEBUG PRINT END ---
+#endif
+
+    // Resize Vectors
     aceimpl->ind_i_vector.resize(tot_neighbours);
     aceimpl->ind_j_vector.resize(tot_neighbours);
     aceimpl->mu_i_vector.resize(tot_neighbours);
     aceimpl->mu_j_vector.resize(tot_neighbours);
     aceimpl->bond_vector.resize(3 * tot_neighbours);
 
-    aceimpl->ind_i_vector_1.resize(tot_neighbours_1);
-    aceimpl->ind_j_vector_1.resize(tot_neighbours_1);
+  // Second Pass: Fill Vectors
+    // We maintain two insertion pointers
+    int ptr_real = 0;
+    int ptr_ghost = tot_neighbours_1; // Starts after Gap
 
-    atomic_idx = atomic_idx_1 = 0;
-    int tot_ind_1, tot_ind;
+    // Pre-fill Gap with Fake Data
+    for(int k=n_real_bonds; k < tot_neighbours_1; ++k) {
+        aceimpl->ind_i_vector[k] = fake_atom_ind_global;
+        aceimpl->ind_j_vector[k] = fake_atom_ind_global;
+        aceimpl->mu_i_vector[k]  = fake_atom_type;
+        aceimpl->mu_j_vector[k]  = fake_atom_type;
+        aceimpl->bond_vector[3*k+0] = 1e6;
+        aceimpl->bond_vector[3*k+1] = 1e6;
+        aceimpl->bond_vector[3*k+2] = 1e6;
+    }
 
-    // --- NEW: Identify Global Fake Atom Index ---
-    int fake_atom_ind_global = tot_atoms - 1;
+    // Pre-fill Final Padding with Fake Data
+    for(int k=tot_neighbours_1 + n_ghost_bonds; k < tot_neighbours; ++k) {
+        aceimpl->ind_i_vector[k] = fake_atom_ind_global;
+        aceimpl->ind_j_vector[k] = fake_atom_ind_global;
+        aceimpl->mu_i_vector[k]  = fake_atom_type;
+        aceimpl->mu_j_vector[k]  = fake_atom_type;
+        aceimpl->bond_vector[3*k+0] = 1e6;
+        aceimpl->bond_vector[3*k+1] = 1e6;
+        aceimpl->bond_vector[3*k+2] = 1e6;
+    }
 
     for (ii = 0; ii < nall; ii++) {
         i = ilist[ii];
-        // atoms from shell2 can NOT be in inds_i
-        if (atom_shell_map[i]==2)
-            continue;
+        int shell = atom_shell_map[i];
+        if (shell != 0 && shell != 1) continue;
+
+        // Decide where to write based on shell
+        int k;
+        if (shell == 0) k = ptr_real;
+        else k = ptr_ghost;
+
         type_i = type[i];
-        const double xtmp = x[i][0];
-        const double ytmp = x[i][1];
-        const double ztmp = x[i][2];
+        xtmp = x[i][0];
+        ytmp = x[i][1];
+        ztmp = x[i][2];
         jlist = firstneigh[i];
         jnum = numneigh[i];
-        tot_ind = actual_jnum_shift[atomic_idx++];
 
-        // if real atom
-        if (atom_shell_map[i]==0)
-            tot_ind_1 = actual_jnum_shift_1[atomic_idx_1++];
-        else
-            tot_ind_1 = -1;
+        // Remapped index for i
+        // Real: i, Ghost: index_remap[i] (which is > nlocal)
+        int i_remapped = index_remap[i];
+        int mu_i_val = element_type_mapping[type_i];
 
         for (jj = 0; jj < jnum; ++jj) {
-            j = jlist[jj];
-            j &= NEIGHMASK;
-            delx = xtmp - x[j][0];
-            dely = ytmp - x[j][1];
-            delz = ztmp - x[j][2];
+            j = jlist[jj] & NEIGHMASK;
+            delx = x[j][0]-xtmp;
+            dely = x[j][1]-ytmp;
+            delz = x[j][2]-ztmp;
+
+            my_cut_sq = cutoff_sq_default;
             if (is_custom_cutoffs) {
-                type_j = type[j];
-                double cur_cutoff = cutoff_matrix_per_lammps_type[type_i][type_j];
-                cutoff_sq = cur_cutoff * cur_cutoff;
+                my_cut_sq = cutoff_matrix_per_lammps_type[type_i][type[j]];
+                my_cut_sq *= my_cut_sq;
             }
-            const double rsq = delx * delx + dely * dely + delz * delz;
-            if (rsq < cutoff_sq) {
-                // remap j to j_local
-                int j_local = atom->map(tag[j]);
-                double bondx = x[j][0] - x[i][0];
-                double bondy = x[j][1] - x[i][1];
-                double bondz = x[j][2] - x[i][2];
+            rsq = delx * delx + dely * dely + delz * delz;
 
-                aceimpl->ind_i_vector[tot_ind] = i;
-                aceimpl->ind_j_vector[tot_ind] = j_local; // must be ==j
-                aceimpl->mu_i_vector[tot_ind] = element_type_mapping[type[i]];
-                aceimpl->mu_j_vector[tot_ind] = element_type_mapping[type[j]];
-                aceimpl->bond_vector[3 * tot_ind + 0] = bondx;
-                aceimpl->bond_vector[3 * tot_ind + 1] = bondy;
-                aceimpl->bond_vector[3 * tot_ind + 2] = bondz;
-                ++tot_ind;
+            if (rsq < my_cut_sq) {
+                // Remapped index for j
+                // Note: j can be > nall in some LAMMPS configs? usually no.
+                // We assume j is within range. If j is ghost, we map it.
+                // If j is Shell 2 (not in index_remap), we default to fake or map conservatively?
+                // Logic: j MUST be real or shell 1 for valid forces usually, but forces from shell2 neighbors affect Energy.
+                // We need to map j consistently.
+                int  j_remapped = index_remap[j];
 
-                // if also real atoms bond
-                if (tot_ind_1!=-1) {
-                    aceimpl->ind_i_vector_1[tot_ind_1] = i;
-                    aceimpl->ind_j_vector_1[tot_ind_1] = j_local; // must be ==j
-                    ++tot_ind_1;
-                }
+
+                aceimpl->ind_i_vector[k] = i_remapped;
+                aceimpl->ind_j_vector[k] = j_remapped;
+                aceimpl->mu_i_vector[k] = mu_i_val;
+                aceimpl->mu_j_vector[k] = element_type_mapping[type[j]];
+
+                // Bond vector: j - i
+                aceimpl->bond_vector[3*k+0] = delx;
+                aceimpl->bond_vector[3*k+1] = dely;
+                aceimpl->bond_vector[3*k+2] = delz;
+
+                k++;
             }
         }
+
+        // Update pointers
+        if (shell == 0) ptr_real = k;
+        else ptr_ghost = k;
     }
 
-
-    // --- 5. FILL THE GAP REGION IN MAIN VECTORS ---
-    // The gap is located at [n_real_neighbours_1, tot_neighbours_1)
-    for (int k = n_real_neighbours_1; k < tot_neighbours_1; ++k) {
-        aceimpl->ind_i_vector[k] = fake_atom_ind_global;
-        aceimpl->ind_j_vector[k] = fake_atom_ind_global;
-        aceimpl->mu_i_vector[k] = fake_atom_type;
-        aceimpl->mu_j_vector[k] = fake_atom_type;
-        aceimpl->bond_vector[3 * k + 0] = 1e6; // Safe distance
-        aceimpl->bond_vector[3 * k + 1] = 1e6;
-        aceimpl->bond_vector[3 * k + 2] = 1e6;
-    }
-
-    // --- 6. FILL FINAL PADDING (After Ghost Bonds) ---
-    // The Ghost bonds end at (n_real_neighbours + padding_gap)
-    // Padding starts there and goes to tot_neighbours
-    int start_padding = n_real_neighbours + padding_gap;
-
-    if (tot_neighbours > start_padding) {
-        std::fill(aceimpl->ind_i_vector.begin() + start_padding, aceimpl->ind_i_vector.end(), fake_atom_ind_global);
-        std::fill(aceimpl->ind_j_vector.begin() + start_padding, aceimpl->ind_j_vector.end(), fake_atom_ind_global);
-        std::fill(aceimpl->mu_i_vector.begin() + start_padding, aceimpl->mu_i_vector.end(), fake_atom_type);
-        std::fill(aceimpl->mu_j_vector.begin() + start_padding, aceimpl->mu_j_vector.end(), fake_atom_type);
-        std::fill(aceimpl->bond_vector.begin() + 3 * start_padding, aceimpl->bond_vector.end(), 1e6);
-    }
-
-    // vector_offsets: 1
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "bond_vector" + ":0",
                         cppflow::tensor(aceimpl->bond_vector, {tot_neighbours, 3}));
-
-
 
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_i" + ":0",
                         cppflow::tensor(aceimpl->ind_i_vector, {tot_neighbours}));
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_j" + ":0",
                         cppflow::tensor(aceimpl->ind_j_vector, {tot_neighbours}));
 
-    // --- 7. FILL PADDING FOR _1 VECTORS ---
-    // Use the GLOBAL fake atom index (tot_atoms - 1)
-    if (tot_neighbours_1 > n_real_neighbours_1) {
-        std::fill(aceimpl->ind_i_vector_1.begin() + n_real_neighbours_1, aceimpl->ind_i_vector_1.end(), fake_atom_ind_global);
-        std::fill(aceimpl->ind_j_vector_1.begin() + n_real_neighbours_1, aceimpl->ind_j_vector_1.end(), fake_atom_ind_global);
-    }
-
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_i_1" + ":0",
-                        cppflow::tensor(aceimpl->ind_i_vector_1, {tot_neighbours_1}));
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_j_1" + ":0",
-                        cppflow::tensor(aceimpl->ind_j_vector_1, {tot_neighbours_1}));
-
-    // mu_i, mu_j: bonds
     if (has_mu_i_op) {
         inputs.emplace_back(DEFAULT_INPUT_PREFIX + "mu_i" + ":0",
                             cppflow::tensor(aceimpl->mu_i_vector, {tot_neighbours}));
@@ -963,9 +962,27 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     inputs.emplace_back(DEFAULT_INPUT_PREFIX + "mu_j" + ":0",
                         cppflow::tensor(aceimpl->mu_j_vector, {tot_neighbours}));
 
+    // ------------------------------------------------------------------
+    // 5. Prepare Subsets (_1 vectors) for Neighbors
+    // ind_i_1 is just the prefix: Real Bonds + Gap
+    // ------------------------------------------------------------------
+
+    // We construct these by copying the prefix of the main vectors
+    //TODO: maybe avoid creating vectors and just copy tot_neighbours_1 elements from ind_i_vector, ind_j_vector
+    aceimpl->ind_i_vector_1.assign(aceimpl->ind_i_vector.begin(),
+                                   aceimpl->ind_i_vector.begin() + tot_neighbours_1);
+    aceimpl->ind_j_vector_1.assign(aceimpl->ind_j_vector.begin(),
+                                   aceimpl->ind_j_vector.begin() + tot_neighbours_1);
+
+    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_i_1" + ":0",
+                        cppflow::tensor(aceimpl->ind_i_vector_1, {tot_neighbours_1}));
+    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_j_1" + ":0",
+                        cppflow::tensor(aceimpl->ind_j_vector_1, {tot_neighbours_1}));
+
 #ifdef GRACE_PRINT_DEBUG
     print_tf_inputs(inputs, comm->me, lmp, true);
 #endif
+
     data_timer.stop();
     tp_timer.start();
     vector<string> output_names = {
@@ -1013,8 +1030,8 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
 
 
     for (int k = 0; k < aceimpl->ind_i_vector.size(); ++k) {
-        int i = aceimpl->ind_i_vector[k];
-        int j = aceimpl->ind_j_vector[k];
+        i = aceimpl->ind_i_vector[k];
+        j = aceimpl->ind_j_vector[k];
 
         // Safety check: ensure indices are within local/ghost range
         //if (i < 0 || i >= nall || j < 0 || j >= nall) continue;
@@ -1038,47 +1055,87 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     // ----------------------------------------------------------------------
 #endif
 
-    tot_ind = 0;
+    // ------------------------------------------------------------------
+    // 6. Force & Energy Tally (Pass 3)
+    // Relies on deterministic order of ii/jj loops to match Tensor indices
+    // ------------------------------------------------------------------
 
-    //TODO: try to reuse bond_vec
+#ifdef GRACE_PRINT_DEBUG
+
+        MPI_Barrier(world);
+        usleep(comm->me * 1000);
+#endif
+    // 1. Reset pointers EXACTLY as in the Fill Pass
+    // ptr_real starts at 0
+    // ptr_ghost starts AFTER the Real block + Gap
+    ptr_real = 0;
+    ptr_ghost =tot_neighbours_1; // Must match 'ghost_start_idx' from Fill Pass
+
 
     // loop only over LOCAL REAL atoms + shell 1 !!
     for (ii = 0; ii < nall; ++ii) {
         i = ilist[ii];
+        int shell = atom_shell_map[i]; //
 
-        // atoms from shell2 can NOT be in inds_i
-        if (atom_shell_map[i]==2)
-             continue;
+        // 2. Skip atoms we didn't send to TF (Shell 2/OUT)
+        if (shell != 0 && shell != 1) continue;
+
+        // 3. Select the correct pointer based on Shell type
+        // This handles the "Jump over Gap" logic automatically
+        int &curr_ptr = (shell == 0) ? ptr_real : ptr_ghost;
 
         type_i = type[i];
-        const double xtmp = x[i][0];
-        const double ytmp = x[i][1];
-        const double ztmp = x[i][2];
+        xtmp = x[i][0];
+        ytmp = x[i][1];
+        ztmp = x[i][2];
         jlist = firstneigh[i];
         jnum = numneigh[i];
 
+        // 4. Calculate Energy Index
+        // Real atoms: i maps to i.
+        // Ghost atoms: i maps to index_remap[i] (which handles the atomic gap)
+
+        // Tally Energy (only for Real atoms usually)
+        if (eflag_either && shell == 0) {
+            evdwl = scale[type_i][type_i] * e_data[ii];
+            ev_tally_full(i, 2.0 * evdwl, 0.0, 0.0, 0.0, 0.0, 0.0);
+        }
+
         for (jj = 0; jj < jnum; ++jj) {
-            j = jlist[jj];
-            j &= NEIGHMASK;
+            j = jlist[jj] & NEIGHMASK;
+
+            // 5. Reproduce Filtering Logic
+            // CRITICAL: You must use the EXACT same cutoff check as the Fill Pass.
+            // If you process a neighbor here that you skipped in Fill (or vice versa),
+            // the pointers will desync and you will read the wrong force.
             delx = xtmp - x[j][0];
             dely = ytmp - x[j][1];
             delz = ztmp - x[j][2];
+
+            my_cut_sq = cutoff_sq_default;
             if (is_custom_cutoffs) {
-                type_j = type[j];
-                double cur_cutoff = cutoff_matrix_per_lammps_type[type_i][type_j];
-                cutoff_sq = cur_cutoff * cur_cutoff;
+                my_cut_sq = cutoff_matrix_per_lammps_type[type_i][type[j]];
+                my_cut_sq *= my_cut_sq;
             }
-            const double rsq = delx * delx + dely * dely + delz * delz;
-            if (rsq < cutoff_sq) {
-                // why "-" ?
-                fij[0] = -scale[type_i][type_i] * f_data[tot_ind];
-                fij[1] = -scale[type_i][type_i] * f_data[tot_ind + 1];
-                fij[2] = -scale[type_i][type_i] * f_data[tot_ind + 2];
-                tot_ind += 3;
+            rsq = delx * delx + dely * dely + delz * delz;
+
+            if (rsq < my_cut_sq) {
+                // 6. Read Force from the current pointer location
+                int k = curr_ptr;
+
+                double fx = f_data[3*k + 0];
+                double fy = f_data[3*k + 1];
+                double fz = f_data[3*k + 2];
+
+                // 7. Apply Forces to LAMMPS array
+                double s = scale[type_i][type_i];
+                fij[0] = -s * fx;
+                fij[1] = -s * fy;
+                fij[2] = -s * fz;
 #ifdef GRACE_PRINT_DEBUG
                 // Print pair-specific force mapping
                 utils::logmesg(lmp, "[GRACE-FORCE] Proc {}: Pair ({}-{}) | Tag ({}-{}) | BondIdx {} | F_tf: [{}, {}, {}]\n",
-                                   comm->me, i, j, atom->tag[i], atom->tag[j], tot_ind/3, f_data[tot_ind-3], f_data[tot_ind-2], f_data[tot_ind-1]);
+                                   comm->me, i, j, atom->tag[i], atom->tag[j], curr_ptr, fx, fy, fz);
 #endif
                 f[i][0] += fij[0];
                 f[i][1] += fij[1];
@@ -1087,10 +1144,9 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
                 f[j][1] -= fij[1];
                 f[j][2] -= fij[2];
 
-                // tally per-atom virial contribution, OpenMP critical !
                 if (vflag_either) {
                     ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fij[0], fij[1], fij[2], delx, dely, delz);
-
+                    // (Optional: Add centroid stress logic here)
 
                     // Centroid Stress
                     if (cvflag_atom) {
@@ -1120,17 +1176,11 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
                         cvatom[j][8] += 0.5 * delz * fy; // zy
                     }
                 }
+
+                // 8. Increment the active pointer
+                curr_ptr++; //it is reference
             }
         } // loop over neighbours
-
-        // tally energy contribution
-        if (eflag_either)
-             if (atom_shell_map[i]==0) {
-                // evdwl = energy of atom I
-                evdwl = scale[type_i][type_i] * e_data[i];
-                ev_tally_full(i, 2.0 * evdwl, 0.0, 0.0, 0.0, 0.0, 0.0);
-        }
-
     } // loop over atoms -i
 
     if (vflag_fdotr) virial_fdotr_compute();
