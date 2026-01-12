@@ -271,7 +271,13 @@ void PairGRACEParallel::coeff(int narg, char **arg) {
     //load potential file
     if (comm->me == 0) utils::logmesg(lmp, "[GRACE] Loading {}\n", potential_path);
     // load cppflow model
-    aceimpl->model = new cppflow::model(potential_path);
+    const std::vector<uint8_t> config_bytes = {
+        0x32, 0x05,             // Field 6 (GPUOptions), Length 5
+        0x82, 0x01, 0x02,       // Field 16 (Experimental), Length 2
+        0x18, 0x00              // Field 3 (TF32 Enabled), Value 0 (False)
+      };
+
+    aceimpl->model = new cppflow::model(potential_path, config_bytes);
 #ifdef GRACE_PRINT_DEBUG
     aceimpl->model->print_signatures();
 #endif

@@ -192,9 +192,9 @@ if(NOT DEFINED NO_GRACE_TF)
     else()
       message(STATUS "Local CPPFLOW_PATH not found or not set. Proceeding with download...")
       # download cppflow
-      set(CPPFLOW_VERSION "2.0.1aw")
+      set(CPPFLOW_VERSION "2.0.2aw")
       set(CPPFLOW_URL "https://github.com/ACEworksGmbH/cppflow/archive/refs/tags/v${CPPFLOW_VERSION}.tar.gz" CACHE STRING "URL for cppflow")
-      set(CPPFLOW_SHA256 "97d78d3bd7063ae6fcda6541a7e4d20a98cdb14d279395bcaf1c8266ca51a3fb")
+      set(CPPFLOW_SHA256 "3ea2b272c771cfee3025683df8f3970c895902be562624e14a91b9067f6b86f4")
 
       set(CPPFLOW_ARCHIVE "${CMAKE_BINARY_DIR}/libcppflow.tar.gz")
 
