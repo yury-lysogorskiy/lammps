@@ -54,6 +54,7 @@ class PairGRACEParallel : public Pair {
   struct GRACEImpl *aceimpl;
 
   std::string DEFAULT_INPUT_PREFIX = "parallel_compute_";
+  std::string compute_function_name = "parallel_compute";
   bool has_map_atoms_to_structure_op = false;
   bool has_nstruct_total_op = false;
   bool has_mu_i_op = false;
@@ -67,19 +68,7 @@ class PairGRACEParallel : public Pair {
   bool is_custom_cutoffs = false;
   vector<vector<double>> cutoff_matrix, cutoff_matrix_per_lammps_type;
   bool pair_forces = true;
-
-  //int tot_neighbours = 0;
-  //int tot_atoms = 0;
-
-
-  //std::set<int> tot_neighbours_set;
-  //int max_number_of_reduction = 10, num_of_reductions = 0;
-
   int chunksize;
-  //double neigh_padding_fraction = 0.01;
-  //double reducing_neigh_padding_fraction = 0.2;
-  //bool do_padding = true;
-  //bool pad_verbose = false;
 
   int nelements;
   std::vector<std::string> elements_name;

@@ -54,6 +54,7 @@ class PairGRACE : public Pair {
   struct ACETPImpl *aceimpl;
 
   std::string DEFAULT_INPUT_PREFIX = "serving_default_";
+  std::string compute_function_name = "serving_default";
   bool has_map_atoms_to_structure_op = false;
   bool has_nstruct_total_op = false;
   bool has_mu_i_op = false;

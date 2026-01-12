@@ -32,14 +32,6 @@
 
 
 namespace GRACEParallel {
-    bool check_tf_graph_input_presented(const cppflow::model *model, const std::string &op_name) {
-        try {
-            auto op_shape = model->get_operation_shape(op_name);
-            return true;
-        } catch (std::runtime_error &exc) {
-            return false;
-        }
-    }
 
     class GracePaddingDimension {
         public:
@@ -280,7 +272,9 @@ void PairGRACEParallel::coeff(int narg, char **arg) {
     if (comm->me == 0) utils::logmesg(lmp, "[GRACE] Loading {}\n", potential_path);
     // load cppflow model
     aceimpl->model = new cppflow::model(potential_path);
-
+#ifdef GRACE_PRINT_DEBUG
+    aceimpl->model->print_signatures();
+#endif
     // read elements from metadata.yaml
     YAML_PACE::Node metadata_yaml = YAML_PACE::LoadFile(potential_path + "/metadata.yaml");
     auto elements_yaml = metadata_yaml["chemical_symbols"];
@@ -370,44 +364,33 @@ void PairGRACEParallel::coeff(int narg, char **arg) {
 
     }
 
-    // auto operations_vec = aceimpl->model->get_operations();
-    // std::cout<<"List of operations "<<std::endl;
-    // for(const auto& op_name: operations_vec){
-    //     std::cout<<"Operation `"<<op_name<<"`"<<endl;
-    // }
-
-
-
-    // if (comm->me == 0)
-    //     utils::logmesg(lmp, "[GRACE/DEBUG] DEFAULT_INPUT_PREFIX={}\n", DEFAULT_INPUT_PREFIX);
-
+    if (aceimpl->model->has_signature("parallel_compute")) {
+        this->compute_function_name = "parallel_compute";
+    } else  {
+        throw std::runtime_error("No 'parallel_compute' function found in SavedModel");
+    }
+    this->DEFAULT_INPUT_PREFIX = this->compute_function_name+"_";
 
     //
-    has_map_atoms_to_structure_op = check_tf_graph_input_presented(aceimpl->model,
-                                                                   DEFAULT_INPUT_PREFIX+"map_atoms_to_structure");
+    has_map_atoms_to_structure_op = aceimpl->model->has_graph_input(DEFAULT_INPUT_PREFIX+"map_atoms_to_structure");
 
     // if (comm->me == 0)
     //     utils::logmesg(lmp, "[GRACE/DEBUG] has_map_atoms_to_structure_op={}\n", has_map_atoms_to_structure_op);
 
-    has_nstruct_total_op = check_tf_graph_input_presented(aceimpl->model,
-                                                          DEFAULT_INPUT_PREFIX+"n_struct_total");
+    has_nstruct_total_op = aceimpl->model->has_graph_input(DEFAULT_INPUT_PREFIX+"n_struct_total");
 
     // if (comm->me == 0)
     //     utils::logmesg(lmp, "[GRACE/DEBUG] has_nstruct_total_op={}\n", has_nstruct_total_op);
 
-    has_mu_i_op = check_tf_graph_input_presented(aceimpl->model,
-                                                 DEFAULT_INPUT_PREFIX+"mu_i");
+    has_mu_i_op = aceimpl->model->has_graph_input(DEFAULT_INPUT_PREFIX+"mu_i");
 
     // if (comm->me == 0)
     //     utils::logmesg(lmp, "[GRACE/DEBUG] has_mu_i_op={}\n", has_mu_i_op);
 
-    has_batch_tot_nat = check_tf_graph_input_presented(aceimpl->model,
-                                                 DEFAULT_INPUT_PREFIX+"batch_tot_nat");
+    has_batch_tot_nat = aceimpl->model->has_graph_input(DEFAULT_INPUT_PREFIX+"batch_tot_nat");
 
     // if (comm->me == 0)
     //     utils::logmesg(lmp, "[GRACE/DEBUG] has_batch_tot_nat={}\n", has_batch_tot_nat);
-
-
 }
 
 
@@ -675,7 +658,7 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
 #endif
     data_timer.start();
     std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
-
+    auto parallel_compute_inputs_sig = aceimpl->model->signatures.at(this->compute_function_name).inputs;
     // ------------------------------------------------------------------
     // 1. Identify Atom Shells
     // ------------------------------------------------------------------
@@ -752,7 +735,7 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     }
 
     // Input 1: Main Atoms
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "atomic_mu_i" + ":0",
+    inputs.emplace_back( parallel_compute_inputs_sig.at("atomic_mu_i").name,
                        cppflow::tensor(aceimpl->atomic_mu_i_vector, {tot_atoms}));
 
     // Input 2: Local Atoms Subset
@@ -760,13 +743,13 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     aceimpl->atomic_mu_i_1_vector.assign(aceimpl->atomic_mu_i_vector.begin(),
                                          aceimpl->atomic_mu_i_vector.begin() + tot_atoms_1);
 
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "atomic_mu_i_1" + ":0",
+    inputs.emplace_back(parallel_compute_inputs_sig.at( "atomic_mu_i_1").name,
                         cppflow::tensor(aceimpl->atomic_mu_i_1_vector, {tot_atoms_1}));
 
 
     // batch_tot_nat_real: number of extened atoms (w/o padding)
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "batch_tot_nat_real" + ":0",
-                        cppflow::tensor(std::vector<int32_t>{nlocal}, {})); //nlocal+nshell1
+    inputs.emplace_back(parallel_compute_inputs_sig.at("batch_tot_nat_real").name,
+                        cppflow::tensor(std::vector<int32_t>{nlocal}, {})); //nlocal
 
     // ind_i, ind_j: bonds
     // ind_i and ind_j - those pairs, where ind_i not in shell 2, but in shell 1 or real; MUST BE COMPACTIFIED!!! reindexed
@@ -947,19 +930,19 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
         else ptr_ghost = k;
     }
 
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "bond_vector" + ":0",
+    inputs.emplace_back(parallel_compute_inputs_sig.at("bond_vector").name,
                         cppflow::tensor(aceimpl->bond_vector, {tot_neighbours, 3}));
 
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_i" + ":0",
+    inputs.emplace_back(parallel_compute_inputs_sig.at("ind_i").name,
                         cppflow::tensor(aceimpl->ind_i_vector, {tot_neighbours}));
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_j" + ":0",
+    inputs.emplace_back(parallel_compute_inputs_sig.at("ind_j").name,
                         cppflow::tensor(aceimpl->ind_j_vector, {tot_neighbours}));
 
     if (has_mu_i_op) {
-        inputs.emplace_back(DEFAULT_INPUT_PREFIX + "mu_i" + ":0",
+        inputs.emplace_back(parallel_compute_inputs_sig.at("mu_i").name,
                             cppflow::tensor(aceimpl->mu_i_vector, {tot_neighbours}));
     }
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "mu_j" + ":0",
+    inputs.emplace_back(parallel_compute_inputs_sig.at("mu_j").name,
                         cppflow::tensor(aceimpl->mu_j_vector, {tot_neighbours}));
 
     // ------------------------------------------------------------------
@@ -974,9 +957,9 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     aceimpl->ind_j_vector_1.assign(aceimpl->ind_j_vector.begin(),
                                    aceimpl->ind_j_vector.begin() + tot_neighbours_1);
 
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_i_1" + ":0",
+    inputs.emplace_back(parallel_compute_inputs_sig.at("ind_i_1").name,
                         cppflow::tensor(aceimpl->ind_i_vector_1, {tot_neighbours_1}));
-    inputs.emplace_back(DEFAULT_INPUT_PREFIX + "ind_j_1" + ":0",
+    inputs.emplace_back(parallel_compute_inputs_sig.at("ind_j_1").name,
                         cppflow::tensor(aceimpl->ind_j_vector_1, {tot_neighbours_1}));
 
 #ifdef GRACE_PRINT_DEBUG
@@ -985,9 +968,10 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
 
     data_timer.stop();
     tp_timer.start();
+    auto parallel_compute_outputs_sig = aceimpl->model->signatures.at("parallel_compute").outputs;
     vector<string> output_names = {
-            "StatefulPartitionedCall_1:0", // atomic_energy [nat,1]
-            "StatefulPartitionedCall_1:1", // pair_f [n_bonds, 3]
+        parallel_compute_outputs_sig.at("atomic_energy").name,// "StatefulPartitionedCall_1:0", // atomic_energy [nat,1]
+        parallel_compute_outputs_sig.at("z_pair_f").name  // "StatefulPartitionedCall_1:1", // pair_f [n_bonds, 3]
     };
 
 
@@ -1012,47 +996,10 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     const double *f_data = static_cast<double *>(TF_TensorData(f_tens.get()));
 
 #ifdef GRACE_PRINT_DEBUG
-    //f-data is [nbonds,3]; ind_i_vector and ind_j_vector have corresponding i-j indices, print all this info pretty
-    // ----------------------------------------------------------------------
-    // DEBUG: Pretty Print Raw TensorFlow Pair Forces
-    // ----------------------------------------------------------------------
-    // We iterate up to n_real_neighbours to skip the padding/fake bonds
-    // Ensure output from different processors doesn't get garbled
-    // (Simple serializing via sleep; for strict ordering use MPI barriers)
     MPI_Barrier(world);
-    usleep(comm->me * 1000);
-
-    if (comm->me == 0) {
-        utils::logmesg(lmp, "\n[GRACE-DEBUG] Raw TF Output Tensor (f_data) Preview:\n");
-        utils::logmesg(lmp, "Idx  | Proc | Atom I (Tag) -> Atom J (Tag) | Raw Force (fx, fy, fz)\n");
-        utils::logmesg(lmp, "-----|------|------------------------------|--------------------------\n");
-    }
-
-
-    for (int k = 0; k < aceimpl->ind_i_vector.size(); ++k) {
-        i = aceimpl->ind_i_vector[k];
-        j = aceimpl->ind_j_vector[k];
-
-        // Safety check: ensure indices are within local/ghost range
-        //if (i < 0 || i >= nall || j < 0 || j >= nall) continue;
-
-        tagint tag_i = atom->tag[i];
-        tagint tag_j = atom->tag[j];
-
-        double raw_fx = f_data[3*k + 0];
-        double raw_fy = f_data[3*k + 1];
-        double raw_fz = f_data[3*k + 2];
-
-        // Optional: Filter out near-zero forces to reduce noise
-        //if (raw_fx*raw_fx + raw_fy*raw_fy + raw_fz*raw_fz > 1e-20)
-        {
-            utils::logmesg(lmp, "{:<4} | {:<4} | {:>8} -> {:<8} | [{: .6f}, {: .6f}, {: .6f}]\n",
-                           k, comm->me, tag_i, tag_j, raw_fx, raw_fy, raw_fz);
-        }
-    }
+    usleep(comm->me*1000);
+    // print_f_data(f_data,comm->me, lmp, aceimpl->ind_i_vector, aceimpl->ind_j_vector,  atom->tag);
     MPI_Barrier(world);
-    if (comm->me == 0) utils::logmesg(lmp, "------------------------------------------------------------------\n");
-    // ----------------------------------------------------------------------
 #endif
 
     // ------------------------------------------------------------------
@@ -1060,11 +1007,7 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     // Relies on deterministic order of ii/jj loops to match Tensor indices
     // ------------------------------------------------------------------
 
-#ifdef GRACE_PRINT_DEBUG
 
-        MPI_Barrier(world);
-        usleep(comm->me * 1000);
-#endif
     // 1. Reset pointers EXACTLY as in the Fill Pass
     // ptr_real starts at 0
     // ptr_ghost starts AFTER the Real block + Gap
