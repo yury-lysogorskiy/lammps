@@ -701,9 +701,15 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
 
     // Step B: Determine total size (Real + Gap + Shell1 + FinalPadding)
     // We treat the Gap as "real" occupied space now.
-    int num_real_plus_gap_plus_ghosts = nlocal + gap_size_atom + nshell1;
-    int tot_atoms = aceimpl->atom_padding.update(num_real_plus_gap_plus_ghosts);
+    int num_real_plus_gap_plus_ghosts = tot_atoms_1 + nshell1;
 
+    int tot_atoms = aceimpl->atom_padding.update(num_real_plus_gap_plus_ghosts);
+#ifdef GRACE_PRINT_DEBUG
+    // --- DEBUG PRINT START ---
+    utils::logmesg(lmp, "[GRACE-DEBUG-PAD] Proc {}: tot_atoms_1={}, num_real_plus_gap_plus_ghosts={} (gap_size_atom={}), nshell1={}, tot_atoms={}\n",
+                   comm->me, tot_atoms_1, num_real_plus_gap_plus_ghosts, gap_size_atom,nshell1, tot_atoms);
+    // --- DEBUG PRINT END ---
+#endif
     int fake_atom_type = 0;
 
     // We use the START of the gap as the canonical "fake atom index" for neighbor lists
