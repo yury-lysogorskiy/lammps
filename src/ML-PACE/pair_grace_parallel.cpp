@@ -30,6 +30,7 @@
 #include <tensorflow/c/c_api.h>
 #include <iomanip>
 
+#include "tensorflow/core/platform/tensor_float_32_utils.h"
 
 namespace GRACEParallel {
 
@@ -159,6 +160,7 @@ PairGRACEParallel::PairGRACEParallel(LAMMPS *lmp) : Pair(lmp) {
     tp_timer.init();
 
     no_virial_fdotr_compute = 1;
+    tsl::enable_tensor_float_32_execution(false);
 }
 
 

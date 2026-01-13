@@ -34,6 +34,7 @@
 #include <cppflow/tensor.h>
 #include <tensorflow/c/c_api.h>
 
+#include "tensorflow/core/platform/tensor_float_32_utils.h"
 
 namespace LAMMPS_NS {
 
@@ -69,6 +70,7 @@ PairGRACE::PairGRACE(LAMMPS *lmp) : Pair(lmp) {
     tp_timer.init();
 
     no_virial_fdotr_compute = 1;
+    tsl::enable_tensor_float_32_execution(false);
 }
 
 
