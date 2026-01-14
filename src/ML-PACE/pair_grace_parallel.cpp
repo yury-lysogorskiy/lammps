@@ -664,7 +664,7 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
 #endif
     data_timer.start();
     std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
-    auto parallel_compute_inputs_sig = aceimpl->model->signatures.at(this->compute_function_name).inputs;
+    auto compute_inputs_sig = aceimpl->model->signatures.at(this->compute_function_name).inputs;
     // ------------------------------------------------------------------
     // 1. Identify Atom Shells
     // ------------------------------------------------------------------
@@ -747,7 +747,7 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     }
 
     // Input 1: Main Atoms
-    inputs.emplace_back( parallel_compute_inputs_sig.at("atomic_mu_i").name,
+    inputs.emplace_back( compute_inputs_sig.at("atomic_mu_i").name,
                        cppflow::tensor(aceimpl->atomic_mu_i_vector, {tot_atoms}));
 
     // Input 2: Local Atoms Subset
@@ -755,12 +755,12 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     aceimpl->atomic_mu_i_1_vector.assign(aceimpl->atomic_mu_i_vector.begin(),
                                          aceimpl->atomic_mu_i_vector.begin() + tot_atoms_1);
 
-    inputs.emplace_back(parallel_compute_inputs_sig.at( "atomic_mu_i_1").name,
+    inputs.emplace_back(compute_inputs_sig.at( "atomic_mu_i_1").name,
                         cppflow::tensor(aceimpl->atomic_mu_i_1_vector, {tot_atoms_1}));
 
 
     // batch_tot_nat_real: number of extened atoms (w/o padding)
-    inputs.emplace_back(parallel_compute_inputs_sig.at("batch_tot_nat_real").name,
+    inputs.emplace_back(compute_inputs_sig.at("batch_tot_nat_real").name,
                         cppflow::tensor(std::vector<int32_t>{nlocal}, {})); //nlocal
 
     // ind_i, ind_j: bonds
@@ -942,19 +942,19 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
         else ptr_ghost = k;
     }
 
-    inputs.emplace_back(parallel_compute_inputs_sig.at("bond_vector").name,
+    inputs.emplace_back(compute_inputs_sig.at("bond_vector").name,
                         cppflow::tensor(aceimpl->bond_vector, {tot_neighbours, 3}));
 
-    inputs.emplace_back(parallel_compute_inputs_sig.at("ind_i").name,
+    inputs.emplace_back(compute_inputs_sig.at("ind_i").name,
                         cppflow::tensor(aceimpl->ind_i_vector, {tot_neighbours}));
-    inputs.emplace_back(parallel_compute_inputs_sig.at("ind_j").name,
+    inputs.emplace_back(compute_inputs_sig.at("ind_j").name,
                         cppflow::tensor(aceimpl->ind_j_vector, {tot_neighbours}));
 
     if (has_mu_i_op) {
-        inputs.emplace_back(parallel_compute_inputs_sig.at("mu_i").name,
+        inputs.emplace_back(compute_inputs_sig.at("mu_i").name,
                             cppflow::tensor(aceimpl->mu_i_vector, {tot_neighbours}));
     }
-    inputs.emplace_back(parallel_compute_inputs_sig.at("mu_j").name,
+    inputs.emplace_back(compute_inputs_sig.at("mu_j").name,
                         cppflow::tensor(aceimpl->mu_j_vector, {tot_neighbours}));
 
     // ------------------------------------------------------------------
@@ -969,9 +969,9 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
     aceimpl->ind_j_vector_1.assign(aceimpl->ind_j_vector.begin(),
                                    aceimpl->ind_j_vector.begin() + tot_neighbours_1);
 
-    inputs.emplace_back(parallel_compute_inputs_sig.at("ind_i_1").name,
+    inputs.emplace_back(compute_inputs_sig.at("ind_i_1").name,
                         cppflow::tensor(aceimpl->ind_i_vector_1, {tot_neighbours_1}));
-    inputs.emplace_back(parallel_compute_inputs_sig.at("ind_j_1").name,
+    inputs.emplace_back(compute_inputs_sig.at("ind_j_1").name,
                         cppflow::tensor(aceimpl->ind_j_vector_1, {tot_neighbours_1}));
 
 #ifdef GRACE_PRINT_DEBUG
@@ -980,10 +980,10 @@ void PairGRACEParallel::compute(int eflag, int vflag) {
 
     data_timer.stop();
     tp_timer.start();
-    auto parallel_compute_outputs_sig = aceimpl->model->signatures.at("parallel_compute").outputs;
+    auto compute_outputs_sig = aceimpl->model->signatures.at("parallel_compute").outputs;
     vector<string> output_names = {
-        parallel_compute_outputs_sig.at("atomic_energy").name,// "StatefulPartitionedCall_1:0", // atomic_energy [nat,1]
-        parallel_compute_outputs_sig.at("z_pair_f").name  // "StatefulPartitionedCall_1:1", // pair_f [n_bonds, 3]
+        compute_outputs_sig.at("atomic_energy").name,// "StatefulPartitionedCall_1:0", // atomic_energy [nat,1]
+        compute_outputs_sig.at("z_pair_f").name  // "StatefulPartitionedCall_1:1", // pair_f [n_bonds, 3]
     };
 
 

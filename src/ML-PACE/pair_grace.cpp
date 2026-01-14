@@ -458,7 +458,7 @@ void PairGRACE::compute(int eflag, int vflag) {
 
     data_timer.start();
     std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
-    auto parallel_compute_inputs_sig = aceimpl->model->signatures.at(this->compute_function_name).inputs;
+    auto compute_inputs_sig = aceimpl->model->signatures.at(this->compute_function_name).inputs;
 
     if (do_padding) {
         if (nlocal > tot_atoms) {
@@ -480,23 +480,23 @@ void PairGRACE::compute(int eflag, int vflag) {
     for (i = 0; i < nlocal; ++i)
         atomic_mu_i_vector[i] = element_type_mapping[type[i]];
 
-    inputs.emplace_back(parallel_compute_inputs_sig.at("atomic_mu_i").name,//DEFAULT_INPUT_PREFIX + "atomic_mu_i" + ":0",
+    inputs.emplace_back(compute_inputs_sig.at("atomic_mu_i").name,//DEFAULT_INPUT_PREFIX + "atomic_mu_i" + ":0",
                         cppflow::tensor(atomic_mu_i_vector, {tot_atoms}));
 
     // map_atoms_to_structure
     if (has_map_atoms_to_structure_op) {
-        inputs.emplace_back(parallel_compute_inputs_sig.at("map_atoms_to_structure").name, //DEFAULT_INPUT_PREFIX + "map_atoms_to_structure" + ":0",
+        inputs.emplace_back(compute_inputs_sig.at("map_atoms_to_structure").name, //DEFAULT_INPUT_PREFIX + "map_atoms_to_structure" + ":0",
                             cppflow::tensor(std::vector<int32_t>(tot_atoms, 0), {tot_atoms}));
     }
 
     // batch_nat = number of extened atoms + padding
     if (has_batch_tot_nat) {
-        inputs.emplace_back(parallel_compute_inputs_sig.at("batch_tot_nat").name, //DEFAULT_INPUT_PREFIX + "batch_tot_nat" + ":0",
+        inputs.emplace_back(compute_inputs_sig.at("batch_tot_nat").name, //DEFAULT_INPUT_PREFIX + "batch_tot_nat" + ":0",
                             cppflow::tensor(std::vector<int32_t>{tot_atoms}, {}));
     }
 
     // batch_nreal_atoms_per_structure: number of extened atoms (w/o padding)
-    inputs.emplace_back(parallel_compute_inputs_sig.at("batch_tot_nat_real").name, //DEFAULT_INPUT_PREFIX + "batch_tot_nat_real" + ":0",
+    inputs.emplace_back(compute_inputs_sig.at("batch_tot_nat_real").name, //DEFAULT_INPUT_PREFIX + "batch_tot_nat_real" + ":0",
                         cppflow::tensor(std::vector<int32_t>{nlocal}, {}));
 
     // ind_i, ind_j: bonds
@@ -635,29 +635,29 @@ void PairGRACE::compute(int eflag, int vflag) {
         mu_j_vector[tot_ind] = 0;
     }
 
-    inputs.emplace_back(parallel_compute_inputs_sig.at("ind_i").name, //DEFAULT_INPUT_PREFIX + "ind_i" + ":0",
+    inputs.emplace_back(compute_inputs_sig.at("ind_i").name, //DEFAULT_INPUT_PREFIX + "ind_i" + ":0",
                         cppflow::tensor(ind_i_vector, {tot_neighbours}));
-    inputs.emplace_back(parallel_compute_inputs_sig.at("ind_j").name, //DEFAULT_INPUT_PREFIX + "ind_j" + ":0",
+    inputs.emplace_back(compute_inputs_sig.at("ind_j").name, //DEFAULT_INPUT_PREFIX + "ind_j" + ":0",
                         cppflow::tensor(ind_j_vector, {tot_neighbours}));
 
 
     // mu_i, mu_j: bonds
     if (has_mu_i_op) {
-        inputs.emplace_back(parallel_compute_inputs_sig.at("mu_i").name, //DEFAULT_INPUT_PREFIX + "mu_i" + ":0",
+        inputs.emplace_back(compute_inputs_sig.at("mu_i").name, //DEFAULT_INPUT_PREFIX + "mu_i" + ":0",
                             cppflow::tensor(mu_i_vector, {tot_neighbours}));
     }
-    inputs.emplace_back(parallel_compute_inputs_sig.at("mu_j").name, //DEFAULT_INPUT_PREFIX + "mu_j" + ":0",
+    inputs.emplace_back(compute_inputs_sig.at("mu_j").name, //DEFAULT_INPUT_PREFIX + "mu_j" + ":0",
                         cppflow::tensor(mu_j_vector, {tot_neighbours}));
 
 
     // num_struc: 1
     if (has_nstruct_total_op) {
-        inputs.emplace_back(parallel_compute_inputs_sig.at("n_struct_total").name, //DEFAULT_INPUT_PREFIX + "n_struct_total" + ":0",
+        inputs.emplace_back(compute_inputs_sig.at("n_struct_total").name, //DEFAULT_INPUT_PREFIX + "n_struct_total" + ":0",
                             cppflow::tensor(std::vector<int32_t>{1}, {}));
     }
 
     // vector_offsets: 1
-    inputs.emplace_back(parallel_compute_inputs_sig.at("bond_vector").name, //DEFAULT_INPUT_PREFIX + "bond_vector" + ":0",
+    inputs.emplace_back(compute_inputs_sig.at("bond_vector").name, //DEFAULT_INPUT_PREFIX + "bond_vector" + ":0",
                         cppflow::tensor(bond_vector, {tot_neighbours, 3}));
 
 
