@@ -299,7 +299,14 @@ void PairGRACE2LayerParallel::init_style() {
     if (atom->tag_enable == 0) error->all(FLERR, "Pair style grace requires atom IDs");
     if (force->newton_pair == 0) error->all(FLERR, "Pair style grace requires newton pair on");
     neighbor->add_request(this, NeighConst::REQ_FULL);
+    
+    // Initialize atom map for ghost-to-parent lookup in force tallying
+    if (atom->map_style == Atom::MAP_NONE) {
+        atom->map_init();
+        atom->map_set();
+    }
 }
+
 
 double PairGRACE2LayerParallel::init_one(int i, int j) {
     if (setflag[i][j] == 0) error->all(FLERR, "All pair coeffs are not set");
@@ -400,7 +407,16 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     comm->forward_comm(this);
     run_backward_layer_2(eflag, vflag);
     comm->reverse_comm(this);
+    
+    // Zero ghost gradients after reverse_comm has accumulated them to parents
+    // This ensures ghosts don't contribute again in backward_layer_1
+    for (int i = atom->nlocal; i < aceimpl->tot_atoms; i++) {
+        std::fill_n(&grad_I[i * FEAT_I_SIZE], FEAT_I_SIZE, 0.0);
+        std::fill_n(&grad_I_out_LN[i * FEAT_I_OUT_LN_SIZE], FEAT_I_OUT_LN_SIZE, 0.0);
+    }
+    
     run_backward_layer_1();
+
     
     if (comm->me == 0 && pad_verbose) {
         int n_bonds_print = std::min(aceimpl->nlocal_bonds, 8);
@@ -414,11 +430,17 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
                           (k == n_bonds_print - 1 ? "]" : ""));
         }
         
-        // Tally forces for debug printing
+        // Tally forces for debug printing (using atom->map for ghost-to-parent lookup)
         std::vector<std::vector<double>> f_par(atom->nlocal, std::vector<double>(3, 0.0));
         for (int k = 0; k < aceimpl->nlocal_bonds; k++) {
             int i = aceimpl->ind_i[k];
             int j = aceimpl->ind_j[k];
+            
+            // Map ghost j to parent local atom using LAMMPS atom map
+            if (j >= nlocal) {
+                j = atom->map(atom->tag[j]);
+            }
+            
             double sc = scale[type[i]][type[i]];
             double fx = sc * aceimpl->grad_bond_vector[3 * k + 0];
             double fy = sc * aceimpl->grad_bond_vector[3 * k + 1];
@@ -426,10 +448,11 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
             if (i < atom->nlocal) {
                 f_par[i][0] += fx; f_par[i][1] += fy; f_par[i][2] += fz;
             }
-            if (j < atom->nlocal) {
+            if (j >= 0 && j < atom->nlocal) {
                 f_par[j][0] -= fx; f_par[j][1] -= fy; f_par[j][2] -= fz;
             }
         }
+
         int n_atoms_print = std::min(atom->nlocal, 8);
         utils::logmesg(lmp, "Computed Atomic Forces from Parallel Grads:\n");
         for (int i = 0; i < n_atoms_print; i++) {
@@ -439,26 +462,37 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
         }
     }
 
-    // Final force tally
+    // Final force tally (using atom->map for ghost-to-parent lookup)
     double **f = atom->f;
     double **ax = atom->x;
     int newton_pair = force->newton_pair;
+    
     for (int k = 0; k < aceimpl->nlocal_bonds; k++) {
         int i = aceimpl->ind_i[k];
         int j = aceimpl->ind_j[k];
+        int j_orig = j;  // Keep original for virial
+        
+        // Map ghost j to its parent local atom using LAMMPS atom map
+        if (j >= nlocal) {
+            j = atom->map(atom->tag[j]);
+        }
+        
         double sc = scale[type[i]][type[i]];
         double fx = sc * aceimpl->grad_bond_vector[3 * k + 0];
         double fy = sc * aceimpl->grad_bond_vector[3 * k + 1];
         double fz = sc * aceimpl->grad_bond_vector[3 * k + 2];
         f[i][0] += fx; f[i][1] += fy; f[i][2] += fz;
-        f[j][0] -= fx; f[j][1] -= fy; f[j][2] -= fz;
+        if (j >= 0 && j < nlocal) {
+            f[j][0] -= fx; f[j][1] -= fy; f[j][2] -= fz;
+        }
         if (evflag) {
             double dx = -aceimpl->bond_vector[3*k+0];
             double dy = -aceimpl->bond_vector[3*k+1];
             double dz = -aceimpl->bond_vector[3*k+2];
-            ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fx, fy, fz, dx, dy, dz);
+            ev_tally_xyz(i, j_orig, nlocal, newton_pair, 0.0, 0.0, fx, fy, fz, dx, dy, dz);
         }
     }
+
 
     if (vflag_fdotr) virial_fdotr_compute();
 }
@@ -494,10 +528,13 @@ void PairGRACE2LayerParallel::unpack_reverse_comm(int n, int *list, double *buf)
     int m = 0;
     for (int i = 0; i < n; i++) {
         int j = list[i];
+        // Accumulate grad_I from ghosts to parents
         for (int k = 0; k < FEAT_I_SIZE; k++) grad_I[j * FEAT_I_SIZE + k] += buf[m++];
-        for (int k = 0; k < FEAT_I_OUT_LN_SIZE; k++) grad_I_out_LN[j * FEAT_I_OUT_LN_SIZE + k] += buf[m++];
+        // Skip grad_I_out_LN - it's a loss mask and should NOT be accumulated
+        m += FEAT_I_OUT_LN_SIZE;
     }
 }
+
 
 void PairGRACE2LayerParallel::run_forward_layer_1() {
     if (comm->me == 0) utils::logmesg(lmp, "[GRACE-DEBUG] Entering run_forward_layer_1\n");
@@ -597,21 +634,15 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
     const double *gI_data = static_cast<double *>(TF_TensorData(gI_tens.get()));
     std::copy_n(gI_data, aceimpl->tot_atoms * FEAT_I_SIZE, &grad_I[0]);
 
-    // Zero out ghost gradients to prevent double counting of energy contributions 
-    // from periodic images/ghosts during reverse_comm accumulation.
-    for (int i = atom->nlocal; i < aceimpl->tot_atoms; i++) {
-        std::fill_n(&grad_I[i * FEAT_I_SIZE], FEAT_I_SIZE, 0.0);
-    }
+    // NOTE: Do NOT zero ghost gradients here - let reverse_comm accumulate them first
+    // Zeroing happens after reverse_comm in compute()
 
     auto gLN_tens = outputs[2].get_tensor();
     const double *gLN_data = static_cast<double *>(TF_TensorData(gLN_tens.get()));
     std::copy_n(gLN_data, aceimpl->tot_atoms * FEAT_I_OUT_LN_SIZE, &grad_I_out_LN[0]);
 
-    for (int i = atom->nlocal; i < aceimpl->tot_atoms; i++) {
-        std::fill_n(&grad_I_out_LN[i * FEAT_I_OUT_LN_SIZE], FEAT_I_OUT_LN_SIZE, 0.0);
-    }
-
     auto gf_tens = outputs[3].get_tensor();
+
     const double *gf_data = static_cast<double *>(TF_TensorData(gf_tens.get()));
 
     aceimpl->grad_bond_vector.resize(3 * aceimpl->tot_neighbours);
