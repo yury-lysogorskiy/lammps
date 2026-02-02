@@ -1,0 +1,646 @@
+#ifndef NO_GRACE_TF
+
+#include "pair_grace_2layer_parallel.h"
+
+#include "atom.h"
+#include "comm.h"
+#include "error.h"
+#include "force.h"
+#include "math_const.h"
+#include "memory.h"
+#include "neigh_list.h"
+#include "neighbor.h"
+#include "update.h"
+#include "domain.h"
+
+#include <cstring>
+#include <algorithm>
+#include <numeric>
+#include <tuple>
+#include <set>
+#include "yaml-cpp/yaml.h"
+
+#include "utils_pace.h"
+#include "utils_grace.h"
+
+// CppFlow headers
+#include <unistd.h>
+#include <cppflow/ops.h>
+#include <cppflow/model.h>
+#include <cppflow/tensor.h>
+#include <tensorflow/c/c_api.h>
+
+namespace GRACE2LayerParallel {
+    
+    using namespace LAMMPS_NS;
+
+
+
+
+    class GracePaddingDimension {
+        public:
+            int current_padded_size = 0;
+            int num_of_reductions = 0;
+
+            // Settings
+            double padding_fraction = 0.01;           
+            double reduction_threshold_fraction = 0.2; 
+            int max_reductions = 10;                  
+            bool enabled = true;
+            bool verbose = false;
+
+            GracePaddingDimension() = default;
+
+            int update(int real_count) {
+                if (!enabled) {
+                    current_padded_size = real_count;
+                    return current_padded_size;
+                }
+
+                auto it = padding_history.upper_bound(real_count);
+
+                if (it == padding_history.end()) {
+                    int extra = static_cast<int>(std::round(real_count * padding_fraction));
+                    current_padded_size = real_count + std::max(extra, 1);
+                    padding_history.insert(current_padded_size);
+                    was_updated = true;
+                } else {
+                    current_padded_size = *it;
+                    was_updated = false;
+
+                    if (it == padding_history.begin() && can_reduce()) {
+                        double waste = (real_count > 0) ?
+                                       static_cast<double>(current_padded_size - real_count) / real_count : 0;
+
+                        if (waste > reduction_threshold_fraction) {
+                            current_padded_size = real_count;
+                            padding_history.insert(current_padded_size);
+                            num_of_reductions++;
+                            was_updated = true;
+                        }
+                    }
+                }
+                return current_padded_size;
+            }
+
+            bool last_update_triggered_resize() const { return was_updated; }
+
+            void reset() {
+                padding_history.clear();
+                num_of_reductions = 0;
+                current_padded_size = 0;
+            }
+
+        private:
+            std::set<int> padding_history;
+            bool was_updated = false;
+            bool can_reduce() const {
+                return (max_reductions == -1 || num_of_reductions < max_reductions);
+            }
+    };
+}
+
+namespace LAMMPS_NS {
+    struct GRACE2LayerImpl {
+        GRACE2LayerImpl() : model(nullptr) {}
+        ~GRACE2LayerImpl() { delete model; }
+        cppflow::model *model;
+
+        GRACE2LayerParallel::GracePaddingDimension atom_padding;
+        GRACE2LayerParallel::GracePaddingDimension neighbor_padding;
+
+        std::vector<int32_t> mu_i;
+        std::vector<int32_t> mu_j;
+        std::vector<int32_t> ind_i;
+        std::vector<int32_t> ind_j;
+        std::vector<double> bond_vector;
+        std::vector<int32_t> atomic_mu_i;
+
+        std::vector<double> grad_bond_vector; // Temporary storage for summing forces
+
+        int tot_atoms = 0;
+        int tot_neighbours = 0;
+        int nlocal_bonds = 0;
+    };
+}
+
+using namespace LAMMPS_NS;
+
+PairGRACE2LayerParallel::PairGRACE2LayerParallel(LAMMPS *lmp) : Pair(lmp) {
+    single_enable = 0;
+    restartinfo = 0;
+    one_coeff = 1;
+    manybody_flag = 1;
+
+    aceimpl = new GRACE2LayerImpl;
+    scale = nullptr;
+    
+    data_timer.init();
+    tp_timer.init();
+
+    no_virial_fdotr_compute = 1;
+
+    comm_forward = FEAT_I_SIZE + FEAT_I_OUT_LN_SIZE;
+    comm_reverse = FEAT_I_SIZE + FEAT_I_OUT_LN_SIZE;
+}
+
+PairGRACE2LayerParallel::~PairGRACE2LayerParallel() {
+    if (copymode) return;
+    delete aceimpl;
+    if (allocated) {
+        memory->destroy(setflag);
+        memory->destroy(cutsq);
+        memory->destroy(scale);
+    }
+}
+
+void PairGRACE2LayerParallel::allocate() {
+    allocated = 1;
+    int n = atom->ntypes + 1;
+    memory->create(setflag, n, n, "pair:setflag");
+    memory->create(cutsq, n, n, "pair:cutsq");
+    memory->create(scale, n, n, "pair:scale");
+    map = new int[n];
+}
+
+void PairGRACE2LayerParallel::settings(int narg, char **arg) {
+    if (narg > 3) utils::missing_cmd_args(FLERR, "pair_style grace", error);
+
+    // ACE potentials are parameterized in metal units
+    if (strcmp("metal", update->unit_style) != 0)
+        error->all(FLERR, "GRACE potentials require 'metal' units");
+
+    auto tf_version = TF_Version();
+    if (comm->me == 0) utils::logmesg(lmp, "[GRACE] TF version: {}\n", tf_version);
+
+    int iarg = 0;
+    while (iarg < narg) {
+        if (strcmp(arg[iarg], "padding") == 0) {
+            neigh_padding_fraction = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
+            iarg += 2;
+
+        } else if (strcmp(arg[iarg], "pad_verbose") == 0) {
+            pad_verbose = true;
+            iarg += 1;
+        } else if (strcmp(arg[iarg], "max_number_of_reduction") == 0) {
+            max_number_of_reduction = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
+            iarg += 2;
+            if (comm->me == 0)
+                utils::logmesg(lmp, "[GRACE] Maximum number of recompilation during padding reduction: {}\n",
+                               max_number_of_reduction);
+        } else if (strcmp(arg[iarg], "reduce_padding") == 0) {
+            reducing_neigh_padding_fraction = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
+            iarg += 2;
+            if (comm->me == 0)
+                utils::logmesg(lmp, "[GRACE] Reducing padding fraction: {}\n", reducing_neigh_padding_fraction);
+        } else
+            error->all(FLERR, "[GRACE] Unknown pair_style grace keyword: {}", arg[iarg]);
+    }
+
+    do_padding = (neigh_padding_fraction > 0);
+    if(do_padding) {
+        if (comm->me == 0)
+            utils::logmesg(lmp, "[GRACE] Neighbour padding is ON, padding fraction: {}, max padding fraction before reduction: {}, max number of reduction(s): {}\n",
+                           neigh_padding_fraction, reducing_neigh_padding_fraction, max_number_of_reduction);
+    }
+
+    // Apply to padding helpers
+    aceimpl->atom_padding.enabled = do_padding;
+    aceimpl->atom_padding.padding_fraction = neigh_padding_fraction;
+    aceimpl->atom_padding.reduction_threshold_fraction = reducing_neigh_padding_fraction;
+    aceimpl->atom_padding.max_reductions = max_number_of_reduction;
+    aceimpl->atom_padding.verbose = pad_verbose;
+
+    aceimpl->neighbor_padding.enabled = do_padding;
+    aceimpl->neighbor_padding.padding_fraction = neigh_padding_fraction;
+    aceimpl->neighbor_padding.reduction_threshold_fraction = reducing_neigh_padding_fraction;
+    aceimpl->neighbor_padding.max_reductions = max_number_of_reduction;
+    aceimpl->neighbor_padding.verbose = pad_verbose;
+
+    if (!pair_forces && comm->nprocs > 1) {
+        pair_forces = true;
+        if (comm->me == 0)
+            utils::logmesg(lmp,
+                           "[GRACE] ENFORCE pair-force mode to ON, because number of processes {} is more than one.\n",
+                           comm->nprocs);
+    }
+
+    
+    // mark as available centroid stress flag
+    centroidstressflag = CENTROID_AVAIL;
+    
+}
+
+void PairGRACE2LayerParallel::coeff(int narg, char **arg) {
+    if (!allocated) allocate();
+
+    map_element2type(narg - 3, arg + 3);
+    auto potential_path = std::string(arg[2]);
+
+    delete aceimpl->model;
+    if (comm->me == 0) utils::logmesg(lmp, "[GRACE] Loading {}\n", potential_path);
+
+    const std::vector<uint8_t> config_bytes = { 0x32, 0x05, 0x82, 0x01, 0x02, 0x18, 0x00 };
+    aceimpl->model = new cppflow::model(potential_path, config_bytes);
+
+    YAML_PACE::Node metadata_yaml = YAML_PACE::LoadFile(potential_path + "/metadata.yaml");
+    elements_name = metadata_yaml["chemical_symbols"].as<std::vector<std::string>>();
+    nelements = (int) elements_name.size();
+    for (int mu = 0; mu < nelements; mu++) {
+        elements_to_index_map[elements_name.at(mu)] = mu;
+    }
+    cutoff = metadata_yaml["cutoff"].as<double>();
+
+    const int ntypes = atom->ntypes;
+    element_type_mapping.resize(ntypes + 1);
+    for (int i = 1; i <= ntypes; i++) {
+        char *elemname = arg[2 + i];
+        if (strcmp(elemname, "NULL") == 0) {
+            element_type_mapping[i] = -1;
+            map[i] = -1;
+        } else {
+            int mu = elements_to_index_map.at(elemname);
+            map[i] = mu;
+            element_type_mapping[i] = mu;
+        }
+    }
+
+    for (int i = 1; i <= ntypes; i++)
+        for (int j = i; j <= ntypes; j++) scale[i][j] = 1.0;
+
+    if (!aceimpl->model->has_signature(forward_layer_1_name)) error->all(FLERR, "Model missing forward_layer_1");
+    if (!aceimpl->model->has_signature(backward_layer_2_name)) error->all(FLERR, "Model missing backward_layer_2");
+    if (!aceimpl->model->has_signature(backward_layer_1_name)) error->all(FLERR, "Model missing backward_layer_1");
+
+    if (metadata_yaml["cutoff_matrix"]) {
+        cutoff_matrix = metadata_yaml["cutoff_matrix"].as<vector<vector<double>>>();
+        is_custom_cutoffs = true;
+        cutoff_matrix_per_lammps_type.resize(ntypes + 1, vector<double>(ntypes + 1));
+        for (int i = 1; i <= ntypes; i++) {
+            for (int j = 1; j <= ntypes; j++) {
+                cutoff_matrix_per_lammps_type[i][j] = cutoff_matrix[element_type_mapping[i]][element_type_mapping[j]];
+            }
+        }
+    }
+
+    if (comm->me == 0) {
+        utils::logmesg(lmp, "[GRACE-DEBUG] Available signatures:\n");
+        for (auto const& [name, sig] : aceimpl->model->signatures) {
+            utils::logmesg(lmp, "  Signature: {}\n", name);
+            utils::logmesg(lmp, "    Inputs:\n");
+            for (auto const& [in_key, in_val] : sig.inputs) utils::logmesg(lmp, "      {} -> {}\n", in_key, in_val.name);
+            utils::logmesg(lmp, "    Outputs:\n");
+            for (auto const& [out_key, out_val] : sig.outputs) utils::logmesg(lmp, "      {} -> {}\n", out_key, out_val.name);
+        }
+    }
+}
+
+void PairGRACE2LayerParallel::init_style() {
+    if (atom->tag_enable == 0) error->all(FLERR, "Pair style grace requires atom IDs");
+    if (force->newton_pair == 0) error->all(FLERR, "Pair style grace requires newton pair on");
+    neighbor->add_request(this, NeighConst::REQ_FULL);
+}
+
+double PairGRACE2LayerParallel::init_one(int i, int j) {
+    if (setflag[i][j] == 0) error->all(FLERR, "All pair coeffs are not set");
+    return cutoff;
+}
+
+void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
+    ev_init(eflag, vflag);
+
+    int nlocal = atom->nlocal;
+    int nall = nlocal + atom->nghost;
+
+    aceimpl->tot_atoms = aceimpl->atom_padding.update(nall);
+    
+    int n_bonds = 0;
+    int inum = list->inum;
+    int *ilist = list->ilist;
+    int *numneigh = list->numneigh;
+    int **firstneigh = list->firstneigh;
+    double **x = atom->x;
+    int *type = atom->type;
+    double cutoff_sq = cutoff * cutoff;
+
+    for (int ii = 0; ii < inum; ii++) {
+        int i = ilist[ii];
+        int type_i = type[i];
+        double xtmp = x[i][0];
+        double ytmp = x[i][1];
+        double ztmp = x[i][2];
+        int *jlist = firstneigh[i];
+        int jnum = numneigh[i];
+        for (int jj = 0; jj < jnum; jj++) {
+            int j = jlist[jj] & NEIGHMASK;
+            double dx = xtmp - x[j][0];
+            double dy = ytmp - x[j][1];
+            double dz = ztmp - x[j][2];
+            if (is_custom_cutoffs) {
+                int type_j = type[j];
+                double cur_cutoff = cutoff_matrix_per_lammps_type[type_i][type_j];
+                cutoff_sq = cur_cutoff * cur_cutoff;
+            }
+            if (dx*dx + dy*dy + dz*dz < cutoff_sq) n_bonds++;
+        }
+    }
+    aceimpl->nlocal_bonds = n_bonds;
+    aceimpl->tot_neighbours = aceimpl->neighbor_padding.update(n_bonds);
+
+    feature_I.resize(aceimpl->tot_atoms * FEAT_I_SIZE);
+    feature_I_out_LN.resize(aceimpl->tot_atoms * FEAT_I_OUT_LN_SIZE);
+    grad_I.assign(aceimpl->tot_atoms * FEAT_I_SIZE, 0.0);
+    grad_I_out_LN.assign(aceimpl->tot_atoms * FEAT_I_OUT_LN_SIZE, 0.0);
+
+    aceimpl->mu_i.resize(aceimpl->tot_neighbours);
+    aceimpl->mu_j.resize(aceimpl->tot_neighbours);
+    aceimpl->ind_i.resize(aceimpl->tot_neighbours);
+    aceimpl->ind_j.resize(aceimpl->tot_neighbours);
+    aceimpl->bond_vector.resize(3 * aceimpl->tot_neighbours, 1e6);
+    aceimpl->atomic_mu_i.assign(aceimpl->tot_atoms, element_type_mapping[type[0]]);
+
+    for (int i = 0; i < nall; i++) aceimpl->atomic_mu_i[i] = element_type_mapping[type[i]];
+    
+    int tot_ind = 0;
+    for (int ii = 0; ii < inum; ii++) {
+        int i = ilist[ii];
+        int type_i = type[i];
+        double xtmp = x[i][0]; double ytmp = x[i][1]; double ztmp = x[i][2];
+        int *jlist = firstneigh[i]; int jnum = numneigh[i];
+        for (int jj = 0; jj < jnum; jj++) {
+            int j = jlist[jj] & NEIGHMASK;
+            double dx = x[j][0] - xtmp;
+            double dy = x[j][1] - ytmp;
+            double dz = x[j][2] - ztmp;
+            if (is_custom_cutoffs) {
+                int type_j = type[j];
+                double cur_cutoff = cutoff_matrix_per_lammps_type[type_i][type_j];
+                cutoff_sq = cur_cutoff * cur_cutoff;
+            }
+            if (dx*dx + dy*dy + dz*dz < cutoff_sq) {
+                aceimpl->ind_i[tot_ind] = i;
+                aceimpl->ind_j[tot_ind] = j;
+                aceimpl->mu_i[tot_ind] = element_type_mapping[type[i]];
+                aceimpl->mu_j[tot_ind] = element_type_mapping[type[j]];
+                aceimpl->bond_vector[3*tot_ind + 0] = dx;
+                aceimpl->bond_vector[3*tot_ind + 1] = dy;
+                aceimpl->bond_vector[3*tot_ind + 2] = dz;
+                tot_ind++;
+            }
+        }
+    }
+    int fake_at = aceimpl->tot_atoms - 1;
+    for (int k = n_bonds; k < aceimpl->tot_neighbours; k++) {
+        aceimpl->ind_i[k] = aceimpl->ind_j[k] = fake_at;
+        aceimpl->mu_i[k] = aceimpl->mu_j[k] = 0;
+    }
+
+    run_forward_layer_1();
+    comm->forward_comm(this);
+    run_backward_layer_2(eflag, vflag);
+    comm->reverse_comm(this);
+    run_backward_layer_1();
+
+    // Final force tally
+    double **f = atom->f;
+    double **ax = atom->x;
+    int newton_pair = force->newton_pair;
+    for (int k = 0; k < aceimpl->nlocal_bonds; k++) {
+        int i = aceimpl->ind_i[k];
+        int j = aceimpl->ind_j[k];
+        double fx = scale[type[i]][type[i]] * aceimpl->grad_bond_vector[3 * k + 0];
+        double fy = scale[type[i]][type[i]] * aceimpl->grad_bond_vector[3 * k + 1];
+        double fz = scale[type[i]][type[i]] * aceimpl->grad_bond_vector[3 * k + 2];
+        f[i][0] += fx; f[i][1] += fy; f[i][2] += fz;
+        f[j][0] -= fx; f[j][1] -= fy; f[j][2] -= fz;
+        if (evflag) {
+            double dx = -aceimpl->bond_vector[3*k+0];
+            double dy = -aceimpl->bond_vector[3*k+1];
+            double dz = -aceimpl->bond_vector[3*k+2];
+            ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fx, fy, fz, dx, dy, dz);
+        }
+    }
+
+    if (vflag_fdotr) virial_fdotr_compute();
+}
+
+int PairGRACE2LayerParallel::pack_forward_comm(int n, int *list, double *buf, int pbc_flag, int *pbc) {
+    int m = 0;
+    for (int i = 0; i < n; i++) {
+        int j = list[i];
+        std::copy_n(&feature_I[j * FEAT_I_SIZE], FEAT_I_SIZE, &buf[m]); m += FEAT_I_SIZE;
+        std::copy_n(&feature_I_out_LN[j * FEAT_I_OUT_LN_SIZE], FEAT_I_OUT_LN_SIZE, &buf[m]); m += FEAT_I_OUT_LN_SIZE;
+    }
+    return m;
+}
+
+void PairGRACE2LayerParallel::unpack_forward_comm(int n, int first, double *buf) {
+    int m = 0; int last = first + n;
+    for (int i = first; i < last; i++) {
+        std::copy_n(&buf[m], FEAT_I_SIZE, &feature_I[i * FEAT_I_SIZE]); m += FEAT_I_SIZE;
+        std::copy_n(&buf[m], FEAT_I_OUT_LN_SIZE, &feature_I_out_LN[i * FEAT_I_OUT_LN_SIZE]); m += FEAT_I_OUT_LN_SIZE;
+    }
+}
+
+int PairGRACE2LayerParallel::pack_reverse_comm(int n, int first, double *buf) {
+    int m = 0; int last = first + n;
+    for (int i = first; i < last; i++) {
+        std::copy_n(&grad_I[i * FEAT_I_SIZE], FEAT_I_SIZE, &buf[m]); m += FEAT_I_SIZE;
+        std::copy_n(&grad_I_out_LN[i * FEAT_I_OUT_LN_SIZE], FEAT_I_OUT_LN_SIZE, &buf[m]); m += FEAT_I_OUT_LN_SIZE;
+    }
+    return m;
+}
+
+void PairGRACE2LayerParallel::unpack_reverse_comm(int n, int *list, double *buf) {
+    int m = 0;
+    for (int i = 0; i < n; i++) {
+        int j = list[i];
+        for (int k = 0; k < FEAT_I_SIZE; k++) grad_I[j * FEAT_I_SIZE + k] += buf[m++];
+        for (int k = 0; k < FEAT_I_OUT_LN_SIZE; k++) grad_I_out_LN[j * FEAT_I_OUT_LN_SIZE + k] += buf[m++];
+    }
+}
+
+void PairGRACE2LayerParallel::run_forward_layer_1() {
+    if (comm->me == 0) utils::logmesg(lmp, "[GRACE-DEBUG] Entering run_forward_layer_1\n");
+    auto sig = aceimpl->model->signatures.at(forward_layer_1_name);
+    std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
+    
+    auto add_input = [&](const std::string& key, const cppflow::tensor& t) {
+        if (sig.inputs.count(key)) {
+            inputs.emplace_back(sig.inputs.at(key).name, t);
+        } else {
+            error->all(FLERR, "[GRACE-ERROR] Key '{}' not found in signature", key);
+        }
+    };
+
+    add_input("atomic_mu_i", cppflow::tensor(aceimpl->atomic_mu_i, {aceimpl->tot_atoms}));
+    add_input("ind_i", cppflow::tensor(aceimpl->ind_i, {aceimpl->tot_neighbours}));
+    add_input("ind_j", cppflow::tensor(aceimpl->ind_j, {aceimpl->tot_neighbours}));
+    add_input("mu_i", cppflow::tensor(aceimpl->mu_i, {aceimpl->tot_neighbours}));
+    add_input("mu_j", cppflow::tensor(aceimpl->mu_j, {aceimpl->tot_neighbours}));
+    add_input("bond_vector", cppflow::tensor(aceimpl->bond_vector, {aceimpl->tot_neighbours, 3}));
+    add_input("batch_tot_nat_real", cppflow::tensor(std::vector<int32_t>{atom->nlocal}, {}));
+
+    if (comm->me == 0 && pad_verbose) print_tensors(forward_layer_1_name, inputs);
+    
+    std::vector<std::string> out_names;
+    if (sig.outputs.count(I_KEY)) out_names.push_back(sig.outputs.at(I_KEY).name);
+    else error->all(FLERR, "[GRACE-ERROR] Key '{}' not found in signature '{}' outputs", I_KEY, forward_layer_1_name);
+    
+    if (sig.outputs.count(I_LN_KEY)) out_names.push_back(sig.outputs.at(I_LN_KEY).name);
+    else error->all(FLERR, "[GRACE-ERROR] Key '{}' not found in signature '{}' outputs", I_LN_KEY, forward_layer_1_name);
+
+    auto outputs = aceimpl->model->operator()(inputs, out_names);
+    
+    auto I_tens = outputs[0].get_tensor();
+    const double *I_data = static_cast<double *>(TF_TensorData(I_tens.get()));
+    std::copy_n(I_data, atom->nlocal * FEAT_I_SIZE, &feature_I[0]);
+
+    auto LN_tens = outputs[1].get_tensor();
+    const double *LN_data = static_cast<double *>(TF_TensorData(LN_tens.get()));
+    std::copy_n(LN_data, atom->nlocal * FEAT_I_OUT_LN_SIZE, &feature_I_out_LN[0]);
+}
+
+void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
+    if (comm->me == 0) utils::logmesg(lmp, "[GRACE-DEBUG] Entering run_backward_layer_2\n");
+    auto sig = aceimpl->model->signatures.at(backward_layer_2_name);
+    std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
+
+    auto add_input = [&](const std::string& key, const cppflow::tensor& t) {
+        if (sig.inputs.count(key)) {
+            inputs.emplace_back(sig.inputs.at(key).name, t);
+        } else {
+            error->all(FLERR, "[GRACE-ERROR] Key '{}' not found in signature", key);
+        }
+    };
+
+    add_input("atomic_mu_i", cppflow::tensor(aceimpl->atomic_mu_i, {aceimpl->tot_atoms}));
+    add_input("ind_i", cppflow::tensor(aceimpl->ind_i, {aceimpl->tot_neighbours}));
+    add_input("ind_j", cppflow::tensor(aceimpl->ind_j, {aceimpl->tot_neighbours}));
+    add_input("mu_i", cppflow::tensor(aceimpl->mu_i, {aceimpl->tot_neighbours}));
+    add_input("mu_j", cppflow::tensor(aceimpl->mu_j, {aceimpl->tot_neighbours}));
+    add_input("bond_vector", cppflow::tensor(aceimpl->bond_vector, {aceimpl->tot_neighbours, 3}));
+    add_input("batch_tot_nat_real", cppflow::tensor(std::vector<int32_t>{atom->nlocal}, {}));
+    add_input(I_KEY, cppflow::tensor(feature_I, {aceimpl->tot_atoms, 32, 16}));
+    add_input(I_LN_KEY, cppflow::tensor(feature_I_out_LN, {aceimpl->tot_atoms, 17, 1}));
+
+    if (comm->me == 0 && pad_verbose) print_tensors(backward_layer_2_name, inputs);
+    
+    std::vector<std::string> out_names;
+    std::vector<std::string> keys = {ENERGY_KEY, GRAD_I_KEY, GRAD_I_LN_KEY, GRAD_BOND_KEY};
+    for (const auto& k : keys) {
+        if (sig.outputs.count(k)) out_names.push_back(sig.outputs.at(k).name);
+        else error->all(FLERR, "[GRACE-ERROR] Key '{}' not found in signature '{}' outputs", k, backward_layer_2_name);
+    }
+    
+    auto outputs = aceimpl->model->operator()(inputs, out_names);
+
+    auto e_tens = outputs[0].get_tensor();
+    const double *e_data = static_cast<double *>(TF_TensorData(e_tens.get()));
+    if (eflag_either) {
+        for (int i = 0; i < atom->nlocal; i++)
+            ev_tally_full(i, 2.0 * e_data[i], 0.0, 0.0, 0.0, 0.0, 0.0);
+    }
+
+    auto gI_tens = outputs[1].get_tensor();
+    const double *gI_data = static_cast<double *>(TF_TensorData(gI_tens.get()));
+    std::copy_n(gI_data, aceimpl->tot_atoms * FEAT_I_SIZE, &grad_I[0]);
+
+    // Zero out ghost gradients for I
+    int nlocal = atom->nlocal;
+    for (int i = nlocal; i < aceimpl->tot_atoms; i++) {
+        std::fill_n(&grad_I[i * FEAT_I_SIZE], FEAT_I_SIZE, 0.0);
+    }
+
+    auto gLN_tens = outputs[2].get_tensor();
+    const double *gLN_data = static_cast<double *>(TF_TensorData(gLN_tens.get()));
+    std::copy_n(gLN_data, aceimpl->tot_atoms * FEAT_I_OUT_LN_SIZE, &grad_I_out_LN[0]);
+
+     // Zero out ghost gradients for I_out_LN
+    for (int i = nlocal; i < aceimpl->tot_atoms; i++) {
+        std::fill_n(&grad_I_out_LN[i * FEAT_I_OUT_LN_SIZE], FEAT_I_OUT_LN_SIZE, 0.0);
+    }
+
+    auto gf_tens = outputs[3].get_tensor();
+    const double *gf_data = static_cast<double *>(TF_TensorData(gf_tens.get()));
+
+    aceimpl->grad_bond_vector.resize(3 * aceimpl->tot_neighbours);
+    std::copy_n(gf_data, aceimpl->tot_neighbours * 3, aceimpl->grad_bond_vector.data());
+}
+
+void PairGRACE2LayerParallel::run_backward_layer_1() {
+    if (comm->me == 0) utils::logmesg(lmp, "[GRACE-DEBUG] Entering run_backward_layer_1\n");
+    auto sig = aceimpl->model->signatures.at(backward_layer_1_name);
+    std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
+    
+    auto add_input = [&](const std::string& key, const cppflow::tensor& t) {
+        if (sig.inputs.count(key)) {
+            inputs.emplace_back(sig.inputs.at(key).name, t);
+        } else {
+            error->all(FLERR, "[GRACE-ERROR] Key '{}' not found in signature", key);
+        }
+    };
+
+    add_input("atomic_mu_i", cppflow::tensor(aceimpl->atomic_mu_i, {aceimpl->tot_atoms}));
+    add_input("ind_i", cppflow::tensor(aceimpl->ind_i, {aceimpl->tot_neighbours}));
+    add_input("ind_j", cppflow::tensor(aceimpl->ind_j, {aceimpl->tot_neighbours}));
+    add_input("mu_i", cppflow::tensor(aceimpl->mu_i, {aceimpl->tot_neighbours}));
+    add_input("mu_j", cppflow::tensor(aceimpl->mu_j, {aceimpl->tot_neighbours}));
+    add_input("bond_vector", cppflow::tensor(aceimpl->bond_vector, {aceimpl->tot_neighbours, 3}));
+    add_input("batch_tot_nat_real", cppflow::tensor(std::vector<int32_t>{atom->nlocal}, {}));
+    add_input(GRAD_I_KEY, cppflow::tensor(grad_I, {aceimpl->tot_atoms, 32, 16}));
+    add_input(GRAD_I_LN_KEY, cppflow::tensor(grad_I_out_LN, {aceimpl->tot_atoms, 17, 1}));
+
+    if (comm->me == 0 && pad_verbose) print_tensors(backward_layer_1_name, inputs);
+
+    std::vector<std::string> out_names;
+    if (sig.outputs.count(GRAD_BOND_KEY)) out_names.push_back(sig.outputs.at(GRAD_BOND_KEY).name);
+    else error->all(FLERR, "[GRACE-ERROR] Key '{}' not found in signature '{}' outputs", GRAD_BOND_KEY, backward_layer_1_name);
+
+    auto outputs = aceimpl->model->operator()(inputs, out_names);
+    
+    auto gf_tens = outputs[0].get_tensor();
+    const double *gf_data = static_cast<double *>(TF_TensorData(gf_tens.get()));
+    // Combine with L2 gradients
+    for (int k = 0; k < aceimpl->tot_neighbours * 3; k++)
+        aceimpl->grad_bond_vector[k] += gf_data[k];
+}
+
+void PairGRACE2LayerParallel::print_tensors(const std::string& name, const std::vector<std::tuple<std::string, cppflow::tensor>>& inputs) {
+    utils::logmesg(lmp, "[GRACE-DEBUG] Calling model in {}\n", name);
+    for (const auto& input : inputs) {
+        const auto& key = std::get<0>(input);
+        const auto& t = std::get<1>(input);
+        auto shape = t.shape().template get_data<int64_t>();
+        std::string shape_str = "[";
+        for (size_t i = 0; i < shape.size(); ++i) shape_str += std::to_string(shape[i]) + (i == shape.size() - 1 ? "" : ", ");
+        shape_str += "]";
+        utils::logmesg(lmp, "  Input: {} | Shape: {}", key, shape_str);
+        
+        auto dtype = TF_TensorType(t.get_tensor().get());
+        int num = std::min((int)TF_TensorElementCount(t.get_tensor().get()), 21);
+        if (dtype == TF_DOUBLE) {
+            const double *data = static_cast<double *>(TF_TensorData(t.get_tensor().get()));
+            for (int k = 0; k < num; k++) {
+                utils::logmesg(lmp, " {:8.4f}", data[k]);
+                if ((k + 1) % 7 == 0) utils::logmesg(lmp, "\n");
+            }
+            if (num % 7 != 0) utils::logmesg(lmp, "\n");
+        } else if (dtype == TF_INT32) {
+            const int32_t *data = static_cast<int32_t *>(TF_TensorData(t.get_tensor().get()));
+            for (int k = 0; k < num; k++) {
+                utils::logmesg(lmp, " {}", data[k]);
+                if ((k + 1) % 7 == 0) utils::logmesg(lmp, "\n");
+            }
+            if (num % 7 != 0) utils::logmesg(lmp, "\n");
+        }
+    }
+}
+
+
+
+void *PairGRACE2LayerParallel::extract(const char *str, int &dim) {
+    dim = 2; if (strcmp(str, "scale") == 0) return (void *) scale; return nullptr;
+}
+
+#endif
