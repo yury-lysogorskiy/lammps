@@ -462,7 +462,11 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
         }
     }
 
-    // Final force tally (using atom->map for ghost-to-parent lookup)
+    // Final force tally
+    // For ghosts:
+    //   - Same-proc PBC ghosts: atom->map(tag) returns local index, use it
+    //   - Cross-proc ghosts: atom->map(tag) returns -1, apply to ghost f[j]
+    //     and LAMMPS reverse_comm will communicate forces back to owner
     double **f = atom->f;
     double **ax = atom->x;
     int newton_pair = force->newton_pair;
@@ -472,9 +476,15 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
         int j = aceimpl->ind_j[k];
         int j_orig = j;  // Keep original for virial
         
-        // Map ghost j to its parent local atom using LAMMPS atom map
+        // Try to map ghost j to its parent local atom
         if (j >= nlocal) {
-            j = atom->map(atom->tag[j]);
+            int j_local = atom->map(atom->tag[j]);
+            if (j_local >= 0 && j_local < nlocal) {
+                // Same-proc PBC ghost: use the local parent atom
+                j = j_local;
+            }
+            // Else: cross-proc ghost, keep j as is and apply to ghost atom
+            // LAMMPS reverse_comm will communicate the force back to owner
         }
         
         double sc = scale[type[i]][type[i]];
@@ -482,9 +492,7 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
         double fy = sc * aceimpl->grad_bond_vector[3 * k + 1];
         double fz = sc * aceimpl->grad_bond_vector[3 * k + 2];
         f[i][0] += fx; f[i][1] += fy; f[i][2] += fz;
-        if (j >= 0 && j < nlocal) {
-            f[j][0] -= fx; f[j][1] -= fy; f[j][2] -= fz;
-        }
+        f[j][0] -= fx; f[j][1] -= fy; f[j][2] -= fz;
         if (evflag) {
             double dx = -aceimpl->bond_vector[3*k+0];
             double dy = -aceimpl->bond_vector[3*k+1];
@@ -492,6 +500,7 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
             ev_tally_xyz(i, j_orig, nlocal, newton_pair, 0.0, 0.0, fx, fy, fz, dx, dy, dz);
         }
     }
+
 
 
     if (vflag_fdotr) virial_fdotr_compute();
