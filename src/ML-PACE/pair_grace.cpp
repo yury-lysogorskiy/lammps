@@ -65,6 +65,7 @@ PairGRACE::PairGRACE(LAMMPS *lmp) : Pair(lmp) {
 
     chunksize = 4096;
 
+    total_timer.init();
     data_timer.init();
     tp_timer.init();
 
@@ -424,6 +425,7 @@ void *PairGRACE::extract(const char *str, int &dim) {
   Method name is: tensorflow/serving/predict
  */
 void PairGRACE::compute(int eflag, int vflag) {
+    total_timer.start();
     int i, j, ii, jj, inum, jnum;
     double delx, dely, delz, evdwl;
     double fij[3];
@@ -840,7 +842,20 @@ void PairGRACE::compute(int eflag, int vflag) {
 
 
     data_timer.stop();
-    // end modifications YL
+    total_timer.stop();
+
+    if (comm->me == 0) {
+        double d_t = data_timer.as_microseconds();
+        double tp_t = tp_timer.as_microseconds();
+        double total_t = total_timer.as_microseconds();
+
+        auto pct = [&](double t) { return (total_t > 0) ? (t / total_t * 100.0) : 0.0; };
+
+        utils::logmesg(lmp, "[GRACE-PROFILE] Timings (mcs): Data: {:.1f} ({:.1f}%) | TP: {:.1f} ({:.1f}%) | Total: {:.1f}\n",
+                       d_t, pct(d_t), tp_t, pct(tp_t), total_t);
+        utils::logmesg(lmp, "[GRACE-PROFILE] Array sizes: Atoms: {} (padded: {}) | Neighbors: {} (padded: {})\n",
+                       nlocal, tot_atoms, n_real_neighbours, tot_neighbours);
+    }
 }
 
 #endif //#ifndef NO_GRACE_TF

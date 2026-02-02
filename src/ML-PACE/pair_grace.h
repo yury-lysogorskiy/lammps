@@ -86,6 +86,7 @@ class PairGRACE : public Pair {
   std::map<std::string, int> elements_to_index_map;
   std::vector<int> element_type_mapping; // LAMMPS's type(1,2,3...) to ACE's mu(0,1,2...,89)
 
+  PACE::ACETimer total_timer;
   PACE::ACETimer data_timer;
   PACE::ACETimer tp_timer;
 };

@@ -136,8 +136,13 @@ PairGRACE2LayerParallel::PairGRACE2LayerParallel(LAMMPS *lmp) : Pair(lmp) {
     aceimpl = new GRACE2LayerImpl;
     scale = nullptr;
     
+    total_timer.init();
     data_timer.init();
     tp_timer.init();
+    comm_timer.init();
+    model1_timer.init();
+    model2_timer.init();
+    model3_timer.init();
 
     no_virial_fdotr_compute = 1;
 
@@ -317,6 +322,8 @@ double PairGRACE2LayerParallel::init_one(int i, int j) {
 }
 
 void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
+    total_timer.start();
+    data_timer.start();
     ev_init(eflag, vflag);
 
     int nlocal = atom->nlocal;
@@ -336,7 +343,7 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     int *type = atom->type;
     double cutoff_sq = cutoff * cutoff;
 
-    for (int ii = 0; ii < inum; ii++) {
+    for (int ii = 0; ii < nlocal; ii++) {
         int i = ilist[ii];
         int type_i = type[i];
         double xtmp = x[i][0];
@@ -379,7 +386,7 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     for (int i = 0; i < nall; i++) aceimpl->atomic_mu_i[i] = element_type_mapping[type[i]];
     
     int tot_ind = 0;
-    for (int ii = 0; ii < inum; ii++) {
+    for (int ii = 0; ii < nlocal; ii++) {
         int i = ilist[ii];
         int type_i = type[i];
         double xtmp = x[i][0]; double ytmp = x[i][1]; double ztmp = x[i][2];
@@ -412,11 +419,24 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
         aceimpl->mu_i[k] = aceimpl->mu_j[k] = 0;
     }
 
+    data_timer.stop();
+    model1_timer.start();
     run_forward_layer_1();
+    model1_timer.stop();
+
+    comm_timer.start();
     comm->forward_comm(this);
+    comm_timer.stop();
+
+    model2_timer.start();
     run_backward_layer_2(eflag, vflag);
+    model2_timer.stop();
+
+    comm_timer.start();
     comm->reverse_comm(this);
+    comm_timer.stop();
     
+    data_timer.start();
     // Zero ghost gradients after reverse_comm has accumulated them to parents
     // This ensures ghosts don't contribute again in backward_layer_1
     for (int i = atom->nlocal; i < aceimpl->tot_atoms; i++) {
@@ -424,7 +444,11 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
         std::fill_n(&grad_I_out_LN[i * FEAT_I_OUT_LN_SIZE], FEAT_I_OUT_LN_SIZE, 0.0);
     }
     
+    data_timer.stop();
+    model3_timer.start();
     run_backward_layer_1();
+    model3_timer.stop();
+    data_timer.start();
 
     
 #ifdef GRACE_DEBUG
@@ -536,6 +560,25 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
 
 
     if (vflag_fdotr) virial_fdotr_compute();
+    data_timer.stop();
+    total_timer.stop();
+
+    if (comm->me == 0) {
+        double d_t = data_timer.as_microseconds();
+        double c_t = comm_timer.as_microseconds();
+        double m1_t = model1_timer.as_microseconds();
+        double m2_t = model2_timer.as_microseconds();
+        double m3_t = model3_timer.as_microseconds();
+        double total_t = total_timer.as_microseconds();
+
+        auto pct = [&](double t) { return (total_t > 0) ? (t / total_t * 100.0) : 0.0; };
+
+        utils::logmesg(lmp, "[GRACE-PROFILE] Timings (mcs): Data: {:.1f} ({:.1f}%) | Comm: {:.1f} ({:.1f}%) | M1: {:.1f} ({:.1f}%) | M2: {:.1f} ({:.1f}%) | M3: {:.1f} ({:.1f}%) | Total: {:.1f}\n",
+                       d_t, pct(d_t), c_t, pct(c_t), m1_t, pct(m1_t), m2_t, pct(m2_t), m3_t, pct(m3_t), total_t);
+        
+        utils::logmesg(lmp, "[GRACE-PROFILE] Array sizes: Atoms: {} (padded: {}) | Neighbors: {} (padded: {})\n",
+                       nall, aceimpl->tot_atoms, aceimpl->nlocal_bonds, aceimpl->tot_neighbours);
+    }
 }
 
 int PairGRACE2LayerParallel::pack_forward_comm(int n, int *list, double *buf, int pbc_flag, int *pbc) {
