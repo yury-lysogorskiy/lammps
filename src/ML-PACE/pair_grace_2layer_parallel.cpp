@@ -1,4 +1,5 @@
 #ifndef NO_GRACE_TF
+// #define GRACE_DEBUG
 
 #include "pair_grace_2layer_parallel.h"
 
@@ -284,6 +285,7 @@ void PairGRACE2LayerParallel::coeff(int narg, char **arg) {
     }
 
     if (comm->me == 0) {
+#ifdef GRACE_DEBUG
         utils::logmesg(lmp, "[GRACE-DEBUG] Available signatures:\n");
         for (auto const& [name, sig] : aceimpl->model->signatures) {
             utils::logmesg(lmp, "  Signature: {}\n", name);
@@ -292,6 +294,7 @@ void PairGRACE2LayerParallel::coeff(int narg, char **arg) {
             utils::logmesg(lmp, "    Outputs:\n");
             for (auto const& [out_key, out_val] : sig.outputs) utils::logmesg(lmp, "      {} -> {}\n", out_key, out_val.name);
         }
+#endif
     }
 }
 
@@ -320,6 +323,9 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     int nall = nlocal + atom->nghost;
 
     aceimpl->tot_atoms = aceimpl->atom_padding.update(nall);
+    if (comm->me == 0 && pad_verbose && aceimpl->atom_padding.last_update_triggered_resize()) {
+        utils::logmesg(lmp, "[GRACE] Atom padding resize: {} -> {}\n", nall, aceimpl->tot_atoms);
+    }
     
     int n_bonds = 0;
     int inum = list->inum;
@@ -353,6 +359,9 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     }
     aceimpl->nlocal_bonds = n_bonds;
     aceimpl->tot_neighbours = aceimpl->neighbor_padding.update(n_bonds);
+    if (comm->me == 0 && pad_verbose && aceimpl->neighbor_padding.last_update_triggered_resize()) {
+        utils::logmesg(lmp, "[GRACE] Neighbor padding resize: {} -> {}\n", n_bonds, aceimpl->tot_neighbours);
+    }
 
     feature_I.resize(aceimpl->tot_atoms * FEAT_I_SIZE);
     feature_I_out_LN.resize(aceimpl->tot_atoms * FEAT_I_OUT_LN_SIZE);
@@ -418,9 +427,10 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     run_backward_layer_1();
 
     
-    if (comm->me == 0 && pad_verbose) {
+#ifdef GRACE_DEBUG
+    if (comm->me == 0) {
         int n_bonds_print = std::min(aceimpl->nlocal_bonds, 8);
-        utils::logmesg(lmp, "Sum (grad L2 + grad L1):\n");
+        utils::logmesg(lmp, "[GRACE-DEBUG] Sum (grad L2 + grad L1):\n");
         for (int k = 0; k < n_bonds_print; k++) {
             double fx_tot = aceimpl->grad_bond_vector[3 * k + 0];
             double fy_tot = aceimpl->grad_bond_vector[3 * k + 1];
@@ -454,13 +464,14 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
         }
 
         int n_atoms_print = std::min(atom->nlocal, 8);
-        utils::logmesg(lmp, "Computed Atomic Forces from Parallel Grads:\n");
+        utils::logmesg(lmp, "[GRACE-DEBUG] Computed Atomic Forces from Parallel Grads:\n");
         for (int i = 0; i < n_atoms_print; i++) {
             utils::logmesg(lmp, "{}[{:12.8f} {:12.8f} {:12.8f}]{}\n", 
                           (i == 0 ? "[" : " "), f_par[i][0], f_par[i][1], f_par[i][2],
                           (i == n_atoms_print - 1 ? "]" : ""));
         }
     }
+#endif
 
     // Final force tally
     // For ghosts:
@@ -468,7 +479,6 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     //   - Cross-proc ghosts: atom->map(tag) returns -1, apply to ghost f[j]
     //     and LAMMPS reverse_comm will communicate forces back to owner
     double **f = atom->f;
-    double **ax = atom->x;
     int newton_pair = force->newton_pair;
     
     for (int k = 0; k < aceimpl->nlocal_bonds; k++) {
@@ -498,6 +508,28 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
             double dy = -aceimpl->bond_vector[3*k+1];
             double dz = -aceimpl->bond_vector[3*k+2];
             ev_tally_xyz(i, j_orig, nlocal, newton_pair, 0.0, 0.0, fx, fy, fz, dx, dy, dz);
+
+            if (cvflag_atom) {
+                cvatom[i][0] += 0.5 * dx * fx; // xx
+                cvatom[i][1] += 0.5 * dy * fy; // yy
+                cvatom[i][2] += 0.5 * dz * fz; // zz
+                cvatom[i][3] += 0.5 * dx * fy; // xy
+                cvatom[i][4] += 0.5 * dx * fz; // xz
+                cvatom[i][5] += 0.5 * dy * fz; // yz
+                cvatom[i][6] += 0.5 * dy * fx; // yx
+                cvatom[i][7] += 0.5 * dz * fx; // zx
+                cvatom[i][8] += 0.5 * dz * fy; // zy
+
+                cvatom[j][0] += 0.5 * dx * fx; // xx
+                cvatom[j][1] += 0.5 * dy * fy; // yy
+                cvatom[j][2] += 0.5 * dz * fz; // zz
+                cvatom[j][3] += 0.5 * dx * fy; // xy
+                cvatom[j][4] += 0.5 * dx * fz; // xz
+                cvatom[j][5] += 0.5 * dy * fz; // yz
+                cvatom[j][6] += 0.5 * dy * fx; // yx
+                cvatom[j][7] += 0.5 * dz * fx; // zx
+                cvatom[j][8] += 0.5 * dz * fy; // zy
+            }
         }
     }
 
@@ -546,7 +578,9 @@ void PairGRACE2LayerParallel::unpack_reverse_comm(int n, int *list, double *buf)
 
 
 void PairGRACE2LayerParallel::run_forward_layer_1() {
+#ifdef GRACE_DEBUG
     if (comm->me == 0) utils::logmesg(lmp, "[GRACE-DEBUG] Entering run_forward_layer_1\n");
+#endif
     auto sig = aceimpl->model->signatures.at(forward_layer_1_name);
     std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
     
@@ -566,7 +600,9 @@ void PairGRACE2LayerParallel::run_forward_layer_1() {
     add_input("bond_vector", cppflow::tensor(aceimpl->bond_vector, {aceimpl->tot_neighbours, 3}));
     add_input("batch_tot_nat_real", cppflow::tensor(std::vector<int32_t>{atom->nlocal}, {}));
 
-    if (comm->me == 0 && pad_verbose) print_tensors(forward_layer_1_name, inputs);
+#ifdef GRACE_DEBUG
+    if (comm->me == 0) print_tensors(forward_layer_1_name, inputs);
+#endif
     
     std::vector<std::string> out_names;
     if (sig.outputs.count(I_KEY)) out_names.push_back(sig.outputs.at(I_KEY).name);
@@ -577,11 +613,13 @@ void PairGRACE2LayerParallel::run_forward_layer_1() {
 
     auto outputs = aceimpl->model->operator()(inputs, out_names);
     
-    if (comm->me == 0 && pad_verbose) {
+#ifdef GRACE_DEBUG
+    if (comm->me == 0) {
         std::vector<std::tuple<std::string, cppflow::tensor>> out_tensors;
         for (size_t i=0; i<outputs.size(); ++i) out_tensors.push_back({out_names[i], outputs[i]});
         print_tensors(forward_layer_1_name, out_tensors, "Output");
     }
+#endif
     
     auto I_tens = outputs[0].get_tensor();
     const double *I_data = static_cast<double *>(TF_TensorData(I_tens.get()));
@@ -593,7 +631,9 @@ void PairGRACE2LayerParallel::run_forward_layer_1() {
 }
 
 void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
+#ifdef GRACE_DEBUG
     if (comm->me == 0) utils::logmesg(lmp, "[GRACE-DEBUG] Entering run_backward_layer_2\n");
+#endif
     auto sig = aceimpl->model->signatures.at(backward_layer_2_name);
     std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
 
@@ -615,7 +655,9 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
     add_input(I_KEY, cppflow::tensor(feature_I, {aceimpl->tot_atoms, 32, 16}));
     add_input(I_LN_KEY, cppflow::tensor(feature_I_out_LN, {aceimpl->tot_atoms, 17, 1}));
 
-    if (comm->me == 0 && pad_verbose) print_tensors(backward_layer_2_name, inputs);
+#ifdef GRACE_DEBUG
+    if (comm->me == 0) print_tensors(backward_layer_2_name, inputs);
+#endif
     
     std::vector<std::string> out_names;
     std::vector<std::string> keys = {ENERGY_KEY, GRAD_I_KEY, GRAD_I_LN_KEY, GRAD_BOND_KEY};
@@ -626,11 +668,13 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
     
     auto outputs = aceimpl->model->operator()(inputs, out_names);
 
-    if (comm->me == 0 && pad_verbose) {
+#ifdef GRACE_DEBUG
+    if (comm->me == 0) {
         std::vector<std::tuple<std::string, cppflow::tensor>> out_tensors;
         for (size_t i=0; i<outputs.size(); ++i) out_tensors.push_back({out_names[i], outputs[i]});
         print_tensors(backward_layer_2_name, out_tensors, "Output");
     }
+#endif
 
     auto e_tens = outputs[0].get_tensor();
     const double *e_data = static_cast<double *>(TF_TensorData(e_tens.get()));
@@ -660,7 +704,9 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
 }
 
 void PairGRACE2LayerParallel::run_backward_layer_1() {
+#ifdef GRACE_DEBUG
     if (comm->me == 0) utils::logmesg(lmp, "[GRACE-DEBUG] Entering run_backward_layer_1\n");
+#endif
     auto sig = aceimpl->model->signatures.at(backward_layer_1_name);
     std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
     
@@ -682,7 +728,9 @@ void PairGRACE2LayerParallel::run_backward_layer_1() {
     add_input(GRAD_I_KEY, cppflow::tensor(grad_I, {aceimpl->tot_atoms, 32, 16}));
     add_input(GRAD_I_LN_KEY, cppflow::tensor(grad_I_out_LN, {aceimpl->tot_atoms, 17, 1}));
 
-    if (comm->me == 0 && pad_verbose) print_tensors(backward_layer_1_name, inputs);
+#ifdef GRACE_DEBUG
+    if (comm->me == 0) print_tensors(backward_layer_1_name, inputs);
+#endif
 
     std::vector<std::string> out_names;
     if (sig.outputs.count(GRAD_BOND_KEY)) out_names.push_back(sig.outputs.at(GRAD_BOND_KEY).name);
@@ -690,11 +738,13 @@ void PairGRACE2LayerParallel::run_backward_layer_1() {
 
     auto outputs = aceimpl->model->operator()(inputs, out_names);
 
-    if (comm->me == 0 && pad_verbose) {
+#ifdef GRACE_DEBUG
+    if (comm->me == 0) {
         std::vector<std::tuple<std::string, cppflow::tensor>> out_tensors;
         for (size_t i=0; i<outputs.size(); ++i) out_tensors.push_back({out_names[i], outputs[i]});
         print_tensors(backward_layer_1_name, out_tensors, "Output");
     }
+#endif
     
     auto gf_tens = outputs[0].get_tensor();
     const double *gf_data = static_cast<double *>(TF_TensorData(gf_tens.get()));
@@ -704,7 +754,9 @@ void PairGRACE2LayerParallel::run_backward_layer_1() {
 }
 
 void PairGRACE2LayerParallel::print_tensors(const std::string& name, const std::vector<std::tuple<std::string, cppflow::tensor>>& tensors, const std::string& type_prefix) {
+#ifdef GRACE_DEBUG
     if (type_prefix == "Input") utils::logmesg(lmp, "[GRACE-DEBUG] Calling model in {}\n", name);
+#endif
     for (const auto& tensor : tensors) {
         const auto& key = std::get<0>(tensor);
         const auto& t = std::get<1>(tensor);
