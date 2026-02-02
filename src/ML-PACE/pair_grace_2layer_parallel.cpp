@@ -357,6 +357,7 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     aceimpl->ind_i.resize(aceimpl->tot_neighbours);
     aceimpl->ind_j.resize(aceimpl->tot_neighbours);
     aceimpl->bond_vector.resize(3 * aceimpl->tot_neighbours, 1e6);
+    grad_bv_L2.resize(3 * aceimpl->tot_neighbours);
     aceimpl->atomic_mu_i.assign(aceimpl->tot_atoms, element_type_mapping[type[0]]);
 
     for (int i = 0; i < nall; i++) aceimpl->atomic_mu_i[i] = element_type_mapping[type[i]];
@@ -400,6 +401,43 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     run_backward_layer_2(eflag, vflag);
     comm->reverse_comm(this);
     run_backward_layer_1();
+    
+    if (comm->me == 0 && pad_verbose) {
+        int n_bonds_print = std::min(aceimpl->nlocal_bonds, 8);
+        utils::logmesg(lmp, "Sum (grad L2 + grad L1):\n");
+        for (int k = 0; k < n_bonds_print; k++) {
+            double fx_tot = aceimpl->grad_bond_vector[3 * k + 0];
+            double fy_tot = aceimpl->grad_bond_vector[3 * k + 1];
+            double fz_tot = aceimpl->grad_bond_vector[3 * k + 2];
+            utils::logmesg(lmp, "{}[{:12.8f} {:12.8f} {:12.8f}]{}\n", 
+                          (k == 0 ? "[" : " "), fx_tot, fy_tot, fz_tot, 
+                          (k == n_bonds_print - 1 ? "]" : ""));
+        }
+        
+        // Tally forces for debug printing
+        std::vector<std::vector<double>> f_par(atom->nlocal, std::vector<double>(3, 0.0));
+        for (int k = 0; k < aceimpl->nlocal_bonds; k++) {
+            int i = aceimpl->ind_i[k];
+            int j = aceimpl->ind_j[k];
+            double sc = scale[type[i]][type[i]];
+            double fx = sc * aceimpl->grad_bond_vector[3 * k + 0];
+            double fy = sc * aceimpl->grad_bond_vector[3 * k + 1];
+            double fz = sc * aceimpl->grad_bond_vector[3 * k + 2];
+            if (i < atom->nlocal) {
+                f_par[i][0] += fx; f_par[i][1] += fy; f_par[i][2] += fz;
+            }
+            if (j < atom->nlocal) {
+                f_par[j][0] -= fx; f_par[j][1] -= fy; f_par[j][2] -= fz;
+            }
+        }
+        int n_atoms_print = std::min(atom->nlocal, 8);
+        utils::logmesg(lmp, "Computed Atomic Forces from Parallel Grads:\n");
+        for (int i = 0; i < n_atoms_print; i++) {
+            utils::logmesg(lmp, "{}[{:12.8f} {:12.8f} {:12.8f}]{}\n", 
+                          (i == 0 ? "[" : " "), f_par[i][0], f_par[i][1], f_par[i][2],
+                          (i == n_atoms_print - 1 ? "]" : ""));
+        }
+    }
 
     // Final force tally
     double **f = atom->f;
@@ -408,9 +446,10 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     for (int k = 0; k < aceimpl->nlocal_bonds; k++) {
         int i = aceimpl->ind_i[k];
         int j = aceimpl->ind_j[k];
-        double fx = scale[type[i]][type[i]] * aceimpl->grad_bond_vector[3 * k + 0];
-        double fy = scale[type[i]][type[i]] * aceimpl->grad_bond_vector[3 * k + 1];
-        double fz = scale[type[i]][type[i]] * aceimpl->grad_bond_vector[3 * k + 2];
+        double sc = scale[type[i]][type[i]];
+        double fx = sc * aceimpl->grad_bond_vector[3 * k + 0];
+        double fy = sc * aceimpl->grad_bond_vector[3 * k + 1];
+        double fz = sc * aceimpl->grad_bond_vector[3 * k + 2];
         f[i][0] += fx; f[i][1] += fy; f[i][2] += fz;
         f[j][0] -= fx; f[j][1] -= fy; f[j][2] -= fz;
         if (evflag) {
@@ -492,6 +531,12 @@ void PairGRACE2LayerParallel::run_forward_layer_1() {
 
     auto outputs = aceimpl->model->operator()(inputs, out_names);
     
+    if (comm->me == 0 && pad_verbose) {
+        std::vector<std::tuple<std::string, cppflow::tensor>> out_tensors;
+        for (size_t i=0; i<outputs.size(); ++i) out_tensors.push_back({out_names[i], outputs[i]});
+        print_tensors(forward_layer_1_name, out_tensors, "Output");
+    }
+    
     auto I_tens = outputs[0].get_tensor();
     const double *I_data = static_cast<double *>(TF_TensorData(I_tens.get()));
     std::copy_n(I_data, atom->nlocal * FEAT_I_SIZE, &feature_I[0]);
@@ -535,6 +580,12 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
     
     auto outputs = aceimpl->model->operator()(inputs, out_names);
 
+    if (comm->me == 0 && pad_verbose) {
+        std::vector<std::tuple<std::string, cppflow::tensor>> out_tensors;
+        for (size_t i=0; i<outputs.size(); ++i) out_tensors.push_back({out_names[i], outputs[i]});
+        print_tensors(backward_layer_2_name, out_tensors, "Output");
+    }
+
     auto e_tens = outputs[0].get_tensor();
     const double *e_data = static_cast<double *>(TF_TensorData(e_tens.get()));
     if (eflag_either) {
@@ -546,9 +597,9 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
     const double *gI_data = static_cast<double *>(TF_TensorData(gI_tens.get()));
     std::copy_n(gI_data, aceimpl->tot_atoms * FEAT_I_SIZE, &grad_I[0]);
 
-    // Zero out ghost gradients for I
-    int nlocal = atom->nlocal;
-    for (int i = nlocal; i < aceimpl->tot_atoms; i++) {
+    // Zero out ghost gradients to prevent double counting of energy contributions 
+    // from periodic images/ghosts during reverse_comm accumulation.
+    for (int i = atom->nlocal; i < aceimpl->tot_atoms; i++) {
         std::fill_n(&grad_I[i * FEAT_I_SIZE], FEAT_I_SIZE, 0.0);
     }
 
@@ -556,8 +607,7 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
     const double *gLN_data = static_cast<double *>(TF_TensorData(gLN_tens.get()));
     std::copy_n(gLN_data, aceimpl->tot_atoms * FEAT_I_OUT_LN_SIZE, &grad_I_out_LN[0]);
 
-     // Zero out ghost gradients for I_out_LN
-    for (int i = nlocal; i < aceimpl->tot_atoms; i++) {
+    for (int i = atom->nlocal; i < aceimpl->tot_atoms; i++) {
         std::fill_n(&grad_I_out_LN[i * FEAT_I_OUT_LN_SIZE], FEAT_I_OUT_LN_SIZE, 0.0);
     }
 
@@ -566,6 +616,7 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
 
     aceimpl->grad_bond_vector.resize(3 * aceimpl->tot_neighbours);
     std::copy_n(gf_data, aceimpl->tot_neighbours * 3, aceimpl->grad_bond_vector.data());
+    grad_bv_L2 = aceimpl->grad_bond_vector;
 }
 
 void PairGRACE2LayerParallel::run_backward_layer_1() {
@@ -598,6 +649,12 @@ void PairGRACE2LayerParallel::run_backward_layer_1() {
     else error->all(FLERR, "[GRACE-ERROR] Key '{}' not found in signature '{}' outputs", GRAD_BOND_KEY, backward_layer_1_name);
 
     auto outputs = aceimpl->model->operator()(inputs, out_names);
+
+    if (comm->me == 0 && pad_verbose) {
+        std::vector<std::tuple<std::string, cppflow::tensor>> out_tensors;
+        for (size_t i=0; i<outputs.size(); ++i) out_tensors.push_back({out_names[i], outputs[i]});
+        print_tensors(backward_layer_1_name, out_tensors, "Output");
+    }
     
     auto gf_tens = outputs[0].get_tensor();
     const double *gf_data = static_cast<double *>(TF_TensorData(gf_tens.get()));
@@ -606,33 +663,53 @@ void PairGRACE2LayerParallel::run_backward_layer_1() {
         aceimpl->grad_bond_vector[k] += gf_data[k];
 }
 
-void PairGRACE2LayerParallel::print_tensors(const std::string& name, const std::vector<std::tuple<std::string, cppflow::tensor>>& inputs) {
-    utils::logmesg(lmp, "[GRACE-DEBUG] Calling model in {}\n", name);
-    for (const auto& input : inputs) {
-        const auto& key = std::get<0>(input);
-        const auto& t = std::get<1>(input);
+void PairGRACE2LayerParallel::print_tensors(const std::string& name, const std::vector<std::tuple<std::string, cppflow::tensor>>& tensors, const std::string& type_prefix) {
+    if (type_prefix == "Input") utils::logmesg(lmp, "[GRACE-DEBUG] Calling model in {}\n", name);
+    for (const auto& tensor : tensors) {
+        const auto& key = std::get<0>(tensor);
+        const auto& t = std::get<1>(tensor);
         auto shape = t.shape().template get_data<int64_t>();
         std::string shape_str = "[";
         for (size_t i = 0; i < shape.size(); ++i) shape_str += std::to_string(shape[i]) + (i == shape.size() - 1 ? "" : ", ");
         shape_str += "]";
-        utils::logmesg(lmp, "  Input: {} | Shape: {}", key, shape_str);
+        utils::logmesg(lmp, "  {}: {} | Shape: {}\n", type_prefix, key, shape_str);
         
         auto dtype = TF_TensorType(t.get_tensor().get());
-        int num = std::min((int)TF_TensorElementCount(t.get_tensor().get()), 21);
-        if (dtype == TF_DOUBLE) {
-            const double *data = static_cast<double *>(TF_TensorData(t.get_tensor().get()));
-            for (int k = 0; k < num; k++) {
-                utils::logmesg(lmp, " {:8.4f}", data[k]);
-                if ((k + 1) % 7 == 0) utils::logmesg(lmp, "\n");
+        int total_elements = (int)TF_TensorElementCount(t.get_tensor().get());
+        
+        if (shape.size() >= 1) {
+            int n_atoms_to_print = std::min((int)shape[0], 8);
+            int elements_per_atom = total_elements / (int)shape[0];
+            int n_elements_to_print = std::min(elements_per_atom, 8);
+            
+            if (dtype == TF_DOUBLE) {
+                const double *data = static_cast<double *>(TF_TensorData(t.get_tensor().get()));
+                for (int i = 0; i < n_atoms_to_print; i++) {
+                    utils::logmesg(lmp, "    Atom {}:", i);
+                    for (int k = 0; k < n_elements_to_print; k++) {
+                        utils::logmesg(lmp, " {:8.4f}", data[i * elements_per_atom + k]);
+                    }
+                    utils::logmesg(lmp, "\n");
+                }
+            } else if (dtype == TF_INT32) {
+                const int32_t *data = static_cast<int32_t *>(TF_TensorData(t.get_tensor().get()));
+                for (int i = 0; i < n_atoms_to_print; i++) {
+                    utils::logmesg(lmp, "    Atom {}:", i);
+                    for (int k = 0; k < n_elements_to_print; k++) {
+                        utils::logmesg(lmp, " {}", data[i * elements_per_atom + k]);
+                    }
+                    utils::logmesg(lmp, "\n");
+                }
             }
-            if (num % 7 != 0) utils::logmesg(lmp, "\n");
-        } else if (dtype == TF_INT32) {
-            const int32_t *data = static_cast<int32_t *>(TF_TensorData(t.get_tensor().get()));
-            for (int k = 0; k < num; k++) {
-                utils::logmesg(lmp, " {}", data[k]);
-                if ((k + 1) % 7 == 0) utils::logmesg(lmp, "\n");
-            }
-            if (num % 7 != 0) utils::logmesg(lmp, "\n");
+        } else {
+            // Scalar
+             if (dtype == TF_INT32) {
+                const int32_t *data = static_cast<int32_t *>(TF_TensorData(t.get_tensor().get()));
+                utils::logmesg(lmp, "    Value: {}\n", data[0]);
+             } else if (dtype == TF_DOUBLE) {
+                const double *data = static_cast<double *>(TF_TensorData(t.get_tensor().get()));
+                utils::logmesg(lmp, "    Value: {:8.4f}\n", data[0]);
+             }
         }
     }
 }

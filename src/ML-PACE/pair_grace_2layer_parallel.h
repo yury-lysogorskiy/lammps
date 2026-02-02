@@ -92,6 +92,7 @@ class PairGRACE2LayerParallel : public Pair {
   std::vector<double> feature_I_out_LN;
   std::vector<double> grad_I;
   std::vector<double> grad_I_out_LN;
+  std::vector<double> grad_bv_L2;
 
   PACE::ACETimer data_timer;
   PACE::ACETimer tp_timer;
@@ -101,7 +102,7 @@ class PairGRACE2LayerParallel : public Pair {
   void run_backward_layer_2(int eflag, int vflag);
   void run_backward_layer_1();
 
-  void print_tensors(const std::string& name, const std::vector<std::tuple<std::string, cppflow::tensor>>& inputs);
+  void print_tensors(const std::string& name, const std::vector<std::tuple<std::string, cppflow::tensor>>& tensors, const std::string& type_prefix = "Input");
 
 };
 
