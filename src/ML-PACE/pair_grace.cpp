@@ -425,6 +425,11 @@ void *PairGRACE::extract(const char *str, int &dim) {
   Method name is: tensorflow/serving/predict
  */
 void PairGRACE::compute(int eflag, int vflag) {
+
+    total_timer.init();
+    data_timer.init();
+    tp_timer.init();
+
     total_timer.start();
     int i, j, ii, jj, inum, jnum;
     double delx, dely, delz, evdwl;

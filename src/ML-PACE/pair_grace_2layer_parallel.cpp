@@ -1,6 +1,6 @@
 #ifndef NO_GRACE_TF
 // #define GRACE_DEBUG
-// #define GRACE_PROFILE
+#define GRACE_PROFILE
 
 #include "pair_grace_2layer_parallel.h"
 
@@ -323,6 +323,15 @@ double PairGRACE2LayerParallel::init_one(int i, int j) {
 }
 
 void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
+
+    total_timer.init();
+    data_timer.init();
+    tp_timer.init();
+    comm_timer.init();
+    model1_timer.init();
+    model2_timer.init();
+    model3_timer.init();
+
     total_timer.start();
     data_timer.start();
     ev_init(eflag, vflag);
