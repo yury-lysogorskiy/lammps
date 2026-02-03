@@ -1,5 +1,6 @@
 #ifndef NO_GRACE_TF
 // #define GRACE_DEBUG
+// #define GRACE_PROFILE
 
 #include "pair_grace_2layer_parallel.h"
 
@@ -563,7 +564,9 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     data_timer.stop();
     total_timer.stop();
 
-    if (comm->me == 0) {
+#ifdef GRACE_PROFILE
+    // if (comm->me == 0) { // PRINT FOR ALL RANKS
+    {
         double d_t = data_timer.as_microseconds();
         double c_t = comm_timer.as_microseconds();
         double m1_t = model1_timer.as_microseconds();
@@ -573,12 +576,14 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
 
         auto pct = [&](double t) { return (total_t > 0) ? (t / total_t * 100.0) : 0.0; };
 
-        utils::logmesg(lmp, "[GRACE-PROFILE] Timings (mcs): Data: {:.1f} ({:.1f}%) | Comm: {:.1f} ({:.1f}%) | M1: {:.1f} ({:.1f}%) | M2: {:.1f} ({:.1f}%) | M3: {:.1f} ({:.1f}%) | Total: {:.1f}\n",
-                       d_t, pct(d_t), c_t, pct(c_t), m1_t, pct(m1_t), m2_t, pct(m2_t), m3_t, pct(m3_t), total_t);
+        // Use fprintf to stderr to ensure immediate output from all ranks
+        fprintf(stderr, "[GRACE-PROFILE] [Rank %d] Timings (mcs): Data: %.1f (%.1f%%) | Comm: %.1f (%.1f%%) | M1: %.1f (%.1f%%) | M2: %.1f (%.1f%%) | M3: %.1f (%.1f%%) | Total: %.1f\n",
+                comm->me, d_t, pct(d_t), c_t, pct(c_t), m1_t, pct(m1_t), m2_t, pct(m2_t), m3_t, pct(m3_t), total_t);
         
-        utils::logmesg(lmp, "[GRACE-PROFILE] Array sizes: Atoms: {} (padded: {}) | Neighbors: {} (padded: {})\n",
-                       nall, aceimpl->tot_atoms, aceimpl->nlocal_bonds, aceimpl->tot_neighbours);
+        fprintf(stderr, "[GRACE-PROFILE] [Rank %d] Array sizes: Atoms: %d (padded: %d) | Neighbors: %d (padded: %d)\n",
+                comm->me, nall, aceimpl->tot_atoms, aceimpl->nlocal_bonds, aceimpl->tot_neighbours);
     }
+#endif
 }
 
 int PairGRACE2LayerParallel::pack_forward_comm(int n, int *list, double *buf, int pbc_flag, int *pbc) {
