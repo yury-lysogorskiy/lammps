@@ -740,9 +740,15 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
              // Copy f_ij
              auto h_fij = Kokkos::create_mirror_view(f_ij);
              Kokkos::deep_copy(h_fij, f_ij);
-             fprintf(stderr, "DEBUG_KOKKOS: forces:\n");
-             for (int jj = 0; jj < ncount; jj++) {
-                 fprintf(stderr, "DEBUG_KOKKOS: force[%d] = %20.12e %20.12e %20.12e\n", jj, h_fij(ii, jj, 0), h_fij(ii, jj, 1), h_fij(ii, jj, 2));
+             fprintf(stderr, "DEBUG_KOKKOS: forces for all atoms:\n");
+             for (int ii_dbg = 0; ii_dbg < chunk_size && ii_dbg < 2; ii_dbg++) {
+                 auto h_ncount = Kokkos::create_mirror_view(d_ncount);
+                 Kokkos::deep_copy(h_ncount, d_ncount);
+                 int nc = h_ncount(ii_dbg);
+                 for (int jj = 0; jj < nc; jj++) {
+                     fprintf(stderr, "DEBUG_KOKKOS: f_ij[ii=%d][jj=%d] = %20.12e %20.12e %20.12e\n", 
+                             ii_dbg, jj, h_fij(ii_dbg, jj, 0), h_fij(ii_dbg, jj, 1), h_fij(ii_dbg, jj, 2));
+                 }
              }
     }
 
@@ -916,6 +922,12 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeAi, const t
   const KK_FLOAT rx = d_rhats(ii, jj, 0);
   const KK_FLOAT ry = d_rhats(ii, jj, 1);
   const KK_FLOAT rz = d_rhats(ii, jj, 2);
+
+  // DEBUG: print rhat values
+  if (comm->me == 0 && chunk_offset == 0 && ii == 0) {
+      fprintf(stderr, "DEBUG_KOKKOS: ii=%d jj=%d rhat=(%g, %g, %g) r_norm=%g\n",
+              ii, jj, rx, ry, rz, d_rnorms(ii, jj));
+  }
 
   static constexpr KK_FLOAT sq2 = 1.4142135623730950488;
 
@@ -1192,7 +1204,7 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeDerivative,
   const KK_FLOAT rx = d_rhats(ii, jj, 0);
   const KK_FLOAT ry = d_rhats(ii, jj, 1);
   const KK_FLOAT rz = d_rhats(ii, jj, 2);
-  const KK_FLOAT rinv = d_rnorms(ii, jj);
+  const KK_FLOAT rinv = 1.0 / d_rnorms(ii, jj);  // Fix: rinv should be 1/r, not r
 
   KK_ACC_FLOAT f_ji[3];
   f_ji[0] = f_ji[1] = f_ji[2] = 0.0;
@@ -1280,6 +1292,15 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeDerivative,
               fprintf(stderr, "DEBUG_KOKKOS: l=1,m=0: w=%g R_over_r=%g rx=%g ry=%g rz=%g dplm=%g\n", w, R_over_r, rx, ry, rz, dplm_val);
               fprintf(stderr, "DEBUG_KOKKOS: DY_x=%g DY_y=%g DY_z=%g Y_DR=%g\n", DY_x, DY_y, DY_z, Y_DR);
           }
+          // More detailed debug for n=0
+          if (comm->me == 0 && chunk_offset == 0 && ii == 0 && jj == 0 && n == 0 && l == 0) {
+              KK_FLOAT grad_phi_x = Y_DR * rx + DY_x * R_over_r;
+              KK_FLOAT grad_phi_y = Y_DR * ry + DY_y * R_over_r;
+              KK_FLOAT grad_phi_z = Y_DR * rz + DY_z * R_over_r;
+              fprintf(stderr, "DEBUG_KOKKOS: n=0 l=0 m=0: w=%g R_over_r=%g Y_DR=%g grad_phi=(%g,%g,%g) contrib=(%g,%g,%g)\n", 
+                      w, R_over_r, Y*DR, grad_phi_x, grad_phi_y, grad_phi_z,
+                      w*grad_phi_x, w*grad_phi_y, w*grad_phi_z);
+          }
         }
       }
 
@@ -1303,41 +1324,58 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeDerivative,
         const KK_FLOAT real_Y_pos = sq2 * factor * ylm_re;  // Y(l, +m)
         const KK_FLOAT real_Y_neg = sq2 * factor * ylm_im;  // Y(l, -m)
 
-        // Complex derivatives
-        const KK_FLOAT s2_safe = 1.0 - rz * rz;
-        KK_FLOAT dylm_x_re = 0, dylm_x_im = 0;
-        KK_FLOAT dylm_y_re = 0, dylm_y_im = 0;
-        KK_FLOAT dylm_z_re = 0, dylm_z_im = 0;
-
+        // Complex derivatives - match CPU formula exactly
+        // For m=1: dyx = (plm, 0), dyy = (0, plm)
+        // For m>=2: dyx = m * phase^(m-1) * plm, dyy = i * dyx
+        // dyz = phase^m * dplm for all m>=1
+        
+        KK_FLOAT dyx_re, dyx_im, dyy_re, dyy_im;
         const KK_FLOAT dyz_re = dplm_val * phasem_re;
         const KK_FLOAT dyz_im = dplm_val * phasem_im;
-        const KK_FLOAT rdy_re = dyz_re * rz;
-        const KK_FLOAT rdy_im = dyz_im * rz;
-
-        if (s2_safe > 1e-12) {
-          const KK_FLOAT phi_factor = m_kk * plm_val / s2_safe;
-          dylm_x_re = -rdy_re * rx + phi_factor * phasem_im * ry;
-          dylm_x_im = -rdy_im * rx - phi_factor * phasem_re * ry;
-          dylm_y_re = -rdy_re * ry - phi_factor * phasem_im * rx;
-          dylm_y_im = -rdy_im * ry + phi_factor * phasem_re * rx;
+        
+        if (m == 1) {
+            // m=1: dyx = (plm, 0), dyy = (0, plm)
+            dyx_re = plm_val;
+            dyx_im = 0.0;
+            dyy_re = 0.0;
+            dyy_im = plm_val;
         } else {
-          // Special case for poles (rz=1 or rz=-1).
-          // For m=1, the Cartesian derivatives are non-zero at the poles.
-          // For m=0 or m>1, they are zero at the poles.
-          if (m == 1) {
-            // Limits as theta -> 0 (z->1) for m=1:
-            // Y_11 = plm * (x + iy)  (approx near pole)
-            // dY/dx = plm, dY/dy = i * plm
-            dylm_x_re = plm_val;
-            dylm_x_im = 0.0;
-            dylm_y_re = 0.0;
-            dylm_y_im = plm_val;
-          } else {
-            dylm_x_re = dylm_x_im = dylm_y_re = dylm_y_im = 0.0;
-          }
+            // m>=2: dyx = m * phase^(m-1) * plm, dyy = i * dyx
+            // phasem = phase^m, so phase^(m-1) = phasem / phase
+            // We compute m * phase^(m-1) * plm using: mphasem1 = m * phase^(m-1)
+            // mphasem1_re = (phasem_re * phase_re + phasem_im * phase_im) / |phase|^2 * m
+            // But since |phase|^2 = rx^2 + ry^2 = s2_safe, and we need phase^(m-1):
+            // phase^(m-1) = phasem * conj(phase) / |phase|^2
+            const KK_FLOAT s2 = rx * rx + ry * ry;
+            if (s2 > 1e-12) {
+                const KK_FLOAT inv_s2 = 1.0 / s2;
+                // phase^(m-1) = phasem * conj(phase) / s2
+                const KK_FLOAT pm1_re = (phasem_re * rx + phasem_im * ry) * inv_s2;
+                const KK_FLOAT pm1_im = (phasem_im * rx - phasem_re * ry) * inv_s2;
+                // mphasem1 = m * phase^(m-1) * plm
+                const KK_FLOAT m_plm = m_kk * plm_val;
+                dyx_re = m_plm * pm1_re;
+                dyx_im = m_plm * pm1_im;
+                // dyy = i * dyx = (-dyx_im, dyx_re)
+                dyy_re = -dyx_im;
+                dyy_im = dyx_re;
+            } else {
+                // Pole case: s2 ≈ 0
+                dyx_re = dyx_im = dyy_re = dyy_im = 0.0;
+            }
         }
-        dylm_z_re = dyz_re - rdy_re * rz;
-        dylm_z_im = dyz_im - rdy_im * rz;
+        
+        // rdy = rx * dyx + ry * dyy + rz * dyz (full projection!)
+        const KK_FLOAT rdy_re = rx * dyx_re + ry * dyy_re + rz * dyz_re;
+        const KK_FLOAT rdy_im = rx * dyx_im + ry * dyy_im + rz * dyz_im;
+        
+        // dylm = d? - rdy * r? for each component
+        const KK_FLOAT dylm_x_re = dyx_re - rdy_re * rx;
+        const KK_FLOAT dylm_x_im = dyx_im - rdy_im * rx;
+        const KK_FLOAT dylm_y_re = dyy_re - rdy_re * ry;
+        const KK_FLOAT dylm_y_im = dyy_im - rdy_im * ry;
+        const KK_FLOAT dylm_z_re = dyz_re - rdy_re * rz;
+        const KK_FLOAT dylm_z_im = dyz_im - rdy_im * rz;
 
         // Real DY
         const KK_FLOAT DY_pos_x = sq2 * factor * dylm_x_re;
@@ -1373,8 +1411,17 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeDerivative,
         phasem_re = tmp_re;
         phasem_im = tmp_im;
       }
+      // DEBUG: print accumulated force after each l for n=0
+      if (comm->me == 0 && chunk_offset == 0 && ii == 0 && jj == 0 && n == 0) {
+          fprintf(stderr, "DEBUG_KOKKOS: after n=0 l=%d, accumulated f_ji=(%g, %g, %g)\n", l, f_ji[0], f_ji[1], f_ji[2]);
+      }
     }
-  }
+
+    // DEBUG: print accumulated force after each n
+    if (comm->me == 0 && chunk_offset == 0 && ii == 0 && jj == 0) {
+        fprintf(stderr, "DEBUG_KOKKOS: after n=%d, accumulated f_ji=(%g, %g, %g)\n", n, f_ji[0], f_ji[1], f_ji[2]);
+    }
+  }  // end n loop
 
   f_ij(ii, jj, 0) = f_ji[0];
   f_ij(ii, jj, 1) = f_ji[1];
