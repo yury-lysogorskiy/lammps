@@ -1399,16 +1399,16 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeForce<NEIGH
     const KK_FLOAT fz = f_ij(ii, jj, 2);
 
     if (NEIGHFLAG == HALF) {
-      Kokkos::atomic_add(&f(i, 0), -fx * energy_scale);
-      Kokkos::atomic_add(&f(i, 1), -fy * energy_scale);
-      Kokkos::atomic_add(&f(i, 2), -fz * energy_scale);
-      Kokkos::atomic_add(&f(j, 0), fx * energy_scale);
-      Kokkos::atomic_add(&f(j, 1), fy * energy_scale);
-      Kokkos::atomic_add(&f(j, 2), fz * energy_scale);
+      Kokkos::atomic_add(&f(i, 0), fx * energy_scale);
+      Kokkos::atomic_add(&f(i, 1), fy * energy_scale);
+      Kokkos::atomic_add(&f(i, 2), fz * energy_scale);
+      Kokkos::atomic_add(&f(j, 0), -fx * energy_scale);
+      Kokkos::atomic_add(&f(j, 1), -fy * energy_scale);
+      Kokkos::atomic_add(&f(j, 2), -fz * energy_scale);
     } else {
-      Kokkos::atomic_add(&f(i, 0), -fx * energy_scale);
-      Kokkos::atomic_add(&f(i, 1), -fy * energy_scale);
-      Kokkos::atomic_add(&f(i, 2), -fz * energy_scale);
+      Kokkos::atomic_add(&f(i, 0), fx * energy_scale);
+      Kokkos::atomic_add(&f(i, 1), fy * energy_scale);
+      Kokkos::atomic_add(&f(i, 2), fz * energy_scale);
     }
   }
 }
@@ -1431,17 +1431,17 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeForce<NEIGH
     const KK_FLOAT fz = f_ij(ii, jj, 2);
 
     if (NEIGHFLAG == HALF) {
-      Kokkos::atomic_add(&f(i, 0), -fx * energy_scale);
-      Kokkos::atomic_add(&f(i, 1), -fy * energy_scale);
-      Kokkos::atomic_add(&f(i, 2), -fz * energy_scale);
-      Kokkos::atomic_add(&f(j, 0), fx * energy_scale);
-      Kokkos::atomic_add(&f(j, 1), fy * energy_scale);
-      Kokkos::atomic_add(&f(j, 2), fz * energy_scale);
+      Kokkos::atomic_add(&f(i, 0), fx * energy_scale);
+      Kokkos::atomic_add(&f(i, 1), fy * energy_scale);
+      Kokkos::atomic_add(&f(i, 2), fz * energy_scale);
+      Kokkos::atomic_add(&f(j, 0), -fx * energy_scale);
+      Kokkos::atomic_add(&f(j, 1), -fy * energy_scale);
+      Kokkos::atomic_add(&f(j, 2), -fz * energy_scale);
     } else {
       // FULL neighbor list logic
-      Kokkos::atomic_add(&f(i, 0), -fx * energy_scale);
-      Kokkos::atomic_add(&f(i, 1), -fy * energy_scale);
-      Kokkos::atomic_add(&f(i, 2), -fz * energy_scale);
+      Kokkos::atomic_add(&f(i, 0), fx * energy_scale);
+      Kokkos::atomic_add(&f(i, 1), fy * energy_scale);
+      Kokkos::atomic_add(&f(i, 2), fz * energy_scale);
     }
 
     if (EVFLAG) {
