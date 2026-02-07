@@ -208,19 +208,19 @@ class PairGRACEFSKokkos : public PairGRACEFS {
   typedef typename Kokkos::View<KK_FLOAT*, DeviceType>::HostMirror th_ace_1d;
 
   // GRACE FS specific: A arrays (simplified, no element indexing)
-  t_ace_3c A;          // [natom, (lmax+1)^2, nradmax]
-  t_ace_3c A_sph;      // [natom, idx_sph_max, nradmax]
+  t_ace_3d A;          // [natom, (lmax+1)^2, nradmax]
+  t_ace_3d A_sph;      // [natom, (lmax+1)^2, nradmax]
 
-  t_ace_2c A_list;     // [natom, idx_ms_combs_max * rankmax]
-  t_ace_2c A_forward_prod;
+  t_ace_2d A_list;     // [natom, idx_ms_combs_max * rankmax]
+  t_ace_2d A_forward_prod;
 
-  t_ace_3c weights;     // [natom, idx_sph_max, nradmax]
+  t_ace_3d weights;     // [natom, (lmax+1)^2, nradmax]
 
   t_ace_1d e_atom;
   t_ace_2d rhos;
   t_ace_2d dF_drho;
 
-  t_ace_2c dB_flatten;
+  t_ace_2d dB_flatten;
 
   // radial functions
   t_ace_4d fr;

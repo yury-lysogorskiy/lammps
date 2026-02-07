@@ -609,63 +609,6 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
       Kokkos::parallel_for("ComputeFS",policy_fs,*this);
     }
     
-    Kokkos::fence();
-    
-    // Debug print for first atom in first chunk
-    if (false && comm->me == 0 && chunk_offset == 0) {
-           int ii = 0; 
-           fprintf(stderr, "\nDEBUG_KOKKOS: Chunk 0, Index %d\n", ii);
-           
-           // Copy fr
-           auto h_fr = Kokkos::create_mirror_view(fr);
-           Kokkos::deep_copy(h_fr, fr);
-           auto h_rnorms = Kokkos::create_mirror_view(d_rnorms);
-           Kokkos::deep_copy(h_rnorms, d_rnorms);
-           
-           int ncount = 0;
-           // We need ncount from device
-           auto h_ncount = Kokkos::create_mirror_view(d_ncount);
-           Kokkos::deep_copy(h_ncount, d_ncount);
-           ncount = h_ncount(ii);
-
-           if (ncount > 0) {
-               fprintf(stderr, "DEBUG_KOKKOS: R_cache (fr) for neighbor 0 (r=%g):\n", h_rnorms(ii, 0));
-                for (int n = 0; n < nradmax; n++) {
-                    for (int l = 0; l <= lmax; l++) {
-                         fprintf(stderr, "DEBUG_KOKKOS: fr[%d][%d] = %20.12e\n", n, l, h_fr(ii, 0, l, n));
-                    }
-                }
-           }
-           
-           // Copy A
-           auto h_A = Kokkos::create_mirror_view(A);
-           Kokkos::deep_copy(h_A, A);
-           
-           fprintf(stderr, "DEBUG_KOKKOS: A matrix:\n");
-            for (int n = 0; n < nradmax; n++) {
-                for (int l = 0; l <= lmax; l++) {
-                    for (int m = -l; m <= l; m++) {
-                        int idx_sph = l*(l+1) + m;
-                        fprintf(stderr, "DEBUG_KOKKOS: A[%d][%d][%d] = %20.12e\n", n, l, m, h_A(ii, idx_sph, n).re);
-                    }
-                }
-            }
-            
-            // Copy rhos
-            auto h_rhos = Kokkos::create_mirror_view(rhos);
-            Kokkos::deep_copy(h_rhos, rhos);
-            int ndensity = aceimpl->basis_set->embedding_specifications.ndensity;
-            
-            fprintf(stderr, "DEBUG_KOKKOS: rhos:\n");
-            for (int p=0; p<ndensity; p++) {
-                 fprintf(stderr, "DEBUG_KOKKOS: rho[%d] = %20.12e\n", p, h_rhos(ii, p));
-            }
-            
-            // Copy e_atom
-            auto h_eatom = Kokkos::create_mirror_view(e_atom);
-            Kokkos::deep_copy(h_eatom, e_atom);
-            fprintf(stderr, "DEBUG_KOKKOS: e_atom = %20.12e\n", h_eatom(ii));
-    }
 
     //ComputeGamma[OPTIONAL]
     if (flag_compute_extrapolation_grade) {
@@ -721,6 +664,86 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
       h_gamma = Kokkos::create_mirror_view(d_gamma);
       Kokkos::deep_copy(h_gamma, d_gamma);
       memcpy(extrapolation_grade_gamma+chunk_offset, (void *) h_gamma.data(), sizeof(double)*chunk_size);
+    }
+
+    Kokkos::fence();
+    // Debug print for first atom in first chunk (relocated to end of chunk loop)
+    if (comm->me == 0 && chunk_offset == 0) {
+           int ii = 0; 
+           fprintf(stderr, "\nDEBUG_KOKKOS: Chunk 0, Index %d\n", ii);
+           
+           // Copy fr
+           auto h_fr = Kokkos::create_mirror_view(fr);
+           Kokkos::deep_copy(h_fr, fr);
+           auto h_rnorms = Kokkos::create_mirror_view(d_rnorms);
+           Kokkos::deep_copy(h_rnorms, d_rnorms);
+           
+           int ncount = 0;
+           // We need ncount from device
+           auto h_ncount = Kokkos::create_mirror_view(d_ncount);
+           Kokkos::deep_copy(h_ncount, d_ncount);
+           ncount = h_ncount(ii);
+
+           if (ncount > 0) {
+               fprintf(stderr, "DEBUG_KOKKOS: R_cache (fr) for neighbor 0 (r=%g):\n", h_rnorms(ii, 0));
+                for (int n = 0; n < nradmax; n++) {
+                    for (int l = 0; l <= lmax; l++) {
+                         fprintf(stderr, "DEBUG_KOKKOS: fr[%d][%d] = %20.12e\n", n, l, h_fr(ii, 0, l, n));
+                    }
+                }
+           }
+           
+           // Copy A
+           auto h_A = Kokkos::create_mirror_view(A);
+           Kokkos::deep_copy(h_A, A);
+           
+           fprintf(stderr, "DEBUG_KOKKOS: A matrix:\n");
+            for (int n = 0; n < nradmax; n++) {
+                for (int l = 0; l <= lmax; l++) {
+                    for (int m = -l; m <= l; m++) {
+                        int idx_sph = l*(l+1) + m;
+                        fprintf(stderr, "DEBUG_KOKKOS: A[%d][%d][%d] = %20.12e\n", n, l, m, h_A(ii, idx_sph, n));
+                    }
+                }
+            }
+            
+            // Copy rhos
+            auto h_rhos = Kokkos::create_mirror_view(rhos);
+            Kokkos::deep_copy(h_rhos, rhos);
+            int ndensity = aceimpl->basis_set->embedding_specifications.ndensity;
+            
+            fprintf(stderr, "DEBUG_KOKKOS: rhos:\n");
+            for (int p=0; p<ndensity; p++) {
+                 fprintf(stderr, "DEBUG_KOKKOS: rho[%d] = %20.12e\n", p, h_rhos(ii, p));
+            }
+            
+            // Copy e_atom
+            auto h_eatom = Kokkos::create_mirror_view(e_atom);
+            Kokkos::deep_copy(h_eatom, e_atom);
+            fprintf(stderr, "DEBUG_KOKKOS: e_atom = %20.12e\n", h_eatom(ii));
+
+             // Copy weights
+             auto h_weights = Kokkos::create_mirror_view(weights);
+             Kokkos::deep_copy(h_weights, weights);
+             fprintf(stderr, "DEBUG_KOKKOS: weights:\n");
+             for (int l = 0; l <= lmax; l++) {
+                 for (int m = -l; m <= l; m++) {
+                     int idx_sph = l*(l+1) + m;
+                     for (int n = 0; n < nradmax; n++) {
+                         if (h_weights(ii, idx_sph, n) != 0.0) {
+                             fprintf(stderr, "DEBUG_KOKKOS: weights[%d][%d][%d] = %20.12e\n", n, l, m, h_weights(ii, idx_sph, n));
+                         }
+                     }
+                 }
+             }
+
+             // Copy f_ij
+             auto h_fij = Kokkos::create_mirror_view(f_ij);
+             Kokkos::deep_copy(h_fij, f_ij);
+             fprintf(stderr, "DEBUG_KOKKOS: forces:\n");
+             for (int jj = 0; jj < ncount; jj++) {
+                 fprintf(stderr, "DEBUG_KOKKOS: force[%d] = %20.12e %20.12e %20.12e\n", jj, h_fij(ii, jj, 0), h_fij(ii, jj, 1), h_fij(ii, jj, 2));
+             }
     }
 
     chunk_offset += chunk_size;
@@ -961,7 +984,7 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeAi, const t
     const int A_idx = l * (l + 1) + 0; // m = 0
 
     for (int n = 0; n < nradmax; n++) {
-      Kokkos::atomic_add(&A(ii, A_idx, n).re, fr(ii, jj, l, n) * real_ylm_0);
+      Kokkos::atomic_add(&A(ii, A_idx, n), fr(ii, jj, l, n) * real_ylm_0);
     }
   }
 
@@ -988,8 +1011,8 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeAi, const t
 
       for (int n = 0; n < nradmax; n++) {
         const KK_FLOAT R = fr(ii, jj, l, n);
-        Kokkos::atomic_add(&A(ii, A_idx_pos, n).re, R * real_ylm_pos);
-        Kokkos::atomic_add(&A(ii, A_idx_neg, n).re, R * real_ylm_neg);
+        Kokkos::atomic_add(&A(ii, A_idx_pos, n), R * real_ylm_pos);
+        Kokkos::atomic_add(&A(ii, A_idx_neg, n), R * real_ylm_neg);
       }
     }
   }
@@ -1026,8 +1049,8 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeAi, const t
 
       for (int n = 0; n < nradmax; n++) {
         const KK_FLOAT R = fr(ii, jj, l, n);
-        Kokkos::atomic_add(&A(ii, A_idx_pos, n).re, R * real_ylm_pos);
-        Kokkos::atomic_add(&A(ii, A_idx_neg, n).re, R * real_ylm_neg);
+        Kokkos::atomic_add(&A(ii, A_idx_pos, n), R * real_ylm_pos);
+        Kokkos::atomic_add(&A(ii, A_idx_neg, n), R * real_ylm_neg);
       }
     }
   }
@@ -1054,28 +1077,22 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeRho, const 
   const int ndensity = d_ndensity(mu_i);
 
   // Compute product of A values
-  complex val;
-  val.re = 1.0;
-  val.im = 0.0;
+  KK_FLOAT val = 1.0;
 
   for (int t = 0; t < rank; t++) {
     const int l = d_ls(mu_i, idx_func, t);
     const int m = d_ms_combs(mu_i, idx, t);
     const int idx_sph = l * (l + 1) + m;
-    complex a_val = A(ii, idx_sph, ns - 1);
-    complex tmp;
-    tmp.re = val.re * a_val.re - val.im * a_val.im;
-    tmp.im = val.re * a_val.im + val.im * a_val.re;
-    val = tmp;
+    KK_FLOAT a_val = A(ii, idx_sph, ns - 1);
+    val *= a_val;
   }
 
-  val.re *= d_gen_cgs(mu_i, idx);
-  val.im *= d_gen_cgs(mu_i, idx);
+  val *= d_gen_cgs(mu_i, idx);
 
   // Accumulate to rhos
   for (int p = 0; p < ndensity; p++) {
     const KK_FLOAT coeff = d_coeffs(mu_i, idx_func, p);
-    Kokkos::atomic_add(&rhos(ii, p), val.re * coeff);
+    Kokkos::atomic_add(&rhos(ii, p), val * coeff);
   }
 }
 
@@ -1135,31 +1152,25 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeWeights, co
     const int idx_sph_t = l_t * (l_t + 1) + m_t;
 
     // Compute product of A's except t-th
-    complex val;
-    val.re = 1.0;
-    val.im = 0.0;
+    KK_FLOAT val = 1.0;
 
     for (int s = 0; s < rank; s++) {
       if (s == t) continue;
       const int l_s = d_ls(mu_i, idx_func, s);
       const int m_s = d_ms_combs(mu_i, idx, s);
       const int idx_sph_s = l_s * (l_s + 1) + m_s;
-      complex a_val = A(ii, idx_sph_s, ns - 1);
-      complex tmp;
-      tmp.re = val.re * a_val.re - val.im * a_val.im;
-      tmp.im = val.re * a_val.im + val.im * a_val.re;
-      val = tmp;
+      KK_FLOAT a_val = A(ii, idx_sph_s, ns - 1);
+      val *= a_val;
     }
 
-    val.re *= d_gen_cgs(mu_i, idx);
-    val.im *= d_gen_cgs(mu_i, idx);
+    val *= d_gen_cgs(mu_i, idx);
 
     // Accumulate weights with dF/drho
     for (int p = 0; p < ndensity; p++) {
       const KK_FLOAT coeff = d_coeffs(mu_i, idx_func, p);
       const KK_FLOAT dF = dF_drho(ii, p);
-      const KK_FLOAT weight_contrib = dF * coeff * val.re;
-      Kokkos::atomic_add(&weights(ii, idx_sph_t, ns - 1).re, weight_contrib);
+      const KK_FLOAT weight_contrib = dF * coeff * val;
+      Kokkos::atomic_add(&weights(ii, idx_sph_t, ns - 1), weight_contrib);
     }
   }
 }
@@ -1259,12 +1270,16 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeDerivative,
         const KK_FLOAT DY_z = dplm_val - rdy * rz;
 
         const int A_idx = l * (l + 1) + 0;
-        const KK_FLOAT w = weights(ii, A_idx, n).re;
+        const KK_FLOAT w = weights(ii, A_idx, n);
         if (w != 0.0) {
           const KK_FLOAT Y_DR = Y * DR;
           f_ji[0] += w * (Y_DR * rx + DY_x * R_over_r);
           f_ji[1] += w * (Y_DR * ry + DY_y * R_over_r);
           f_ji[2] += w * (Y_DR * rz + DY_z * R_over_r);
+          if (comm->me == 0 && chunk_offset == 0 && ii == 0 && jj == 0 && n == 0 && l == 1) {
+              fprintf(stderr, "DEBUG_KOKKOS: l=1,m=0: w=%g R_over_r=%g rx=%g ry=%g rz=%g dplm=%g\n", w, R_over_r, rx, ry, rz, dplm_val);
+              fprintf(stderr, "DEBUG_KOKKOS: DY_x=%g DY_y=%g DY_z=%g Y_DR=%g\n", DY_x, DY_y, DY_z, Y_DR);
+          }
         }
       }
 
@@ -1289,19 +1304,40 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeDerivative,
         const KK_FLOAT real_Y_neg = sq2 * factor * ylm_im;  // Y(l, -m)
 
         // Complex derivatives
-        const KK_FLOAT s2_safe = 1.0 - rz * rz + 1e-15;
+        const KK_FLOAT s2_safe = 1.0 - rz * rz;
+        KK_FLOAT dylm_x_re = 0, dylm_x_im = 0;
+        KK_FLOAT dylm_y_re = 0, dylm_y_im = 0;
+        KK_FLOAT dylm_z_re = 0, dylm_z_im = 0;
+
         const KK_FLOAT dyz_re = dplm_val * phasem_re;
         const KK_FLOAT dyz_im = dplm_val * phasem_im;
         const KK_FLOAT rdy_re = dyz_re * rz;
         const KK_FLOAT rdy_im = dyz_im * rz;
-        const KK_FLOAT phi_factor = m_kk * plm_val / s2_safe;
 
-        const KK_FLOAT dylm_x_re = -rdy_re * rx + phi_factor * phasem_im * ry;
-        const KK_FLOAT dylm_x_im = -rdy_im * rx - phi_factor * phasem_re * ry;
-        const KK_FLOAT dylm_y_re = -rdy_re * ry - phi_factor * phasem_im * rx;
-        const KK_FLOAT dylm_y_im = -rdy_im * ry + phi_factor * phasem_re * rx;
-        const KK_FLOAT dylm_z_re = dyz_re - rdy_re * rz;
-        const KK_FLOAT dylm_z_im = dyz_im - rdy_im * rz;
+        if (s2_safe > 1e-12) {
+          const KK_FLOAT phi_factor = m_kk * plm_val / s2_safe;
+          dylm_x_re = -rdy_re * rx + phi_factor * phasem_im * ry;
+          dylm_x_im = -rdy_im * rx - phi_factor * phasem_re * ry;
+          dylm_y_re = -rdy_re * ry - phi_factor * phasem_im * rx;
+          dylm_y_im = -rdy_im * ry + phi_factor * phasem_re * rx;
+        } else {
+          // Special case for poles (rz=1 or rz=-1).
+          // For m=1, the Cartesian derivatives are non-zero at the poles.
+          // For m=0 or m>1, they are zero at the poles.
+          if (m == 1) {
+            // Limits as theta -> 0 (z->1) for m=1:
+            // Y_11 = plm * (x + iy)  (approx near pole)
+            // dY/dx = plm, dY/dy = i * plm
+            dylm_x_re = plm_val;
+            dylm_x_im = 0.0;
+            dylm_y_re = 0.0;
+            dylm_y_im = plm_val;
+          } else {
+            dylm_x_re = dylm_x_im = dylm_y_re = dylm_y_im = 0.0;
+          }
+        }
+        dylm_z_re = dyz_re - rdy_re * rz;
+        dylm_z_im = dyz_im - rdy_im * rz;
 
         // Real DY
         const KK_FLOAT DY_pos_x = sq2 * factor * dylm_x_re;
@@ -1313,17 +1349,17 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeDerivative,
 
         // +m contribution
         const int A_idx_pos = l * (l + 1) + m;
-        const KK_FLOAT w_pos = weights(ii, A_idx_pos, n).re;
-        if (w_pos != 0.0) {
-          const KK_FLOAT Y_DR = real_Y_pos * DR;
-          f_ji[0] += w_pos * (Y_DR * rx + DY_pos_x * R_over_r);
-          f_ji[1] += w_pos * (Y_DR * ry + DY_pos_y * R_over_r);
-          f_ji[2] += w_pos * (Y_DR * rz + DY_pos_z * R_over_r);
-        }
+        const KK_FLOAT w_pos = weights(ii, A_idx_pos, n);
+          if (w_pos != 0.0) {
+            const KK_FLOAT Y_DR = real_Y_pos * DR;
+            f_ji[0] += w_pos * (Y_DR * rx + DY_pos_x * R_over_r);
+            f_ji[1] += w_pos * (Y_DR * ry + DY_pos_y * R_over_r);
+            f_ji[2] += w_pos * (Y_DR * rz + DY_pos_z * R_over_r);
+          }
 
         // -m contribution
         const int A_idx_neg = l * (l + 1) - m;
-        const KK_FLOAT w_neg = weights(ii, A_idx_neg, n).re;
+        const KK_FLOAT w_neg = weights(ii, A_idx_neg, n);
         if (w_neg != 0.0) {
           const KK_FLOAT Y_DR = real_Y_neg * DR;
           f_ji[0] += w_neg * (Y_DR * rx + DY_neg_x * R_over_r);
@@ -1363,19 +1399,16 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeForce<NEIGH
     const KK_FLOAT fz = f_ij(ii, jj, 2);
 
     if (NEIGHFLAG == HALF) {
-      Kokkos::atomic_add(&f(i, 0), fx * energy_scale);
-      Kokkos::atomic_add(&f(i, 1), fy * energy_scale);
-      Kokkos::atomic_add(&f(i, 2), fz * energy_scale);
-      Kokkos::atomic_add(&f(j, 0), -fx * energy_scale);
-      Kokkos::atomic_add(&f(j, 1), -fy * energy_scale);
-      Kokkos::atomic_add(&f(j, 2), -fz * energy_scale);
+      Kokkos::atomic_add(&f(i, 0), -fx * energy_scale);
+      Kokkos::atomic_add(&f(i, 1), -fy * energy_scale);
+      Kokkos::atomic_add(&f(i, 2), -fz * energy_scale);
+      Kokkos::atomic_add(&f(j, 0), fx * energy_scale);
+      Kokkos::atomic_add(&f(j, 1), fy * energy_scale);
+      Kokkos::atomic_add(&f(j, 2), fz * energy_scale);
     } else {
-      Kokkos::atomic_add(&f(i, 0), fx * energy_scale);
-      Kokkos::atomic_add(&f(i, 1), fy * energy_scale);
-      Kokkos::atomic_add(&f(i, 2), fz * energy_scale);
-      Kokkos::atomic_add(&f(j, 0), -fx * energy_scale);
-      Kokkos::atomic_add(&f(j, 1), -fy * energy_scale);
-      Kokkos::atomic_add(&f(j, 2), -fz * energy_scale);
+      Kokkos::atomic_add(&f(i, 0), -fx * energy_scale);
+      Kokkos::atomic_add(&f(i, 1), -fy * energy_scale);
+      Kokkos::atomic_add(&f(i, 2), -fz * energy_scale);
     }
   }
 }
@@ -1398,17 +1431,17 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeForce<NEIGH
     const KK_FLOAT fz = f_ij(ii, jj, 2);
 
     if (NEIGHFLAG == HALF) {
-      Kokkos::atomic_add(&f(i, 0), fx * energy_scale);
-      Kokkos::atomic_add(&f(i, 1), fy * energy_scale);
-      Kokkos::atomic_add(&f(i, 2), fz * energy_scale);
-      Kokkos::atomic_add(&f(j, 0), -fx * energy_scale);
-      Kokkos::atomic_add(&f(j, 1), -fy * energy_scale);
-      Kokkos::atomic_add(&f(j, 2), -fz * energy_scale);
+      Kokkos::atomic_add(&f(i, 0), -fx * energy_scale);
+      Kokkos::atomic_add(&f(i, 1), -fy * energy_scale);
+      Kokkos::atomic_add(&f(i, 2), -fz * energy_scale);
+      Kokkos::atomic_add(&f(j, 0), fx * energy_scale);
+      Kokkos::atomic_add(&f(j, 1), fy * energy_scale);
+      Kokkos::atomic_add(&f(j, 2), fz * energy_scale);
     } else {
       // FULL neighbor list logic
-      Kokkos::atomic_add(&f(i, 0), fx * energy_scale);
-      Kokkos::atomic_add(&f(i, 1), fy * energy_scale);
-      Kokkos::atomic_add(&f(i, 2), fz * energy_scale);
+      Kokkos::atomic_add(&f(i, 0), -fx * energy_scale);
+      Kokkos::atomic_add(&f(i, 1), -fy * energy_scale);
+      Kokkos::atomic_add(&f(i, 2), -fz * energy_scale);
     }
 
     if (EVFLAG) {
