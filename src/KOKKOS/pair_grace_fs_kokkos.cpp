@@ -149,7 +149,10 @@ void PairGRACEFSKokkos<DeviceType>::init_style()
   }
 
   if (atom->tag_enable == 0) error->all(FLERR, "Pair style grace/fs/kk requires atom IDs");
-  if (force->newton_pair == 0) error->all(FLERR, "Pair style grace/fs/kk requires newton pair on");
+  if (force->newton_pair == 0) {
+    if (comm->me == 0) error->warning(FLERR, "Pair style grace/fs/kk requires newton pair on. Auto-enabling 'newton on'.");
+    force->newton_pair = 1;
+  }
 
   neighflag = lmp->kokkos->neighflag;
   auto request = neighbor->add_request(this, NeighConst::REQ_FULL);
@@ -204,14 +207,14 @@ void PairGRACEFSKokkos<DeviceType>::grow(int natom, int maxneigh)
   auto basis_set = aceimpl->basis_set;
 
   if ((int)A.extent(0) < natom) {
-    MemKK::realloc_kokkos(A_sph, "grace_fs:A_sph", natom, idx_sph_max, nradmax);
+    MemKK::realloc_kokkos(A_sph, "grace_fs:A_sph", natom, (lmax + 1) * (lmax + 1), nradmax);
     MemKK::realloc_kokkos(A, "grace_fs:A", natom, (lmax + 1) * (lmax + 1), nradmax);
     MemKK::realloc_kokkos(A_list, "grace_fs:A_list", natom, idx_ms_combs_max * basis_set->rankmax);
     MemKK::realloc_kokkos(A_forward_prod, "grace_fs:A_forward_prod", natom, idx_ms_combs_max * (basis_set->rankmax + 1));
     MemKK::realloc_kokkos(e_atom, "grace_fs:e_atom", natom);
     MemKK::realloc_kokkos(rhos, "grace_fs:rhos", natom, basis_set->ndensitymax);
     MemKK::realloc_kokkos(dF_drho, "grace_fs:dF_drho", natom, basis_set->ndensitymax);
-    MemKK::realloc_kokkos(weights, "grace_fs:weights", natom, idx_sph_max, nradmax);
+    MemKK::realloc_kokkos(weights, "grace_fs:weights", natom, (lmax + 1) * (lmax + 1), nradmax);
     MemKK::realloc_kokkos(dB_flatten, "grace_fs:dB_flatten", natom, idx_ms_combs_max * basis_set->rankmax);
     MemKK::realloc_kokkos(projections, "grace_fs:projections", natom, total_num_functions_max);
     MemKK::realloc_kokkos(d_gamma, "grace_fs:gamma", natom);
@@ -587,7 +590,10 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
       int vector_length = vector_length_default;
       int team_size = team_size_default;
       check_team_size_for<TagPairGRACEFSComputeAi>(((chunk_size+team_size-1)/team_size)*maxneigh,team_size,vector_length);
+      int plm_size = (lmax + 1) * (lmax + 2) / 2;
+      int scratch_size = scratch_size_helper<KK_FLOAT>(plm_size);
       typename Kokkos::TeamPolicy<DeviceType, TagPairGRACEFSComputeAi> policy_ai(((chunk_size+team_size-1)/team_size)*maxneigh,team_size,vector_length);
+      policy_ai = policy_ai.set_scratch_size(0, Kokkos::PerThread(scratch_size));
       Kokkos::parallel_for("ComputeAi",policy_ai,*this);
     }
 
@@ -661,7 +667,7 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
             fprintf(stderr, "DEBUG_KOKKOS: e_atom = %20.12e\n", h_eatom(ii));
     }
 
-    //ComputeGamma
+    //ComputeGamma[OPTIONAL]
     if (flag_compute_extrapolation_grade) {
       typename Kokkos::RangePolicy<DeviceType,TagPairGRACEFSComputeGamma> policy_gamma(0,chunk_size);
       Kokkos::parallel_for("ComputeGamma",policy_gamma,*this);
@@ -678,7 +684,10 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
       int vector_length = vector_length_default;
       int team_size = team_size_default;
       check_team_size_for<TagPairGRACEFSComputeDerivative>(((chunk_size+team_size-1)/team_size)*maxneigh,team_size,vector_length);
+      int plm_size = (lmax + 1) * (lmax + 2) / 2;
+      int scratch_size = scratch_size_helper<KK_FLOAT>(2 * plm_size);
       typename Kokkos::TeamPolicy<DeviceType,TagPairGRACEFSComputeDerivative> policy_derivative(((chunk_size+team_size-1)/team_size)*maxneigh,team_size,vector_length);
+      policy_derivative = policy_derivative.set_scratch_size(0, Kokkos::PerThread(scratch_size));
       Kokkos::parallel_for("ComputeDerivative",policy_derivative,*this);
     }
 
@@ -887,9 +896,8 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeAi, const t
 
   static constexpr KK_FLOAT sq2 = 1.4142135623730950488;
 
-  // Storage for Plm(l, m) values - use linearized (lmax+1)*(lmax+2)/2 storage
-  // Index: plm_idx(l, m) = l*(l+1)/2 + m for m >= 0
-  KK_FLOAT plm[(8 * 9) / 2]; // up to lmax=7: 36 entries
+  int plm_size = (lmax + 1) * (lmax + 2) / 2;
+  KK_FLOAT* plm = (KK_FLOAT*) team.thread_scratch(0).get_shmem(this->scratch_size_helper<KK_FLOAT>(plm_size));
 
   // =====================================================
   // STEP 1: Compute associated Legendre polynomials (barplm)
@@ -1183,8 +1191,9 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeDerivative,
   // =====================================================
   // STEP 1: Compute Plm and dPlm (associated Legendre polynomials)
   // =====================================================
-  KK_FLOAT plm[(8 * 9) / 2];  // up to lmax=7: 36 entries
-  KK_FLOAT dplm[(8 * 9) / 2];
+  int plm_size = (lmax + 1) * (lmax + 2) / 2;
+  KK_FLOAT* plm = (KK_FLOAT*) team.thread_scratch(0).get_shmem(this->scratch_size_helper<KK_FLOAT>(plm_size));
+  KK_FLOAT* dplm = (KK_FLOAT*) team.thread_scratch(0).get_shmem(this->scratch_size_helper<KK_FLOAT>(plm_size));
 
   plm[0] = Y00_kk;
   dplm[0] = 0.0;
@@ -1287,10 +1296,10 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeDerivative,
         const KK_FLOAT rdy_im = dyz_im * rz;
         const KK_FLOAT phi_factor = m_kk * plm_val / s2_safe;
 
-        const KK_FLOAT dylm_x_re = -rdy_re * rx - phi_factor * phasem_im * ry;
-        const KK_FLOAT dylm_x_im = -rdy_im * rx + phi_factor * phasem_re * ry;
-        const KK_FLOAT dylm_y_re = -rdy_re * ry + phi_factor * phasem_im * rx;
-        const KK_FLOAT dylm_y_im = -rdy_im * ry - phi_factor * phasem_re * rx;
+        const KK_FLOAT dylm_x_re = -rdy_re * rx + phi_factor * phasem_im * ry;
+        const KK_FLOAT dylm_x_im = -rdy_im * rx - phi_factor * phasem_re * ry;
+        const KK_FLOAT dylm_y_re = -rdy_re * ry - phi_factor * phasem_im * rx;
+        const KK_FLOAT dylm_y_im = -rdy_im * ry + phi_factor * phasem_re * rx;
         const KK_FLOAT dylm_z_re = dyz_re - rdy_re * rz;
         const KK_FLOAT dylm_z_im = dyz_im - rdy_im * rz;
 
@@ -1407,9 +1416,9 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeForce<NEIGH
       const KK_FLOAT ry = d_rhats(ii, jj, 1);
       const KK_FLOAT rz = d_rhats(ii, jj, 2);
       const KK_FLOAT r = d_rnorms(ii, jj);
-      const KK_FLOAT delx = rx * r;
-      const KK_FLOAT dely = ry * r;
-      const KK_FLOAT delz = rz * r;
+      const KK_FLOAT delx = -rx * r;
+      const KK_FLOAT dely = -ry * r;
+      const KK_FLOAT delz = -rz * r;
       const KK_FLOAT v0 = delx * fx * energy_scale;
       const KK_FLOAT v1 = dely * fy * energy_scale;
       const KK_FLOAT v2 = delz * fz * energy_scale;
@@ -1538,8 +1547,9 @@ void PairGRACEFSKokkos<DeviceType>::check_team_size_reduce(int inum, int &team_s
 
 template<class DeviceType>
 template<typename scratch_type>
-int PairGRACEFSKokkos<DeviceType>::scratch_size_helper(int values_per_team) {
-  typedef Kokkos::View<scratch_type*, Kokkos::DefaultExecutionSpace::scratch_memory_space, Kokkos::MemoryTraits<Kokkos::Unmanaged> > ScratchViewType;
+KOKKOS_INLINE_FUNCTION
+int PairGRACEFSKokkos<DeviceType>::scratch_size_helper(int values_per_team) const {
+  typedef Kokkos::View<scratch_type*, typename DeviceType::scratch_memory_space, Kokkos::MemoryTraits<Kokkos::Unmanaged> > ScratchViewType;
   return ScratchViewType::shmem_size(values_per_team);
 }
 

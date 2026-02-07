@@ -181,7 +181,8 @@ class PairGRACEFSKokkos : public PairGRACEFS {
   void check_team_size_reduce(int, int&, int);
 
   template <typename scratch_type>
-  int scratch_size_helper(int values_per_team);
+  KOKKOS_INLINE_FUNCTION
+  int scratch_size_helper(int values_per_team) const;
 
   // Kokkos view typedefs
   typedef Kokkos::View<int*, DeviceType> t_ace_1i;
