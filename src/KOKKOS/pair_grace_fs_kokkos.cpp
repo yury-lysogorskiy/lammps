@@ -644,12 +644,12 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
           typename Kokkos::RangePolicy<DeviceType,TagPairGRACEFSComputeForce<HALF,0> > policy_force(0,chunk_size);
           Kokkos::parallel_for("ComputeForce", policy_force, *this);
         }
-      } else {
+      } else if (neighflag == HALFTHREAD) {
         if (evflag) {
-          typename Kokkos::RangePolicy<DeviceType,TagPairGRACEFSComputeForce<FULL,1> > policy_force(0,chunk_size);
+          typename Kokkos::RangePolicy<DeviceType,TagPairGRACEFSComputeForce<HALFTHREAD,1> > policy_force(0,chunk_size);
           Kokkos::parallel_reduce("ComputeForce", policy_force, *this, ev_tmp);
         } else {
-          typename Kokkos::RangePolicy<DeviceType,TagPairGRACEFSComputeForce<FULL,0> > policy_force(0,chunk_size);
+          typename Kokkos::RangePolicy<DeviceType,TagPairGRACEFSComputeForce<HALFTHREAD,0> > policy_force(0,chunk_size);
           Kokkos::parallel_for("ComputeForce", policy_force, *this);
         }
       }
@@ -667,90 +667,6 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
     }
 
     Kokkos::fence();
-    // Debug print for first atom in first chunk (relocated to end of chunk loop)
-    if (comm->me == 0 && chunk_offset == 0) {
-           int ii = 0; 
-           fprintf(stderr, "\nDEBUG_KOKKOS: Chunk 0, Index %d\n", ii);
-           
-           // Copy fr
-           auto h_fr = Kokkos::create_mirror_view(fr);
-           Kokkos::deep_copy(h_fr, fr);
-           auto h_rnorms = Kokkos::create_mirror_view(d_rnorms);
-           Kokkos::deep_copy(h_rnorms, d_rnorms);
-           
-           int ncount = 0;
-           // We need ncount from device
-           auto h_ncount = Kokkos::create_mirror_view(d_ncount);
-           Kokkos::deep_copy(h_ncount, d_ncount);
-           ncount = h_ncount(ii);
-
-           if (ncount > 0) {
-               fprintf(stderr, "DEBUG_KOKKOS: R_cache (fr) for neighbor 0 (r=%g):\n", h_rnorms(ii, 0));
-                for (int n = 0; n < nradmax; n++) {
-                    for (int l = 0; l <= lmax; l++) {
-                         fprintf(stderr, "DEBUG_KOKKOS: fr[%d][%d] = %20.12e\n", n, l, h_fr(ii, 0, l, n));
-                    }
-                }
-           }
-           
-           // Copy A
-           auto h_A = Kokkos::create_mirror_view(A);
-           Kokkos::deep_copy(h_A, A);
-           
-           fprintf(stderr, "DEBUG_KOKKOS: A matrix:\n");
-            for (int n = 0; n < nradmax; n++) {
-                for (int l = 0; l <= lmax; l++) {
-                    for (int m = -l; m <= l; m++) {
-                        int idx_sph = l*(l+1) + m;
-                        fprintf(stderr, "DEBUG_KOKKOS: A[%d][%d][%d] = %20.12e\n", n, l, m, h_A(ii, idx_sph, n));
-                    }
-                }
-            }
-            
-            // Copy rhos
-            auto h_rhos = Kokkos::create_mirror_view(rhos);
-            Kokkos::deep_copy(h_rhos, rhos);
-            int ndensity = aceimpl->basis_set->embedding_specifications.ndensity;
-            
-            fprintf(stderr, "DEBUG_KOKKOS: rhos:\n");
-            for (int p=0; p<ndensity; p++) {
-                 fprintf(stderr, "DEBUG_KOKKOS: rho[%d] = %20.12e\n", p, h_rhos(ii, p));
-            }
-            
-            // Copy e_atom
-            auto h_eatom = Kokkos::create_mirror_view(e_atom);
-            Kokkos::deep_copy(h_eatom, e_atom);
-            fprintf(stderr, "DEBUG_KOKKOS: e_atom = %20.12e\n", h_eatom(ii));
-
-             // Copy weights
-             auto h_weights = Kokkos::create_mirror_view(weights);
-             Kokkos::deep_copy(h_weights, weights);
-             fprintf(stderr, "DEBUG_KOKKOS: weights:\n");
-             for (int l = 0; l <= lmax; l++) {
-                 for (int m = -l; m <= l; m++) {
-                     int idx_sph = l*(l+1) + m;
-                     for (int n = 0; n < nradmax; n++) {
-                         if (h_weights(ii, idx_sph, n) != 0.0) {
-                             fprintf(stderr, "DEBUG_KOKKOS: weights[%d][%d][%d] = %20.12e\n", n, l, m, h_weights(ii, idx_sph, n));
-                         }
-                     }
-                 }
-             }
-
-             // Copy f_ij
-             auto h_fij = Kokkos::create_mirror_view(f_ij);
-             Kokkos::deep_copy(h_fij, f_ij);
-             fprintf(stderr, "DEBUG_KOKKOS: forces for all atoms:\n");
-             for (int ii_dbg = 0; ii_dbg < chunk_size && ii_dbg < 2; ii_dbg++) {
-                 auto h_ncount = Kokkos::create_mirror_view(d_ncount);
-                 Kokkos::deep_copy(h_ncount, d_ncount);
-                 int nc = h_ncount(ii_dbg);
-                 for (int jj = 0; jj < nc; jj++) {
-                     fprintf(stderr, "DEBUG_KOKKOS: f_ij[ii=%d][jj=%d] = %20.12e %20.12e %20.12e\n", 
-                             ii_dbg, jj, h_fij(ii_dbg, jj, 0), h_fij(ii_dbg, jj, 1), h_fij(ii_dbg, jj, 2));
-                 }
-             }
-    }
 
     chunk_offset += chunk_size;
   }
@@ -922,12 +838,6 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeAi, const t
   const KK_FLOAT rx = d_rhats(ii, jj, 0);
   const KK_FLOAT ry = d_rhats(ii, jj, 1);
   const KK_FLOAT rz = d_rhats(ii, jj, 2);
-
-  // DEBUG: print rhat values
-  if (comm->me == 0 && chunk_offset == 0 && ii == 0) {
-      fprintf(stderr, "DEBUG_KOKKOS: ii=%d jj=%d rhat=(%g, %g, %g) r_norm=%g\n",
-              ii, jj, rx, ry, rz, d_rnorms(ii, jj));
-  }
 
   static constexpr KK_FLOAT sq2 = 1.4142135623730950488;
 
@@ -1288,19 +1198,6 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeDerivative,
           f_ji[0] += w * (Y_DR * rx + DY_x * R_over_r);
           f_ji[1] += w * (Y_DR * ry + DY_y * R_over_r);
           f_ji[2] += w * (Y_DR * rz + DY_z * R_over_r);
-          if (comm->me == 0 && chunk_offset == 0 && ii == 0 && jj == 0 && n == 0 && l == 1) {
-              fprintf(stderr, "DEBUG_KOKKOS: l=1,m=0: w=%g R_over_r=%g rx=%g ry=%g rz=%g dplm=%g\n", w, R_over_r, rx, ry, rz, dplm_val);
-              fprintf(stderr, "DEBUG_KOKKOS: DY_x=%g DY_y=%g DY_z=%g Y_DR=%g\n", DY_x, DY_y, DY_z, Y_DR);
-          }
-          // More detailed debug for n=0
-          if (comm->me == 0 && chunk_offset == 0 && ii == 0 && jj == 0 && n == 0 && l == 0) {
-              KK_FLOAT grad_phi_x = Y_DR * rx + DY_x * R_over_r;
-              KK_FLOAT grad_phi_y = Y_DR * ry + DY_y * R_over_r;
-              KK_FLOAT grad_phi_z = Y_DR * rz + DY_z * R_over_r;
-              fprintf(stderr, "DEBUG_KOKKOS: n=0 l=0 m=0: w=%g R_over_r=%g Y_DR=%g grad_phi=(%g,%g,%g) contrib=(%g,%g,%g)\n", 
-                      w, R_over_r, Y*DR, grad_phi_x, grad_phi_y, grad_phi_z,
-                      w*grad_phi_x, w*grad_phi_y, w*grad_phi_z);
-          }
         }
       }
 
@@ -1411,16 +1308,8 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeDerivative,
         phasem_re = tmp_re;
         phasem_im = tmp_im;
       }
-      // DEBUG: print accumulated force after each l for n=0
-      if (comm->me == 0 && chunk_offset == 0 && ii == 0 && jj == 0 && n == 0) {
-          fprintf(stderr, "DEBUG_KOKKOS: after n=0 l=%d, accumulated f_ji=(%g, %g, %g)\n", l, f_ji[0], f_ji[1], f_ji[2]);
-      }
     }
 
-    // DEBUG: print accumulated force after each n
-    if (comm->me == 0 && chunk_offset == 0 && ii == 0 && jj == 0) {
-        fprintf(stderr, "DEBUG_KOKKOS: after n=%d, accumulated f_ji=(%g, %g, %g)\n", n, f_ji[0], f_ji[1], f_ji[2]);
-    }
   }  // end n loop
 
   f_ij(ii, jj, 0) = f_ji[0];
@@ -1445,7 +1334,7 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeForce<NEIGH
     const KK_FLOAT fy = f_ij(ii, jj, 1);
     const KK_FLOAT fz = f_ij(ii, jj, 2);
 
-    if (NEIGHFLAG == HALF) {
+    if (NEIGHFLAG == HALF || NEIGHFLAG == HALFTHREAD) {
       Kokkos::atomic_add(&f(i, 0), fx * energy_scale);
       Kokkos::atomic_add(&f(i, 1), fy * energy_scale);
       Kokkos::atomic_add(&f(i, 2), fz * energy_scale);
@@ -1477,7 +1366,7 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeForce<NEIGH
     const KK_FLOAT fy = f_ij(ii, jj, 1);
     const KK_FLOAT fz = f_ij(ii, jj, 2);
 
-    if (NEIGHFLAG == HALF) {
+    if (NEIGHFLAG == HALF || NEIGHFLAG == HALFTHREAD) {
       Kokkos::atomic_add(&f(i, 0), fx * energy_scale);
       Kokkos::atomic_add(&f(i, 1), fy * energy_scale);
       Kokkos::atomic_add(&f(i, 2), fz * energy_scale);
