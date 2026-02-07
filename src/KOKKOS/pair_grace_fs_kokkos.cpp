@@ -1125,8 +1125,9 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeDerivative,
   // STEP 1: Compute Plm and dPlm (associated Legendre polynomials)
   // =====================================================
   int plm_size = (lmax + 1) * (lmax + 2) / 2;
-  KK_FLOAT* plm = (KK_FLOAT*) team.thread_scratch(0).get_shmem(this->scratch_size_helper<KK_FLOAT>(plm_size));
-  KK_FLOAT* dplm = (KK_FLOAT*) team.thread_scratch(0).get_shmem(this->scratch_size_helper<KK_FLOAT>(plm_size));
+  KK_FLOAT* scratch = (KK_FLOAT*) team.thread_scratch(0).get_shmem(this->scratch_size_helper<KK_FLOAT>(2 * plm_size));
+  KK_FLOAT* plm = scratch;
+  KK_FLOAT* dplm = scratch + plm_size;
 
   plm[0] = Y00_kk;
   dplm[0] = 0.0;
