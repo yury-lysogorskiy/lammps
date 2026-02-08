@@ -1066,6 +1066,10 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeRho, const 
     const KK_FLOAT coeff = d_coeffs(mu_i, idx_func, p);
     Kokkos::atomic_add(&rhos(ii, p), val * coeff);
   }
+
+  if (flag_compute_extrapolation_grade) {
+     Kokkos::atomic_add(&projections(ii, idx_func), val);
+  }
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1107,30 +1111,8 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeGamma, cons
   const int ms_combs_count = d_idx_ms_combs_count(mu_i);
   
   // Zero out projections for this atom
-  for (int k = 0; k < total_basis; k++) {
-      projections(ii, k) = 0.0;
-  }
-
   // 1. Compute basis function values (B) and store in projections
-  // Similar to ComputeRho logic but summing to projections[idx_func]
-  for (int idx = 0; idx < ms_combs_count; idx++) {
-      const int idx_func = d_idx_funcs(mu_i, idx);
-      const int rank = d_rank(mu_i, idx_func);
-      const int ns = d_ns(mu_i, idx_func);
-      
-      // Compute product of A values
-      KK_FLOAT val = 1.0;
-      for (int t = 0; t < rank; t++) {
-        const int l = d_ls(mu_i, idx_func, t);
-        const int m = d_ms_combs(mu_i, idx, t);
-        const int idx_sph = l * (l + 1) + m;
-        KK_FLOAT a_val = A(ii, idx_sph, ns - 1);
-        val *= a_val;
-      }
-      val *= d_gen_cgs(mu_i, idx);
-      
-      projections(ii, idx_func) += val;
-  }
+  // REMOVED: Now computed in ComputeRho
 
   // 2. Compute Gamma = max | projections * ASI |
   // ASI is transposed in d_ASI(mu, k, j) where k is basis idx, j is gamma idx.
