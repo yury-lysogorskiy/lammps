@@ -163,6 +163,15 @@ void PairGRACEFSKokkos<DeviceType>::init_style()
   if (neighflag == FULL)
     error->all(FLERR,"Must use half neighbor list style with pair grace/fs/kk");
 
+  if (request_extrapolation) {
+      flag_compute_extrapolation_grade = 1;
+      if (extrapolation_grade_gamma == nullptr) {
+          int nmax = atom->nmax;
+          memory->create(extrapolation_grade_gamma, nmax, "grace_fs/atom:gamma");
+          memset(extrapolation_grade_gamma, 0, nmax * sizeof(*extrapolation_grade_gamma));
+      }
+  }
+
   auto basis_set = aceimpl->basis_set;
   nelements = basis_set->nelements;
   lmax = basis_set->lmax;
@@ -417,6 +426,47 @@ void PairGRACEFSKokkos<DeviceType>::copy_tilde()
   Kokkos::deep_copy(d_ms_combs, h_ms_combs);
   Kokkos::deep_copy(d_gen_cgs, h_gen_cgs);
   Kokkos::deep_copy(d_coeffs, h_coeffs);
+
+  // ASI for extrapolation grade
+  // find max dimension for ASI
+  int max_asi_dim = total_num_functions_max; // Use the max basis size found
+  
+  // Allocate d_ASI
+  // We use a temporary non-const view to copy data, then assign to const d_ASI (if d_ASI is const in header)
+  // Header defines: tc_ace_3d d_ASI; which is const.
+  // We need to verify if we can assign a non-const view to a const view member? Yes.
+  // But to allocate we need the non-const view.
+  t_ace_3d d_ASI_temp("grace_fs:ASI", nelements, max_asi_dim, max_asi_dim);
+  auto h_ASI = Kokkos::create_mirror_view(d_ASI_temp);
+  Kokkos::deep_copy(h_ASI, 0.0);
+
+  for (int mu = 0; mu < nelements; mu++) {
+     if (aceimpl->ace->A_active_set_inv.count(mu) > 0) {
+        const auto &A_as_inv = aceimpl->ace->A_active_set_inv.at(mu);
+        int rows = A_as_inv.get_dim(0);
+        int cols = A_as_inv.get_dim(1); // Should match basis size
+        
+        // Check bounds
+        if (rows > max_asi_dim || cols > max_asi_dim) {
+            // Should not happen if total_basis_size matches
+        }
+
+        // Copy and transpose: h_ASI(mu, col, row) = A_as_inv(row, col)
+        // We want d_ASI(mu, k, j) where k sums with projections.
+        // A_as_inv(i, k) in CPU code means i=gamma_idx, k=basis_idx.
+        // So CPU: gamma[i] += proj[k] * A(i, k).
+        // We want: gamma[i] += proj[k] * d_ASI(mu, k, i).
+        // So d_ASI(mu, k, i) = A(i, k).
+        // So we copy A(row, col) to h_ASI(mu, col, row).
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                h_ASI(mu, c, r) = A_as_inv(r, c);
+            }
+        }
+     }
+  }
+  Kokkos::deep_copy(d_ASI_temp, h_ASI);
+  d_ASI = d_ASI_temp;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1043,9 +1093,66 @@ template<class DeviceType>
 KOKKOS_INLINE_FUNCTION
 void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeGamma, const int& ii) const
 {
-  // Placeholder for extrapolation grade computation
   if (ii >= chunk_size) return;
-  d_gamma(ii) = 0.0;
+  const int i = d_ilist[ii + chunk_offset];
+  const int mu_i = d_map(type(i));
+  
+  // Initialize projections and gamma
+  // d_gamma(ii) = 0.0; // Already init in compute loop
+  // projections is reused, need to zero out?
+  // Parallel_for "ComputeGamma" is per atom.
+  // projections size: [natom, total_num_functions_max]
+  
+  const int total_basis = d_total_basis_size(mu_i);
+  const int ms_combs_count = d_idx_ms_combs_count(mu_i);
+  
+  // Zero out projections for this atom
+  for (int k = 0; k < total_basis; k++) {
+      projections(ii, k) = 0.0;
+  }
+
+  // 1. Compute basis function values (B) and store in projections
+  // Similar to ComputeRho logic but summing to projections[idx_func]
+  for (int idx = 0; idx < ms_combs_count; idx++) {
+      const int idx_func = d_idx_funcs(mu_i, idx);
+      const int rank = d_rank(mu_i, idx_func);
+      const int ns = d_ns(mu_i, idx_func);
+      
+      // Compute product of A values
+      KK_FLOAT val = 1.0;
+      for (int t = 0; t < rank; t++) {
+        const int l = d_ls(mu_i, idx_func, t);
+        const int m = d_ms_combs(mu_i, idx, t);
+        const int idx_sph = l * (l + 1) + m;
+        KK_FLOAT a_val = A(ii, idx_sph, ns - 1);
+        val *= a_val;
+      }
+      val *= d_gen_cgs(mu_i, idx);
+      
+      projections(ii, idx_func) += val;
+  }
+
+  // 2. Compute Gamma = max | projections * ASI |
+  // ASI is transposed in d_ASI(mu, k, j) where k is basis idx, j is gamma idx.
+  // d_ASI shape: [nelements, max_dim, max_dim]
+  // We iterate j (gamma component) and sum over k (basis).
+  // Need to know number of gamma components (rows of ASI). 
+  // We don't distinctly store 'rows of ASI' on device.
+  // Assume it's same as basis size? ASI is Inverse of Active Set, so square matrix.
+  // rows = cols = total_basis (approx).
+  // Safest to iterate up to total_basis.
+  
+  KK_FLOAT max_gamma = 0.0;
+  
+  for (int j = 0; j < total_basis; j++) {
+      KK_FLOAT current_gamma = 0.0;
+      for (int k = 0; k < total_basis; k++) {
+          current_gamma += projections(ii, k) * d_ASI(mu_i, k, j);
+      }
+      if (abs(current_gamma) > max_gamma) max_gamma = abs(current_gamma);
+  }
+  
+  d_gamma(ii) = max_gamma;
 }
 
 /* ---------------------------------------------------------------------- */
