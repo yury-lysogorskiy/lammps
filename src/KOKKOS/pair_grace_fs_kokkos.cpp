@@ -667,13 +667,13 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
     }
 
     //ComputeWeights
-    {
+    if (! (enabled_compute_energy_only && flag_compute_energy_only)) {
       typename Kokkos::RangePolicy<DeviceType,TagPairGRACEFSComputeWeights> policy_weights(0,chunk_size * idx_ms_combs_max);
       Kokkos::parallel_for("ComputeWeights",policy_weights,*this);
     }
 
     //ComputeDerivative
-    {
+    if (! (enabled_compute_energy_only && flag_compute_energy_only)) {
       int vector_length = vector_length_default;
       int team_size = team_size_default;
       check_team_size_for<TagPairGRACEFSComputeDerivative>(((chunk_size+team_size-1)/team_size)*maxneigh,team_size,vector_length);
@@ -685,7 +685,7 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
     }
 
     //ComputeForce
-    {
+    if (! (enabled_compute_energy_only && flag_compute_energy_only)) {
       if (neighflag == HALF) {
         if (evflag) {
           typename Kokkos::RangePolicy<DeviceType,TagPairGRACEFSComputeForce<HALF,1> > policy_force(0,chunk_size);
@@ -705,9 +705,21 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
       }
     }
 
-    if (eflag_global) eng_vdwl += ev_tmp.evdwl;
-    if (vflag_global) {
-      for (int k = 0; k < 6; k++) virial[k] += ev_tmp.v[k];
+    if (! (enabled_compute_energy_only && flag_compute_energy_only)) {
+        if (eflag_global) eng_vdwl += ev_tmp.evdwl;
+        if (vflag_global) {
+          for (int k = 0; k < 6; k++) virial[k] += ev_tmp.v[k];
+        }
+    } else {
+        if (eflag_global) {
+             t_ace_1d atom_energies = e_atom;
+             KK_FLOAT energy_partial = 0.0;
+             Kokkos::parallel_reduce("ComputeEnergyOnly", chunk_size,
+                 KOKKOS_LAMBDA(const int ii, KK_FLOAT& update) {
+                 update += atom_energies(ii);
+             }, energy_partial);
+             eng_vdwl += energy_partial;
+        }
     }
 
     if (flag_compute_extrapolation_grade){

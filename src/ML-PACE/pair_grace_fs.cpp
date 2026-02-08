@@ -74,6 +74,7 @@ PairGRACEFS::PairGRACEFS(LAMMPS *lmp) : Pair(lmp) {
     aceimpl = new ACEImpl;
     flag_compute_extrapolation_grade = 0;
     flag_compute_energy_only = 0;
+    enabled_compute_energy_only = 0;
     extrapolation_grade_gamma = nullptr;
     scale = nullptr;
 
@@ -150,7 +151,7 @@ void PairGRACEFS::compute(int eflag, int vflag) {
     std::vector<int> my_neigh_jlist(max_jnum);
 
     aceimpl->ace->compute_projections = flag_compute_extrapolation_grade;
-    aceimpl->ace->compute_energy_only = flag_compute_energy_only;
+    aceimpl->ace->compute_energy_only = (enabled_compute_energy_only && flag_compute_energy_only);
 
     //loop over atoms
     for (ii = 0; ii < inum; ii++) {
@@ -186,7 +187,7 @@ void PairGRACEFS::compute(int eflag, int vflag) {
         if (flag_compute_extrapolation_grade)
             extrapolation_grade_gamma[i] = aceimpl->ace->max_gamma_grade;
 
-        if (! flag_compute_energy_only) {
+        if (! (enabled_compute_energy_only && flag_compute_energy_only)) {
             for (jj = 0; jj < jnum; jj++) {
                 j = jlist[jj];
                 j &= NEIGHMASK;
@@ -289,6 +290,9 @@ void PairGRACEFS::settings(int narg, char **arg) {
             iarg += 2;
         } else if (strcmp(arg[iarg], "extrapolation") == 0) {
             request_extrapolation = true;
+            iarg += 1;
+        } else if (strcmp(arg[iarg], "compute_energy_only") == 0) {
+            enabled_compute_energy_only = 1;
             iarg += 1;
         } else
             error->all(FLERR, "Unknown pair_style grace_fs keyword: {}", arg[iarg]);
