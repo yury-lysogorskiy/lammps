@@ -391,7 +391,7 @@ void PairGRACEFS::init_style() {
     neighbor->add_request(this, NeighConst::REQ_FULL);
 
     if (request_extrapolation) {
-        flag_compute_extrapolation_grade = 1;
+        flag_compute_extrapolation_grade = 0;
         if (extrapolation_grade_gamma == nullptr) {
             nmax = atom->nmax;
             memory->create(extrapolation_grade_gamma, nmax, "grace_fs/atom:gamma");

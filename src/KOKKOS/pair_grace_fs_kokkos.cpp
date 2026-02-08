@@ -164,7 +164,7 @@ void PairGRACEFSKokkos<DeviceType>::init_style()
     error->all(FLERR,"Must use half neighbor list style with pair grace/fs/kk");
 
   if (request_extrapolation) {
-      flag_compute_extrapolation_grade = 1;
+      flag_compute_extrapolation_grade = 0;
       if (extrapolation_grade_gamma == nullptr) {
           int nmax = atom->nmax;
           memory->create(extrapolation_grade_gamma, nmax, "grace_fs/atom:gamma");
