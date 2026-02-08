@@ -895,7 +895,14 @@ double FixSemiGrandCanonicalMC::computeTotalEnergy()
   int eflag = 1;
   int vflag = 0;
 
-  if (force->pair) force->pair->compute(eflag,vflag);
+  if (force->pair) {
+    // if available, set the flag "compute_energy_only" to compute only energies
+    int dim = 0;
+    int* flag_compute_energy_only = (int *)force->pair->extract("compute_energy_only",dim);
+    if (flag_compute_energy_only) *flag_compute_energy_only = 1;
+    force->pair->compute(eflag, vflag);
+    if (flag_compute_energy_only) *flag_compute_energy_only = 0;
+  }
 
   if (atom->molecular) {
     if (force->bond) force->bond->compute(eflag,vflag);

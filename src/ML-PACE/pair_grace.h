@@ -85,6 +85,9 @@ class PairGRACE : public Pair {
 
   PACE::ACETimer data_timer;
   PACE::ACETimer tp_timer;
+
+  int flag_compute_energy_only = 0;
+
 };
 }    // namespace LAMMPS_NS
 

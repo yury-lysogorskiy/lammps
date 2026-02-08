@@ -55,6 +55,8 @@ class PairPACEExtrapolation : public Pair {
 
   int flag_compute_extrapolation_grade;
   int flag_corerep_factor;
+  int flag_compute_energy_only = 0;
+
 
   double **scale;
 
