@@ -55,7 +55,7 @@ class PairGRACE : public Pair {
 
   std::string DEFAULT_INPUT_PREFIX = "serving_default_";
   std::string compute_function_name = "serving_default";
-  std::string compute_energy_only_function_name = "z1_compute_energy_only";
+  std::string compute_energy_only_function_name = "compute_energy_only";
   bool has_map_atoms_to_structure_op = false;
   bool has_nstruct_total_op = false;
   bool has_mu_i_op = false;

@@ -1,3 +1,5 @@
+#ifndef NO_GRACE_TF
+
 //
 // Created by Yury Lysogorskiy on 30.12.25.
 //
@@ -173,3 +175,4 @@ void print_f_data(const double *f_data, int me, LAMMPS *lmp,
     if (me == 0) utils::logmesg(lmp, "------------------------------------------------------------------\n");
     // ----------------------------------------------------------------------
 }
+#endif

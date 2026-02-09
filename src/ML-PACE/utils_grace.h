@@ -5,6 +5,8 @@
 #ifndef LAMMPS_GRACE_UTILS_H
 #define LAMMPS_GRACE_UTILS_H
 
+#ifndef NO_GRACE_TF
+
 #include <vector>
 #include <set>
 #include <cmath>
@@ -13,15 +15,6 @@
 #include "lammps.h"
 
 namespace GRACE {
-    void print_tf_inputs(const std::vector<std::tuple<std::string, cppflow::tensor>>& inputs,
-                                int me, LAMMPS_NS::LAMMPS *lmp, bool python_ready = false);
-
-    void print_f_data(const double *f_data, int me, LAMMPS_NS::LAMMPS *lmp,
-      const std::vector<int>& ind_i_vector, const std::vector<int>& ind_j_vector,
-      int * tag);
-
-
-
     using namespace LAMMPS_NS;
 
     class GracePaddingDimension {
@@ -87,5 +80,13 @@ namespace GRACE {
                 return (max_reductions == -1 || num_of_reductions < max_reductions);
             }
     };
+
+    void print_tf_inputs(const std::vector<std::tuple<std::string, cppflow::tensor>>& inputs,
+                            int me, LAMMPS_NS::LAMMPS *lmp, bool python_ready = false);
+
+    void print_f_data(const double *f_data, int me, LAMMPS_NS::LAMMPS *lmp,
+      const std::vector<int>& ind_i_vector, const std::vector<int>& ind_j_vector,
+      int * tag);
 }
+#endif
 #endif

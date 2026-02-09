@@ -243,7 +243,7 @@ if(NOT DEFINED NO_GRACE_TF)
 
     endif()
 
-    message("CPPFLOW_PATH=${CPPFLOW_PATH}")
+#    message("CPPFLOW_PATH=${CPPFLOW_PATH}")
 
     add_library(cppflow INTERFACE)
     target_include_directories(cppflow
