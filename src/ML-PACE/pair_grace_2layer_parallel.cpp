@@ -19,7 +19,6 @@
 #include <algorithm>
 #include <numeric>
 #include <tuple>
-#include <set>
 #include "yaml-cpp/yaml.h"
 
 #include "utils_pace.h"
@@ -32,84 +31,14 @@
 #include <cppflow/tensor.h>
 #include <tensorflow/c/c_api.h>
 
-namespace GRACE2LayerParallel {
-    
-    using namespace LAMMPS_NS;
-
-
-
-
-    class GracePaddingDimension {
-        public:
-            int current_padded_size = 0;
-            int num_of_reductions = 0;
-
-            // Settings
-            double padding_fraction = 0.01;           
-            double reduction_threshold_fraction = 0.2; 
-            int max_reductions = 10;                  
-            bool enabled = true;
-            bool verbose = false;
-
-            GracePaddingDimension() = default;
-
-            int update(int real_count) {
-                if (!enabled) {
-                    current_padded_size = real_count;
-                    return current_padded_size;
-                }
-
-                auto it = padding_history.upper_bound(real_count);
-
-                if (it == padding_history.end()) {
-                    int extra = static_cast<int>(std::round(real_count * padding_fraction));
-                    current_padded_size = real_count + std::max(extra, 1);
-                    padding_history.insert(current_padded_size);
-                    was_updated = true;
-                } else {
-                    current_padded_size = *it;
-                    was_updated = false;
-
-                    if (it == padding_history.begin() && can_reduce()) {
-                        double waste = (real_count > 0) ?
-                                       static_cast<double>(current_padded_size - real_count) / real_count : 0;
-
-                        if (waste > reduction_threshold_fraction) {
-                            current_padded_size = real_count;
-                            padding_history.insert(current_padded_size);
-                            num_of_reductions++;
-                            was_updated = true;
-                        }
-                    }
-                }
-                return current_padded_size;
-            }
-
-            bool last_update_triggered_resize() const { return was_updated; }
-
-            void reset() {
-                padding_history.clear();
-                num_of_reductions = 0;
-                current_padded_size = 0;
-            }
-
-        private:
-            std::set<int> padding_history;
-            bool was_updated = false;
-            bool can_reduce() const {
-                return (max_reductions == -1 || num_of_reductions < max_reductions);
-            }
-    };
-}
-
 namespace LAMMPS_NS {
     struct GRACE2LayerImpl {
         GRACE2LayerImpl() : model(nullptr) {}
         ~GRACE2LayerImpl() { delete model; }
         cppflow::model *model;
 
-        GRACE2LayerParallel::GracePaddingDimension atom_padding;
-        GRACE2LayerParallel::GracePaddingDimension neighbor_padding;
+        GRACE::GracePaddingDimension atom_padding;
+        GRACE::GracePaddingDimension neighbor_padding;
 
         std::vector<int32_t> mu_i;
         std::vector<int32_t> mu_j;

@@ -51,15 +51,19 @@ class PairGRACE : public Pair {
   void *extract(const char *, int &) override;
 
  protected:
-  struct ACETPImpl *aceimpl;
+  struct GRACEImpl *graceimpl;
 
   std::string DEFAULT_INPUT_PREFIX = "serving_default_";
   std::string compute_function_name = "serving_default";
+  std::string compute_energy_only_function_name = "z1_compute_energy_only";
   bool has_map_atoms_to_structure_op = false;
   bool has_nstruct_total_op = false;
   bool has_mu_i_op = false;
   bool has_batch_tot_nat = false;
   bool parallel = false;
+
+  bool has_compute_energy_only = false;
+  bool warning_compute_energy_only_not_avail_shown=false;
   bool deny_energy_only_calc = false;
 
   virtual void allocate();

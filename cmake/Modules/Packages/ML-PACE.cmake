@@ -5,9 +5,9 @@ if(POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW)
 endif()
 
-set(PACELIB_URL "https://github.com/ICAMS/lammps-user-pace/archive/refs/tags/v.2025.12.4.patch1.tar.gz" CACHE STRING "URL for PACE evaluator library sources")
+set(PACELIB_URL "https://github.com/ICAMS/lammps-user-pace/archive/refs/tags/v.2025.12.4.p1.tar.gz" CACHE STRING "URL for PACE evaluator library sources")
 
-set(PACELIB_SHA256 "1267a4d9e6a3a5f9583af29d269a492f9fbafa89d4cdc4d0a497a53aaae734ac" CACHE STRING "SHA256 checksum of PACE evaluator library tarball")
+set(PACELIB_SHA256 "21e9d7ad2094eef0f19958d154866fc725fc6ccfa82ec3681ef2b006545ced96" CACHE STRING "SHA256 checksum of PACE evaluator library tarball")
 mark_as_advanced(PACELIB_URL)
 mark_as_advanced(PACELIB_SHA256)
 GetFallbackURL(PACELIB_URL PACELIB_FALLBACK)
