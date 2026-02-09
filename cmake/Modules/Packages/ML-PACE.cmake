@@ -5,9 +5,9 @@ if(POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW)
 endif()
 
-set(PACELIB_URL "https://github.com/ICAMS/lammps-user-pace/archive/refs/tags/v.2025.12.4.tar.gz" CACHE STRING "URL for PACE evaluator library sources")
+set(PACELIB_URL "https://github.com/ICAMS/lammps-user-pace/archive/refs/tags/v.2025.12.4.patch1.tar.gz" CACHE STRING "URL for PACE evaluator library sources")
 
-set(PACELIB_SHA256 "ccfa406064ac4c58af3332bbe245318996b86facdc519520c31b790e5f416f7d" CACHE STRING "SHA256 checksum of PACE evaluator library tarball")
+set(PACELIB_SHA256 "1267a4d9e6a3a5f9583af29d269a492f9fbafa89d4cdc4d0a497a53aaae734ac" CACHE STRING "SHA256 checksum of PACE evaluator library tarball")
 mark_as_advanced(PACELIB_URL)
 mark_as_advanced(PACELIB_SHA256)
 GetFallbackURL(PACELIB_URL PACELIB_FALLBACK)
@@ -179,10 +179,10 @@ if(NOT DEFINED NO_GRACE_TF)
 
     ###############################
     # download cppflow
-    set(CPPFLOW_URL "https://github.com/serizba/cppflow/archive/refs/tags/v2.0.0.tar.gz" CACHE STRING "URL for cppflow")
+    set(CPPFLOW_URL "https://github.com/ACEworksGmbH/cppflow/archive/refs/tags/v2.0.3aw.tar.gz" CACHE STRING "URL for cppflow")
     set(CPPFLOW_ARCHIVE "${CMAKE_BINARY_DIR}/libcppflow.tar.gz")
 
-    set(CPPFLOW_SHA256 "d1e1a1a5d01edc2e864a48ff3d04261cdb769e353e3f3db9bdec55ab75c485c8")
+    set(CPPFLOW_SHA256 "f1144030aa6d6ed8f1a843f6e5fb5ae4b8e25383620096e2d086f8c27c0a6ef0")
 
     # 1. Verify existing file integrity
     if(EXISTS ${CPPFLOW_ARCHIVE})
