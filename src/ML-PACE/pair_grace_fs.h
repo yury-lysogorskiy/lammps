@@ -67,6 +67,7 @@ namespace LAMMPS_NS {
         double *extrapolation_grade_gamma = nullptr;         //per-atom gamma value
         int flag_compute_extrapolation_grade = 0;
         int flag_compute_energy_only = 0;
+        int enabled_compute_energy_only = 0;
 
         double **scale;
 
