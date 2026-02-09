@@ -24,7 +24,10 @@ else()
   endif()
   if(NOT "${DL_SHA256}" STREQUAL "${PACELIB_SHA256}")
     message(STATUS "Downloading ${PACELIB_URL}")
-    file(DOWNLOAD ${PACELIB_URL} ${CMAKE_BINARY_DIR}/libpace.tar.gz STATUS DL_STATUS SHOW_PROGRESS)
+    file(DOWNLOAD ${PACELIB_URL} ${CMAKE_BINARY_DIR}/libpace.tar.gz
+            STATUS DL_STATUS
+#            SHOW_PROGRESS
+    )
     file(SHA256 ${CMAKE_BINARY_DIR}/libpace.tar.gz DL_SHA256)
     if((NOT DL_STATUS EQUAL 0) OR (NOT "${DL_SHA256}" STREQUAL "${PACELIB_SHA256}"))
       message(WARNING "Download from primary URL ${PACELIB_URL} failed\nTrying fallback URL ${PACELIB_FALLBACK}")
@@ -178,53 +181,75 @@ if(NOT DEFINED NO_GRACE_TF)
     endif()
 
     ###############################
-    # download cppflow
-    set(CPPFLOW_URL "https://github.com/ACEworksGmbH/cppflow/archive/refs/tags/v2.0.3aw.tar.gz" CACHE STRING "URL for cppflow")
-    set(CPPFLOW_ARCHIVE "${CMAKE_BINARY_DIR}/libcppflow.tar.gz")
 
-    set(CPPFLOW_SHA256 "f1144030aa6d6ed8f1a843f6e5fb5ae4b8e25383620096e2d086f8c27c0a6ef0")
+    # -------------------------------------------------------------------------
+    # Logic: Use local path if provided, otherwise download and extract
+    # -------------------------------------------------------------------------
 
-    # 1. Verify existing file integrity
-    if(EXISTS ${CPPFLOW_ARCHIVE})
-      file(SHA256 ${CPPFLOW_ARCHIVE} CURRENT_CPPFLOW_SHA256)
-      if(NOT CURRENT_CPPFLOW_SHA256 STREQUAL CPPFLOW_SHA256)
-        message(WARNING "Existing cppflow archive hash mismatch.\nExpected: ${CPPFLOW_SHA256}\nActual:   ${CURRENT_CPPFLOW_SHA256}\nDeleting and re-downloading...")
-        file(REMOVE ${CPPFLOW_ARCHIVE})
+    # Check if cppflow_path is set and refers to a valid directory
+    if(DEFINED CPPFLOW_PATH AND EXISTS "${CPPFLOW_PATH}")
+      message(STATUS "Using provided local cppflow at: ${CPPFLOW_PATH}")
+    else()
+      message(STATUS "Local CPPFLOW_PATH not found or not set. Proceeding with download...")
+      # download cppflow
+      set(CPPFLOW_VERSION "2.0.3aw")
+      set(CPPFLOW_URL "https://github.com/ACEworksGmbH/cppflow/archive/refs/tags/v${CPPFLOW_VERSION}.tar.gz" CACHE STRING "URL for cppflow")
+      set(CPPFLOW_SHA256 "f1144030aa6d6ed8f1a843f6e5fb5ae4b8e25383620096e2d086f8c27c0a6ef0")
+
+      set(CPPFLOW_ARCHIVE "${CMAKE_BINARY_DIR}/libcppflow.tar.gz")
+
+      # --- START OF YOUR DOWNLOAD LOGIC ---
+
+      # 1. Verify existing file integrity
+      if(EXISTS ${CPPFLOW_ARCHIVE})
+        file(SHA256 ${CPPFLOW_ARCHIVE} CURRENT_CPPFLOW_SHA256)
+        if(NOT CURRENT_CPPFLOW_SHA256 STREQUAL CPPFLOW_SHA256)
+          message(WARNING "Existing cppflow archive hash mismatch.\nExpected: ${CPPFLOW_SHA256}\nActual:   ${CURRENT_CPPFLOW_SHA256}\nDeleting and re-downloading...")
+          file(REMOVE ${CPPFLOW_ARCHIVE})
+        endif()
       endif()
-    endif()
 
-    # 2. Download with hash check
-    if(NOT EXISTS ${CPPFLOW_ARCHIVE})
-      message(STATUS "Downloading ${CPPFLOW_URL}")
-      file(DOWNLOAD ${CPPFLOW_URL} ${CPPFLOW_ARCHIVE}
-              SHOW_PROGRESS
-              EXPECTED_HASH SHA256=${CPPFLOW_SHA256}
-              STATUS DL_CPPFLOW_STATUS
+      # 2. Download with hash check
+      if(NOT EXISTS ${CPPFLOW_ARCHIVE})
+        message(STATUS "Downloading ${CPPFLOW_URL}")
+        file(DOWNLOAD ${CPPFLOW_URL} ${CPPFLOW_ARCHIVE}
+#                SHOW_PROGRESS
+                EXPECTED_HASH SHA256=${CPPFLOW_SHA256}
+                STATUS DL_CPPFLOW_STATUS
+        )
+
+        list(GET DL_CPPFLOW_STATUS 0 DL_CPPFLOW_CODE)
+        list(GET DL_CPPFLOW_STATUS 1 DL_CPPFLOW_MSG)
+
+        if(NOT DL_CPPFLOW_CODE EQUAL 0)
+          message(FATAL_ERROR "Failed to download cppflow from ${CPPFLOW_URL}. Error: ${DL_CPPFLOW_MSG}")
+        endif()
+      else()
+        message(STATUS "Using already downloaded cppflow archive (Hash verified)")
+      endif()
+
+      # 3. Uncompress downloaded sources
+      # Note: I updated the tar command to use ${CPPFLOW_ARCHIVE} variable for consistency
+      execute_process(
+              COMMAND ${CMAKE_COMMAND} -E remove_directory cppflow-${CPPFLOW_VERSION}
+              COMMAND ${CMAKE_COMMAND} -E tar xzf ${CPPFLOW_ARCHIVE}
+              WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
       )
 
-      list(GET DL_CPPFLOW_STATUS 0 DL_CPPFLOW_CODE)
-      list(GET DL_CPPFLOW_STATUS 1 DL_CPPFLOW_MSG)
+      # Set the path to the auto-downloaded location
+      set(CPPFLOW_PATH "${CMAKE_BINARY_DIR}/cppflow-${CPPFLOW_VERSION}")
 
-      if(NOT DL_CPPFLOW_CODE EQUAL 0)
-        message(FATAL_ERROR "Failed to download cppflow from ${CPPFLOW_URL}. Error: ${DL_CPPFLOW_MSG}")
-      endif()
-    else()
-      message(STATUS "Using already downloaded cppflow archive (Hash verified)")
+      # --- END OF YOUR DOWNLOAD LOGIC ---
+
     endif()
 
-    # uncompress downloaded sources
-    execute_process(
-            COMMAND ${CMAKE_COMMAND} -E remove_directory cppflow-*
-            COMMAND ${CMAKE_COMMAND} -E tar xzf libcppflow.tar.gz
-            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    )
+    message("CPPFLOW_PATH=${CPPFLOW_PATH}")
 
-    set(cppflow_path "${CMAKE_BINARY_DIR}/cppflow-2.0.0")
     add_library(cppflow INTERFACE)
     target_include_directories(cppflow
             INTERFACE
             ${tensorflow_INCLUDE_DIRS}
-            $<BUILD_INTERFACE:${cppflow_path}/include>
+            $<BUILD_INTERFACE:${CPPFLOW_PATH}/include>
     )
 
     target_compile_features(cppflow INTERFACE cxx_std_17)

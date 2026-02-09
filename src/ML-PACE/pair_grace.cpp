@@ -28,6 +28,7 @@
 #include "utils_grace.h"
 
 // CppFlow headers
+#include <unistd.h>
 #include <cppflow/ops.h>
 #include <cppflow/model.h>
 #include <cppflow/tensor.h>
@@ -45,16 +46,6 @@ namespace LAMMPS_NS {
 
         cppflow::model *model;
     };
-
-    bool check_tf_graph_input_presented(cppflow::model *model, const std::string &op_name) {
-        try {
-            auto op_shape = model->get_operation_shape(op_name);
-            return true;
-        } catch (std::runtime_error &exc) {
-            return false;
-        }
-    }
-
 
 }    // namespace LAMMPS_NS
 
@@ -74,6 +65,7 @@ PairGRACE::PairGRACE(LAMMPS *lmp) : Pair(lmp) {
 
     chunksize = 4096;
 
+    total_timer.init();
     data_timer.init();
     tp_timer.init();
 
@@ -199,9 +191,18 @@ void PairGRACE::coeff(int narg, char **arg) {
     delete aceimpl->model;
     //load potential file
     if (comm->me == 0) utils::logmesg(lmp, "[GRACE] Loading {}\n", potential_path);
-    // load cppflow model
-    aceimpl->model = new cppflow::model(potential_path);
 
+    // load cppflow model
+    const std::vector<uint8_t> config_bytes = {
+      0x32, 0x05,             // Field 6 (GPUOptions), Length 5
+      0x82, 0x01, 0x02,       // Field 16 (Experimental), Length 2
+      0x18, 0x00              // Field 3 (TF32 Enabled), Value 0 (False)
+    };
+
+    aceimpl->model = new cppflow::model(potential_path, config_bytes);
+#ifdef GRACE_PRINT_DEBUG
+    aceimpl->model->print_signatures();
+#endif
     // read elements from metadata.yaml
     YAML_PACE::Node metadata_yaml = YAML_PACE::LoadFile(potential_path + "/metadata.yaml");
     auto elements_yaml = metadata_yaml["chemical_symbols"];
@@ -298,22 +299,21 @@ void PairGRACE::coeff(int narg, char **arg) {
     // }
 
 
-
-    if (check_tf_graph_input_presented(aceimpl->model,"serving_default_atomic_mu_i")) {
-        this->DEFAULT_INPUT_PREFIX = "serving_default_";
-    } else if (check_tf_graph_input_presented(aceimpl->model, "compute_atomic_mu_i")) {
-        this->DEFAULT_INPUT_PREFIX = "compute_";
+    if (aceimpl->model->has_signature("compute")) {
+        this->compute_function_name = "compute";
+    } else if (aceimpl->model->has_signature("serving_default")) {
+        this->compute_function_name = "serving_default";
     }
+    this->DEFAULT_INPUT_PREFIX = this->compute_function_name+"_";
 
     //
-    has_map_atoms_to_structure_op = check_tf_graph_input_presented(aceimpl->model,
-                                                                   DEFAULT_INPUT_PREFIX+"map_atoms_to_structure");
+    has_map_atoms_to_structure_op = aceimpl->model->has_graph_input(DEFAULT_INPUT_PREFIX+"map_atoms_to_structure");
 
-    has_nstruct_total_op = check_tf_graph_input_presented(aceimpl->model,
+    has_nstruct_total_op = aceimpl->model->has_graph_input(
                                                           DEFAULT_INPUT_PREFIX+"n_struct_total");
-    has_mu_i_op = check_tf_graph_input_presented(aceimpl->model,
+    has_mu_i_op = aceimpl->model->has_graph_input(
                                                  DEFAULT_INPUT_PREFIX+"mu_i");
-    has_batch_tot_nat = check_tf_graph_input_presented(aceimpl->model,
+    has_batch_tot_nat = aceimpl->model->has_graph_input(
                                                  DEFAULT_INPUT_PREFIX+"batch_tot_nat");
 
 }
@@ -433,6 +433,12 @@ void *PairGRACE::extract(const char *str, int &dim) {
   Method name is: tensorflow/serving/predict
  */
 void PairGRACE::compute(int eflag, int vflag) {
+
+    total_timer.init();
+    data_timer.init();
+    tp_timer.init();
+
+    total_timer.start();
     int i, j, ii, jj, inum, jnum;
     double delx, dely, delz, evdwl;
     double fij[3];
@@ -475,6 +481,7 @@ void PairGRACE::compute(int eflag, int vflag) {
 
     data_timer.start();
     std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
+    auto compute_inputs_sig = aceimpl->model->signatures.at(this->compute_function_name).inputs;
 
     if (do_padding) {
         if (nlocal > tot_atoms) {
@@ -496,23 +503,23 @@ void PairGRACE::compute(int eflag, int vflag) {
     for (i = 0; i < nlocal; ++i)
         atomic_mu_i_vector[i] = element_type_mapping[type[i]];
 
-    inputs.emplace_back(input_prefix + "atomic_mu_i" + ":0",
+    inputs.emplace_back(compute_inputs_sig.at("atomic_mu_i").name,//DEFAULT_INPUT_PREFIX + "atomic_mu_i" + ":0",
                         cppflow::tensor(atomic_mu_i_vector, {tot_atoms}));
 
-    //    map_atoms_to_structure
+    // map_atoms_to_structure
     if (has_map_atoms_to_structure_op) {
-        inputs.emplace_back(input_prefix + "map_atoms_to_structure" + ":0",
+        inputs.emplace_back(compute_inputs_sig.at("map_atoms_to_structure").name, //DEFAULT_INPUT_PREFIX + "map_atoms_to_structure" + ":0",
                             cppflow::tensor(std::vector<int32_t>(tot_atoms, 0), {tot_atoms}));
     }
 
     // batch_nat = number of extened atoms + padding
     if (has_batch_tot_nat) {
-        inputs.emplace_back(input_prefix + "batch_tot_nat" + ":0",
+        inputs.emplace_back(compute_inputs_sig.at("batch_tot_nat").name, //DEFAULT_INPUT_PREFIX + "batch_tot_nat" + ":0",
                             cppflow::tensor(std::vector<int32_t>{tot_atoms}, {}));
     }
 
     // batch_nreal_atoms_per_structure: number of extened atoms (w/o padding)
-    inputs.emplace_back(input_prefix + "batch_tot_nat_real" + ":0",
+    inputs.emplace_back(compute_inputs_sig.at("batch_tot_nat_real").name, //DEFAULT_INPUT_PREFIX + "batch_tot_nat_real" + ":0",
                         cppflow::tensor(std::vector<int32_t>{nlocal}, {}));
 
     // ind_i, ind_j: bonds
@@ -651,29 +658,29 @@ void PairGRACE::compute(int eflag, int vflag) {
         mu_j_vector[tot_ind] = 0;
     }
 
-    inputs.emplace_back(input_prefix + "ind_i" + ":0",
+    inputs.emplace_back(compute_inputs_sig.at("ind_i").name, //DEFAULT_INPUT_PREFIX + "ind_i" + ":0",
                         cppflow::tensor(ind_i_vector, {tot_neighbours}));
-    inputs.emplace_back(input_prefix + "ind_j" + ":0",
+    inputs.emplace_back(compute_inputs_sig.at("ind_j").name, //DEFAULT_INPUT_PREFIX + "ind_j" + ":0",
                         cppflow::tensor(ind_j_vector, {tot_neighbours}));
 
 
     // mu_i, mu_j: bonds
     if (has_mu_i_op) {
-        inputs.emplace_back(input_prefix + "mu_i" + ":0",
+        inputs.emplace_back(compute_inputs_sig.at("mu_i").name, //DEFAULT_INPUT_PREFIX + "mu_i" + ":0",
                             cppflow::tensor(mu_i_vector, {tot_neighbours}));
     }
-    inputs.emplace_back(input_prefix + "mu_j" + ":0",
+    inputs.emplace_back(compute_inputs_sig.at("mu_j").name, //DEFAULT_INPUT_PREFIX + "mu_j" + ":0",
                         cppflow::tensor(mu_j_vector, {tot_neighbours}));
 
 
     // num_struc: 1
     if (has_nstruct_total_op) {
-        inputs.emplace_back(input_prefix + "n_struct_total" + ":0",
+        inputs.emplace_back(compute_inputs_sig.at("n_struct_total").name, //DEFAULT_INPUT_PREFIX + "n_struct_total" + ":0",
                             cppflow::tensor(std::vector<int32_t>{1}, {}));
     }
 
     // vector_offsets: 1
-    inputs.emplace_back(input_prefix + "bond_vector" + ":0",
+    inputs.emplace_back(compute_inputs_sig.at("bond_vector").name, //DEFAULT_INPUT_PREFIX + "bond_vector" + ":0",
                         cppflow::tensor(bond_vector, {tot_neighbours, 3}));
 
 
@@ -685,19 +692,25 @@ void PairGRACE::compute(int eflag, int vflag) {
     tp_timer.start();
     vector<string> output_names;
     if (do_energy_only) {
+        //TODO: update!
+        auto compute_outputs_sig = aceimpl->model->signatures.at(this->compute_function_name).outputs;
         output_names = {
-            "StatefulPartitionedCall_2:0", // atomic_energy [nat,1]
+            compute_outputs_sig.at("atomic_energy").name, //"StatefulPartitionedCall:0", // atomic_energy [nat,1]
+            compute_outputs_sig.at("total_energy").name, //"StatefulPartitionedCall:1", // total_energy [-1, 1]
+            compute_outputs_sig.at("total_f").name, //"StatefulPartitionedCall:2", // total_f [n_at, 3]
+            compute_outputs_sig.at("virial").name, //"StatefulPartitionedCall:3", // virial [6]
         };
     } else {
+        auto compute_outputs_sig = aceimpl->model->signatures.at(this->compute_function_name).outputs;
         output_names = {
-            "StatefulPartitionedCall:0", // atomic_energy [nat,1]
-            "StatefulPartitionedCall:1", // total_energy [-1, 1]
-            "StatefulPartitionedCall:2", // total_f [n_at, 3]
-            "StatefulPartitionedCall:3", // virial [6]
+            compute_outputs_sig.at("atomic_energy").name, //"StatefulPartitionedCall:0", // atomic_energy [nat,1]
+            compute_outputs_sig.at("total_energy").name, //"StatefulPartitionedCall:1", // total_energy [-1, 1]
+            compute_outputs_sig.at("total_f").name, //"StatefulPartitionedCall:2", // total_f [n_at, 3]
+            compute_outputs_sig.at("virial").name, //"StatefulPartitionedCall:3", // virial [6]
         };
         // add it optionally
         if (pair_forces)
-            output_names.emplace_back("StatefulPartitionedCall:4");// pair_f [n_bonds, 3]
+            output_names.emplace_back(compute_outputs_sig.at("z_pair_f").name); //"StatefulPartitionedCall:4");// pair_f [n_bonds, 3]
     }
 
 

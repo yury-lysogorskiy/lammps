@@ -1,0 +1,35 @@
+# LAMMPS comparison script
+units metal
+atom_style atomic
+boundary p p p
+
+# Create BCC lattice for Tungsten (W)
+# Read generated structure
+read_data data.rattled_W_Ta
+
+# Define potential
+variable style string ${PAIRSTYLE}
+if "${style} == grace" then &
+  "pair_style grace" &
+  "pair_coeff * * /home/users/lysogy36/.cache/grace/GRACE-2L-OMAT-large-ft-E-parallel-comm W Ta" &
+else &
+  "pair_style grace/2layer/parallel" &
+  "pair_coeff * * /home/users/lysogy36/.cache/grace/GRACE-2L-OMAT-large-ft-E-parallel-comm W Ta"
+
+mass 1 183.84 # W
+mass 2 180.95 # Ta
+#velocity all create 300.0 12345
+
+neighbor 1.0 bin
+neigh_modify delay 0 every 1 check yes
+
+thermo 1
+thermo_style custom step pe ke etotal press
+
+# Dump forces
+variable sname string ${SNAME}
+dump 1 all custom 1 forces.${sname}.dump id type fx fy fz
+dump_modify 1 sort id format line "%d %d %.12e %.12e %.12e"
+
+# Run 
+run 0

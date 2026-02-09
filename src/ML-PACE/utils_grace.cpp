@@ -11,6 +11,7 @@
 #include <sstream>
 #include "utils.h"
 
+using namespace LAMMPS_NS;
 void print_tf_inputs(const std::vector<std::tuple<std::string, cppflow::tensor>>& inputs,
                             int me, LAMMPS_NS::LAMMPS *lmp, bool python_ready) {
     std::stringstream ss;
@@ -122,4 +123,53 @@ void print_tf_inputs(const std::vector<std::tuple<std::string, cppflow::tensor>>
 
     ss << std::string(100, '=') << "\n";
     LAMMPS_NS::utils::logmesg(lmp, "{}\n", ss.str());
+}
+
+
+
+void print_f_data(const double *f_data, int me, LAMMPS *lmp,
+    const std::vector<int>& ind_i_vector, const std::vector<int>& ind_j_vector,
+    int* tag) {
+    int i;
+    int j;
+    //f-data is [nbonds,3]; ind_i_vector and ind_j_vector have corresponding i-j indices, print all this info pretty
+    // ----------------------------------------------------------------------
+    // DEBUG: Pretty Print Raw TensorFlow Pair Forces
+    // ----------------------------------------------------------------------
+    // We iterate up to n_real_neighbours to skip the padding/fake bonds
+    // Ensure output from different processors doesn't get garbled
+    // (Simple serializing via sleep; for strict ordering use MPI barriers)
+    auto atom = lmp->atom;
+
+    if (me == 0) {
+        utils::logmesg(lmp, "\n[GRACE-DEBUG] Raw TF Output Tensor (f_data) Preview:\n");
+        utils::logmesg(lmp, "Idx  | Proc | Atom I (Tag) -> Atom J (Tag) | Raw Force (fx, fy, fz)\n");
+        utils::logmesg(lmp, "-----|------|------------------------------|--------------------------\n");
+    }
+
+
+    for (int k = 0; k < ind_i_vector.size(); ++k) {
+        i = ind_i_vector[k];
+        j = ind_j_vector[k];
+
+        // Safety check: ensure indices are within local/ghost range
+        //if (i < 0 || i >= nall || j < 0 || j >= nall) continue;
+
+        tagint tag_i = tag[i];
+        tagint tag_j = tag[j];
+
+        double raw_fx = f_data[3*k + 0];
+        double raw_fy = f_data[3*k + 1];
+        double raw_fz = f_data[3*k + 2];
+
+        // Optional: Filter out near-zero forces to reduce noise
+        //if (raw_fx*raw_fx + raw_fy*raw_fy + raw_fz*raw_fz > 1e-20)
+        {
+            utils::logmesg(lmp, "{:<4} | {:<4} | {:>8} -> {:<8} | [{: .6f}, {: .6f}, {: .6f}]\n",
+                           k, me, tag_i, tag_j, raw_fx, raw_fy, raw_fz);
+        }
+    }
+
+    if (me == 0) utils::logmesg(lmp, "------------------------------------------------------------------\n");
+    // ----------------------------------------------------------------------
 }

@@ -54,6 +54,7 @@ class PairGRACE : public Pair {
   struct ACETPImpl *aceimpl;
 
   std::string DEFAULT_INPUT_PREFIX = "serving_default_";
+  std::string compute_function_name = "serving_default";
   bool has_map_atoms_to_structure_op = false;
   bool has_nstruct_total_op = false;
   bool has_mu_i_op = false;
@@ -86,6 +87,7 @@ class PairGRACE : public Pair {
   std::map<std::string, int> elements_to_index_map;
   std::vector<int> element_type_mapping; // LAMMPS's type(1,2,3...) to ACE's mu(0,1,2...,89)
 
+  PACE::ACETimer total_timer;
   PACE::ACETimer data_timer;
   PACE::ACETimer tp_timer;
 
