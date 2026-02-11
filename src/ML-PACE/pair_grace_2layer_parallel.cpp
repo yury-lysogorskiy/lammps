@@ -1,6 +1,6 @@
 #ifndef NO_GRACE_TF
 // #define GRACE_DEBUG
-#define GRACE_PROFILE
+// #define GRACE_PROFILE
 
 #include "pair_grace_2layer_parallel.h"
 
@@ -189,24 +189,42 @@ void PairGRACE2LayerParallel::coeff(int narg, char **arg) {
         YAML_PACE::Node parallel_comm = metadata_yaml["parallel_communication"];
         for (YAML_PACE::const_iterator it = parallel_comm.begin(); it != parallel_comm.end(); ++it) {
             std::string key = it->first.as<std::string>();
+            YAML_PACE::Node node = it->second;
+            
             std::vector<int64_t> shape;
             int size = 1;
-            for (const auto& dim : it->second) {
-                int d = dim.as<int>();
-                shape.push_back(d);
-                size *= d;
+            
+            if (node["shape"]) {
+                for (const auto& dim : node["shape"]) {
+                    int d = dim.as<int>();
+                    shape.push_back(d);
+                    size *= d;
+                }
+            } else {
+                 // Fallback if shape is directly the value (old format support if needed, though user specified new format)
+                 // Assuming new format as per request
+                 error->all(FLERR, "[GRACE] Feature '{}' missing 'shape' in metadata.yaml", key);
             }
+            
+            bool non_local; // Default to true
+            if (node["non_local"]) {
+                non_local = node["non_local"].as<bool>();
+            } else {
+                error->all(FLERR, "[GRACE] Feature '{}' missing 'non_local' in metadata.yaml", key);
+            }
+
             feature_shapes[key] = shape;
             feature_sizes[key] = size;
+            feature_is_non_local[key] = non_local;
+
             if (comm->me == 0) {
                 std::string shape_str;
                 for (size_t i = 0; i < shape.size(); ++i) {
                     shape_str += std::to_string(shape[i]);
                     if (i < shape.size() - 1) shape_str += ", ";
                 }
-                utils::logmesg(lmp, "[GRACE] Feature '{}' shape: [{}], size: {}\n", key, shape_str, size);
+                utils::logmesg(lmp, "[GRACE] Feature '{}' shape: [{}], size: {}, non_local: {}\n", key, shape_str, size, non_local);
             }
-
         }
     } else {
         error->all(FLERR, "[GRACE] metadata.yaml missing 'parallel_communication' section");
@@ -217,7 +235,9 @@ void PairGRACE2LayerParallel::coeff(int narg, char **arg) {
     comm_reverse = 0;
     for (const auto& [key, size] : feature_sizes) {
         comm_forward += size;
-        comm_reverse += size;
+        if (feature_is_non_local[key]) {
+            comm_reverse += size;
+        }
     }
 
     const int ntypes = atom->ntypes;
@@ -585,8 +605,10 @@ int PairGRACE2LayerParallel::pack_reverse_comm(int n, int first, double *buf) {
     int m = 0; int last = first + n;
     for (int i = first; i < last; i++) {
         for (const auto& [key, size] : feature_sizes) {
-            std::copy_n(&gradients[key][i * size], size, &buf[m]);
-            m += size;
+            if (feature_is_non_local[key]) {
+                std::copy_n(&gradients[key][i * size], size, &buf[m]);
+                m += size;
+            }
         }
     }
     return m;
@@ -597,31 +619,8 @@ void PairGRACE2LayerParallel::unpack_reverse_comm(int n, int *list, double *buf)
     for (int i = 0; i < n; i++) {
         int j = list[i];
         for (const auto& [key, size] : feature_sizes) {
-            // Accumulate gradients from ghosts to parents
-            // Skip accumulation for "I_nl_LN" (or similar loss masks) if needed, 
-            // but generally reverse comm accumulates. 
-            // The original code skipped "I_nl_LN" accumulation.
-            // Assuming "I_nl_LN" corresponds to a key containing "LN" or specific logic.
-            // Based on user request, we should check if we need to skip specific keys.
-            // The original code had:
-            // // Skip grad_I_out_LN - it's a loss mask and should NOT be accumulated
-            // if (key == I_LN_KEY) ...
-            // Since keys are dynamic now, we might need a convention or check.
-            // For now, let's assume we accumulate everything unless it's specifically the LN key.
-            // However, the user provided keys "I" and "I_nl_LN".
-            // If "I_nl_LN" is indeed a mask/normalization that shouldn't be accumulated, we need to know.
-            // In the original code: grad_I was accumulated, grad_I_out_LN was NOT.
-            // Let's check if the key contains "_LN" as a heuristic or check exact match if possible.
-            // But wait, the user said "I_nl_LN" is in the yaml.
-
-            //TODO: INVESTIGATE THIS CASE!
-            // Or strictly: if (key != "I_nl_LN") ... but key names might vary.
-            // The original code hardcoded I_LN_KEY = "I_nl_LN".
-            
-            if ((key.find("_LN") == std::string::npos)) {
+            if (feature_is_non_local[key]) {
                 for (int k = 0; k < size; k++) gradients[key][j * size + k] += buf[m++];
-            } else {
-                m += size; // Skip
             }
         }
     }
@@ -843,7 +842,7 @@ void PairGRACE2LayerParallel::run_backward_layer_1() {
         aceimpl->grad_bond_vector[k] += gf_data[k];
 }
 
-void PairGRACE2LayerParallel::print_tensors(const std::string& name, const std::vector<std::tuple<std::string, cppflow::tensor>>& tensors, const std::string& type_prefix) const {
+void PairGRACE2LayerParallel::print_tensors(const std::string& name, const std::vector<std::tuple<std::string, cppflow::tensor>>& tensors, const std::string& type_prefix) {
 #ifdef GRACE_DEBUG
     if (type_prefix == "Input") utils::logmesg(lmp, "[GRACE-DEBUG] Calling model in {}\n", name);
 #endif

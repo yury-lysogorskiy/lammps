@@ -84,6 +84,7 @@ class PairGRACE2LayerParallel : public Pair {
   std::map<std::string, std::vector<double>> gradients;
   std::map<std::string, std::vector<int64_t>> feature_shapes;
   std::map<std::string, int> feature_sizes;
+  std::map<std::string, bool> feature_is_non_local;
 
   std::vector<double> grad_bv_L2;
 
@@ -100,7 +101,7 @@ class PairGRACE2LayerParallel : public Pair {
   void run_backward_layer_2(int eflag, int vflag);
   void run_backward_layer_1();
 
-  void print_tensors(const std::string& name, const std::vector<std::tuple<std::string, cppflow::tensor>>& tensors, const std::string& type_prefix = "Input") const;
+  void print_tensors(const std::string& name, const std::vector<std::tuple<std::string, cppflow::tensor>>& tensors, const std::string& type_prefix = "Input");
 
 };
 
