@@ -48,19 +48,11 @@ class PairGRACE2LayerParallel : public Pair {
  protected:
   struct GRACE2LayerImpl *aceimpl;
 
-  // Hardcoded feature sizes for now
-  static constexpr int FEAT_I_SIZE = 512;        // 32*16
-  static constexpr int FEAT_I_OUT_LN_SIZE = 17;  // 17*1
-
   std::string DEFAULT_INPUT_PREFIX = "forward_layer_1_";
   std::string forward_layer_1_name = "forward_layer_1";
   std::string backward_layer_2_name = "backward_layer_2";
   std::string backward_layer_1_name = "backward_layer_1";
 
-  const std::string I_KEY = "I";
-  const std::string I_LN_KEY = "I_nl_LN";
-  const std::string GRAD_I_KEY = "grad_I";
-  const std::string GRAD_I_LN_KEY = "grad_I_nl_LN";
   const std::string ENERGY_KEY = "atomic_energy";
   const std::string GRAD_BOND_KEY = "grad_bond_vector";
 
@@ -88,10 +80,11 @@ class PairGRACE2LayerParallel : public Pair {
   std::vector<int> element_type_mapping;
 
   // Per-atom features (forward comm) and gradients (reverse comm)
-  std::vector<double> feature_I;
-  std::vector<double> feature_I_out_LN;
-  std::vector<double> grad_I;
-  std::vector<double> grad_I_out_LN;
+  std::map<std::string, std::vector<double>> features;
+  std::map<std::string, std::vector<double>> gradients;
+  std::map<std::string, std::vector<int64_t>> feature_shapes;
+  std::map<std::string, int> feature_sizes;
+
   std::vector<double> grad_bv_L2;
 
   PACE::ACETimer total_timer;
@@ -107,7 +100,7 @@ class PairGRACE2LayerParallel : public Pair {
   void run_backward_layer_2(int eflag, int vflag);
   void run_backward_layer_1();
 
-  void print_tensors(const std::string& name, const std::vector<std::tuple<std::string, cppflow::tensor>>& tensors, const std::string& type_prefix = "Input");
+  void print_tensors(const std::string& name, const std::vector<std::tuple<std::string, cppflow::tensor>>& tensors, const std::string& type_prefix = "Input") const;
 
 };
 

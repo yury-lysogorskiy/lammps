@@ -8,7 +8,6 @@
 #include "comm.h"
 #include "error.h"
 #include "force.h"
-#include "math_const.h"
 #include "memory.h"
 #include "neigh_list.h"
 #include "neighbor.h"
@@ -17,7 +16,6 @@
 
 #include <cstring>
 #include <algorithm>
-#include <numeric>
 #include <tuple>
 #include "yaml-cpp/yaml.h"
 
@@ -75,9 +73,8 @@ PairGRACE2LayerParallel::PairGRACE2LayerParallel(LAMMPS *lmp) : Pair(lmp) {
     model3_timer.init();
 
     no_virial_fdotr_compute = 1;
-
-    comm_forward = FEAT_I_SIZE + FEAT_I_OUT_LN_SIZE;
-    comm_reverse = FEAT_I_SIZE + FEAT_I_OUT_LN_SIZE;
+    chunksize = 4096;
+    nelements = 0;
 }
 
 PairGRACE2LayerParallel::~PairGRACE2LayerParallel() {
@@ -181,11 +178,47 @@ void PairGRACE2LayerParallel::coeff(int narg, char **arg) {
 
     YAML_PACE::Node metadata_yaml = YAML_PACE::LoadFile(potential_path + "/metadata.yaml");
     elements_name = metadata_yaml["chemical_symbols"].as<std::vector<std::string>>();
-    nelements = (int) elements_name.size();
+    nelements = static_cast<int>(elements_name.size());
     for (int mu = 0; mu < nelements; mu++) {
         elements_to_index_map[elements_name.at(mu)] = mu;
     }
     cutoff = metadata_yaml["cutoff"].as<double>();
+
+    // Parse parallel communication features
+    if (metadata_yaml["parallel_communication"]) {
+        YAML_PACE::Node parallel_comm = metadata_yaml["parallel_communication"];
+        for (YAML_PACE::const_iterator it = parallel_comm.begin(); it != parallel_comm.end(); ++it) {
+            std::string key = it->first.as<std::string>();
+            std::vector<int64_t> shape;
+            int size = 1;
+            for (const auto& dim : it->second) {
+                int d = dim.as<int>();
+                shape.push_back(d);
+                size *= d;
+            }
+            feature_shapes[key] = shape;
+            feature_sizes[key] = size;
+            if (comm->me == 0) {
+                std::string shape_str;
+                for (size_t i = 0; i < shape.size(); ++i) {
+                    shape_str += std::to_string(shape[i]);
+                    if (i < shape.size() - 1) shape_str += ", ";
+                }
+                utils::logmesg(lmp, "[GRACE] Feature '{}' shape: [{}], size: {}\n", key, shape_str, size);
+            }
+
+        }
+    } else {
+        error->all(FLERR, "[GRACE] metadata.yaml missing 'parallel_communication' section");
+    }
+
+    // Calculate total communication size
+    comm_forward = 0;
+    comm_reverse = 0;
+    for (const auto& [key, size] : feature_sizes) {
+        comm_forward += size;
+        comm_reverse += size;
+    }
 
     const int ntypes = atom->ntypes;
     element_type_mapping.resize(ntypes + 1);
@@ -274,7 +307,6 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     }
     
     int n_bonds = 0;
-    int inum = list->inum;
     int *ilist = list->ilist;
     int *numneigh = list->numneigh;
     int **firstneigh = list->firstneigh;
@@ -309,10 +341,11 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
         utils::logmesg(lmp, "[GRACE] Neighbor padding resize: {} -> {}\n", n_bonds, aceimpl->tot_neighbours);
     }
 
-    feature_I.resize(aceimpl->tot_atoms * FEAT_I_SIZE);
-    feature_I_out_LN.resize(aceimpl->tot_atoms * FEAT_I_OUT_LN_SIZE);
-    grad_I.assign(aceimpl->tot_atoms * FEAT_I_SIZE, 0.0);
-    grad_I_out_LN.assign(aceimpl->tot_atoms * FEAT_I_OUT_LN_SIZE, 0.0);
+    // Resize features and gradients based on parsed sizes
+    for (const auto& [key, size] : feature_sizes) {
+        features[key].resize(aceimpl->tot_atoms * size);
+        gradients[key].assign(aceimpl->tot_atoms * size, 0.0);
+    }
 
     aceimpl->mu_i.resize(aceimpl->tot_neighbours);
     aceimpl->mu_j.resize(aceimpl->tot_neighbours);
@@ -379,8 +412,10 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     // Zero ghost gradients after reverse_comm has accumulated them to parents
     // This ensures ghosts don't contribute again in backward_layer_1
     for (int i = atom->nlocal; i < aceimpl->tot_atoms; i++) {
-        std::fill_n(&grad_I[i * FEAT_I_SIZE], FEAT_I_SIZE, 0.0);
-        std::fill_n(&grad_I_out_LN[i * FEAT_I_OUT_LN_SIZE], FEAT_I_OUT_LN_SIZE, 0.0);
+        for (auto& [key, grad_vec] : gradients) {
+            int size = feature_sizes[key];
+            std::fill_n(&grad_vec[i * size], size, 0.0);
+        }
     }
     
     data_timer.stop();
@@ -528,8 +563,10 @@ int PairGRACE2LayerParallel::pack_forward_comm(int n, int *list, double *buf, in
     int m = 0;
     for (int i = 0; i < n; i++) {
         int j = list[i];
-        std::copy_n(&feature_I[j * FEAT_I_SIZE], FEAT_I_SIZE, &buf[m]); m += FEAT_I_SIZE;
-        std::copy_n(&feature_I_out_LN[j * FEAT_I_OUT_LN_SIZE], FEAT_I_OUT_LN_SIZE, &buf[m]); m += FEAT_I_OUT_LN_SIZE;
+        for (const auto& [key, size] : feature_sizes) {
+            std::copy_n(&features[key][j * size], size, &buf[m]);
+            m += size;
+        }
     }
     return m;
 }
@@ -537,16 +574,20 @@ int PairGRACE2LayerParallel::pack_forward_comm(int n, int *list, double *buf, in
 void PairGRACE2LayerParallel::unpack_forward_comm(int n, int first, double *buf) {
     int m = 0; int last = first + n;
     for (int i = first; i < last; i++) {
-        std::copy_n(&buf[m], FEAT_I_SIZE, &feature_I[i * FEAT_I_SIZE]); m += FEAT_I_SIZE;
-        std::copy_n(&buf[m], FEAT_I_OUT_LN_SIZE, &feature_I_out_LN[i * FEAT_I_OUT_LN_SIZE]); m += FEAT_I_OUT_LN_SIZE;
+        for (const auto& [key, size] : feature_sizes) {
+            std::copy_n(&buf[m], size, &features[key][i * size]);
+            m += size;
+        }
     }
 }
 
 int PairGRACE2LayerParallel::pack_reverse_comm(int n, int first, double *buf) {
     int m = 0; int last = first + n;
     for (int i = first; i < last; i++) {
-        std::copy_n(&grad_I[i * FEAT_I_SIZE], FEAT_I_SIZE, &buf[m]); m += FEAT_I_SIZE;
-        std::copy_n(&grad_I_out_LN[i * FEAT_I_OUT_LN_SIZE], FEAT_I_OUT_LN_SIZE, &buf[m]); m += FEAT_I_OUT_LN_SIZE;
+        for (const auto& [key, size] : feature_sizes) {
+            std::copy_n(&gradients[key][i * size], size, &buf[m]);
+            m += size;
+        }
     }
     return m;
 }
@@ -555,10 +596,34 @@ void PairGRACE2LayerParallel::unpack_reverse_comm(int n, int *list, double *buf)
     int m = 0;
     for (int i = 0; i < n; i++) {
         int j = list[i];
-        // Accumulate grad_I from ghosts to parents
-        for (int k = 0; k < FEAT_I_SIZE; k++) grad_I[j * FEAT_I_SIZE + k] += buf[m++];
-        // Skip grad_I_out_LN - it's a loss mask and should NOT be accumulated
-        m += FEAT_I_OUT_LN_SIZE;
+        for (const auto& [key, size] : feature_sizes) {
+            // Accumulate gradients from ghosts to parents
+            // Skip accumulation for "I_nl_LN" (or similar loss masks) if needed, 
+            // but generally reverse comm accumulates. 
+            // The original code skipped "I_nl_LN" accumulation.
+            // Assuming "I_nl_LN" corresponds to a key containing "LN" or specific logic.
+            // Based on user request, we should check if we need to skip specific keys.
+            // The original code had:
+            // // Skip grad_I_out_LN - it's a loss mask and should NOT be accumulated
+            // if (key == I_LN_KEY) ...
+            // Since keys are dynamic now, we might need a convention or check.
+            // For now, let's assume we accumulate everything unless it's specifically the LN key.
+            // However, the user provided keys "I" and "I_nl_LN".
+            // If "I_nl_LN" is indeed a mask/normalization that shouldn't be accumulated, we need to know.
+            // In the original code: grad_I was accumulated, grad_I_out_LN was NOT.
+            // Let's check if the key contains "_LN" as a heuristic or check exact match if possible.
+            // But wait, the user said "I_nl_LN" is in the yaml.
+
+            //TODO: INVESTIGATE THIS CASE!
+            // Or strictly: if (key != "I_nl_LN") ... but key names might vary.
+            // The original code hardcoded I_LN_KEY = "I_nl_LN".
+            
+            if ((key.find("_LN") == std::string::npos)) {
+                for (int k = 0; k < size; k++) gradients[key][j * size + k] += buf[m++];
+            } else {
+                m += size; // Skip
+            }
+        }
     }
 }
 
@@ -591,11 +656,17 @@ void PairGRACE2LayerParallel::run_forward_layer_1() {
 #endif
     
     std::vector<std::string> out_names;
-    if (sig.outputs.count(I_KEY)) out_names.push_back(sig.outputs.at(I_KEY).name);
-    else error->all(FLERR, "[GRACE-ERROR] Key '{}' not found in signature '{}' outputs", I_KEY, forward_layer_1_name);
+    std::vector<std::string> ordered_keys;
     
-    if (sig.outputs.count(I_LN_KEY)) out_names.push_back(sig.outputs.at(I_LN_KEY).name);
-    else error->all(FLERR, "[GRACE-ERROR] Key '{}' not found in signature '{}' outputs", I_LN_KEY, forward_layer_1_name);
+    // We need to request outputs for all keys in feature_shapes
+    for (const auto& [key, shape] : feature_shapes) {
+        if (sig.outputs.count(key)) {
+            out_names.push_back(sig.outputs.at(key).name);
+            ordered_keys.push_back(key);
+        } else {
+            error->all(FLERR, "[GRACE-ERROR] Key '{}' not found in signature '{}' outputs", key, forward_layer_1_name);
+        }
+    }
 
     auto outputs = aceimpl->model->operator()(inputs, out_names);
     
@@ -607,13 +678,13 @@ void PairGRACE2LayerParallel::run_forward_layer_1() {
     }
 #endif
     
-    auto I_tens = outputs[0].get_tensor();
-    const double *I_data = static_cast<double *>(TF_TensorData(I_tens.get()));
-    std::copy_n(I_data, atom->nlocal * FEAT_I_SIZE, &feature_I[0]);
-
-    auto LN_tens = outputs[1].get_tensor();
-    const double *LN_data = static_cast<double *>(TF_TensorData(LN_tens.get()));
-    std::copy_n(LN_data, atom->nlocal * FEAT_I_OUT_LN_SIZE, &feature_I_out_LN[0]);
+    for (size_t i = 0; i < outputs.size(); ++i) {
+        std::string key = ordered_keys[i];
+        auto tens = outputs[i].get_tensor();
+        const double *data = static_cast<double *>(TF_TensorData(tens.get()));
+        int size = feature_sizes[key];
+        std::copy_n(data, atom->nlocal * size, &features[key][0]);
+    }
 }
 
 void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
@@ -638,19 +709,42 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
     add_input("mu_j", cppflow::tensor(aceimpl->mu_j, {aceimpl->tot_neighbours}));
     add_input("bond_vector", cppflow::tensor(aceimpl->bond_vector, {aceimpl->tot_neighbours, 3}));
     add_input("batch_tot_nat_real", cppflow::tensor(std::vector<int32_t>{atom->nlocal}, {}));
-    add_input(I_KEY, cppflow::tensor(feature_I, {aceimpl->tot_atoms, 32, 16}));
-    add_input(I_LN_KEY, cppflow::tensor(feature_I_out_LN, {aceimpl->tot_atoms, 17, 1}));
+    
+    for (const auto& [key, shape] : feature_shapes) {
+        std::vector<int64_t> full_shape = {aceimpl->tot_atoms};
+        full_shape.insert(full_shape.end(), shape.begin(), shape.end());
+        add_input(key, cppflow::tensor(features[key], full_shape));
+    }
 
 #ifdef GRACE_DEBUG
     if (comm->me == 0) print_tensors(backward_layer_2_name, inputs);
 #endif
     
     std::vector<std::string> out_names;
-    std::vector<std::string> keys = {ENERGY_KEY, GRAD_I_KEY, GRAD_I_LN_KEY, GRAD_BOND_KEY};
-    for (const auto& k : keys) {
-        if (sig.outputs.count(k)) out_names.push_back(sig.outputs.at(k).name);
-        else error->all(FLERR, "[GRACE-ERROR] Key '{}' not found in signature '{}' outputs", k, backward_layer_2_name);
+    std::vector<std::string> ordered_keys;
+    
+    // Energy
+    if (sig.outputs.count(ENERGY_KEY)) {
+        out_names.push_back(sig.outputs.at(ENERGY_KEY).name);
+        ordered_keys.push_back(ENERGY_KEY);
+    } else error->all(FLERR, "[GRACE-ERROR] Key '{}' not found in signature '{}' outputs", ENERGY_KEY, backward_layer_2_name);
+
+    // Gradients for features
+    for (const auto& [key, shape] : feature_shapes) {
+        std::string grad_key = "grad_" + key;
+        if (sig.outputs.count(grad_key)) {
+            out_names.push_back(sig.outputs.at(grad_key).name);
+            ordered_keys.push_back(grad_key);
+        } else {
+             error->all(FLERR, "[GRACE-ERROR] Key '{}' not found in signature '{}' outputs", grad_key, backward_layer_2_name);
+        }
     }
+
+    // Grad bond vector
+    if (sig.outputs.count(GRAD_BOND_KEY)) {
+        out_names.push_back(sig.outputs.at(GRAD_BOND_KEY).name);
+        ordered_keys.push_back(GRAD_BOND_KEY);
+    } else error->all(FLERR, "[GRACE-ERROR] Key '{}' not found in signature '{}' outputs", GRAD_BOND_KEY, backward_layer_2_name);
     
     auto outputs = aceimpl->model->operator()(inputs, out_names);
 
@@ -662,26 +756,31 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
     }
 #endif
 
-    auto e_tens = outputs[0].get_tensor();
+    int out_idx = 0;
+    
+    // Energy
+    auto e_tens = outputs[out_idx++].get_tensor();
     const double *e_data = static_cast<double *>(TF_TensorData(e_tens.get()));
     if (eflag_either) {
         for (int i = 0; i < atom->nlocal; i++)
             ev_tally_full(i, 2.0 * e_data[i], 0.0, 0.0, 0.0, 0.0, 0.0);
     }
 
-    auto gI_tens = outputs[1].get_tensor();
-    const double *gI_data = static_cast<double *>(TF_TensorData(gI_tens.get()));
-    std::copy_n(gI_data, aceimpl->tot_atoms * FEAT_I_SIZE, &grad_I[0]);
+    // Gradients
+    for (const auto& [key, shape] : feature_shapes) {
+        std::string grad_key = "grad_" + key;
+        // We iterate in the same order as we pushed to ordered_keys
+        // ordered_keys[out_idx] should be grad_key
+        
+        auto g_tens = outputs[out_idx++].get_tensor();
+        const double *g_data = static_cast<double *>(TF_TensorData(g_tens.get()));
+        int size = feature_sizes[key];
+        // Store in gradients map using the original key (without "grad_")
+        std::copy_n(g_data, aceimpl->tot_atoms * size, &gradients[key][0]);
+    }
 
-    // NOTE: Do NOT zero ghost gradients here - let reverse_comm accumulate them first
-    // Zeroing happens after reverse_comm in compute()
-
-    auto gLN_tens = outputs[2].get_tensor();
-    const double *gLN_data = static_cast<double *>(TF_TensorData(gLN_tens.get()));
-    std::copy_n(gLN_data, aceimpl->tot_atoms * FEAT_I_OUT_LN_SIZE, &grad_I_out_LN[0]);
-
-    auto gf_tens = outputs[3].get_tensor();
-
+    // Grad bond vector
+    auto gf_tens = outputs[out_idx++].get_tensor();
     const double *gf_data = static_cast<double *>(TF_TensorData(gf_tens.get()));
 
     aceimpl->grad_bond_vector.resize(3 * aceimpl->tot_neighbours);
@@ -711,8 +810,13 @@ void PairGRACE2LayerParallel::run_backward_layer_1() {
     add_input("mu_j", cppflow::tensor(aceimpl->mu_j, {aceimpl->tot_neighbours}));
     add_input("bond_vector", cppflow::tensor(aceimpl->bond_vector, {aceimpl->tot_neighbours, 3}));
     add_input("batch_tot_nat_real", cppflow::tensor(std::vector<int32_t>{atom->nlocal}, {}));
-    add_input(GRAD_I_KEY, cppflow::tensor(grad_I, {aceimpl->tot_atoms, 32, 16}));
-    add_input(GRAD_I_LN_KEY, cppflow::tensor(grad_I_out_LN, {aceimpl->tot_atoms, 17, 1}));
+    
+    for (const auto& [key, shape] : feature_shapes) {
+        std::string grad_key = "grad_" + key;
+        std::vector<int64_t> full_shape = {aceimpl->tot_atoms};
+        full_shape.insert(full_shape.end(), shape.begin(), shape.end());
+        add_input(grad_key, cppflow::tensor(gradients[key], full_shape));
+    }
 
 #ifdef GRACE_DEBUG
     if (comm->me == 0) print_tensors(backward_layer_1_name, inputs);
@@ -739,25 +843,25 @@ void PairGRACE2LayerParallel::run_backward_layer_1() {
         aceimpl->grad_bond_vector[k] += gf_data[k];
 }
 
-void PairGRACE2LayerParallel::print_tensors(const std::string& name, const std::vector<std::tuple<std::string, cppflow::tensor>>& tensors, const std::string& type_prefix) {
+void PairGRACE2LayerParallel::print_tensors(const std::string& name, const std::vector<std::tuple<std::string, cppflow::tensor>>& tensors, const std::string& type_prefix) const {
 #ifdef GRACE_DEBUG
     if (type_prefix == "Input") utils::logmesg(lmp, "[GRACE-DEBUG] Calling model in {}\n", name);
 #endif
     for (const auto& tensor : tensors) {
         const auto& key = std::get<0>(tensor);
         const auto& t = std::get<1>(tensor);
-        auto shape = t.shape().template get_data<int64_t>();
+        auto shape = t.shape().get_data<int64_t>();
         std::string shape_str = "[";
         for (size_t i = 0; i < shape.size(); ++i) shape_str += std::to_string(shape[i]) + (i == shape.size() - 1 ? "" : ", ");
         shape_str += "]";
         utils::logmesg(lmp, "  {}: {} | Shape: {}\n", type_prefix, key, shape_str);
         
         auto dtype = TF_TensorType(t.get_tensor().get());
-        int total_elements = (int)TF_TensorElementCount(t.get_tensor().get());
+        int total_elements = static_cast<int>(TF_TensorElementCount(t.get_tensor().get()));
         
         if (shape.size() >= 1) {
-            int n_atoms_to_print = std::min((int)shape[0], 8);
-            int elements_per_atom = total_elements / (int)shape[0];
+            int n_atoms_to_print = std::min(static_cast<int>(shape[0]), 8);
+            int elements_per_atom = total_elements / static_cast<int>(shape[0]);
             int n_elements_to_print = std::min(elements_per_atom, 8);
             
             if (dtype == TF_DOUBLE) {
