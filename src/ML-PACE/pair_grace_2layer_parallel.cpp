@@ -35,7 +35,8 @@ namespace LAMMPS_NS {
         ~GRACE2LayerImpl() { delete model; }
         cppflow::model *model;
 
-        GRACE::GracePaddingDimension atom_padding;
+        GRACE::GracePaddingDimension all_atoms_padding;
+        GRACE::GracePaddingDimension real_atoms_padding;
         GRACE::GracePaddingDimension neighbor_padding;
 
         std::vector<int32_t> mu_i;
@@ -43,12 +44,14 @@ namespace LAMMPS_NS {
         std::vector<int32_t> ind_i;
         std::vector<int32_t> ind_j;
         std::vector<double> bond_vector;
-        std::vector<int32_t> atomic_mu_i;
+        std::vector<int32_t> atomic_mu_i; // for real + ghost atoms + pad
+        std::vector<int32_t> atomic_mu_i_1; // for real atoms + pad
 
         std::vector<double> grad_bond_vector; // Temporary storage for summing forces
 
-        int tot_atoms = 0;
-        int tot_neighbours = 0;
+        int n_all_atoms_padded = 0;
+        int n_local_atoms_padded = 0;
+        int n_neighbours_padded = 0;
         int nlocal_bonds = 0;
     };
 }
@@ -138,11 +141,17 @@ void PairGRACE2LayerParallel::settings(int narg, char **arg) {
     }
 
     // Apply to padding helpers
-    aceimpl->atom_padding.enabled = do_padding;
-    aceimpl->atom_padding.padding_fraction = neigh_padding_fraction;
-    aceimpl->atom_padding.reduction_threshold_fraction = reducing_neigh_padding_fraction;
-    aceimpl->atom_padding.max_reductions = max_number_of_reduction;
-    aceimpl->atom_padding.verbose = pad_verbose;
+    aceimpl->all_atoms_padding.enabled = do_padding;
+    aceimpl->all_atoms_padding.padding_fraction = neigh_padding_fraction;
+    aceimpl->all_atoms_padding.reduction_threshold_fraction = reducing_neigh_padding_fraction;
+    aceimpl->all_atoms_padding.max_reductions = max_number_of_reduction;
+    aceimpl->all_atoms_padding.verbose = pad_verbose;
+
+    aceimpl->real_atoms_padding.enabled = do_padding;
+    aceimpl->real_atoms_padding.padding_fraction = neigh_padding_fraction;
+    aceimpl->real_atoms_padding.reduction_threshold_fraction = reducing_neigh_padding_fraction;
+    aceimpl->real_atoms_padding.max_reductions = max_number_of_reduction;
+    aceimpl->real_atoms_padding.verbose = pad_verbose;
 
     aceimpl->neighbor_padding.enabled = do_padding;
     aceimpl->neighbor_padding.padding_fraction = neigh_padding_fraction;
@@ -321,9 +330,13 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     int nlocal = atom->nlocal;
     int nall = nlocal + atom->nghost;
 
-    aceimpl->tot_atoms = aceimpl->atom_padding.update(nall);
-    if (comm->me == 0 && pad_verbose && aceimpl->atom_padding.last_update_triggered_resize()) {
-        utils::logmesg(lmp, "[GRACE] Atom padding resize: {} -> {}\n", nall, aceimpl->tot_atoms);
+    aceimpl->n_all_atoms_padded = aceimpl->all_atoms_padding.update(nall);
+    aceimpl->n_local_atoms_padded =aceimpl->real_atoms_padding.update(nlocal);
+    if (comm->me == 0 && pad_verbose && aceimpl->all_atoms_padding.last_update_triggered_resize()) {
+        utils::logmesg(lmp, "[GRACE] Atom padding resize: all atoms {} -> {}, real atoms {} -> {}\n",
+            nall, aceimpl->n_all_atoms_padded,
+            nlocal, aceimpl->n_local_atoms_padded
+            );
     }
     
     int n_bonds = 0;
@@ -356,26 +369,29 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
         }
     }
     aceimpl->nlocal_bonds = n_bonds;
-    aceimpl->tot_neighbours = aceimpl->neighbor_padding.update(n_bonds);
+    aceimpl->n_neighbours_padded = aceimpl->neighbor_padding.update(n_bonds);
     if (comm->me == 0 && pad_verbose && aceimpl->neighbor_padding.last_update_triggered_resize()) {
-        utils::logmesg(lmp, "[GRACE] Neighbor padding resize: {} -> {}\n", n_bonds, aceimpl->tot_neighbours);
+        utils::logmesg(lmp, "[GRACE] Neighbor padding resize: {} -> {}\n", n_bonds, aceimpl->n_neighbours_padded);
     }
 
     // Resize features and gradients based on parsed sizes
     for (const auto& [key, size] : feature_sizes) {
-        features[key].resize(aceimpl->tot_atoms * size);
-        gradients[key].assign(aceimpl->tot_atoms * size, 0.0);
+        features[key].resize(aceimpl->n_all_atoms_padded * size);
+        gradients[key].assign(aceimpl->n_all_atoms_padded * size, 0.0);
     }
 
-    aceimpl->mu_i.resize(aceimpl->tot_neighbours);
-    aceimpl->mu_j.resize(aceimpl->tot_neighbours);
-    aceimpl->ind_i.resize(aceimpl->tot_neighbours);
-    aceimpl->ind_j.resize(aceimpl->tot_neighbours);
-    aceimpl->bond_vector.resize(3 * aceimpl->tot_neighbours, 1e6);
-    grad_bv_L2.resize(3 * aceimpl->tot_neighbours);
-    aceimpl->atomic_mu_i.assign(aceimpl->tot_atoms, element_type_mapping[type[0]]);
+    aceimpl->mu_i.resize(aceimpl->n_neighbours_padded);
+    aceimpl->mu_j.resize(aceimpl->n_neighbours_padded);
+    aceimpl->ind_i.resize(aceimpl->n_neighbours_padded);
+    aceimpl->ind_j.resize(aceimpl->n_neighbours_padded);
+    aceimpl->bond_vector.resize(3 * aceimpl->n_neighbours_padded, 1e6);
+    grad_bv_L2.resize(3 * aceimpl->n_neighbours_padded);
 
+    aceimpl->atomic_mu_i.assign(aceimpl->n_all_atoms_padded, element_type_mapping[type[0]]);
     for (int i = 0; i < nall; i++) aceimpl->atomic_mu_i[i] = element_type_mapping[type[i]];
+
+    aceimpl->atomic_mu_i_1.assign(aceimpl->n_local_atoms_padded, element_type_mapping[type[0]]);
+    for (int i = 0; i < nlocal; i++) aceimpl->atomic_mu_i_1[i] = element_type_mapping[type[i]];
     
     int tot_ind = 0;
     for (int ii = 0; ii < nlocal; ii++) {
@@ -405,8 +421,9 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
             }
         }
     }
-    int fake_at = aceimpl->tot_atoms - 1;
-    for (int k = n_bonds; k < aceimpl->tot_neighbours; k++) {
+    // int fake_at = aceimpl->n_all_atoms_padded - 1;
+    int fake_at = aceimpl->n_local_atoms_padded - 1;
+    for (int k = n_bonds; k < aceimpl->n_neighbours_padded; k++) {
         aceimpl->ind_i[k] = aceimpl->ind_j[k] = fake_at;
         aceimpl->mu_i[k] = aceimpl->mu_j[k] = 0;
     }
@@ -431,7 +448,7 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     data_timer.start();
     // Zero ghost gradients after reverse_comm has accumulated them to parents
     // This ensures ghosts don't contribute again in backward_layer_1
-    for (int i = atom->nlocal; i < aceimpl->tot_atoms; i++) {
+    for (int i = atom->nlocal; i < aceimpl->n_all_atoms_padded; i++) {
         for (auto& [key, grad_vec] : gradients) {
             int size = feature_sizes[key];
             std::fill_n(&grad_vec[i * size], size, 0.0);
@@ -574,7 +591,7 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
                 comm->me, d_t, pct(d_t), c_t, pct(c_t), m1_t, pct(m1_t), m2_t, pct(m2_t), m3_t, pct(m3_t), total_t);
         
         fprintf(stderr, "[GRACE-PROFILE] [Rank %d] Array sizes: Atoms: %d (padded: %d) | Neighbors: %d (padded: %d)\n",
-                comm->me, nall, aceimpl->tot_atoms, aceimpl->nlocal_bonds, aceimpl->tot_neighbours);
+                comm->me, nall, aceimpl->n_all_atoms_padded, aceimpl->nlocal_bonds, aceimpl->n_neighbours_padded);
     }
 #endif
 }
@@ -628,6 +645,8 @@ void PairGRACE2LayerParallel::unpack_reverse_comm(int n, int *list, double *buf)
 
 
 void PairGRACE2LayerParallel::run_forward_layer_1() {
+    if (comm->me == 0) utils::logmesg(lmp, "[GRACE-DEBUG] Entering run_forward_layer_1\n");
+
 #ifdef GRACE_DEBUG
     if (comm->me == 0) utils::logmesg(lmp, "[GRACE-DEBUG] Entering run_forward_layer_1\n");
 #endif
@@ -642,12 +661,13 @@ void PairGRACE2LayerParallel::run_forward_layer_1() {
         }
     };
 
-    add_input("atomic_mu_i", cppflow::tensor(aceimpl->atomic_mu_i, {aceimpl->tot_atoms}));
-    add_input("ind_i", cppflow::tensor(aceimpl->ind_i, {aceimpl->tot_neighbours}));
-    add_input("ind_j", cppflow::tensor(aceimpl->ind_j, {aceimpl->tot_neighbours}));
-    add_input("mu_i", cppflow::tensor(aceimpl->mu_i, {aceimpl->tot_neighbours}));
-    add_input("mu_j", cppflow::tensor(aceimpl->mu_j, {aceimpl->tot_neighbours}));
-    add_input("bond_vector", cppflow::tensor(aceimpl->bond_vector, {aceimpl->tot_neighbours, 3}));
+    add_input("atomic_mu_i", cppflow::tensor(aceimpl->atomic_mu_i, {aceimpl->n_all_atoms_padded}));
+    add_input("atomic_mu_i_1", cppflow::tensor(aceimpl->atomic_mu_i_1, {aceimpl->n_local_atoms_padded}));
+    add_input("ind_i", cppflow::tensor(aceimpl->ind_i, {aceimpl->n_neighbours_padded}));
+    add_input("ind_j", cppflow::tensor(aceimpl->ind_j, {aceimpl->n_neighbours_padded}));
+    add_input("mu_i", cppflow::tensor(aceimpl->mu_i, {aceimpl->n_neighbours_padded}));
+    add_input("mu_j", cppflow::tensor(aceimpl->mu_j, {aceimpl->n_neighbours_padded}));
+    add_input("bond_vector", cppflow::tensor(aceimpl->bond_vector, {aceimpl->n_neighbours_padded, 3}));
     add_input("batch_tot_nat_real", cppflow::tensor(std::vector<int32_t>{atom->nlocal}, {}));
 
 #ifdef GRACE_DEBUG
@@ -687,6 +707,8 @@ void PairGRACE2LayerParallel::run_forward_layer_1() {
 }
 
 void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
+    if (comm->me == 0) utils::logmesg(lmp, "[GRACE-DEBUG] Entering run_backward_layer_2\n");
+
 #ifdef GRACE_DEBUG
     if (comm->me == 0) utils::logmesg(lmp, "[GRACE-DEBUG] Entering run_backward_layer_2\n");
 #endif
@@ -701,18 +723,19 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
         }
     };
 
-    add_input("atomic_mu_i", cppflow::tensor(aceimpl->atomic_mu_i, {aceimpl->tot_atoms}));
-    add_input("ind_i", cppflow::tensor(aceimpl->ind_i, {aceimpl->tot_neighbours}));
-    add_input("ind_j", cppflow::tensor(aceimpl->ind_j, {aceimpl->tot_neighbours}));
-    add_input("mu_i", cppflow::tensor(aceimpl->mu_i, {aceimpl->tot_neighbours}));
-    add_input("mu_j", cppflow::tensor(aceimpl->mu_j, {aceimpl->tot_neighbours}));
-    add_input("bond_vector", cppflow::tensor(aceimpl->bond_vector, {aceimpl->tot_neighbours, 3}));
+    add_input("atomic_mu_i", cppflow::tensor(aceimpl->atomic_mu_i, {aceimpl->n_all_atoms_padded}));
+    add_input("atomic_mu_i_1", cppflow::tensor(aceimpl->atomic_mu_i_1, {aceimpl->n_local_atoms_padded}));
+    add_input("ind_i", cppflow::tensor(aceimpl->ind_i, {aceimpl->n_neighbours_padded}));
+    add_input("ind_j", cppflow::tensor(aceimpl->ind_j, {aceimpl->n_neighbours_padded}));
+    add_input("mu_i", cppflow::tensor(aceimpl->mu_i, {aceimpl->n_neighbours_padded}));
+    add_input("mu_j", cppflow::tensor(aceimpl->mu_j, {aceimpl->n_neighbours_padded}));
+    add_input("bond_vector", cppflow::tensor(aceimpl->bond_vector, {aceimpl->n_neighbours_padded, 3}));
     add_input("batch_tot_nat_real", cppflow::tensor(std::vector<int32_t>{atom->nlocal}, {}));
     
     for (const auto& [key, shape] : feature_shapes) {
-        std::vector<int64_t> full_shape = {aceimpl->tot_atoms};
+        std::vector<int64_t> full_shape = {aceimpl->n_all_atoms_padded};
         full_shape.insert(full_shape.end(), shape.begin(), shape.end());
-        add_input(key, cppflow::tensor(features[key], full_shape));
+        add_input(key, cppflow::tensor(features[key], full_shape));// must be of extended size
     }
 
 #ifdef GRACE_DEBUG
@@ -775,19 +798,21 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
         const double *g_data = static_cast<double *>(TF_TensorData(g_tens.get()));
         int size = feature_sizes[key];
         // Store in gradients map using the original key (without "grad_")
-        std::copy_n(g_data, aceimpl->tot_atoms * size, &gradients[key][0]);
+        std::copy_n(g_data, aceimpl->n_all_atoms_padded * size, &gradients[key][0]);
     }
 
     // Grad bond vector
     auto gf_tens = outputs[out_idx++].get_tensor();
     const double *gf_data = static_cast<double *>(TF_TensorData(gf_tens.get()));
 
-    aceimpl->grad_bond_vector.resize(3 * aceimpl->tot_neighbours);
-    std::copy_n(gf_data, aceimpl->tot_neighbours * 3, aceimpl->grad_bond_vector.data());
+    aceimpl->grad_bond_vector.resize(3 * aceimpl->n_neighbours_padded);
+    std::copy_n(gf_data, aceimpl->n_neighbours_padded * 3, aceimpl->grad_bond_vector.data());
     grad_bv_L2 = aceimpl->grad_bond_vector;
 }
 
 void PairGRACE2LayerParallel::run_backward_layer_1() {
+    if (comm->me == 0) utils::logmesg(lmp, "[GRACE-DEBUG] Entering run_backward_layer_1\n");
+
 #ifdef GRACE_DEBUG
     if (comm->me == 0) utils::logmesg(lmp, "[GRACE-DEBUG] Entering run_backward_layer_1\n");
 #endif
@@ -802,17 +827,18 @@ void PairGRACE2LayerParallel::run_backward_layer_1() {
         }
     };
 
-    add_input("atomic_mu_i", cppflow::tensor(aceimpl->atomic_mu_i, {aceimpl->tot_atoms}));
-    add_input("ind_i", cppflow::tensor(aceimpl->ind_i, {aceimpl->tot_neighbours}));
-    add_input("ind_j", cppflow::tensor(aceimpl->ind_j, {aceimpl->tot_neighbours}));
-    add_input("mu_i", cppflow::tensor(aceimpl->mu_i, {aceimpl->tot_neighbours}));
-    add_input("mu_j", cppflow::tensor(aceimpl->mu_j, {aceimpl->tot_neighbours}));
-    add_input("bond_vector", cppflow::tensor(aceimpl->bond_vector, {aceimpl->tot_neighbours, 3}));
+    add_input("atomic_mu_i", cppflow::tensor(aceimpl->atomic_mu_i, {aceimpl->n_all_atoms_padded}));
+    add_input("atomic_mu_i_1", cppflow::tensor(aceimpl->atomic_mu_i_1, {aceimpl->n_local_atoms_padded}));
+    add_input("ind_i", cppflow::tensor(aceimpl->ind_i, {aceimpl->n_neighbours_padded}));
+    add_input("ind_j", cppflow::tensor(aceimpl->ind_j, {aceimpl->n_neighbours_padded}));
+    add_input("mu_i", cppflow::tensor(aceimpl->mu_i, {aceimpl->n_neighbours_padded}));
+    add_input("mu_j", cppflow::tensor(aceimpl->mu_j, {aceimpl->n_neighbours_padded}));
+    add_input("bond_vector", cppflow::tensor(aceimpl->bond_vector, {aceimpl->n_neighbours_padded, 3}));
     add_input("batch_tot_nat_real", cppflow::tensor(std::vector<int32_t>{atom->nlocal}, {}));
     
     for (const auto& [key, shape] : feature_shapes) {
         std::string grad_key = "grad_" + key;
-        std::vector<int64_t> full_shape = {aceimpl->tot_atoms};
+        std::vector<int64_t> full_shape = {aceimpl->n_all_atoms_padded};
         full_shape.insert(full_shape.end(), shape.begin(), shape.end());
         add_input(grad_key, cppflow::tensor(gradients[key], full_shape));
     }
@@ -838,7 +864,7 @@ void PairGRACE2LayerParallel::run_backward_layer_1() {
     auto gf_tens = outputs[0].get_tensor();
     const double *gf_data = static_cast<double *>(TF_TensorData(gf_tens.get()));
     // Combine with L2 gradients
-    for (int k = 0; k < aceimpl->tot_neighbours * 3; k++)
+    for (int k = 0; k < aceimpl->n_neighbours_padded * 3; k++)
         aceimpl->grad_bond_vector[k] += gf_data[k];
 }
 
