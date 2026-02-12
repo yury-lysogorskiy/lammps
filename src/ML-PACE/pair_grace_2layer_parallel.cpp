@@ -1,6 +1,6 @@
 #ifndef NO_GRACE_TF
 // #define GRACE_DEBUG
-#define GRACE_PROFILE
+// #define GRACE_PROFILE
 
 #include "pair_grace_2layer_parallel.h"
 
@@ -59,6 +59,10 @@ namespace LAMMPS_NS {
 using namespace LAMMPS_NS;
 
 PairGRACE2LayerParallel::PairGRACE2LayerParallel(LAMMPS *lmp) : Pair(lmp) {
+    // Suppress TensorFlow logging and oneDNN messages
+    if (!getenv("TF_CPP_MIN_LOG_LEVEL")) setenv("TF_CPP_MIN_LOG_LEVEL", "3", 0);
+    if (!getenv("TF_ENABLE_ONEDNN_OPTS")) setenv("TF_ENABLE_ONEDNN_OPTS", "0", 0);
+
     single_enable = 0;
     restartinfo = 0;
     one_coeff = 1;
@@ -502,10 +506,7 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
             int i = aceimpl->ind_i[k];
             int j = aceimpl->ind_j[k];
             
-            // Map ghost j to parent local atom using LAMMPS atom map
-            if (j >= nlocal) {
-                j = atom->map(atom->tag[j]);
-            }
+
             
             double sc = scale[type[i]][type[i]];
             double fx = sc * aceimpl->grad_bond_vector[3 * k + 0];
@@ -542,16 +543,7 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
         int j = aceimpl->ind_j[k];
         int j_orig = j;  // Keep original for virial
         
-        // Try to map ghost j to its parent local atom
-        if (j >= nlocal) {
-            int j_local = atom->map(atom->tag[j]);
-            if (j_local >= 0 && j_local < nlocal) {
-                // Same-proc PBC ghost: use the local parent atom
-                j = j_local;
-            }
-            // Else: cross-proc ghost, keep j as is and apply to ghost atom
-            // LAMMPS reverse_comm will communicate the force back to owner
-        }
+
         
         double sc = scale[type[i]][type[i]];
         double fx = sc * aceimpl->grad_bond_vector[3 * k + 0];
