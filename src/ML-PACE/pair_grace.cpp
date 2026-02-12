@@ -317,12 +317,12 @@ void PairGRACE::coeff(int narg, char **arg) {
     graceimpl->compute_inputs_sig = graceimpl->model->signatures.at(compute_function_name).inputs;
 
     // check for compute_energy_only function
-    if (graceimpl->model->has_signature("compute_energy_only")) {
-        compute_energy_only_function_name = "compute_energy_only";
+    if (graceimpl->model->has_signature(COMPUTE_ENERGY_ONLY_KEY)) {
+        compute_energy_only_function_name = COMPUTE_ENERGY_ONLY_KEY;
         has_compute_energy_only = true;
         if (comm->me == 0)
             utils::logmesg(lmp, "[GRACE] Compute energy only function is available\n");
-        graceimpl->compute_energy_only_inputs_sig = graceimpl->model->signatures.at(compute_energy_only_function_name).inputs;
+        graceimpl->compute_energy_only_inputs_sig = graceimpl->model->signatures.at(COMPUTE_ENERGY_ONLY_KEY).inputs;
     } else {
 
     }
