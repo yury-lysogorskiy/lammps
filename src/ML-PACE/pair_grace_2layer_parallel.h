@@ -84,7 +84,7 @@ class PairGRACE2LayerParallel : public Pair {
   std::map<std::string, std::vector<double>> gradients;
   std::map<std::string, std::vector<int64_t>> feature_shapes;
   std::map<std::string, int> feature_sizes;
-  std::map<std::string, bool> feature_is_non_local;
+  std::map<std::string, bool> feature_is_local;
 
   std::vector<double> grad_bv_L2;
 

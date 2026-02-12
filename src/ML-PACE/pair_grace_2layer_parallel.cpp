@@ -226,7 +226,7 @@ void PairGRACE2LayerParallel::coeff(int narg, char **arg) {
 
             feature_shapes[key] = shape;
             feature_sizes[key] = size;
-            feature_is_non_local[key] = non_local;
+            feature_is_local[key] = !non_local;
 
             if (comm->me == 0) {
                 std::string shape_str;
@@ -246,7 +246,7 @@ void PairGRACE2LayerParallel::coeff(int narg, char **arg) {
     comm_reverse = 0;
     for (const auto& [key, size] : feature_sizes) {
         comm_forward += size;
-        if (feature_is_non_local[key]) {
+        if (!feature_is_local[key]) {
             comm_reverse += size;
         }
     }
@@ -643,7 +643,7 @@ int PairGRACE2LayerParallel::pack_reverse_comm(int n, int first, double *buf) {
     int m = 0; int last = first + n;
     for (int i = first; i < last; i++) {
         for (const auto& [key, size] : feature_sizes) {
-            if (feature_is_non_local[key]) {
+            if (!feature_is_local[key]) {
                 std::copy_n(&gradients[key][i * size], size, &buf[m]);
                 m += size;
             }
@@ -657,7 +657,7 @@ void PairGRACE2LayerParallel::unpack_reverse_comm(int n, int *list, double *buf)
     for (int i = 0; i < n; i++) {
         int j = list[i];
         for (const auto& [key, size] : feature_sizes) {
-            if (feature_is_non_local[key]) {
+            if (!feature_is_local[key]) {
                 for (int k = 0; k < size; k++) gradients[key][j * size + k] += buf[m++];
             }
         }
@@ -750,8 +750,8 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
     add_input("batch_tot_nat_real", cppflow::tensor(std::vector<int32_t>{atom->nlocal}, {}));
     
     for (const auto& [key, shape] : feature_shapes) {
-        if (key == "I_nl_LN") {
-             // For I_nl_LN (local-only feature), pass only the local part with padding
+        if (feature_is_local[key]) {
+             // For local-only feature, pass only the local part with padding
              int size = feature_sizes[key];
              int n_local = atom->nlocal;
              int n_local_padded = aceimpl->n_local_atoms_padded;
