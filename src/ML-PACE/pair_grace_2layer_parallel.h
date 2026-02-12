@@ -67,12 +67,11 @@ class PairGRACE2LayerParallel : public Pair {
   std::vector<std::vector<double>> cutoff_matrix, cutoff_matrix_per_lammps_type;
 
   int chunksize;
-  double neigh_padding_fraction = 0.01;
-  double reducing_neigh_padding_fraction = 0.2;
-  int max_number_of_reduction = 10;
+  // double neigh_padding_fraction = 0.01;
+  // double reducing_neigh_padding_fraction = 0.2;
+  // int max_number_of_reduction = 10;
   bool do_padding = true;
   bool pad_verbose = false;
-  bool pair_forces = false;
   
   int nelements;
   std::vector<std::string> elements_name;

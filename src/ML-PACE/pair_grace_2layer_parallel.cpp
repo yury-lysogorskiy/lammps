@@ -111,63 +111,49 @@ void PairGRACE2LayerParallel::settings(int narg, char **arg) {
     auto tf_version = TF_Version();
     if (comm->me == 0) utils::logmesg(lmp, "[GRACE] TF version: {}\n", tf_version);
 
+    GRACE::GracePaddingDimension p;
+    // p.padding_fraction = neigh_padding_fraction;
+    // p.reduction_threshold_fraction = reducing_neigh_padding_fraction;
+    // p.max_reductions = max_number_of_reduction;
+    // p.verbose = pad_verbose;
+
     int iarg = 0;
     while (iarg < narg) {
         if (strcmp(arg[iarg], "padding") == 0) {
-            neigh_padding_fraction = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
+            p.padding_fraction = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
             iarg += 2;
 
         } else if (strcmp(arg[iarg], "pad_verbose") == 0) {
-            pad_verbose = true;
+            p.verbose = true;
             iarg += 1;
         } else if (strcmp(arg[iarg], "max_number_of_reduction") == 0) {
-            max_number_of_reduction = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
+            p.max_reductions = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
             iarg += 2;
             if (comm->me == 0)
                 utils::logmesg(lmp, "[GRACE] Maximum number of recompilation during padding reduction: {}\n",
-                               max_number_of_reduction);
+                               p.max_reductions);
         } else if (strcmp(arg[iarg], "reduce_padding") == 0) {
-            reducing_neigh_padding_fraction = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
+            p.reduction_threshold_fraction = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
             iarg += 2;
             if (comm->me == 0)
-                utils::logmesg(lmp, "[GRACE] Reducing padding fraction: {}\n", reducing_neigh_padding_fraction);
+                utils::logmesg(lmp, "[GRACE] Reducing padding fraction: {}\n", p.reduction_threshold_fraction);
         } else
             error->all(FLERR, "[GRACE] Unknown pair_style grace keyword: {}", arg[iarg]);
     }
 
-    do_padding = (neigh_padding_fraction > 0);
+    do_padding = (p.padding_fraction > 0);
+    p.enabled = do_padding;
+
     if(do_padding) {
         if (comm->me == 0)
             utils::logmesg(lmp, "[GRACE] Neighbour padding is ON, padding fraction: {}, max padding fraction before reduction: {}, max number of reduction(s): {}\n",
-                           neigh_padding_fraction, reducing_neigh_padding_fraction, max_number_of_reduction);
+                           p.padding_fraction, p.reduction_threshold_fraction, p.max_reductions);
     }
 
     // Apply to padding helpers
-    aceimpl->all_atoms_padding.enabled = do_padding;
-    aceimpl->all_atoms_padding.padding_fraction = neigh_padding_fraction;
-    aceimpl->all_atoms_padding.reduction_threshold_fraction = reducing_neigh_padding_fraction;
-    aceimpl->all_atoms_padding.max_reductions = max_number_of_reduction;
-    aceimpl->all_atoms_padding.verbose = pad_verbose;
-
-    aceimpl->real_atoms_padding.enabled = do_padding;
-    aceimpl->real_atoms_padding.padding_fraction = neigh_padding_fraction;
-    aceimpl->real_atoms_padding.reduction_threshold_fraction = reducing_neigh_padding_fraction;
-    aceimpl->real_atoms_padding.max_reductions = max_number_of_reduction;
-    aceimpl->real_atoms_padding.verbose = pad_verbose;
-
-    aceimpl->neighbor_padding.enabled = do_padding;
-    aceimpl->neighbor_padding.padding_fraction = neigh_padding_fraction;
-    aceimpl->neighbor_padding.reduction_threshold_fraction = reducing_neigh_padding_fraction;
-    aceimpl->neighbor_padding.max_reductions = max_number_of_reduction;
-    aceimpl->neighbor_padding.verbose = pad_verbose;
-
-    if (!pair_forces && comm->nprocs > 1) {
-        pair_forces = true;
-        if (comm->me == 0)
-            utils::logmesg(lmp,
-                           "[GRACE] ENFORCE pair-force mode to ON, because number of processes {} is more than one.\n",
-                           comm->nprocs);
-    }
+    aceimpl->all_atoms_padding = p;
+    aceimpl->real_atoms_padding = p;
+    aceimpl->neighbor_padding = p;
 
     
     // mark as available centroid stress flag
@@ -253,15 +239,36 @@ void PairGRACE2LayerParallel::coeff(int narg, char **arg) {
 
     const int ntypes = atom->ntypes;
     element_type_mapping.resize(ntypes + 1);
+
+    // elements to species-type map
     for (int i = 1; i <= ntypes; i++) {
         char *elemname = arg[2 + i];
         if (strcmp(elemname, "NULL") == 0) {
+            // species_type=-1 value will not reach ACE Evaluator::compute_atom,
+            // but if it will ,then error will be thrown there
             element_type_mapping[i] = -1;
             map[i] = -1;
+            if (comm->me == 0) utils::logmesg(lmp, "[GRACE] Skipping LAMMPS atom type #{}(NULL)\n", i);
         } else {
-            int mu = elements_to_index_map.at(elemname);
-            map[i] = mu;
-            element_type_mapping[i] = mu;
+            int atomic_number = PACE::AtomicNumberByName(elemname);
+            if (atomic_number == -1) error->all(FLERR, "[GRACE] '{}' is not a valid element\n", elemname);
+            int mu = -1;
+            try {
+                mu = elements_to_index_map.at(elemname);
+            } catch (const std::out_of_range& e) {
+                mu = -1;
+            }
+            if (mu != -1) {
+                if (comm->me == 0)
+                    utils::logmesg(lmp, "[GRACE] Mapping LAMMPS atom type #{}({}) -> ACE species type #{}\n", i,
+                                   elemname, mu);
+                map[i] = mu;
+                // set up LAMMPS atom type to ACE species  mapping for ace evaluator
+                element_type_mapping[i] = mu;
+            } else {
+                error->all(FLERR, "[GRACE] Element {} is not supported by ACE-potential from file {}", elemname,
+                           potential_path);
+            }
         }
     }
 
@@ -336,11 +343,11 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
 
     aceimpl->n_all_atoms_padded = aceimpl->all_atoms_padding.update(nall);
     aceimpl->n_local_atoms_padded =aceimpl->real_atoms_padding.update(nlocal);
-    if (comm->me == 0 && pad_verbose && aceimpl->all_atoms_padding.last_update_triggered_resize()) {
-        utils::logmesg(lmp, "[GRACE] Atom padding resize: all atoms {} -> {}, real atoms {} -> {}\n",
-            nall, aceimpl->n_all_atoms_padded,
-            nlocal, aceimpl->n_local_atoms_padded
-            );
+    if (aceimpl->all_atoms_padding.verbose && 
+        (aceimpl->all_atoms_padding.last_update_triggered_resize() || aceimpl->real_atoms_padding.last_update_triggered_resize())) {
+        utils::logmesg(lmp, "[GRACE:proc #{:d}] Atoms padding: new num. of atoms: all = {} (incl. {:.3f}% fake), real = {} (incl. {:.3f}% fake)\n",
+            comm->me, aceimpl->n_all_atoms_padded, 100. * (double) aceimpl->all_atoms_padding.n_fake / aceimpl->n_all_atoms_padded,
+            aceimpl->n_local_atoms_padded, 100. * (double) aceimpl->real_atoms_padding.n_fake / aceimpl->n_local_atoms_padded);
     }
     
     int n_bonds = 0;
@@ -374,8 +381,10 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     }
     aceimpl->nlocal_bonds = n_bonds;
     aceimpl->n_neighbours_padded = aceimpl->neighbor_padding.update(n_bonds);
-    if (comm->me == 0 && pad_verbose && aceimpl->neighbor_padding.last_update_triggered_resize()) {
-        utils::logmesg(lmp, "[GRACE] Neighbor padding resize: {} -> {}\n", n_bonds, aceimpl->n_neighbours_padded);
+    if (aceimpl->neighbor_padding.verbose && aceimpl->neighbor_padding.last_update_triggered_resize()) {
+        utils::logmesg(lmp,
+            "[GRACE:proc #{:d}] Neighbours padding: extending new num. of neighbours = {} (incl. {:.3f}% fake neighbours)\n",
+            comm->me, aceimpl->n_neighbours_padded, 100. * (double) aceimpl->neighbor_padding.n_fake / aceimpl->n_neighbours_padded);
     }
 
     // Resize features and gradients based on parsed sizes and locality
