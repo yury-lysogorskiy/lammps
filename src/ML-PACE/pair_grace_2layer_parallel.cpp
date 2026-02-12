@@ -80,6 +80,7 @@ PairGRACE2LayerParallel::PairGRACE2LayerParallel(LAMMPS *lmp) : Pair(lmp) {
     no_virial_fdotr_compute = 1;
     chunksize = 4096;
     nelements = 0;
+    flag_compute_energy_only = 0;
 }
 
 PairGRACE2LayerParallel::~PairGRACE2LayerParallel() {
@@ -137,6 +138,9 @@ void PairGRACE2LayerParallel::settings(int narg, char **arg) {
             iarg += 2;
             if (comm->me == 0)
                 utils::logmesg(lmp, "[GRACE] Reducing padding fraction: {}\n", p.reduction_threshold_fraction);
+        } else if (strcmp(arg[iarg], "deny_energy_only_calc") == 0) {
+            deny_energy_only_calc = true;
+            iarg += 1;
         } else
             error->all(FLERR, "[GRACE] Unknown pair_style grace keyword: {}", arg[iarg]);
     }
@@ -459,12 +463,16 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     model2_timer.start();
 #endif
     run_backward_layer_2(eflag, vflag);
+    bool do_energy_only = flag_compute_energy_only && !deny_energy_only_calc;
+
 #ifdef GRACE_PROFILE
     model2_timer.stop();
 
     comm_timer.start();
 #endif
-    comm->reverse_comm(this);
+    if (!do_energy_only) {
+        comm->reverse_comm(this);
+    }
 #ifdef GRACE_PROFILE
     comm_timer.stop();
 
@@ -473,11 +481,13 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     
     // Zero ghost/padding gradients after reverse_comm has accumulated them to parents
     // This ensures ghosts don't contribute again in backward_layer_1
-    for (auto& [key, grad_vec] : gradients) {
-        int size = feature_sizes[key];
-        int n_padded = feature_is_local[key] ? aceimpl->n_local_atoms_padded : aceimpl->n_all_atoms_padded;
-        if (n_padded > atom->nlocal) {
-            std::fill_n(&grad_vec[atom->nlocal * size], (n_padded - atom->nlocal) * size, 0.0);
+    if (!do_energy_only) {
+        for (auto& [key, grad_vec] : gradients) {
+            int size = feature_sizes[key];
+            int n_padded = feature_is_local[key] ? aceimpl->n_local_atoms_padded : aceimpl->n_all_atoms_padded;
+            if (n_padded > atom->nlocal) {
+                std::fill_n(&grad_vec[atom->nlocal * size], (n_padded - atom->nlocal) * size, 0.0);
+            }
         }
     }
     
@@ -485,7 +495,9 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     data_timer.stop();
     model3_timer.start();
 #endif
-    run_backward_layer_1();
+    if (!do_energy_only) {
+        run_backward_layer_1();
+    }
 #ifdef GRACE_PROFILE
     model3_timer.stop();
     data_timer.start();
@@ -493,7 +505,7 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
 
     
 #ifdef GRACE_DEBUG
-    if (comm->me == 0) {
+    if (!do_energy_only && comm->me == 0) {
         int n_bonds_print = std::min(aceimpl->nlocal_bonds, 8);
         utils::logmesg(lmp, "[GRACE-DEBUG] Sum (grad L2 + grad L1):\n");
         for (int k = 0; k < n_bonds_print; k++) {
@@ -543,52 +555,50 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     double **f = atom->f;
     int newton_pair = force->newton_pair;
     
-    for (int k = 0; k < aceimpl->nlocal_bonds; k++) {
-        int i = aceimpl->ind_i[k];
-        int j = aceimpl->ind_j[k];
-        int j_orig = j;  // Keep original for virial
-        
+    if (!do_energy_only) {
+        for (int k = 0; k < aceimpl->nlocal_bonds; k++) {
+            int i = aceimpl->ind_i[k];
+            int j = aceimpl->ind_j[k];
+            int j_orig = j;  // Keep original for virial
 
-        
-        double sc = scale[type[i]][type[i]];
-        double fx = sc * aceimpl->grad_bond_vector[3 * k + 0];
-        double fy = sc * aceimpl->grad_bond_vector[3 * k + 1];
-        double fz = sc * aceimpl->grad_bond_vector[3 * k + 2];
-        f[i][0] += fx; f[i][1] += fy; f[i][2] += fz;
-        f[j][0] -= fx; f[j][1] -= fy; f[j][2] -= fz;
-        if (evflag) {
-            double dx = -aceimpl->bond_vector[3*k+0];
-            double dy = -aceimpl->bond_vector[3*k+1];
-            double dz = -aceimpl->bond_vector[3*k+2];
-            ev_tally_xyz(i, j_orig, nlocal, newton_pair, 0.0, 0.0, fx, fy, fz, dx, dy, dz);
+            double sc = scale[type[i]][type[i]];
+            double fx = sc * aceimpl->grad_bond_vector[3 * k + 0];
+            double fy = sc * aceimpl->grad_bond_vector[3 * k + 1];
+            double fz = sc * aceimpl->grad_bond_vector[3 * k + 2];
+            f[i][0] += fx; f[i][1] += fy; f[i][2] += fz;
+            f[j][0] -= fx; f[j][1] -= fy; f[j][2] -= fz;
+            if (evflag) {
+                double dx = -aceimpl->bond_vector[3*k+0];
+                double dy = -aceimpl->bond_vector[3*k+1];
+                double dz = -aceimpl->bond_vector[3*k+2];
+                ev_tally_xyz(i, j_orig, nlocal, newton_pair, 0.0, 0.0, fx, fy, fz, dx, dy, dz);
 
-            if (cvflag_atom) {
-                cvatom[i][0] += 0.5 * dx * fx; // xx
-                cvatom[i][1] += 0.5 * dy * fy; // yy
-                cvatom[i][2] += 0.5 * dz * fz; // zz
-                cvatom[i][3] += 0.5 * dx * fy; // xy
-                cvatom[i][4] += 0.5 * dx * fz; // xz
-                cvatom[i][5] += 0.5 * dy * fz; // yz
-                cvatom[i][6] += 0.5 * dy * fx; // yx
-                cvatom[i][7] += 0.5 * dz * fx; // zx
-                cvatom[i][8] += 0.5 * dz * fy; // zy
+                if (cvflag_atom) {
+                    cvatom[i][0] += 0.5 * dx * fx; // xx
+                    cvatom[i][1] += 0.5 * dy * fy; // yy
+                    cvatom[i][2] += 0.5 * dz * fz; // zz
+                    cvatom[i][3] += 0.5 * dx * fy; // xy
+                    cvatom[i][4] += 0.5 * dx * fz; // xz
+                    cvatom[i][5] += 0.5 * dy * fz; // yz
+                    cvatom[i][6] += 0.5 * dy * fx; // yx
+                    cvatom[i][7] += 0.5 * dz * fx; // zx
+                    cvatom[i][8] += 0.5 * dz * fy; // zy
 
-                cvatom[j][0] += 0.5 * dx * fx; // xx
-                cvatom[j][1] += 0.5 * dy * fy; // yy
-                cvatom[j][2] += 0.5 * dz * fz; // zz
-                cvatom[j][3] += 0.5 * dx * fy; // xy
-                cvatom[j][4] += 0.5 * dx * fz; // xz
-                cvatom[j][5] += 0.5 * dy * fz; // yz
-                cvatom[j][6] += 0.5 * dy * fx; // yx
-                cvatom[j][7] += 0.5 * dz * fx; // zx
-                cvatom[j][8] += 0.5 * dz * fy; // zy
+                    cvatom[j][0] += 0.5 * dx * fx; // xx
+                    cvatom[j][1] += 0.5 * dy * fy; // yy
+                    cvatom[j][2] += 0.5 * dz * fz; // zz
+                    cvatom[j][3] += 0.5 * dx * fy; // xy
+                    cvatom[j][4] += 0.5 * dx * fz; // xz
+                    cvatom[j][5] += 0.5 * dy * fz; // yz
+                    cvatom[j][6] += 0.5 * dy * fx; // yx
+                    cvatom[j][7] += 0.5 * dz * fx; // zx
+                    cvatom[j][8] += 0.5 * dz * fy; // zy
+                }
             }
         }
     }
 
-
-
-    if (vflag_fdotr) virial_fdotr_compute();
+    if (vflag_fdotr && !do_energy_only) virial_fdotr_compute();
 #ifdef GRACE_PROFILE
     data_timer.stop();
     total_timer.stop();
@@ -818,28 +828,32 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
     std::vector<std::string> out_names;
     std::vector<std::string> ordered_keys;
     
+    bool do_energy_only = flag_compute_energy_only && !deny_energy_only_calc;
+
     // Energy
     if (sig.outputs.count(ENERGY_KEY)) {
         out_names.push_back(sig.outputs.at(ENERGY_KEY).name);
         ordered_keys.push_back(ENERGY_KEY);
     } else error->all(FLERR, "[GRACE-ERROR] Key '{}' not found in signature '{}' outputs", ENERGY_KEY, backward_layer_2_name);
 
-    // Gradients for features
-    for (const auto& [key, shape] : feature_shapes) {
-        std::string grad_key = "grad_" + key;
-        if (sig.outputs.count(grad_key)) {
-            out_names.push_back(sig.outputs.at(grad_key).name);
-            ordered_keys.push_back(grad_key);
-        } else {
-             error->all(FLERR, "[GRACE-ERROR] Key '{}' not found in signature '{}' outputs", grad_key, backward_layer_2_name);
+    if (!do_energy_only) {
+        // Gradients for features
+        for (const auto& [key, shape] : feature_shapes) {
+            std::string grad_key = "grad_" + key;
+            if (sig.outputs.count(grad_key)) {
+                out_names.push_back(sig.outputs.at(grad_key).name);
+                ordered_keys.push_back(grad_key);
+            } else {
+                 error->all(FLERR, "[GRACE-ERROR] Key '{}' not found in signature '{}' outputs", grad_key, backward_layer_2_name);
+            }
         }
-    }
 
-    // Grad bond vector
-    if (sig.outputs.count(GRAD_BOND_KEY)) {
-        out_names.push_back(sig.outputs.at(GRAD_BOND_KEY).name);
-        ordered_keys.push_back(GRAD_BOND_KEY);
-    } else error->all(FLERR, "[GRACE-ERROR] Key '{}' not found in signature '{}' outputs", GRAD_BOND_KEY, backward_layer_2_name);
+        // Grad bond vector
+        if (sig.outputs.count(GRAD_BOND_KEY)) {
+            out_names.push_back(sig.outputs.at(GRAD_BOND_KEY).name);
+            ordered_keys.push_back(GRAD_BOND_KEY);
+        } else error->all(FLERR, "[GRACE-ERROR] Key '{}' not found in signature '{}' outputs", GRAD_BOND_KEY, backward_layer_2_name);
+    }
     
     auto outputs = aceimpl->model->operator()(inputs, out_names);
 
@@ -861,27 +875,29 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
             ev_tally_full(i, 2.0 * e_data[i], 0.0, 0.0, 0.0, 0.0, 0.0);
     }
 
-    // Gradients
-    for (const auto& [key, shape] : feature_shapes) {
-        std::string grad_key = "grad_" + key;
-        // We iterate in the same order as we pushed to ordered_keys
-        // ordered_keys[out_idx] should be grad_key
-        
-        auto g_tens = outputs[out_idx++].get_tensor();
-        const double *g_data = static_cast<double *>(TF_TensorData(g_tens.get()));
-        int size = feature_sizes[key];
-        int n_padded = feature_is_local[key] ? aceimpl->n_local_atoms_padded : aceimpl->n_all_atoms_padded;
-        // Store in gradients map using the original key (without "grad_")
-        std::copy_n(g_data, n_padded * size, &gradients[key][0]);
+    if (!do_energy_only) {
+        // Gradients
+        for (const auto& [key, shape] : feature_shapes) {
+            std::string grad_key = "grad_" + key;
+            // We iterate in the same order as we pushed to ordered_keys
+            // ordered_keys[out_idx] should be grad_key
+            
+            auto g_tens = outputs[out_idx++].get_tensor();
+            const double *g_data = static_cast<double *>(TF_TensorData(g_tens.get()));
+            int size = feature_sizes[key];
+            int n_padded = feature_is_local[key] ? aceimpl->n_local_atoms_padded : aceimpl->n_all_atoms_padded;
+            // Store in gradients map using the original key (without "grad_")
+            std::copy_n(g_data, n_padded * size, &gradients[key][0]);
+        }
+
+        // Grad bond vector
+        auto gf_tens = outputs[out_idx++].get_tensor();
+        const double *gf_data = static_cast<double *>(TF_TensorData(gf_tens.get()));
+
+        aceimpl->grad_bond_vector.resize(3 * aceimpl->n_neighbours_padded);
+        std::copy_n(gf_data, aceimpl->n_neighbours_padded * 3, aceimpl->grad_bond_vector.data());
+        grad_bv_L2 = aceimpl->grad_bond_vector;
     }
-
-    // Grad bond vector
-    auto gf_tens = outputs[out_idx++].get_tensor();
-    const double *gf_data = static_cast<double *>(TF_TensorData(gf_tens.get()));
-
-    aceimpl->grad_bond_vector.resize(3 * aceimpl->n_neighbours_padded);
-    std::copy_n(gf_data, aceimpl->n_neighbours_padded * 3, aceimpl->grad_bond_vector.data());
-    grad_bv_L2 = aceimpl->grad_bond_vector;
 }
 
 void PairGRACE2LayerParallel::run_backward_layer_1() {
@@ -1013,7 +1029,12 @@ void PairGRACE2LayerParallel::print_tensors(const std::string& name, const std::
 
 
 void *PairGRACE2LayerParallel::extract(const char *str, int &dim) {
-    dim = 2; if (strcmp(str, "scale") == 0) return (void *) scale; return nullptr;
+    dim = 0;
+    if (strcmp(str, "compute_energy_only") == 0) return (void *) &flag_compute_energy_only;
+
+    dim = 2; 
+    if (strcmp(str, "scale") == 0) return (void *) scale; 
+    return nullptr;
 }
 
 #endif
