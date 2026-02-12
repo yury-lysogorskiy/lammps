@@ -1,6 +1,6 @@
 #ifndef NO_GRACE_TF
 // #define GRACE_DEBUG
-// #define GRACE_PROFILE
+#define GRACE_PROFILE
 
 #include "pair_grace_2layer_parallel.h"
 
@@ -67,6 +67,7 @@ PairGRACE2LayerParallel::PairGRACE2LayerParallel(LAMMPS *lmp) : Pair(lmp) {
     aceimpl = new GRACE2LayerImpl;
     scale = nullptr;
     
+#ifdef GRACE_PROFILE
     total_timer.init();
     data_timer.init();
     tp_timer.init();
@@ -74,6 +75,7 @@ PairGRACE2LayerParallel::PairGRACE2LayerParallel(LAMMPS *lmp) : Pair(lmp) {
     model1_timer.init();
     model2_timer.init();
     model3_timer.init();
+#endif
 
     no_virial_fdotr_compute = 1;
     chunksize = 4096;
@@ -315,6 +317,7 @@ double PairGRACE2LayerParallel::init_one(int i, int j) {
 
 void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
 
+#ifdef GRACE_PROFILE
     total_timer.init();
     data_timer.init();
     tp_timer.init();
@@ -325,6 +328,7 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
 
     total_timer.start();
     data_timer.start();
+#endif
     ev_init(eflag, vflag);
 
     int nlocal = atom->nlocal;
@@ -428,24 +432,35 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
         aceimpl->mu_i[k] = aceimpl->mu_j[k] = 0;
     }
 
+#ifdef GRACE_PROFILE
     data_timer.stop();
     model1_timer.start();
+#endif
     run_forward_layer_1();
+#ifdef GRACE_PROFILE
     model1_timer.stop();
 
     comm_timer.start();
+#endif
     comm->forward_comm(this);
+#ifdef GRACE_PROFILE
     comm_timer.stop();
 
     model2_timer.start();
+#endif
     run_backward_layer_2(eflag, vflag);
+#ifdef GRACE_PROFILE
     model2_timer.stop();
 
     comm_timer.start();
+#endif
     comm->reverse_comm(this);
+#ifdef GRACE_PROFILE
     comm_timer.stop();
-    
+
     data_timer.start();
+#endif
+    
     // Zero ghost gradients after reverse_comm has accumulated them to parents
     // This ensures ghosts don't contribute again in backward_layer_1
     for (int i = atom->nlocal; i < aceimpl->n_all_atoms_padded; i++) {
@@ -455,11 +470,15 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
         }
     }
     
+#ifdef GRACE_PROFILE
     data_timer.stop();
     model3_timer.start();
+#endif
     run_backward_layer_1();
+#ifdef GRACE_PROFILE
     model3_timer.stop();
     data_timer.start();
+#endif
 
     
 #ifdef GRACE_DEBUG
@@ -571,8 +590,10 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
 
 
     if (vflag_fdotr) virial_fdotr_compute();
+#ifdef GRACE_PROFILE
     data_timer.stop();
     total_timer.stop();
+#endif
 
 #ifdef GRACE_PROFILE
     // if (comm->me == 0) { // PRINT FOR ALL RANKS
@@ -645,8 +666,6 @@ void PairGRACE2LayerParallel::unpack_reverse_comm(int n, int *list, double *buf)
 
 
 void PairGRACE2LayerParallel::run_forward_layer_1() {
-    if (comm->me == 0) utils::logmesg(lmp, "[GRACE-DEBUG] Entering run_forward_layer_1\n");
-
 #ifdef GRACE_DEBUG
     if (comm->me == 0) utils::logmesg(lmp, "[GRACE-DEBUG] Entering run_forward_layer_1\n");
 #endif
@@ -707,8 +726,6 @@ void PairGRACE2LayerParallel::run_forward_layer_1() {
 }
 
 void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
-    if (comm->me == 0) utils::logmesg(lmp, "[GRACE-DEBUG] Entering run_backward_layer_2\n");
-
 #ifdef GRACE_DEBUG
     if (comm->me == 0) utils::logmesg(lmp, "[GRACE-DEBUG] Entering run_backward_layer_2\n");
 #endif
@@ -733,9 +750,28 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
     add_input("batch_tot_nat_real", cppflow::tensor(std::vector<int32_t>{atom->nlocal}, {}));
     
     for (const auto& [key, shape] : feature_shapes) {
-        std::vector<int64_t> full_shape = {aceimpl->n_all_atoms_padded};
-        full_shape.insert(full_shape.end(), shape.begin(), shape.end());
-        add_input(key, cppflow::tensor(features[key], full_shape));// must be of extended size
+        if (key == "I_nl_LN") {
+             // For I_nl_LN (local-only feature), pass only the local part with padding
+             int size = feature_sizes[key];
+             int n_local = atom->nlocal;
+             int n_local_padded = aceimpl->n_local_atoms_padded;
+             
+             // Create vector with padded size, initialized to zero
+             std::vector<double> local_data(n_local_padded * size, 0.0);
+             
+             // Copy only the real local atoms data
+             // features[key] stores [local... | ghosts... | padding...]
+             // We only want [local...] placed into [local... | zero_padding...]
+             std::copy_n(features[key].begin(), n_local * size, local_data.begin());
+
+             std::vector<int64_t> local_shape = {n_local_padded};
+             local_shape.insert(local_shape.end(), shape.begin(), shape.end());
+             add_input(key, cppflow::tensor(local_data, local_shape)); 
+        } else {
+             std::vector<int64_t> full_shape = {aceimpl->n_all_atoms_padded};
+             full_shape.insert(full_shape.end(), shape.begin(), shape.end());
+             add_input(key, cppflow::tensor(features[key], full_shape));
+        }
     }
 
 #ifdef GRACE_DEBUG
@@ -811,8 +847,6 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
 }
 
 void PairGRACE2LayerParallel::run_backward_layer_1() {
-    if (comm->me == 0) utils::logmesg(lmp, "[GRACE-DEBUG] Entering run_backward_layer_1\n");
-
 #ifdef GRACE_DEBUG
     if (comm->me == 0) utils::logmesg(lmp, "[GRACE-DEBUG] Entering run_backward_layer_1\n");
 #endif
@@ -838,9 +872,20 @@ void PairGRACE2LayerParallel::run_backward_layer_1() {
     
     for (const auto& [key, shape] : feature_shapes) {
         std::string grad_key = "grad_" + key;
-        std::vector<int64_t> full_shape = {aceimpl->n_all_atoms_padded};
-        full_shape.insert(full_shape.end(), shape.begin(), shape.end());
-        add_input(grad_key, cppflow::tensor(gradients[key], full_shape));
+        int size = feature_sizes[key];
+        int n_local = atom->nlocal;
+        int n_local_padded = aceimpl->n_local_atoms_padded;
+
+        // Create vector with padded local size, initialized to zero
+        std::vector<double> local_grad_data(n_local_padded * size, 0.0);
+
+        // Copy only the real local atoms gradients
+        // gradients[key] stores [local... | ghosts... | padding...]
+        std::copy_n(gradients[key].begin(), n_local * size, local_grad_data.begin());
+
+        std::vector<int64_t> local_shape = {n_local_padded};
+        local_shape.insert(local_shape.end(), shape.begin(), shape.end());
+        add_input(grad_key, cppflow::tensor(local_grad_data, local_shape));
     }
 
 #ifdef GRACE_DEBUG
@@ -869,9 +914,7 @@ void PairGRACE2LayerParallel::run_backward_layer_1() {
 }
 
 void PairGRACE2LayerParallel::print_tensors(const std::string& name, const std::vector<std::tuple<std::string, cppflow::tensor>>& tensors, const std::string& type_prefix) {
-#ifdef GRACE_DEBUG
     if (type_prefix == "Input") utils::logmesg(lmp, "[GRACE-DEBUG] Calling model in {}\n", name);
-#endif
     for (const auto& tensor : tensors) {
         const auto& key = std::get<0>(tensor);
         const auto& t = std::get<1>(tensor);
@@ -885,28 +928,37 @@ void PairGRACE2LayerParallel::print_tensors(const std::string& name, const std::
         int total_elements = static_cast<int>(TF_TensorElementCount(t.get_tensor().get()));
         
         if (shape.size() >= 1) {
-            int n_atoms_to_print = std::min(static_cast<int>(shape[0]), 8);
-            int elements_per_atom = total_elements / static_cast<int>(shape[0]);
-            int n_elements_to_print = std::min(elements_per_atom, 8);
-            
-            if (dtype == TF_DOUBLE) {
-                const double *data = static_cast<double *>(TF_TensorData(t.get_tensor().get()));
-                for (int i = 0; i < n_atoms_to_print; i++) {
-                    utils::logmesg(lmp, "    Atom {}:", i);
-                    for (int k = 0; k < n_elements_to_print; k++) {
+            int n_total_atoms = static_cast<int>(shape[0]);
+            int elements_per_atom = total_elements / n_total_atoms;
+
+            auto print_atom = [&](int i) {
+                utils::logmesg(lmp, "    Atom {}:", i);
+                auto log_val = [&](int k) {
+                    if (dtype == TF_DOUBLE) {
+                        const double *data = static_cast<const double *>(TF_TensorData(t.get_tensor().get()));
                         utils::logmesg(lmp, " {:8.4f}", data[i * elements_per_atom + k]);
-                    }
-                    utils::logmesg(lmp, "\n");
-                }
-            } else if (dtype == TF_INT32) {
-                const int32_t *data = static_cast<int32_t *>(TF_TensorData(t.get_tensor().get()));
-                for (int i = 0; i < n_atoms_to_print; i++) {
-                    utils::logmesg(lmp, "    Atom {}:", i);
-                    for (int k = 0; k < n_elements_to_print; k++) {
+                    } else if (dtype == TF_INT32) {
+                        const int32_t *data = static_cast<const int32_t *>(TF_TensorData(t.get_tensor().get()));
                         utils::logmesg(lmp, " {}", data[i * elements_per_atom + k]);
                     }
-                    utils::logmesg(lmp, "\n");
+                };
+
+                if (elements_per_atom <= 10) {
+                    for (int k = 0; k < elements_per_atom; k++) log_val(k);
+                } else {
+                    for (int k = 0; k < 5; k++) log_val(k);
+                    utils::logmesg(lmp, " ...");
+                    for (int k = elements_per_atom - 5; k < elements_per_atom; k++) log_val(k);
                 }
+                utils::logmesg(lmp, "\n");
+            };
+
+            if (n_total_atoms <= 10) {
+                for (int i = 0; i < n_total_atoms; i++) print_atom(i);
+            } else {
+                for (int i = 0; i < 5; i++) print_atom(i);
+                utils::logmesg(lmp, "    ...\n");
+                for (int i = n_total_atoms - 5; i < n_total_atoms; i++) print_atom(i);
             }
         } else {
             // Scalar

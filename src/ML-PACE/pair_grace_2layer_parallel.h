@@ -88,6 +88,7 @@ class PairGRACE2LayerParallel : public Pair {
 
   std::vector<double> grad_bv_L2;
 
+// #ifdef GRACE_PROFILE
   PACE::ACETimer total_timer;
   PACE::ACETimer data_timer;
   PACE::ACETimer tp_timer;
@@ -95,6 +96,7 @@ class PairGRACE2LayerParallel : public Pair {
   PACE::ACETimer model1_timer;
   PACE::ACETimer model2_timer;
   PACE::ACETimer model3_timer;
+// #endif
 
   // Helper methods to match compute() phases
   void run_forward_layer_1();
