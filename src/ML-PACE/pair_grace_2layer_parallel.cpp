@@ -621,13 +621,23 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
 
 int PairGRACE2LayerParallel::pack_forward_comm(int n, int *list, double *buf, int pbc_flag, int *pbc) {
     int m = 0;
+    
+    struct FeaturePtr {
+        double* data;
+        int size;
+    };
+    std::vector<FeaturePtr> active_features;
+    for (const auto& [key, size] : feature_sizes) {
+        if (!feature_is_local[key]) {
+            active_features.push_back({features[key].data(), size});
+        }
+    }
+
     for (int i = 0; i < n; i++) {
         int j = list[i];
-        for (const auto& [key, size] : feature_sizes) {
-            if (!feature_is_local[key]) {
-                std::copy_n(&features[key][j * size], size, &buf[m]);
-                m += size;
-            }
+        for (const auto& feat : active_features) {
+            std::copy_n(&feat.data[j * feat.size], feat.size, &buf[m]);
+            m += feat.size;
         }
     }
     return m;
@@ -635,24 +645,44 @@ int PairGRACE2LayerParallel::pack_forward_comm(int n, int *list, double *buf, in
 
 void PairGRACE2LayerParallel::unpack_forward_comm(int n, int first, double *buf) {
     int m = 0; int last = first + n;
+    
+    struct FeaturePtr {
+        double* data;
+        int size;
+    };
+    std::vector<FeaturePtr> active_features;
+    for (const auto& [key, size] : feature_sizes) {
+        if (!feature_is_local[key]) {
+            active_features.push_back({features[key].data(), size});
+        }
+    }
+
     for (int i = first; i < last; i++) {
-        for (const auto& [key, size] : feature_sizes) {
-            if (!feature_is_local[key]) {
-                std::copy_n(&buf[m], size, &features[key][i * size]);
-                m += size;
-            }
+        for (const auto& feat : active_features) {
+            std::copy_n(&buf[m], feat.size, &feat.data[i * feat.size]);
+            m += feat.size;
         }
     }
 }
 
 int PairGRACE2LayerParallel::pack_reverse_comm(int n, int first, double *buf) {
     int m = 0; int last = first + n;
+
+    struct FeaturePtr {
+        double* data;
+        int size;
+    };
+    std::vector<FeaturePtr> active_features;
+    for (const auto& [key, size] : feature_sizes) {
+        if (!feature_is_local[key]) {
+            active_features.push_back({gradients[key].data(), size});
+        }
+    }
+
     for (int i = first; i < last; i++) {
-        for (const auto& [key, size] : feature_sizes) {
-            if (!feature_is_local[key]) {
-                std::copy_n(&gradients[key][i * size], size, &buf[m]);
-                m += size;
-            }
+        for (const auto& feat : active_features) {
+            std::copy_n(&feat.data[i * feat.size], feat.size, &buf[m]);
+            m += feat.size;
         }
     }
     return m;
@@ -660,12 +690,22 @@ int PairGRACE2LayerParallel::pack_reverse_comm(int n, int first, double *buf) {
 
 void PairGRACE2LayerParallel::unpack_reverse_comm(int n, int *list, double *buf) {
     int m = 0;
+
+    struct FeaturePtr {
+        double* data;
+        int size;
+    };
+    std::vector<FeaturePtr> active_features;
+    for (const auto& [key, size] : feature_sizes) {
+        if (!feature_is_local[key]) {
+            active_features.push_back({gradients[key].data(), size});
+        }
+    }
+
     for (int i = 0; i < n; i++) {
         int j = list[i];
-        for (const auto& [key, size] : feature_sizes) {
-            if (!feature_is_local[key]) {
-                for (int k = 0; k < size; k++) gradients[key][j * size + k] += buf[m++];
-            }
+        for (const auto& feat : active_features) {
+            for (int k = 0; k < feat.size; k++) feat.data[j * feat.size + k] += buf[m++];
         }
     }
 }
