@@ -378,10 +378,11 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
         utils::logmesg(lmp, "[GRACE] Neighbor padding resize: {} -> {}\n", n_bonds, aceimpl->n_neighbours_padded);
     }
 
-    // Resize features and gradients based on parsed sizes
+    // Resize features and gradients based on parsed sizes and locality
     for (const auto& [key, size] : feature_sizes) {
-        features[key].resize(aceimpl->n_all_atoms_padded * size);
-        gradients[key].assign(aceimpl->n_all_atoms_padded * size, 0.0);
+        int n_padded = feature_is_local[key] ? aceimpl->n_local_atoms_padded : aceimpl->n_all_atoms_padded;
+        features[key].resize(n_padded * size);
+        gradients[key].assign(n_padded * size, 0.0);
     }
 
     aceimpl->mu_i.resize(aceimpl->n_neighbours_padded);
@@ -461,12 +462,13 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
     data_timer.start();
 #endif
     
-    // Zero ghost gradients after reverse_comm has accumulated them to parents
+    // Zero ghost/padding gradients after reverse_comm has accumulated them to parents
     // This ensures ghosts don't contribute again in backward_layer_1
-    for (int i = atom->nlocal; i < aceimpl->n_all_atoms_padded; i++) {
-        for (auto& [key, grad_vec] : gradients) {
-            int size = feature_sizes[key];
-            std::fill_n(&grad_vec[i * size], size, 0.0);
+    for (auto& [key, grad_vec] : gradients) {
+        int size = feature_sizes[key];
+        int n_padded = feature_is_local[key] ? aceimpl->n_local_atoms_padded : aceimpl->n_all_atoms_padded;
+        if (n_padded > atom->nlocal) {
+            std::fill_n(&grad_vec[atom->nlocal * size], (n_padded - atom->nlocal) * size, 0.0);
         }
     }
     
@@ -622,8 +624,10 @@ int PairGRACE2LayerParallel::pack_forward_comm(int n, int *list, double *buf, in
     for (int i = 0; i < n; i++) {
         int j = list[i];
         for (const auto& [key, size] : feature_sizes) {
-            std::copy_n(&features[key][j * size], size, &buf[m]);
-            m += size;
+            if (!feature_is_local[key]) {
+                std::copy_n(&features[key][j * size], size, &buf[m]);
+                m += size;
+            }
         }
     }
     return m;
@@ -633,8 +637,10 @@ void PairGRACE2LayerParallel::unpack_forward_comm(int n, int first, double *buf)
     int m = 0; int last = first + n;
     for (int i = first; i < last; i++) {
         for (const auto& [key, size] : feature_sizes) {
-            std::copy_n(&buf[m], size, &features[key][i * size]);
-            m += size;
+            if (!feature_is_local[key]) {
+                std::copy_n(&buf[m], size, &features[key][i * size]);
+                m += size;
+            }
         }
     }
 }
@@ -721,7 +727,8 @@ void PairGRACE2LayerParallel::run_forward_layer_1() {
         auto tens = outputs[i].get_tensor();
         const double *data = static_cast<double *>(TF_TensorData(tens.get()));
         int size = feature_sizes[key];
-        std::copy_n(data, atom->nlocal * size, &features[key][0]);
+        // Copy exactly what we got (n_local_atoms_padded * size)
+        std::copy_n(data, aceimpl->n_local_atoms_padded * size, &features[key][0]);
     }
 }
 
@@ -751,22 +758,9 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
     
     for (const auto& [key, shape] : feature_shapes) {
         if (feature_is_local[key]) {
-             // For local-only feature, pass only the local part with padding
-             int size = feature_sizes[key];
-             int n_local = atom->nlocal;
-             int n_local_padded = aceimpl->n_local_atoms_padded;
-             
-             // Create vector with padded size, initialized to zero
-             std::vector<double> local_data(n_local_padded * size, 0.0);
-             
-             // Copy only the real local atoms data
-             // features[key] stores [local... | ghosts... | padding...]
-             // We only want [local...] placed into [local... | zero_padding...]
-             std::copy_n(features[key].begin(), n_local * size, local_data.begin());
-
-             std::vector<int64_t> local_shape = {n_local_padded};
+             std::vector<int64_t> local_shape = {aceimpl->n_local_atoms_padded};
              local_shape.insert(local_shape.end(), shape.begin(), shape.end());
-             add_input(key, cppflow::tensor(local_data, local_shape)); 
+             add_input(key, cppflow::tensor(features[key], local_shape)); 
         } else {
              std::vector<int64_t> full_shape = {aceimpl->n_all_atoms_padded};
              full_shape.insert(full_shape.end(), shape.begin(), shape.end());
@@ -833,8 +827,9 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag) {
         auto g_tens = outputs[out_idx++].get_tensor();
         const double *g_data = static_cast<double *>(TF_TensorData(g_tens.get()));
         int size = feature_sizes[key];
+        int n_padded = feature_is_local[key] ? aceimpl->n_local_atoms_padded : aceimpl->n_all_atoms_padded;
         // Store in gradients map using the original key (without "grad_")
-        std::copy_n(g_data, aceimpl->n_all_atoms_padded * size, &gradients[key][0]);
+        std::copy_n(g_data, n_padded * size, &gradients[key][0]);
     }
 
     // Grad bond vector
@@ -872,20 +867,19 @@ void PairGRACE2LayerParallel::run_backward_layer_1() {
     
     for (const auto& [key, shape] : feature_shapes) {
         std::string grad_key = "grad_" + key;
-        int size = feature_sizes[key];
-        int n_local = atom->nlocal;
-        int n_local_padded = aceimpl->n_local_atoms_padded;
-
-        // Create vector with padded local size, initialized to zero
-        std::vector<double> local_grad_data(n_local_padded * size, 0.0);
-
-        // Copy only the real local atoms gradients
-        // gradients[key] stores [local... | ghosts... | padding...]
-        std::copy_n(gradients[key].begin(), n_local * size, local_grad_data.begin());
-
-        std::vector<int64_t> local_shape = {n_local_padded};
+        std::vector<int64_t> local_shape = {aceimpl->n_local_atoms_padded};
         local_shape.insert(local_shape.end(), shape.begin(), shape.end());
-        add_input(grad_key, cppflow::tensor(local_grad_data, local_shape));
+
+        if (feature_is_local[key]) {
+            add_input(grad_key, cppflow::tensor(gradients[key], local_shape));
+        } else {
+            // Temporarily resize to local padded size to avoid intermediate copy
+            // The model expects a tensor of size n_local_atoms_padded
+            size_t original_size = gradients[key].size();
+            gradients[key].resize(aceimpl->n_local_atoms_padded * feature_sizes[key]);
+            add_input(grad_key, cppflow::tensor(gradients[key], local_shape));
+            gradients[key].resize(original_size);
+        }
     }
 
 #ifdef GRACE_DEBUG
