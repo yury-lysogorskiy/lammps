@@ -622,6 +622,9 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag) {
 int PairGRACE2LayerParallel::pack_forward_comm(int n, int *list, double *buf, int pbc_flag, int *pbc) {
     int m = 0;
     
+    // Hoist map lookups out of the atom loop for performance.
+    // We pre-fetch base pointers and sizes so lookups happen once per routine, 
+    // rather than n * num_features times.
     struct FeaturePtr {
         double* data;
         int size;
@@ -646,6 +649,7 @@ int PairGRACE2LayerParallel::pack_forward_comm(int n, int *list, double *buf, in
 void PairGRACE2LayerParallel::unpack_forward_comm(int n, int first, double *buf) {
     int m = 0; int last = first + n;
     
+    // Hoist map lookups out of the atom loop for performance.
     struct FeaturePtr {
         double* data;
         int size;
@@ -668,6 +672,7 @@ void PairGRACE2LayerParallel::unpack_forward_comm(int n, int first, double *buf)
 int PairGRACE2LayerParallel::pack_reverse_comm(int n, int first, double *buf) {
     int m = 0; int last = first + n;
 
+    // Hoist map lookups out of the atom loop for performance.
     struct FeaturePtr {
         double* data;
         int size;
@@ -691,6 +696,7 @@ int PairGRACE2LayerParallel::pack_reverse_comm(int n, int first, double *buf) {
 void PairGRACE2LayerParallel::unpack_reverse_comm(int n, int *list, double *buf) {
     int m = 0;
 
+    // Hoist map lookups out of the atom loop for performance.
     struct FeaturePtr {
         double* data;
         int size;
