@@ -59,10 +59,6 @@ namespace LAMMPS_NS {
 using namespace LAMMPS_NS;
 
 PairGRACE2LayerParallel::PairGRACE2LayerParallel(LAMMPS *lmp) : Pair(lmp) {
-    // Suppress TensorFlow logging and oneDNN messages
-    if (!getenv("TF_CPP_MIN_LOG_LEVEL")) setenv("TF_CPP_MIN_LOG_LEVEL", "3", 0);
-    if (!getenv("TF_ENABLE_ONEDNN_OPTS")) setenv("TF_ENABLE_ONEDNN_OPTS", "0", 0);
-
     single_enable = 0;
     restartinfo = 0;
     one_coeff = 1;
