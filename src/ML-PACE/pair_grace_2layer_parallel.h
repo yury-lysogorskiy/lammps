@@ -19,11 +19,11 @@ PairStyle(grace/2layer/parallel,PairGRACE2LayerParallel);
 #define LMP_PAIR_GRACE_2LAYER_PARALLEL_H
 
 #include "pair.h"
-#include <vector>
-#include <string>
-#include <map>
 #include "utils_pace.h"
 #include <cppflow/tensor.h>
+#include <map>
+#include <string>
+#include <vector>
 
 namespace LAMMPS_NS {
 
@@ -58,9 +58,10 @@ class PairGRACE2LayerParallel : public Pair {
 
   bool has_mu_i_op = false;
   bool has_batch_tot_nat = false;
+  bool has_atomic_mu_i_local = false;
 
   void allocate();
-  
+
   double **scale;
   double cutoff = 6.0;
   bool is_custom_cutoffs = false;
@@ -72,7 +73,7 @@ class PairGRACE2LayerParallel : public Pair {
   // int max_number_of_reduction = 10;
   bool do_padding = true;
   bool pad_verbose = false;
-  
+
   int nelements;
   std::vector<std::string> elements_name;
   std::map<std::string, int> elements_to_index_map;
@@ -90,7 +91,7 @@ class PairGRACE2LayerParallel : public Pair {
 
   std::vector<double> grad_bv_L2;
 
-// #ifdef GRACE_PROFILE
+  // #ifdef GRACE_PROFILE
   PACE::ACETimer total_timer;
   PACE::ACETimer data_timer;
   PACE::ACETimer tp_timer;
@@ -98,19 +99,20 @@ class PairGRACE2LayerParallel : public Pair {
   PACE::ACETimer model1_timer;
   PACE::ACETimer model2_timer;
   PACE::ACETimer model3_timer;
-// #endif
+  // #endif
 
   // Helper methods to match compute() phases
   void run_forward_layer_1();
   void run_backward_layer_2(int eflag, int vflag);
   void run_backward_layer_1();
 
-  void print_tensors(const std::string& name, const std::vector<std::tuple<std::string, cppflow::tensor>>& tensors, const std::string& type_prefix = "Input");
-
+  void print_tensors(const std::string &name,
+                     const std::vector<std::tuple<std::string, cppflow::tensor>> &tensors,
+                     const std::string &type_prefix = "Input");
 };
 
-} // namespace LAMMPS_NS
+}    // namespace LAMMPS_NS
 
 #endif
 #endif
-#endif //#ifndef NO_GRACE_TF
+#endif    //#ifndef NO_GRACE_TF

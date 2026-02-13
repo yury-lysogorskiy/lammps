@@ -30,17 +30,16 @@ PairStyle(grace,PairGRACE);
 
 #include "pair.h"
 
+#include "utils_pace.h"
 #include <map>
 #include <set>
-#include "utils_pace.h"
 
 namespace LAMMPS_NS {
 
 class PairGRACE : public Pair {
  public:
-    PairGRACE(class LAMMPS *);
+  PairGRACE(class LAMMPS *);
   ~PairGRACE() override;
-
 
   void compute(int, int) override;
   void settings(int, char **) override;
@@ -61,10 +60,11 @@ class PairGRACE : public Pair {
   bool has_nstruct_total_op = false;
   bool has_mu_i_op = false;
   bool has_batch_tot_nat = false;
+  bool has_atomic_mu_i_local = false;
   bool parallel = false;
 
   bool has_compute_energy_only = false;
-  bool warning_compute_energy_only_not_avail_shown=false;
+  bool warning_compute_energy_only_not_avail_shown = false;
   bool deny_energy_only_calc = false;
 
   virtual void allocate();
@@ -90,17 +90,16 @@ class PairGRACE : public Pair {
   int nelements;
   std::vector<std::string> elements_name;
   std::map<std::string, int> elements_to_index_map;
-  std::vector<int> element_type_mapping; // LAMMPS's type(1,2,3...) to ACE's mu(0,1,2...,89)
+  std::vector<int> element_type_mapping;    // LAMMPS's type(1,2,3...) to ACE's mu(0,1,2...,89)
 
   PACE::ACETimer total_timer;
   PACE::ACETimer data_timer;
   PACE::ACETimer tp_timer;
 
   int flag_compute_energy_only = 0;
-
 };
 }    // namespace LAMMPS_NS
 
 #endif
 #endif
-#endif //#ifndef NO_GRACE_TF
+#endif    //#ifndef NO_GRACE_TF
