@@ -39,33 +39,59 @@ namespace PACE {
  * The measured time is stored in "duration" variable
  */
     struct ACETimer {
-        Duration duration{}; ///< measured duration
+        Duration duration{}; ///< total accumulated duration
+        Duration step_duration{}; ///< duration accumulated in the current transaction/step
         TimePoint start_moment; ///< start moment of current measurement
 
         ACETimer() { init(); };
 
         /**
-         * Reset timer
+         * Reset timer completely
          */
-        void init() { duration = std::chrono::nanoseconds(0); }
+        void init() {
+            duration = std::chrono::nanoseconds(0);
+            step_duration = std::chrono::nanoseconds(0);
+        }
 
         /**
-         * Start timer
+         * Initialize step measurement
+         */
+        void start_step() {
+            step_duration = std::chrono::nanoseconds(0);
+        }
+
+        /**
+         * Start timer for a measurement segment
          */
         void start() { start_moment = Clock::now(); }
 
         /**
-         * Stop timer, update measured "duration"
+         * Stop timer and add elapsed time to step_duration
          */
-        void stop() { duration += Clock::now() - start_moment; }
+        void stop() { step_duration += Clock::now() - start_moment; }
 
         /**
-         * Get duration in microseconds
+         * Commit step_duration to total duration and reset step_duration
+         */
+        void commit() {
+            duration += step_duration;
+            step_duration = std::chrono::nanoseconds(0);
+        }
+
+        /**
+         * Rollback/Discard step_duration
+         */
+        void rollback() {
+            step_duration = std::chrono::nanoseconds(0);
+        }
+
+        /**
+         * Get total duration in microseconds
          */
         long as_microseconds() const { return std::chrono::duration_cast<std::chrono::microseconds>(duration).count(); }
 
         /**
-         * Get duration in nanoseconds
+         * Get total duration in nanoseconds
          */
         long as_nanoseconds() const { return std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count(); }
 

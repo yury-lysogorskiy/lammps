@@ -43,6 +43,7 @@ struct GRACEImpl {
   GRACE::GracePaddingDimension neighbor_padding;
 
   cppflow::model *model;
+  bool graph_recompiled = false;
   std::map<std::string, cppflow::TensorInfo> compute_inputs_sig;
   std::map<std::string, cppflow::TensorInfo> compute_energy_only_inputs_sig;
 };
@@ -68,7 +69,6 @@ PairGRACE::PairGRACE(LAMMPS *lmp) : Pair(lmp)
 
   total_timer.init();
   data_timer.init();
-  tp_timer.init();
 
   no_virial_fdotr_compute = 1;
   flag_compute_energy_only = 0;
@@ -81,6 +81,22 @@ PairGRACE::~PairGRACE()
 {
   if (copymode) return;
 
+  if (comm->me == 0 && total_real_atoms_processed > 0) {
+    double total = total_timer.as_microseconds();
+    double data = data_timer.as_microseconds();
+    double model = model_timer.as_microseconds();
+
+    auto per_atom = [&](double t) { return t / total_real_atoms_processed; };
+    auto pct = [&](double t) { return (total > 0) ? (t / total * 100.0) : 0.0; };
+
+    utils::logmesg(lmp, "[GRACE-PERF] Total real atoms processed: {:.0f}\n", total_real_atoms_processed);
+    utils::logmesg(lmp, "[GRACE-PERF] Total valid compute calls: {}\n", total_compute_calls);
+    utils::logmesg(lmp, "[GRACE-PERF] Average atoms per step: {:.1f}\n",
+                   total_real_atoms_processed / total_compute_calls);
+    utils::logmesg(lmp, "[GRACE-PERF] Performance (us/atom) [%]: Total: {:.1f}, Data: {:.1f} ({:.1f}%), Model: {:.1f} ({:.1f}%)\n",
+                   per_atom(total), per_atom(data), pct(data), per_atom(model), pct(model));
+  }
+
   delete graceimpl;
 
   if (allocated) {
@@ -88,13 +104,6 @@ PairGRACE::~PairGRACE()
     memory->destroy(cutsq);
     memory->destroy(scale);
   }
-  auto data_t = (double) data_timer.as_microseconds();
-  auto tp_t = (double) tp_timer.as_microseconds();
-
-  utils::logmesg(lmp,
-                 "[GRACE:debug, proc #{:d}]: Data preparation timer: {:g} mcs, graph execution "
-                 "time: {:g} mcs, data preparation time fraction: {:.2f} %\n",
-                 comm->me, data_t, tp_t, (data_t / (data_t + tp_t) * 1e2));
 }
 
 /* ---------------------------------------------------------------------- */
@@ -459,12 +468,13 @@ void *PairGRACE::extract(const char *str, int &dim)
  */
 void PairGRACE::compute(int eflag, int vflag)
 {
-
-  total_timer.init();
-  data_timer.init();
-  tp_timer.init();
+  total_timer.start_step();
+  data_timer.start_step();
+  model_timer.start_step();
 
   total_timer.start();
+  current_step_real_atoms = 0;
+  graceimpl->graph_recompiled = false;
   int i, j, ii, jj, inum, jnum;
   double delx, dely, delz, evdwl;
   double fij[3];
@@ -522,11 +532,13 @@ void PairGRACE::compute(int eflag, int vflag)
   std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
 
   tot_atoms = graceimpl->atom_padding.update(nlocal);
+  if (graceimpl->atom_padding.last_update_triggered_resize()) graceimpl->graph_recompiled = true;
   if (pad_verbose && graceimpl->atom_padding.last_update_triggered_resize()) {
     utils::logmesg(lmp,
                    "[GRACE] Atoms padding: new num. of atoms = {} (incl. {:.3f}% fake atoms)\n",
                    tot_atoms, 100. * (double) graceimpl->atom_padding.n_fake / tot_atoms);
   }
+  current_step_real_atoms = nlocal;
 
   // atomic_mu_i: per-atom species type + padding with type[0]
   std::vector<int32_t> atomic_mu_i_vector(tot_atoms, element_type_mapping[type[0]]);
@@ -592,6 +604,7 @@ void PairGRACE::compute(int eflag, int vflag)
   std::partial_sum(actual_jnum.begin(), actual_jnum.end() - 1, actual_jnum_shift.begin() + 1);
 
   tot_neighbours = graceimpl->neighbor_padding.update(n_real_neighbours);
+  if (graceimpl->neighbor_padding.last_update_triggered_resize()) graceimpl->graph_recompiled = true;
   if (pad_verbose && graceimpl->neighbor_padding.last_update_triggered_resize()) {
     utils::logmesg(lmp,
                    "[GRACE] Neighbours padding: extending new num. of neighbours = {} (incl. "
@@ -687,8 +700,6 @@ void PairGRACE::compute(int eflag, int vflag)
   print_tf_inputs(inputs, comm->me, lmp, true);
 #endif
 
-  data_timer.stop();
-  tp_timer.start();
   vector<string> output_names;
   if (do_energy_only) {
     //TODO: update!
@@ -714,11 +725,12 @@ void PairGRACE::compute(int eflag, int vflag)
       output_names.emplace_back(compute_outputs_sig.at("z_pair_f")
                                     .name);    //"StatefulPartitionedCall:4");// pair_f [n_bonds, 3]
   }
+  data_timer.stop();
 
   //CALL MODEL
+  model_timer.start();
   std::vector<cppflow::tensor> output = graceimpl->model->operator()(inputs, output_names);
-  tp_timer.stop();
-  //    std::cout << "Ave.timing: " << (double) tp_timer.as_microseconds() / nlocal << " mcs/at" << std::endl;
+  model_timer.stop();
 
   data_timer.start();
   auto &e_out = output[0];    // atomic_energy
@@ -877,7 +889,19 @@ void PairGRACE::compute(int eflag, int vflag)
   }
 
   data_timer.stop();
-  // end modifications YL
+  total_timer.stop();
+
+  if (graceimpl->graph_recompiled) {
+    total_timer.rollback();
+    data_timer.rollback();
+    model_timer.rollback();
+  } else {
+    total_timer.commit();
+    data_timer.commit();
+    model_timer.commit();
+    total_real_atoms_processed += current_step_real_atoms;
+    total_compute_calls++;
+  }
 }
 
 #endif    //#ifndef NO_GRACE_TF

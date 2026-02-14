@@ -53,6 +53,7 @@ struct GRACE2LayerImpl {
   int n_local_atoms_padded = 0;
   int n_neighbours_padded = 0;
   int nlocal_bonds = 0;
+  bool graph_recompiled = false;
 };
 }    // namespace LAMMPS_NS
 
@@ -68,15 +69,12 @@ PairGRACE2LayerParallel::PairGRACE2LayerParallel(LAMMPS *lmp) : Pair(lmp)
   aceimpl = new GRACE2LayerImpl;
   scale = nullptr;
 
-#ifdef GRACE_PROFILE
   total_timer.init();
   data_timer.init();
-  tp_timer.init();
   comm_timer.init();
   model1_timer.init();
   model2_timer.init();
   model3_timer.init();
-#endif
 
   no_virial_fdotr_compute = 1;
   chunksize = 4096;
@@ -87,6 +85,27 @@ PairGRACE2LayerParallel::PairGRACE2LayerParallel(LAMMPS *lmp) : Pair(lmp)
 PairGRACE2LayerParallel::~PairGRACE2LayerParallel()
 {
   if (copymode) return;
+
+  if (comm->me == 0 && total_real_atoms_processed > 0) {
+    double total = total_timer.as_microseconds();
+    double data = data_timer.as_microseconds();
+    double comm_t = comm_timer.as_microseconds();
+    double m1 = model1_timer.as_microseconds();
+    double m2 = model2_timer.as_microseconds();
+    double m3 = model3_timer.as_microseconds();
+
+    auto per_atom = [&](double t) { return t / total_real_atoms_processed; };
+    auto pct = [&](double t) { return (total > 0) ? (t / total * 100.0) : 0.0; };
+
+    utils::logmesg(lmp, "[GRACE-PERF] Total real atoms processed: {:.0f}\n", total_real_atoms_processed);
+    utils::logmesg(lmp, "[GRACE-PERF] Total valid compute calls: {}\n", total_compute_calls);
+    utils::logmesg(lmp, "[GRACE-PERF] Average atoms per step: {:.1f}\n",
+                   total_real_atoms_processed / total_compute_calls);
+    utils::logmesg(lmp, "[GRACE-PERF] Performance (us/atom) [%%]: Total: {:.1f}, Data: {:.1f} ({:.1f}%%), Comm: {:.1f} ({:.1f}%%), M1: {:.1f} ({:.1f}%%), M2: {:.1f} ({:.1f}%%), M3: {:.1f} ({:.1f}%%)\n",
+                   per_atom(total), per_atom(data), pct(data), per_atom(comm_t), pct(comm_t),
+                   per_atom(m1), pct(m1), per_atom(m2), pct(m2), per_atom(m3), pct(m3));
+  }
+
   delete aceimpl;
   if (allocated) {
     memory->destroy(setflag);
@@ -346,38 +365,39 @@ double PairGRACE2LayerParallel::init_one(int i, int j)
 
 void PairGRACE2LayerParallel::compute(int eflag, int vflag)
 {
-
-#ifdef GRACE_PROFILE
-  total_timer.init();
-  data_timer.init();
-  tp_timer.init();
-  comm_timer.init();
-  model1_timer.init();
-  model2_timer.init();
-  model3_timer.init();
+  total_timer.start_step();
+  data_timer.start_step();
+  comm_timer.start_step();
+  model1_timer.start_step();
+  model2_timer.start_step();
+  model3_timer.start_step();
 
   total_timer.start();
-  data_timer.start();
-#endif
+  current_step_real_atoms = 0;
+  aceimpl->graph_recompiled = false;
   ev_init(eflag, vflag);
 
   int nlocal = atom->nlocal;
   int nall = nlocal + atom->nghost;
 
   aceimpl->n_all_atoms_padded = aceimpl->all_atoms_padding.update(nall);
+  if (aceimpl->all_atoms_padding.last_update_triggered_resize()) aceimpl->graph_recompiled = true;
   aceimpl->n_local_atoms_padded = aceimpl->real_atoms_padding.update(nlocal);
+  if (aceimpl->real_atoms_padding.last_update_triggered_resize()) aceimpl->graph_recompiled = true;
   if (aceimpl->all_atoms_padding.verbose &&
       (aceimpl->all_atoms_padding.last_update_triggered_resize() ||
        aceimpl->real_atoms_padding.last_update_triggered_resize())) {
     utils::logmesg(lmp,
-                   "[GRACE:proc #{:d}] Atoms padding: new num. of atoms: all = {} (incl. {:.3f}% "
-                   "fake), real = {} (incl. {:.3f}% fake)\n",
+                   "[GRACE:proc #{:d}] Atoms padding: new num. of atoms: all = {} (incl. {:.3f}%% "
+                   "fake), real = {} (incl. {:.3f}%% fake)\n",
                    comm->me, aceimpl->n_all_atoms_padded,
                    100. * (double) aceimpl->all_atoms_padding.n_fake / aceimpl->n_all_atoms_padded,
                    aceimpl->n_local_atoms_padded,
                    100. * (double) aceimpl->real_atoms_padding.n_fake /
                        aceimpl->n_local_atoms_padded);
   }
+  current_step_real_atoms = nlocal;
+  data_timer.start();
 
   int n_bonds = 0;
   int *ilist = list->ilist;
@@ -410,11 +430,12 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag)
   }
   aceimpl->nlocal_bonds = n_bonds;
   aceimpl->n_neighbours_padded = aceimpl->neighbor_padding.update(n_bonds);
+  if (aceimpl->neighbor_padding.last_update_triggered_resize()) aceimpl->graph_recompiled = true;
   if (aceimpl->neighbor_padding.verbose &&
       aceimpl->neighbor_padding.last_update_triggered_resize()) {
     utils::logmesg(lmp,
                    "[GRACE:proc #{:d}] Neighbours padding: extending new num. of neighbours = {} "
-                   "(incl. {:.3f}% fake neighbours)\n",
+                   "(incl. {:.3f}%% fake neighbours)\n",
                    comm->me, aceimpl->n_neighbours_padded,
                    100. * (double) aceimpl->neighbor_padding.n_fake / aceimpl->n_neighbours_padded);
   }
@@ -478,36 +499,26 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag)
     aceimpl->mu_i[k] = aceimpl->mu_j[k] = 0;
   }
 
-#ifdef GRACE_PROFILE
   data_timer.stop();
   model1_timer.start();
-#endif
   run_forward_layer_1();
-#ifdef GRACE_PROFILE
   model1_timer.stop();
 
   comm_timer.start();
-#endif
   comm->forward_comm(this);
-#ifdef GRACE_PROFILE
   comm_timer.stop();
 
   model2_timer.start();
-#endif
   run_backward_layer_2(eflag, vflag);
   bool do_energy_only = flag_compute_energy_only && !deny_energy_only_calc;
 
-#ifdef GRACE_PROFILE
   model2_timer.stop();
 
   comm_timer.start();
-#endif
   if (!do_energy_only) { comm->reverse_comm(this); }
-#ifdef GRACE_PROFILE
   comm_timer.stop();
 
   data_timer.start();
-#endif
 
   // Zero ghost/padding gradients after reverse_comm has accumulated them to parents
   // This ensures ghosts don't contribute again in backward_layer_1
@@ -522,15 +533,11 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag)
     }
   }
 
-#ifdef GRACE_PROFILE
   data_timer.stop();
   model3_timer.start();
-#endif
   if (!do_energy_only) { run_backward_layer_1(); }
-#ifdef GRACE_PROFILE
   model3_timer.stop();
   data_timer.start();
-#endif
 
 #ifdef GRACE_DEBUG
   if (!do_energy_only && comm->me == 0) {
@@ -631,10 +638,8 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag)
   }
 
   if (vflag_fdotr && !do_energy_only) virial_fdotr_compute();
-#ifdef GRACE_PROFILE
   data_timer.stop();
   total_timer.stop();
-#endif
 
 #ifdef GRACE_PROFILE
   // if (comm->me == 0) { // PRINT FOR ALL RANKS
@@ -660,10 +665,28 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag)
     fprintf(stderr,
             "[GRACE-PROFILE] [Rank %d] Array sizes: Atoms: %d (padded: %d) | Neighbors: %d "
             "(padded: %d)\n",
-            comm->me, nall, aceimpl->n_all_atoms_padded, aceimpl->nlocal_bonds,
+            comm->me, nlocal, aceimpl->n_all_atoms_padded, aceimpl->nlocal_bonds,
             aceimpl->n_neighbours_padded);
   }
 #endif
+
+  if (aceimpl->graph_recompiled) {
+    total_timer.rollback();
+    data_timer.rollback();
+    comm_timer.rollback();
+    model1_timer.rollback();
+    model2_timer.rollback();
+    model3_timer.rollback();
+  } else {
+    total_timer.commit();
+    data_timer.commit();
+    comm_timer.commit();
+    model1_timer.commit();
+    model2_timer.commit();
+    model3_timer.commit();
+    total_real_atoms_processed += current_step_real_atoms;
+    total_compute_calls++;
+  }
 }
 
 int PairGRACE2LayerParallel::pack_forward_comm(int n, int *list, double *buf, int pbc_flag,

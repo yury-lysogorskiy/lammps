@@ -62,6 +62,7 @@ struct GRACE2LayerChunkImpl {
   int n_nodes_padded = 0;
   int n_real_padded = 0;
   int n_bonds_padded = 0;
+  bool graph_recompiled = false;
 
   GRACE2LayerChunkImpl() = default;
   ~GRACE2LayerChunkImpl() { delete model; }
@@ -88,7 +89,6 @@ PairGRACE2LayerChunk::PairGRACE2LayerChunk(LAMMPS *lmp) : Pair(lmp)
 
   total_timer.init();
   data_timer.init();
-  tp_timer.init();
   comm_timer.init();
   model1_timer.init();
   model2_timer.init();
@@ -98,6 +98,27 @@ PairGRACE2LayerChunk::PairGRACE2LayerChunk(LAMMPS *lmp) : Pair(lmp)
 PairGRACE2LayerChunk::~PairGRACE2LayerChunk()
 {
   if (copymode) return;
+
+  if (comm->me == 0 && total_real_atoms_processed > 0) {
+    double total = total_timer.as_microseconds();
+    double data = data_timer.as_microseconds();
+    double comm_t = comm_timer.as_microseconds();
+    double m1 = model1_timer.as_microseconds();
+    double m2 = model2_timer.as_microseconds();
+    double m3 = model3_timer.as_microseconds();
+
+    auto per_atom = [&](double t) { return t / total_real_atoms_processed; };
+    auto pct = [&](double t) { return (total > 0) ? (t / total * 100.0) : 0.0; };
+
+    utils::logmesg(lmp, "[GRACE-PERF] Total real atoms processed: {:.0f}\n", total_real_atoms_processed);
+    utils::logmesg(lmp, "[GRACE-PERF] Total valid compute calls: {}\n", total_compute_calls);
+    utils::logmesg(lmp, "[GRACE-PERF] Average atoms per step: {:.1f}\n",
+                   total_real_atoms_processed / total_compute_calls);
+    utils::logmesg(lmp, "[GRACE-PERF] Performance (us/atom) [%]: Total: {:.1f}, Data: {:.1f} ({:.1f}%), Comm: {:.1f} ({:.1f}%), M1: {:.1f} ({:.1f}%), M2: {:.1f} ({:.1f}%), M3: {:.1f} ({:.1f}%)\n",
+                   per_atom(total), per_atom(data), pct(data), per_atom(comm_t), pct(comm_t),
+                   per_atom(m1), pct(m1), per_atom(m2), pct(m2), per_atom(m3), pct(m3));
+  }
+
   delete aceimpl;
   if (allocated) {
     memory->destroy(setflag);
@@ -284,6 +305,16 @@ double PairGRACE2LayerChunk::init_one(int i, int j)
 
 void PairGRACE2LayerChunk::compute(int eflag, int vflag)
 {
+  total_timer.start_step();
+  data_timer.start_step();
+  comm_timer.start_step();
+  model1_timer.start_step();
+  model2_timer.start_step();
+  model3_timer.start_step();
+
+  current_step_real_atoms = 0;
+  aceimpl->graph_recompiled = false;
+
   total_timer.start();
   data_timer.start();
   ev_init(eflag, vflag);
@@ -310,6 +341,7 @@ void PairGRACE2LayerChunk::compute(int eflag, int vflag)
   for (int offset = 0; offset < inum; offset += chunksize) {
     data_timer.start();
     int current_size = std::min(chunksize, inum - offset);
+    current_step_real_atoms += current_size;
     setup_chunk_graph(offset, current_size);
     data_timer.stop();
 
@@ -377,16 +409,25 @@ void PairGRACE2LayerChunk::compute(int eflag, int vflag)
   if (vflag_fdotr && !do_energy_only) virial_fdotr_compute();
   total_timer.stop();
 
-#ifdef GRACE_PROFILE
-  if (comm->me == 0 && inum > 0) {
-    double total = total_timer.as_microseconds();
-    auto pct = [&](double t) { return t / total * 100.0; };
-    fprintf(stderr, "[GRACE-PROFILE] Data: %.1f%% | Comm: %.1f%% | M1: %.1f%% | M2: %.1f%% | M3: %.1f%%\n",
-            pct(data_timer.as_microseconds()), pct(comm_timer.as_microseconds()),
-            pct(model1_timer.as_microseconds()), pct(model2_timer.as_microseconds()),
-            pct(model3_timer.as_microseconds()));
+  if (aceimpl->graph_recompiled) {
+    total_timer.rollback();
+    data_timer.rollback();
+    comm_timer.rollback();
+    model1_timer.rollback();
+    model2_timer.rollback();
+    model3_timer.rollback();
+  } else {
+    total_timer.commit();
+    data_timer.commit();
+    comm_timer.commit();
+    model1_timer.commit();
+    model2_timer.commit();
+    model3_timer.commit();
+    total_real_atoms_processed += current_step_real_atoms;
+    total_compute_calls++;
   }
-#endif
+
+
 }
 
 void PairGRACE2LayerChunk::setup_chunk_graph(int offset, int current_chunk_size)
@@ -435,8 +476,11 @@ void PairGRACE2LayerChunk::setup_chunk_graph(int offset, int current_chunk_size)
   }
 
   aceimpl->n_nodes_padded = aceimpl->atom_padding.update(node_counter);
+  if (aceimpl->atom_padding.last_update_triggered_resize()) aceimpl->graph_recompiled = true;
   aceimpl->n_real_padded = aceimpl->real_atom_padding.update(n_real);
+  if (aceimpl->real_atom_padding.last_update_triggered_resize()) aceimpl->graph_recompiled = true;
   aceimpl->n_bonds_padded = aceimpl->neighbor_padding.update(n_bonds_real);
+  if (aceimpl->neighbor_padding.last_update_triggered_resize()) aceimpl->graph_recompiled = true;
 
   // Resize chunk-local buffers
   aceimpl->mu_i.assign(aceimpl->n_bonds_padded, 0);

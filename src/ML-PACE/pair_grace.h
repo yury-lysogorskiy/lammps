@@ -94,9 +94,13 @@ class PairGRACE : public Pair {
 
   PACE::ACETimer total_timer;
   PACE::ACETimer data_timer;
-  PACE::ACETimer tp_timer;
+  PACE::ACETimer model_timer;
 
   int flag_compute_energy_only = 0;
+
+  double total_real_atoms_processed = 0.0;
+  long long int current_step_real_atoms = 0;
+  long long int total_compute_calls = 0;
 };
 }    // namespace LAMMPS_NS
 

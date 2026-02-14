@@ -101,6 +101,10 @@ class PairGRACE2LayerParallel : public Pair {
   PACE::ACETimer model3_timer;
   // #endif
 
+  double total_real_atoms_processed = 0.0;
+  long long int current_step_real_atoms = 0;
+  long long int total_compute_calls = 0;
+
   // Helper methods to match compute() phases
   void run_forward_layer_1();
   void run_backward_layer_2(int eflag, int vflag);

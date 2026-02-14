@@ -83,6 +83,10 @@ class PairGRACE2LayerChunk : public Pair {
   int flag_compute_energy_only = 0;
   bool deny_energy_only_calc = false;
 
+  double total_real_atoms_processed = 0.0;
+  long long int current_step_real_atoms = 0;
+  long long int total_compute_calls = 0;
+
   // Per-atom features (forward comm) and gradients (reverse comm)
   std::map<std::string, std::vector<double>> features;
   std::map<std::string, std::vector<double>> gradients;
@@ -94,7 +98,6 @@ class PairGRACE2LayerChunk : public Pair {
 
   PACE::ACETimer total_timer;
   PACE::ACETimer data_timer;
-  PACE::ACETimer tp_timer;
   PACE::ACETimer comm_timer;
   PACE::ACETimer model1_timer;
   PACE::ACETimer model2_timer;

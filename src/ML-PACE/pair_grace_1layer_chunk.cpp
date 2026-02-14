@@ -68,6 +68,8 @@ struct GRACE1LayerChunkImpl {
   std::vector<double> bond_vector;
   std::vector<int32_t> map_atoms_to_structure;
 
+  bool graph_recompiled = false;
+
   GRACE1LayerChunkImpl() = default;
   ~GRACE1LayerChunkImpl() { delete model; }
 };
@@ -105,6 +107,23 @@ PairGRACE1LayerChunk::PairGRACE1LayerChunk(LAMMPS *lmp) : Pair(lmp)
 PairGRACE1LayerChunk::~PairGRACE1LayerChunk()
 {
   if (copymode) return;
+
+  if (comm->me == 0 && total_real_atoms_processed > 0) {
+    double total = total_timer.as_microseconds();
+    double data = data_timer.as_microseconds();
+    double model = model_timer.as_microseconds();
+    double tp = tp_timer.as_microseconds();
+
+    auto per_atom = [&](double t) { return t / total_real_atoms_processed; };
+    auto pct = [&](double t) { return (total > 0) ? (t / total * 100.0) : 0.0; };
+
+    utils::logmesg(lmp, "[GRACE-PERF] Total real atoms processed: {:.0f}\n", total_real_atoms_processed);
+    utils::logmesg(lmp, "[GRACE-PERF] Total valid compute calls: {}\n", total_compute_calls);
+    utils::logmesg(lmp, "[GRACE-PERF] Average atoms per step: {:.1f}\n",
+                   total_real_atoms_processed / total_compute_calls);
+    utils::logmesg(lmp, "[GRACE-PERF] Performance (us/atom) [%]: Total: {:.1f}, Data: {:.1f} ({:.1f}%), Model: {:.1f} ({:.1f}%), TP: {:.1f} ({:.1f}%)\n",
+                   per_atom(total), per_atom(data), pct(data), per_atom(model), pct(model), per_atom(tp), pct(tp));
+  }
 
   delete impl;
 
@@ -307,8 +326,14 @@ void *PairGRACE1LayerChunk::extract(const char *str, int &dim)
 
 void PairGRACE1LayerChunk::compute(int eflag, int vflag)
 {
-  total_timer.init(); data_timer.init(); model_timer.init();
+  total_timer.start_step();
+  data_timer.start_step();
+  model_timer.start_step();
+  tp_timer.start_step();
+
   total_timer.start();
+  current_step_real_atoms = 0;
+  impl->graph_recompiled = false;
   ev_init(eflag, vflag);
 
   double **x = atom->x;
@@ -386,8 +411,12 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
 
     // Padding
     int n_nodes_padded = impl->atom_padding.update(n_nodes_in_chunk);
+    if (impl->atom_padding.last_update_triggered_resize()) impl->graph_recompiled = true;
     int n_real_padded = impl->real_atom_padding.update(n_real);
+    if (impl->real_atom_padding.last_update_triggered_resize()) impl->graph_recompiled = true;
     int n_bonds_padded = impl->neighbor_padding.update(n_bonds_real);
+    if (impl->neighbor_padding.last_update_triggered_resize()) impl->graph_recompiled = true;
+    current_step_real_atoms += current_chunk_size;
 
 #ifdef GRACE_CHUNK_DEBUG
     {
@@ -462,16 +491,17 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
 #ifdef GRACE_CHUNK_DEBUG
     GRACE::print_tf_inputs(inputs, comm->me, lmp, false);
 #endif
-    data_timer.stop();
-    model_timer.start();
-
+    
     std::vector<std::string> output_names;
     auto sig_outputs = impl->model->signatures.at(compute_function_name).outputs;
     output_names.push_back(sig_outputs.at("atomic_energy").name);
     output_names.push_back(sig_outputs.at("z_pair_f").name);
-
+    data_timer.stop();
+    
+    model_timer.start();
     auto outputs = impl->model->operator()(inputs, output_names);
     model_timer.stop();
+    
     data_timer.start();
 
     const double *e_data = static_cast<const double *>(TF_TensorData(outputs[0].get_tensor().get()));
@@ -548,12 +578,25 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
       impl->global_to_chunk_map[impl->chunk_to_global_map[k]] = -1;
     }
 
-    data_timer.stop();
     chunk_offset += current_chunk_size;
     chunk_idx++;
   }
 
   total_timer.stop();
+
+  if (impl->graph_recompiled) {
+    total_timer.rollback();
+    data_timer.rollback();
+    model_timer.rollback();
+    tp_timer.rollback();
+  } else {
+    total_timer.commit();
+    data_timer.commit();
+    model_timer.commit();
+    tp_timer.commit();
+    total_real_atoms_processed += current_step_real_atoms;
+    total_compute_calls++;
+  }
 
 #ifdef GRACE_PROFILE
   if (inum > 0) {

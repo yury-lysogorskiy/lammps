@@ -33,6 +33,7 @@ PairStyle(grace/fs,PairGRACEFS);
 #define LMP_PAIR_GRACEFS_H
 
 #include "pair.h"
+#include "utils_pace.h"
 
 namespace LAMMPS_NS {
 
@@ -72,6 +73,13 @@ namespace LAMMPS_NS {
         double **scale;
 
         int chunksize;
+
+        PACE::ACETimer total_timer;
+        PACE::ACETimer data_timer;
+        PACE::ACETimer model_timer;
+
+        double total_real_atoms_processed = 0.0;
+        long long int total_compute_calls = 0;
     };
 }    // namespace LAMMPS_NS
 

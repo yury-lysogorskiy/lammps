@@ -80,6 +80,10 @@ PairGRACEFS::PairGRACEFS(LAMMPS *lmp) : Pair(lmp) {
 
     chunksize = 4096;
 
+    total_timer.init();
+    data_timer.init();
+    model_timer.init();
+
     centroidstressflag = CENTROID_AVAIL;
 }
 
@@ -89,6 +93,22 @@ PairGRACEFS::PairGRACEFS(LAMMPS *lmp) : Pair(lmp) {
 
 PairGRACEFS::~PairGRACEFS() {
     if (copymode) return;
+
+    if (comm->me == 0 && total_real_atoms_processed > 0) {
+        double total = total_timer.as_microseconds();
+        double data = data_timer.as_microseconds();
+        double model = model_timer.as_microseconds();
+
+        auto per_atom = [&](double t) { return t / total_real_atoms_processed; };
+        auto pct = [&](double t) { return (total > 0) ? (t / total * 100.0) : 0.0; };
+
+        utils::logmesg(lmp, "[GRACE-PERF] Total real atoms processed: {:.0f}\n", total_real_atoms_processed);
+        utils::logmesg(lmp, "[GRACE-PERF] Total valid compute calls: {}\n", total_compute_calls);
+        utils::logmesg(lmp, "[GRACE-PERF] Average atoms per step: {:.1f}\n",
+                       total_real_atoms_processed / (double)total_compute_calls);
+        utils::logmesg(lmp, "[GRACE-PERF] Performance (us/atom) [%%]: Total: {:.1f}, Data: {:.1f} ({:.1f}%%), Model: {:.1f} ({:.1f}%%)\n",
+                       per_atom(total), per_atom(data), pct(data), per_atom(model), pct(model));
+    }
 
     delete aceimpl;
 
@@ -103,6 +123,12 @@ PairGRACEFS::~PairGRACEFS() {
 /* ---------------------------------------------------------------------- */
 
 void PairGRACEFS::compute(int eflag, int vflag) {
+    total_timer.start_step();
+    data_timer.start_step();
+    model_timer.start_step();
+
+    total_timer.start();
+    data_timer.start();
     int i, j, ii, jj, inum, jnum;
     double delx, dely, delz, evdwl;
     double fij[3];
@@ -178,7 +204,11 @@ void PairGRACEFS::compute(int eflag, int vflag) {
             my_neigh_jlist[jj] = jlist[jj] & NEIGHMASK;
         }
         try {
+            data_timer.stop();
+            model_timer.start();
             aceimpl->ace->compute_atom(i, x, type, jnum, my_neigh_jlist.data());
+            model_timer.stop();
+            data_timer.start();
         } catch (std::exception &e) {
             error->one(FLERR, e.what());
         }
@@ -251,6 +281,15 @@ void PairGRACEFS::compute(int eflag, int vflag) {
     }
 
     if (vflag_fdotr) virial_fdotr_compute();
+
+    data_timer.stop();
+    total_timer.stop();
+
+    total_timer.commit();
+    data_timer.commit();
+    model_timer.commit();
+    total_real_atoms_processed += (double)nlocal;
+    total_compute_calls++;
 
     // end modifications YL
 }
