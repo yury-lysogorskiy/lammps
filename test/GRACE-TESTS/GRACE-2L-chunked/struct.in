@@ -1,0 +1,8 @@
+boundary p p p
+
+read_data WMo_bcc.dat
+#replicate 4 4 4
+replicate 8 8 8
+
+mass		1 183.84 # W
+mass		2 83.84 # W
