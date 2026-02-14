@@ -14,6 +14,9 @@
 #include "utils.h"
 
 using namespace LAMMPS_NS;
+
+namespace GRACE {
+
 void print_tf_inputs(const std::vector<std::tuple<std::string, cppflow::tensor>>& inputs,
                             int me, LAMMPS_NS::LAMMPS *lmp, bool python_ready) {
     std::stringstream ss;
@@ -23,9 +26,8 @@ void print_tf_inputs(const std::vector<std::tuple<std::string, cppflow::tensor>>
 
     ss << std::left << std::setw(40) << "Input Name (:port)"
        << " | " << std::setw(10) << "DataType"
-       << " | " << std::setw(15) << "Shape"
-       << " | " << "Content Preview (First 10)" << "\n";
-    ss << std::string(100, '-') << "\n";
+       << " | " << std::setw(15) << "Shape" << "\n";
+    ss << std::string(70, '-') << "\n";
 
     for (const auto& item : inputs) {
         const std::string& name = std::get<0>(item);
@@ -50,20 +52,7 @@ void print_tf_inputs(const std::vector<std::tuple<std::string, cppflow::tensor>>
 
         ss << std::left << std::setw(40) << name << " | "
            << std::left << std::setw(10) << dtype_str << " | "
-           << std::left << std::setw(15) << shape_str << " | ";
-
-        void* data = TF_TensorData(tensor.get_tensor().get());
-        int preview_count = std::min((int64_t)10, total_elements);
-
-        for (int i = 0; i < preview_count; ++i) {
-            if (dtype_code == TF_INT32) ss << static_cast<int32_t*>(data)[i];
-            else if (dtype_code == TF_DOUBLE) ss << std::fixed << std::setprecision(6) << static_cast<double*>(data)[i];
-            else if (dtype_code == TF_FLOAT) ss << std::fixed << std::setprecision(6) << static_cast<float*>(data)[i];
-            else if (dtype_code == TF_INT64) ss << static_cast<int64_t*>(data)[i];
-            if (i < preview_count - 1) ss << ", ";
-        }
-        if (total_elements > 10) ss << "...";
-        ss << "\n";
+           << std::left << std::setw(15) << shape_str << "\n";
     }
 
     // --- Python Dictionary Export ---
@@ -175,4 +164,6 @@ void print_f_data(const double *f_data, int me, LAMMPS *lmp,
     if (me == 0) utils::logmesg(lmp, "------------------------------------------------------------------\n");
     // ----------------------------------------------------------------------
 }
+
+} // namespace GRACE
 #endif
