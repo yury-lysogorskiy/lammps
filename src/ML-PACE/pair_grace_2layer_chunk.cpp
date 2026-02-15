@@ -58,6 +58,11 @@ struct GRACE2LayerChunkImpl {
   std::vector<int32_t> atomic_mu_i;        // for all nodes in chunk
   std::vector<int32_t> atomic_mu_i_local;  // for real atoms in chunk
 
+  // Persistent input tensor pools (one per TF signature)
+  std::map<std::string, cppflow::tensor> fwd_l1_tensors;
+  std::map<std::string, cppflow::tensor> bwd_l2_tensors;
+  std::map<std::string, cppflow::tensor> bwd_l1_tensors;
+
   // Persistent sizes
   int n_nodes_padded = 0;
   int n_real_padded = 0;
@@ -482,19 +487,24 @@ void PairGRACE2LayerChunk::setup_chunk_graph(int offset, int current_chunk_size)
   aceimpl->n_bonds_padded = aceimpl->neighbor_padding.update(n_bonds_real);
   if (aceimpl->neighbor_padding.last_update_triggered_resize()) aceimpl->graph_recompiled = true;
 
-  // Resize chunk-local buffers
-  aceimpl->mu_i.assign(aceimpl->n_bonds_padded, 0);
-  aceimpl->mu_j.assign(aceimpl->n_bonds_padded, 0);
-  aceimpl->ind_i.assign(aceimpl->n_bonds_padded, aceimpl->n_nodes_padded - 1);
-  aceimpl->ind_j.assign(aceimpl->n_bonds_padded, aceimpl->n_nodes_padded - 1);
-  aceimpl->bond_vector.assign(aceimpl->n_bonds_padded * 3, 1e6);
-  aceimpl->atomic_mu_i.assign(aceimpl->n_nodes_padded, element_type_mapping[type[0]]);
-  aceimpl->atomic_mu_i_local.assign(aceimpl->n_real_padded, element_type_mapping[type[0]]);
+  // Resize chunk-local buffers (conditional resize to avoid reallocation)
+  aceimpl->mu_i.resize(aceimpl->n_bonds_padded);
+  aceimpl->mu_j.resize(aceimpl->n_bonds_padded);
+  aceimpl->ind_i.resize(aceimpl->n_bonds_padded);
+  aceimpl->ind_j.resize(aceimpl->n_bonds_padded);
+  aceimpl->bond_vector.resize(aceimpl->n_bonds_padded * 3);
+  aceimpl->atomic_mu_i.resize(aceimpl->n_nodes_padded);
+  aceimpl->atomic_mu_i_local.resize(aceimpl->n_real_padded);
 
   for (int k = 0; k < node_counter; k++)
     aceimpl->atomic_mu_i[k] = element_type_mapping[type[aceimpl->chunk_to_global_map[k]]];
+  for (int k = node_counter; k < aceimpl->n_nodes_padded; k++)
+    aceimpl->atomic_mu_i[k] = element_type_mapping[type[0]];
+
   for (int k = 0; k < n_real; k++)
     aceimpl->atomic_mu_i_local[k] = element_type_mapping[type[aceimpl->chunk_to_global_map[k]]];
+  for (int k = n_real; k < aceimpl->n_real_padded; k++)
+    aceimpl->atomic_mu_i_local[k] = element_type_mapping[type[0]];
 
   int bond_idx = 0;
   for (int ii = 0; ii < current_chunk_size; ii++) {
@@ -510,8 +520,8 @@ void PairGRACE2LayerChunk::setup_chunk_graph(int offset, int current_chunk_size)
       double dx = x[j][0] - xi, dy = x[j][1] - yi, dz = x[j][2] - zi;
       double rsq = dx * dx + dy * dy + dz * dz;
       double cutsq_ij = is_custom_cutoffs ? cutoff_matrix_per_lammps_type[type_i][type[j]] *
-                                                cutoff_matrix_per_lammps_type[type_i][type[j]]
-                                          : cutoff * cutoff;
+                                                 cutoff_matrix_per_lammps_type[type_i][type[j]]
+                                           : cutoff * cutoff;
       if (rsq < cutsq_ij) {
         int j_chunk = aceimpl->global_to_chunk_map[j];
         aceimpl->ind_i[bond_idx] = i_chunk;
@@ -525,6 +535,17 @@ void PairGRACE2LayerChunk::setup_chunk_graph(int offset, int current_chunk_size)
       }
     }
   }
+
+  // Zero-fill padding tail
+  for (int k = bond_idx; k < aceimpl->n_bonds_padded; k++) {
+    aceimpl->ind_i[k] = aceimpl->n_nodes_padded - 1;
+    aceimpl->ind_j[k] = aceimpl->n_nodes_padded - 1;
+    aceimpl->mu_i[k] = 0;
+    aceimpl->mu_j[k] = 0;
+    aceimpl->bond_vector[3 * k + 0] = 1e6;
+    aceimpl->bond_vector[3 * k + 1] = 1e6;
+    aceimpl->bond_vector[3 * k + 2] = 1e6;
+  }
 }
 
 void PairGRACE2LayerChunk::run_forward_layer_1_chunk()
@@ -536,23 +557,39 @@ void PairGRACE2LayerChunk::run_forward_layer_1_chunk()
   };
 
   int n_real = aceimpl->chunk_to_global_map.size();    // Only counting mapped, correct? No, real is first current_chunk_size
-  // Wait, I saved n_real = node_counter before ghosts. Let's re-save it.
-  // Actually, setup_chunk_graph knows n_real (from current_chunk_size).
-
-  add_in("atomic_mu_i", cppflow::tensor(aceimpl->atomic_mu_i, {(int64_t) aceimpl->n_nodes_padded}));
-  add_in("atomic_mu_i_local",
-         cppflow::tensor(aceimpl->atomic_mu_i_local, {(int64_t) aceimpl->n_real_padded}));
-  add_in("ind_i", cppflow::tensor(aceimpl->ind_i, {(int64_t) aceimpl->n_bonds_padded}));
-  add_in("ind_j", cppflow::tensor(aceimpl->ind_j, {(int64_t) aceimpl->n_bonds_padded}));
-  add_in("mu_i", cppflow::tensor(aceimpl->mu_i, {(int64_t) aceimpl->n_bonds_padded}));
-  add_in("mu_j", cppflow::tensor(aceimpl->mu_j, {(int64_t) aceimpl->n_bonds_padded}));
-  add_in("bond_vector",
-         cppflow::tensor(aceimpl->bond_vector, {(int64_t) aceimpl->n_bonds_padded, 3}));
+  add_in("atomic_mu_i", GRACE::get_or_create_tensor(aceimpl->fwd_l1_tensors, "atomic_mu_i",
+                                                   aceimpl->atomic_mu_i,
+                                                   {(int64_t) aceimpl->n_nodes_padded},
+                                                   aceimpl->graph_recompiled));
+  add_in("atomic_mu_i_local", GRACE::get_or_create_tensor(aceimpl->fwd_l1_tensors,
+                                                         "atomic_mu_i_local",
+                                                         aceimpl->atomic_mu_i_local,
+                                                         {(int64_t) aceimpl->n_real_padded},
+                                                         aceimpl->graph_recompiled));
+  add_in("ind_i", GRACE::get_or_create_tensor(aceimpl->fwd_l1_tensors, "ind_i", aceimpl->ind_i,
+                                             {(int64_t) aceimpl->n_bonds_padded},
+                                             aceimpl->graph_recompiled));
+  add_in("ind_j", GRACE::get_or_create_tensor(aceimpl->fwd_l1_tensors, "ind_j", aceimpl->ind_j,
+                                             {(int64_t) aceimpl->n_bonds_padded},
+                                             aceimpl->graph_recompiled));
+  add_in("mu_i", GRACE::get_or_create_tensor(aceimpl->fwd_l1_tensors, "mu_i", aceimpl->mu_i,
+                                            {(int64_t) aceimpl->n_bonds_padded},
+                                            aceimpl->graph_recompiled));
+  add_in("mu_j", GRACE::get_or_create_tensor(aceimpl->fwd_l1_tensors, "mu_j", aceimpl->mu_j,
+                                            {(int64_t) aceimpl->n_bonds_padded},
+                                            aceimpl->graph_recompiled));
+  add_in("bond_vector", GRACE::get_or_create_tensor(aceimpl->fwd_l1_tensors, "bond_vector",
+                                                   aceimpl->bond_vector,
+                                                   {(int64_t) aceimpl->n_bonds_padded, 3},
+                                                   aceimpl->graph_recompiled));
   // How many real atoms in this chunk? It's the current_chunk_size passed to setup.
   // I'll assume n_real_padded.update(current_chunk_size) was done.
   // Let's use the real count from setup.
   int n_real_actual = aceimpl->atomic_mu_i_local.size() - aceimpl->real_atom_padding.n_fake;
-  add_in("batch_tot_nat_real", cppflow::tensor(std::vector<int32_t>{n_real_actual}, {}));
+  add_in("batch_tot_nat_real",
+         GRACE::get_or_create_tensor(aceimpl->fwd_l1_tensors, "batch_tot_nat_real",
+                                    std::vector<int32_t>{n_real_actual}, {},
+                                    aceimpl->graph_recompiled));
 
   std::vector<std::string> out_names;
   std::vector<std::string> ordered_keys;
@@ -574,12 +611,6 @@ void PairGRACE2LayerChunk::run_forward_layer_1_chunk()
   }
 }
 
-
-// Re-thinking: In 2layer parallel, grad_bond_vector is a single vector of size 3*n_neighbours_padded.
-// It is filled by L2, then incremented by L1.
-// In chunked mode, I'll apply the L2 part to atom->f now, and the L1 part in Phase 5.
-// This is mathematically identical due to linearity.
-
 void PairGRACE2LayerChunk::run_backward_layer_1_chunk()
 {
   auto sig = aceimpl->model->signatures.at(backward_layer_1_name);
@@ -590,16 +621,35 @@ void PairGRACE2LayerChunk::run_backward_layer_1_chunk()
 
   int n_real_actual = aceimpl->real_atom_padding.current_padded_size - aceimpl->real_atom_padding.n_fake;
 
-  add_in("atomic_mu_i", cppflow::tensor(aceimpl->atomic_mu_i, {(int64_t) aceimpl->n_nodes_padded}));
-  add_in("atomic_mu_i_local",
-         cppflow::tensor(aceimpl->atomic_mu_i_local, {(int64_t) aceimpl->n_real_padded}));
-  add_in("ind_i", cppflow::tensor(aceimpl->ind_i, {(int64_t) aceimpl->n_bonds_padded}));
-  add_in("ind_j", cppflow::tensor(aceimpl->ind_j, {(int64_t) aceimpl->n_bonds_padded}));
-  add_in("mu_i", cppflow::tensor(aceimpl->mu_i, {(int64_t) aceimpl->n_bonds_padded}));
-  add_in("mu_j", cppflow::tensor(aceimpl->mu_j, {(int64_t) aceimpl->n_bonds_padded}));
-  add_in("bond_vector",
-         cppflow::tensor(aceimpl->bond_vector, {(int64_t) aceimpl->n_bonds_padded, 3}));
-  add_in("batch_tot_nat_real", cppflow::tensor(std::vector<int32_t>{n_real_actual}, {}));
+  add_in("atomic_mu_i", GRACE::get_or_create_tensor(aceimpl->bwd_l1_tensors, "atomic_mu_i",
+                                                   aceimpl->atomic_mu_i,
+                                                   {(int64_t) aceimpl->n_nodes_padded},
+                                                   aceimpl->graph_recompiled));
+  add_in("atomic_mu_i_local", GRACE::get_or_create_tensor(aceimpl->bwd_l1_tensors,
+                                                         "atomic_mu_i_local",
+                                                         aceimpl->atomic_mu_i_local,
+                                                         {(int64_t) aceimpl->n_real_padded},
+                                                         aceimpl->graph_recompiled));
+  add_in("ind_i", GRACE::get_or_create_tensor(aceimpl->bwd_l1_tensors, "ind_i", aceimpl->ind_i,
+                                             {(int64_t) aceimpl->n_bonds_padded},
+                                             aceimpl->graph_recompiled));
+  add_in("ind_j", GRACE::get_or_create_tensor(aceimpl->bwd_l1_tensors, "ind_j", aceimpl->ind_j,
+                                             {(int64_t) aceimpl->n_bonds_padded},
+                                             aceimpl->graph_recompiled));
+  add_in("mu_i", GRACE::get_or_create_tensor(aceimpl->bwd_l1_tensors, "mu_i", aceimpl->mu_i,
+                                            {(int64_t) aceimpl->n_bonds_padded},
+                                            aceimpl->graph_recompiled));
+  add_in("mu_j", GRACE::get_or_create_tensor(aceimpl->bwd_l1_tensors, "mu_j", aceimpl->mu_j,
+                                            {(int64_t) aceimpl->n_bonds_padded},
+                                            aceimpl->graph_recompiled));
+  add_in("bond_vector", GRACE::get_or_create_tensor(aceimpl->bwd_l1_tensors, "bond_vector",
+                                                   aceimpl->bond_vector,
+                                                   {(int64_t) aceimpl->n_bonds_padded, 3},
+                                                   aceimpl->graph_recompiled));
+  add_in("batch_tot_nat_real",
+         GRACE::get_or_create_tensor(aceimpl->bwd_l1_tensors, "batch_tot_nat_real",
+                                    std::vector<int32_t>{n_real_actual}, {},
+                                    aceimpl->graph_recompiled));
 
   // GATHER gradients
   for (const auto &[key, shape] : feature_shapes) {
@@ -611,7 +661,9 @@ void PairGRACE2LayerChunk::run_backward_layer_1_chunk()
     }
     std::vector<int64_t> t_shape = {(int64_t) aceimpl->n_real_padded};
     t_shape.insert(t_shape.end(), shape.begin(), shape.end());
-    add_in("grad_" + key, cppflow::tensor(chunk_grad, t_shape));
+    add_in("grad_" + key, GRACE::get_or_create_tensor(aceimpl->bwd_l1_tensors, "grad_" + key,
+                                                     chunk_grad, t_shape,
+                                                     aceimpl->graph_recompiled));
   }
 
   std::vector<std::string> out_names = {sig.outputs.at(GRAD_BOND_KEY).name};
@@ -651,39 +703,6 @@ void PairGRACE2LayerChunk::run_backward_layer_1_chunk()
   }
 }
 
-// I realized Phase 3 (L2) also needs to apply forces immediately.
-// I'll update run_backward_layer_2_chunk to do that.
-
-// Wait, if I apply forces in Batch 3 and Batch 5 separately, ev_tally will work correctly?
-// Yes, it accumulates.
-
-// Let's refine run_backward_layer_2_chunk Scatter part:
-/*
-    const double *gbv_data = static_cast<double *>(TF_TensorData(outputs[out_idx++].get_tensor().get()));
-    double **f = atom->f;
-    int *type = atom->type;
-    int nlocal = atom->nlocal;
-    int newton_pair = force->newton_pair;
-    for (int k = 0; k < aceimpl->n_bonds_padded; k++) {
-      int i_chunk = aceimpl->ind_i[k];
-      int j_chunk = aceimpl->ind_j[k];
-      if (i_chunk >= n_real_actual || j_chunk >= (int)aceimpl->chunk_to_global_map.size()) continue;
-      int i = aceimpl->chunk_to_global_map[i_chunk];
-      int j = aceimpl->chunk_to_global_map[j_chunk];
-      double sc = scale[type[i]][type[i]];
-      double fx = sc * gbv_data[3*k+0];
-      double fy = sc * gbv_data[3*k+1];
-      double fz = sc * gbv_data[3*k+2];
-      f[i][0] += fx; f[i][1] += fy; f[i][2] += fz;
-      f[j][0] -= fx; f[j][1] -= fy; f[j][2] -= fz;
-      if (evflag) {
-        double dx = -aceimpl->bond_vector[3*k+0];
-        double dy = -aceimpl->bond_vector[3*k+1];
-        double dz = -aceimpl->bond_vector[3*k+2];
-        ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fx, fy, fz, dx, dy, dz);
-      }
-    }
-*/
 
 // MPI Comm methods
 int PairGRACE2LayerChunk::pack_forward_comm(int n, int *list, double *buf, int pbc_flag, int *pbc)
@@ -775,16 +794,35 @@ void PairGRACE2LayerChunk::run_backward_layer_2_chunk(int eflag, int vflag)
   int n_all = aceimpl->chunk_to_global_map.size();
   int n_real_actual = aceimpl->real_atom_padding.current_padded_size - aceimpl->real_atom_padding.n_fake;
 
-  add_in("atomic_mu_i", cppflow::tensor(aceimpl->atomic_mu_i, {(int64_t) aceimpl->n_nodes_padded}));
-  add_in("atomic_mu_i_local",
-         cppflow::tensor(aceimpl->atomic_mu_i_local, {(int64_t) aceimpl->n_real_padded}));
-  add_in("ind_i", cppflow::tensor(aceimpl->ind_i, {(int64_t) aceimpl->n_bonds_padded}));
-  add_in("ind_j", cppflow::tensor(aceimpl->ind_j, {(int64_t) aceimpl->n_bonds_padded}));
-  add_in("mu_i", cppflow::tensor(aceimpl->mu_i, {(int64_t) aceimpl->n_bonds_padded}));
-  add_in("mu_j", cppflow::tensor(aceimpl->mu_j, {(int64_t) aceimpl->n_bonds_padded}));
-  add_in("bond_vector",
-         cppflow::tensor(aceimpl->bond_vector, {(int64_t) aceimpl->n_bonds_padded, 3}));
-  add_in("batch_tot_nat_real", cppflow::tensor(std::vector<int32_t>{n_real_actual}, {}));
+  add_in("atomic_mu_i", GRACE::get_or_create_tensor(aceimpl->bwd_l2_tensors, "atomic_mu_i",
+                                                   aceimpl->atomic_mu_i,
+                                                   {(int64_t) aceimpl->n_nodes_padded},
+                                                   aceimpl->graph_recompiled));
+  add_in("atomic_mu_i_local", GRACE::get_or_create_tensor(aceimpl->bwd_l2_tensors,
+                                                         "atomic_mu_i_local",
+                                                         aceimpl->atomic_mu_i_local,
+                                                         {(int64_t) aceimpl->n_real_padded},
+                                                         aceimpl->graph_recompiled));
+  add_in("ind_i", GRACE::get_or_create_tensor(aceimpl->bwd_l2_tensors, "ind_i", aceimpl->ind_i,
+                                             {(int64_t) aceimpl->n_bonds_padded},
+                                             aceimpl->graph_recompiled));
+  add_in("ind_j", GRACE::get_or_create_tensor(aceimpl->bwd_l2_tensors, "ind_j", aceimpl->ind_j,
+                                             {(int64_t) aceimpl->n_bonds_padded},
+                                             aceimpl->graph_recompiled));
+  add_in("mu_i", GRACE::get_or_create_tensor(aceimpl->bwd_l2_tensors, "mu_i", aceimpl->mu_i,
+                                            {(int64_t) aceimpl->n_bonds_padded},
+                                            aceimpl->graph_recompiled));
+  add_in("mu_j", GRACE::get_or_create_tensor(aceimpl->bwd_l2_tensors, "mu_j", aceimpl->mu_j,
+                                            {(int64_t) aceimpl->n_bonds_padded},
+                                            aceimpl->graph_recompiled));
+  add_in("bond_vector", GRACE::get_or_create_tensor(aceimpl->bwd_l2_tensors, "bond_vector",
+                                                   aceimpl->bond_vector,
+                                                   {(int64_t) aceimpl->n_bonds_padded, 3},
+                                                   aceimpl->graph_recompiled));
+  add_in("batch_tot_nat_real",
+         GRACE::get_or_create_tensor(aceimpl->bwd_l2_tensors, "batch_tot_nat_real",
+                                    std::vector<int32_t>{n_real_actual}, {},
+                                    aceimpl->graph_recompiled));
 
   for (const auto &[key, shape] : feature_shapes) {
     int size = feature_sizes[key];
@@ -797,7 +835,8 @@ void PairGRACE2LayerChunk::run_backward_layer_2_chunk(int eflag, int vflag)
     }
     std::vector<int64_t> t_shape = {(int64_t) n_padded};
     t_shape.insert(t_shape.end(), shape.begin(), shape.end());
-    add_in(key, cppflow::tensor(chunk_feat, t_shape));
+    add_in(key, GRACE::get_or_create_tensor(aceimpl->bwd_l2_tensors, key, chunk_feat, t_shape,
+                                           aceimpl->graph_recompiled));
   }
 
   std::vector<std::string> out_names;

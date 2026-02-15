@@ -9,8 +9,12 @@
 
 #include <vector>
 #include <set>
+#include <map>
+#include <string>
+#include <cstring>
 #include <cmath>
 #include <cppflow/tensor.h>
+#include <tensorflow/c/c_api.h>
 
 #include "lammps.h"
 
@@ -87,6 +91,43 @@ namespace GRACE {
     void print_f_data(const double *f_data, int me, LAMMPS_NS::LAMMPS *lmp,
       const std::vector<int>& ind_i_vector, const std::vector<int>& ind_j_vector,
       int * tag);
+
+    /**
+     * @brief Get a tensor from a pool or create it if it doesn't exist or size mismatch.
+     * 
+     * If the tensor exists and has the correct byte size, it memcpys the data into the existing buffer.
+     * This avoids heap allocations in the hot loop of chunked model calls.
+     */
+    template<typename T>
+    cppflow::tensor& get_or_create_tensor(
+        std::map<std::string, cppflow::tensor>& pool,
+        const std::string& key,
+        const std::vector<T>& values,
+        const std::vector<int64_t>& shape,
+        bool force_recreate = false) 
+    {
+        size_t byte_size = values.size() * sizeof(T);
+        auto it = pool.find(key);
+
+        bool needs_create = force_recreate || (it == pool.end());
+
+        if (!needs_create) {
+            // Check byte size of existing tensor
+            auto existing_tensor = it->second.get_tensor();
+            if (TF_TensorByteSize(existing_tensor.get()) != byte_size) {
+                needs_create = true;
+            }
+        }
+
+        if (needs_create) {
+            pool[key] = cppflow::tensor(values, shape);
+            return pool[key];
+        } else {
+            // Safe to memcpy into CPU-resident input tensors
+            std::memcpy(TF_TensorData(it->second.get_tensor().get()), values.data(), byte_size);
+            return it->second;
+        }
+    }
 }
 #endif
 #endif
