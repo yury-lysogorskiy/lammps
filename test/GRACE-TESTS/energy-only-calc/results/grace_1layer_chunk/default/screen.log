@@ -1,25 +1,25 @@
-2026-02-17 10:16:48.573895: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
-2026-02-17 10:16:48.602913: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:467] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2026-02-17 11:09:30.801146: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2026-02-17 11:09:30.814456: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:467] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-E0000 00:00:1771319808.621156 3561382 cuda_dnn.cc:8579] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
-E0000 00:00:1771319808.625079 3561382 cuda_blas.cc:1407] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
-W0000 00:00:1771319808.636032 3561382 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
-W0000 00:00:1771319808.636062 3561382 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
-W0000 00:00:1771319808.636065 3561382 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
-W0000 00:00:1771319808.636068 3561382 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
-LAMMPS (10 Sep 2025 - Development - patch_29Aug2024-5969-g275107956d-modified)
-2026-02-17 10:16:48.801743: I tensorflow/cc/saved_model/reader.cc:83] Reading SavedModel from: /home/users/lysogy36/CLionProjects/lammps-ace/test/GRACE-TESTS/potentials/GRACE-1L-OMAT-large-base-aux
-2026-02-17 10:16:48.816224: I tensorflow/cc/saved_model/reader.cc:52] Reading meta graph with tags { serve }
-2026-02-17 10:16:48.816250: I tensorflow/cc/saved_model/reader.cc:147] Reading SavedModel debug info (if present) from: /home/users/lysogy36/CLionProjects/lammps-ace/test/GRACE-TESTS/potentials/GRACE-1L-OMAT-large-base-aux
-2026-02-17 10:16:48.816321: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+E0000 00:00:1771322970.827426  145596 cuda_dnn.cc:8579] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+E0000 00:00:1771322970.831425  145596 cuda_blas.cc:1407] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+W0000 00:00:1771322970.841814  145596 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+W0000 00:00:1771322970.841839  145596 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+W0000 00:00:1771322970.841842  145596 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+W0000 00:00:1771322970.841844  145596 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+LAMMPS (10 Sep 2025 - Development - patch_29Aug2024-5970-gab3ad03701-modified)
+2026-02-17 11:09:30.994718: I tensorflow/cc/saved_model/reader.cc:83] Reading SavedModel from: /home/users/lysogy36/CLionProjects/lammps-ace/test/GRACE-TESTS/potentials/GRACE-1L-OMAT-large-base-aux
+2026-02-17 11:09:31.010261: I tensorflow/cc/saved_model/reader.cc:52] Reading meta graph with tags { serve }
+2026-02-17 11:09:31.010288: I tensorflow/cc/saved_model/reader.cc:147] Reading SavedModel debug info (if present) from: /home/users/lysogy36/CLionProjects/lammps-ace/test/GRACE-TESTS/potentials/GRACE-1L-OMAT-large-base-aux
+2026-02-17 11:09:31.010364: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
 To enable the following instructions: AVX2 AVX512F AVX512_VNNI FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
-2026-02-17 10:16:48.955639: W tensorflow/core/common_runtime/gpu/gpu_bfc_allocator.cc:47] Overriding orig_value setting because the TF_FORCE_GPU_ALLOW_GROWTH environment variable is set. Original config value was 0.
+2026-02-17 11:09:31.135343: W tensorflow/core/common_runtime/gpu/gpu_bfc_allocator.cc:47] Overriding orig_value setting because the TF_FORCE_GPU_ALLOW_GROWTH environment variable is set. Original config value was 0.
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1771319808.955759 3561382 gpu_device.cc:2019] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 10105 MB memory:  -> device: 0, name: NVIDIA GeForce RTX 3060, pci bus id: 0000:b3:00.0, compute capability: 8.6
-I0000 00:00:1771319809.138118 3561382 mlir_graph_optimization_pass.cc:425] MLIR V1 optimization pass is not enabled
-2026-02-17 10:16:49.144689: I tensorflow/cc/saved_model/loader.cc:236] Restoring SavedModel bundle.
-2026-02-17 10:16:49.540374: I tensorflow/cc/saved_model/loader.cc:220] Running initialization op on SavedModel bundle at path: /home/users/lysogy36/CLionProjects/lammps-ace/test/GRACE-TESTS/potentials/GRACE-1L-OMAT-large-base-aux
-2026-02-17 10:16:49.812922: I tensorflow/cc/saved_model/loader.cc:471] SavedModel load for tags { serve }; Status: success: OK. Took 1011184 microseconds.
+I0000 00:00:1771322971.135472  145596 gpu_device.cc:2019] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 9189 MB memory:  -> device: 0, name: NVIDIA GeForce RTX 3060, pci bus id: 0000:b3:00.0, compute capability: 8.6
+I0000 00:00:1771322971.306929  145596 mlir_graph_optimization_pass.cc:425] MLIR V1 optimization pass is not enabled
+2026-02-17 11:09:31.313462: I tensorflow/cc/saved_model/loader.cc:236] Restoring SavedModel bundle.
+2026-02-17 11:09:31.708440: I tensorflow/cc/saved_model/loader.cc:220] Running initialization op on SavedModel bundle at path: /home/users/lysogy36/CLionProjects/lammps-ace/test/GRACE-TESTS/potentials/GRACE-1L-OMAT-large-base-aux
+2026-02-17 11:09:32.017023: I tensorflow/cc/saved_model/loader.cc:471] SavedModel load for tags { serve }; Status: success: OK. Took 1022313 microseconds.
 OMP_NUM_THREADS environment is not set. Defaulting to 1 thread.
   using 1 OpenMP thread(s) per MPI task
 Reading data file ...
@@ -27,7 +27,7 @@ Reading data file ...
   1 by 1 by 1 MPI processor grid
   reading atoms ...
   250 atoms
-  read_data CPU = 0.003 seconds
+  read_data CPU = 0.004 seconds
 [GRACE] TF version: 2.19.1
 [GRACE] Loading /home/users/lysogy36/CLionProjects/lammps-ace/test/GRACE-TESTS/potentials/GRACE-1L-OMAT-large-base-aux
 [GRACE] model loaded
@@ -50,13 +50,13 @@ Setting up Verlet run ...
   Current step  : 0
   Time step     : 0.001
 [GRACE-CHUNK] compute() starts, inum=250, nall=2331
-I0000 00:00:1771319811.738732 3561594 service.cc:152] XLA service 0x7f1188017920 initialized for platform CUDA (this does not guarantee that XLA will be used). Devices:
-I0000 00:00:1771319811.738766 3561594 service.cc:160]   StreamExecutor device (0): NVIDIA GeForce RTX 3060, Compute Capability 8.6
-2026-02-17 10:16:51.794065: I tensorflow/compiler/mlir/tensorflow/utils/dump_mlir_util.cc:269] disabling MLIR crash reproducer, set env var `MLIR_CRASH_REPRODUCER_DIRECTORY` to enable.
-I0000 00:00:1771319812.034406 3561594 cuda_dnn.cc:529] Loaded cuDNN version 90300
-2026-02-17 10:16:55.339344: I external/local_xla/xla/stream_executor/cuda/subprocess_compilation.cc:346] ptxas warning : Registers are spilled to local memory in function 'loop_add_compare_divide_power_slice_subtract_fusion', 4 bytes spill stores, 4 bytes spill loads
+I0000 00:00:1771322973.868658  145773 service.cc:152] XLA service 0x7f01a0008090 initialized for platform CUDA (this does not guarantee that XLA will be used). Devices:
+I0000 00:00:1771322973.868690  145773 service.cc:160]   StreamExecutor device (0): NVIDIA GeForce RTX 3060, Compute Capability 8.6
+2026-02-17 11:09:33.959086: I tensorflow/compiler/mlir/tensorflow/utils/dump_mlir_util.cc:269] disabling MLIR crash reproducer, set env var `MLIR_CRASH_REPRODUCER_DIRECTORY` to enable.
+I0000 00:00:1771322974.200853  145773 cuda_dnn.cc:529] Loaded cuDNN version 90300
+2026-02-17 11:09:37.462580: I external/local_xla/xla/stream_executor/cuda/subprocess_compilation.cc:346] ptxas warning : Registers are spilled to local memory in function 'loop_add_compare_divide_power_slice_subtract_fusion', 4 bytes spill stores, 4 bytes spill loads
 
-I0000 00:00:1771319815.377410 3561594 device_compiler.h:188] Compiled cluster using XLA!  This line is logged at most once for the lifetime of the process.
+I0000 00:00:1771322977.487582  145773 device_compiler.h:188] Compiled cluster using XLA!  This line is logged at most once for the lifetime of the process.
 Per MPI rank memory allocation (min/avg/max) = 3.166 | 3.166 | 3.166 Mbytes
    Step          Temp          PotEng         KinEng          Fmax         f_mc[1]        f_mc[2]    
          0   0             -2986.9806      0              0.17836974     0              0            
@@ -100,6 +100,44 @@ Per MPI rank memory allocation (min/avg/max) = 3.166 | 3.166 | 3.166 Mbytes
 [GRACE-CHUNK] compute() starts, inum=250, nall=2331
 [GRACE-CHUNK] compute() starts, inum=250, nall=2331
          5   0             -2987.2095      0              0.19681794     25             20           
+Loop time of 1.08784 on 1 procs for 5 steps with 250 atoms
+
+Performance: 0.397 ns/day, 60.436 hours/ns, 4.596 timesteps/s, 1.149 katom-step/s
+109.7% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0.15084    | 0.15084    | 0.15084    |   0.0 | 13.87
+Neigh   | 0.011766   | 0.011766   | 0.011766   |   0.0 |  1.08
+Comm    | 0.0004086  | 0.0004086  | 0.0004086  |   0.0 |  0.04
+Output  | 0.00018129 | 0.00018129 | 0.00018129 |   0.0 |  0.02
+Modify  | 0.92458    | 0.92458    | 0.92458    |   0.0 | 84.99
+Other   |            | 6.98e-05   |            |       |  0.01
+
+Nlocal:            250 ave         250 max         250 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:           2081 ave        2081 max        2081 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:              0 ave           0 max           0 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:        34000 ave       34000 max       34000 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 34000
+Ave neighs/atom = 136
+Neighbor list builds = 10
+Dangerous builds = 0
+WARNING: No fixes with time integration, atoms won't move
+For more information see https://docs.lammps.org/err0028 (src/verlet.cpp:60)
+Setting up Verlet run ...
+  Unit style    : metal
+  Current step  : 5
+  Time step     : 0.001
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+Per MPI rank memory allocation (min/avg/max) = 3.228 | 3.228 | 3.228 Mbytes
+   Step          Temp          PotEng         KinEng          Fmax         f_mc[1]        f_mc[2]    
+         5   0             -2987.2095      0              0.19681794     25             20           
 [GRACE-CHUNK] compute() starts, inum=250, nall=2331
 [GRACE-CHUNK] compute() starts, inum=250, nall=2331
 [GRACE-CHUNK] compute() starts, inum=250, nall=2331
@@ -140,20 +178,60 @@ Per MPI rank memory allocation (min/avg/max) = 3.166 | 3.166 | 3.166 Mbytes
 [GRACE-CHUNK] compute() starts, inum=250, nall=2331
 [GRACE-CHUNK] compute() starts, inum=250, nall=2331
         10   0             -2987.2056      0              0.17654132     50             38           
-Loop time of 2.16304 on 1 procs for 10 steps with 250 atoms
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+        11   0             -2987.1546      0              0.19343496     55             42           
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+        12   0             -2987.1388      0              0.19585037     60             46           
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+        13   0             -2987.2102      0              0.19018747     65             51           
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+        14   0             -2987.1773      0              0.19082282     70             54           
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+[GRACE-CHUNK] compute() starts, inum=250, nall=2331
+        15   0             -2987.2242      0              0.19292698     75             59           
+Loop time of 2.17208 on 1 procs for 10 steps with 250 atoms
 
-Performance: 0.399 ns/day, 60.085 hours/ns, 4.623 timesteps/s, 1.156 katom-step/s
-107.0% CPU use with 1 MPI tasks x 1 OpenMP threads
+Performance: 0.398 ns/day, 60.336 hours/ns, 4.604 timesteps/s, 1.151 katom-step/s
+108.5% CPU use with 1 MPI tasks x 1 OpenMP threads
 
 MPI task timing breakdown:
 Section |  min time  |  avg time  |  max time  |%varavg| %total
 ---------------------------------------------------------------
-Pair    | 0.30055    | 0.30055    | 0.30055    |   0.0 | 13.89
-Neigh   | 0.025543   | 0.025543   | 0.025543   |   0.0 |  1.18
-Comm    | 0.00098836 | 0.00098836 | 0.00098836 |   0.0 |  0.05
-Output  | 0.00037867 | 0.00037867 | 0.00037867 |   0.0 |  0.02
-Modify  | 1.8354     | 1.8354     | 1.8354     |   0.0 | 84.85
-Other   |            | 0.0001363  |            |       |  0.01
+Pair    | 0.29666    | 0.29666    | 0.29666    |   0.0 | 13.66
+Neigh   | 0.022882   | 0.022882   | 0.022882   |   0.0 |  1.05
+Comm    | 0.00080842 | 0.00080842 | 0.00080842 |   0.0 |  0.04
+Output  | 0.00031214 | 0.00031214 | 0.00031214 |   0.0 |  0.01
+Modify  | 1.8513     | 1.8513     | 1.8513     |   0.0 | 85.23
+Other   |            | 0.0001065  |            |       |  0.00
 
 Nlocal:            250 ave         250 max         250 min
 Histogram: 1 0 0 0 0 0 0 0 0 0
@@ -168,8 +246,8 @@ Total # of neighbors = 34000
 Ave neighs/atom = 136
 Neighbor list builds = 20
 Dangerous builds = 0
-[GRACE-PERF] Total real atoms processed: 17500
-[GRACE-PERF] Total valid compute calls: 70
+[GRACE-PERF] Total real atoms processed: 26500
+[GRACE-PERF] Total valid compute calls: 106
 [GRACE-PERF] Average atoms per step: 250.0
-[GRACE-PERF] Performance (us/atom) [%]: Total: 120.2, Data: 5.7 (4.7%), Model: 110.4 (91.8%), TP: 0.0 (0.0%)
-Total wall time: 0:00:08
+[GRACE-PERF] Performance (us/atom) [%]: Total: 121.2, Data: 5.6 (4.6%), Model: 109.9 (90.7%), TP: 0.0 (0.0%)
+Total wall time: 0:00:09

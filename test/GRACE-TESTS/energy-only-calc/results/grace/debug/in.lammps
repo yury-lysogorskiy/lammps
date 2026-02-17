@@ -17,4 +17,5 @@ fix             mc all atom/swap 1 5 12345 300.0 types 1 2
 
 thermo_style    custom step temp pe ke fmax f_mc[1] f_mc[2]
 thermo          1
+run             5 # to warm-up compute_energy_only
 run             10

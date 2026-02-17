@@ -56,8 +56,10 @@ for style_info in "${STYLES[@]}"; do
     LOG_DEBUG="$STYLE_RES_DIR/debug/log.lammps"
 
     if [[ -f "$LOG_DEFAULT" && -f "$LOG_DEBUG" ]]; then
-        grep -A 10 "Step" "$LOG_DEFAULT" | grep -v "Step" | head -n 11 > "$STYLE_RES_DIR/thermo.default"
-        grep -A 10 "Step" "$LOG_DEBUG" | grep -v "Step" | head -n 11 > "$STYLE_RES_DIR/thermo.debug"
+        # Extract numeric lines (thermo data) and take the last 11 lines (run 10 with thermo 1 -> 11 steps)
+        # Exclude "CPU use" lines that might start with numbers
+        grep -E "^[[:space:]]*[0-9]+" "$LOG_DEFAULT" | grep -v "CPU use" | tail -n 11 > "$STYLE_RES_DIR/thermo.default"
+        grep -E "^[[:space:]]*[0-9]+" "$LOG_DEBUG" | grep -v "CPU use" | tail -n 11 > "$STYLE_RES_DIR/thermo.debug"
         
         echo "Verification for $STYLE:"
         if diff "$STYLE_RES_DIR/thermo.default" "$STYLE_RES_DIR/thermo.debug" > /dev/null; then
@@ -67,9 +69,19 @@ for style_info in "${STYLES[@]}"; do
             diff -u "$STYLE_RES_DIR/thermo.default" "$STYLE_RES_DIR/thermo.debug"
         fi
         
-        T_DEFAULT=$(grep "Loop time of" "$STYLE_RES_DIR/default/screen.log" | awk '{print $4}' || echo "N/A")
-        T_DEBUG=$(grep "Loop time of" "$STYLE_RES_DIR/debug/screen.log" | awk '{print $4}' || echo "N/A")
+        T_DEFAULT=$(grep "Loop time of" "$STYLE_RES_DIR/default/screen.log" | tail -n 1 | awk '{print $4}' || echo "N/A")
+        T_DEBUG=$(grep "Loop time of" "$STYLE_RES_DIR/debug/screen.log" | tail -n 1 | awk '{print $4}' || echo "N/A")
         echo "    Execution Times: Default: ${T_DEFAULT}s, Debug: ${T_DEBUG}s"
+        
+        if [[ "$T_DEFAULT" != "N/A" && "$T_DEBUG" != "N/A" ]]; then
+            speedup=$(echo "$T_DEBUG / $T_DEFAULT" | bc -l)
+            LC_NUMERIC=C printf "    Speedup: %.2fx (vs Debug)\n" "$speedup"
+
+            is_slower=$(echo "$T_DEFAULT > $T_DEBUG" | bc -l)
+            if [[ "$is_slower" -eq 1 ]]; then
+                echo "    [WARNING] Default run (energy-only) is SLOWER than Debug run!"
+            fi
+        fi
     else
         echo "    [ERROR] Logs missing for $STYLE. Check screen.log in results/$FOLDER_NAME/"
     fi
