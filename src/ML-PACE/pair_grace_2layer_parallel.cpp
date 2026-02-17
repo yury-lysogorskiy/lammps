@@ -501,9 +501,14 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag)
     }
   }
   // int fake_at = aceimpl->n_all_atoms_padded - 1;
-  int fake_at = aceimpl->n_local_atoms_padded - 1;
+  // Use separate dummy indices for i (local) and j (all) padding
+  // to ensure we point to valid entries in their respective atomic_mu arrays
+  int fake_at_i = aceimpl->n_local_atoms_padded - 1;
+  int fake_at_j = aceimpl->n_all_atoms_padded - 1;
+
   for (int k = n_bonds; k < aceimpl->n_neighbours_padded; k++) {
-    aceimpl->ind_i[k] = aceimpl->ind_j[k] = fake_at;
+    aceimpl->ind_i[k] = fake_at_i;
+    aceimpl->ind_j[k] = fake_at_j;
     aceimpl->mu_i[k] = aceimpl->mu_j[k] = 0;
   }
 
