@@ -62,6 +62,7 @@ class PairGRACE1LayerChunk : public Pair {
 
   bool has_compute_energy_only = false;
   bool warning_compute_energy_only_not_avail_shown = false;
+  int flag_compute_energy_only = 0;
   bool debug_no_energy_only_calc = false;
 
   void allocate();
@@ -87,8 +88,6 @@ class PairGRACE1LayerChunk : public Pair {
   PACE::ACETimer data_timer;
   PACE::ACETimer model_timer;
   PACE::ACETimer tp_timer;
-
-  int flag_compute_energy_only = 0;
 
   double total_real_atoms_processed = 0.0;
   long long int current_step_real_atoms = 0;
