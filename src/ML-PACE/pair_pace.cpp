@@ -31,8 +31,8 @@ Copyright 2021 Yury Lysogorskiy^1, Cas van der Oord^2, Anton Bochkarev^1,
 #include "atom.h"
 #include "comm.h"
 #include "error.h"
-#include "info.h"
 #include "force.h"
+#include "info.h"
 #include "math_const.h"
 #include "memory.h"
 #include "neigh_list.h"
@@ -66,8 +66,6 @@ struct ACEImpl {
 using namespace LAMMPS_NS;
 using namespace MathConst;
 
-
-
 /* ---------------------------------------------------------------------- */
 PairPACE::PairPACE(LAMMPS *lmp) : Pair(lmp)
 {
@@ -79,6 +77,7 @@ PairPACE::PairPACE(LAMMPS *lmp) : Pair(lmp)
   nmax_corerep = 0;
   flag_corerep_factor = 0;
   flag_compute_energy_only = 0;
+  debug_no_energy_only_calc = false;
   corerep_factor = nullptr;
 
   aceimpl = new ACEImpl;
@@ -89,7 +88,6 @@ PairPACE::PairPACE(LAMMPS *lmp) : Pair(lmp)
   chunksize = 4096;
 
   centroidstressflag = CENTROID_AVAIL;
-
 }
 
 /* ----------------------------------------------------------------------
@@ -119,8 +117,10 @@ void PairPACE::compute(int eflag, int vflag)
   double fij[3];
   int *ilist, *jlist, *numneigh, **firstneigh;
 
-  if (copymode) ev_init(eflag, vflag, 0);
-  else ev_init(eflag, vflag, 1);
+  if (copymode)
+    ev_init(eflag, vflag, 0);
+  else
+    ev_init(eflag, vflag, 1);
 
   double **x = atom->x;
   double **f = atom->f;
@@ -163,7 +163,8 @@ void PairPACE::compute(int eflag, int vflag)
   aceimpl->ace->resize_neighbours_cache(max_jnum);
   std::vector<int> my_neigh_jlist(max_jnum);
 
-  aceimpl->ace->compute_energy_only = flag_compute_energy_only;
+  bool do_energy_only = flag_compute_energy_only && !debug_no_energy_only_calc;
+  aceimpl->ace->compute_energy_only = do_energy_only;
 
   //loop over atoms
   for (ii = 0; ii < inum; ii++) {
@@ -186,19 +187,17 @@ void PairPACE::compute(int eflag, int vflag)
     // jlist(neigh ind of 0-atom) = [1,2,10,7,99,25, .. 50 element in total]
 
     // apply NEIGHMASK
-    for (jj = 0; jj < jnum; ++jj)
-      my_neigh_jlist[jj]= jlist[jj] & NEIGHMASK;
+    for (jj = 0; jj < jnum; ++jj) my_neigh_jlist[jj] = jlist[jj] & NEIGHMASK;
     try {
       aceimpl->ace->compute_atom(i, x, type, jnum, my_neigh_jlist.data());
     } catch (std::exception &e) {
       error->one(FLERR, e.what());
     }
 
-    if (flag_corerep_factor)
-      corerep_factor[i] = 1 - aceimpl->ace->ace_fcut;
+    if (flag_corerep_factor) corerep_factor[i] = 1 - aceimpl->ace->ace_fcut;
 
     // 'compute_atom' will update the `aceimpl->ace->e_atom` and `aceimpl->ace->neighbours_forces(jj, alpha)` arrays
-    if (! flag_compute_energy_only) {
+    if (!do_energy_only) {
       for (jj = 0; jj < jnum; jj++) {
         j = jlist[jj];
         j &= NEIGHMASK;
@@ -226,26 +225,25 @@ void PairPACE::compute(int eflag, int vflag)
           if (cvflag_atom) {
             double fx = fij[0], fy = fij[1], fz = fij[2];
 
-            cvatom[i][0] += 0.5 * delx * fx; // xx
-            cvatom[i][1] += 0.5 * dely * fy; // yy
-            cvatom[i][2] += 0.5 * delz * fz; // zz
-            cvatom[i][3] += 0.5 * delx * fy;  // xy
-            cvatom[i][4] += 0.5 * delx * fz; // xz
-            cvatom[i][5] += 0.5 * dely * fz; // yz
-            cvatom[i][6] += 0.5 * dely * fx; // yx
-            cvatom[i][7] += 0.5 * delz * fx; // zx
-            cvatom[i][8] += 0.5 * delz * fy; // zy
+            cvatom[i][0] += 0.5 * delx * fx;    // xx
+            cvatom[i][1] += 0.5 * dely * fy;    // yy
+            cvatom[i][2] += 0.5 * delz * fz;    // zz
+            cvatom[i][3] += 0.5 * delx * fy;    // xy
+            cvatom[i][4] += 0.5 * delx * fz;    // xz
+            cvatom[i][5] += 0.5 * dely * fz;    // yz
+            cvatom[i][6] += 0.5 * dely * fx;    // yx
+            cvatom[i][7] += 0.5 * delz * fx;    // zx
+            cvatom[i][8] += 0.5 * delz * fy;    // zy
 
-
-            cvatom[j][0] += 0.5 * delx * fx; // xx
-            cvatom[j][1] += 0.5 * dely * fy; // yy
-            cvatom[j][2] += 0.5 * delz * fz; // zz
-            cvatom[j][3] += 0.5 * delx * fy;  // xy
-            cvatom[j][4] += 0.5 * delx * fz; // xz
-            cvatom[j][5] += 0.5 * dely * fz; // yz
-            cvatom[j][6] += 0.5 * dely * fx; // yx
-            cvatom[j][7] += 0.5 * delz * fx; // zx
-            cvatom[j][8] += 0.5 * delz * fy; // zy
+            cvatom[j][0] += 0.5 * delx * fx;    // xx
+            cvatom[j][1] += 0.5 * dely * fy;    // yy
+            cvatom[j][2] += 0.5 * delz * fz;    // zz
+            cvatom[j][3] += 0.5 * delx * fy;    // xy
+            cvatom[j][4] += 0.5 * delx * fz;    // xz
+            cvatom[j][5] += 0.5 * dely * fz;    // yz
+            cvatom[j][6] += 0.5 * dely * fx;    // yx
+            cvatom[j][7] += 0.5 * delz * fx;    // zx
+            cvatom[j][8] += 0.5 * delz * fy;    // zy
           }
         }
       }
@@ -302,6 +300,9 @@ void PairPACE::settings(int narg, char **arg)
     } else if (strcmp(arg[iarg], "chunksize") == 0) {
       chunksize = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
       iarg += 2;
+    } else if (strcmp(arg[iarg], "debug_no_energy_only_calc") == 0) {
+      debug_no_energy_only_calc = true;
+      iarg += 1;
     } else
       error->all(FLERR, "Unknown pair_style pace keyword: {}", arg[iarg]);
   }
@@ -332,12 +333,12 @@ void PairPACE::coeff(int narg, char **arg)
   delete aceimpl->basis_set;
   if (comm->me == 0) utils::logmesg(lmp, "Loading {}\n", potential_file_name);
   // if potential is in ACEBBasisSet (YAML) format, then convert to ACECTildeBasisSet automatically
-  if (utils::strmatch(potential_file_name,".*\\.yaml$")) {
+  if (utils::strmatch(potential_file_name, ".*\\.yaml$")) {
     ACEBBasisSet bBasisSet = ACEBBasisSet(potential_file_name);
     ACECTildeBasisSet cTildeBasisSet = bBasisSet.to_ACECTildeBasisSet();
     aceimpl->basis_set = new ACECTildeBasisSet(cTildeBasisSet);
   } else {
-      aceimpl->basis_set = new ACECTildeBasisSet(potential_file_name);
+    aceimpl->basis_set = new ACECTildeBasisSet(potential_file_name);
   }
 
   if (comm->me == 0) {
@@ -431,6 +432,7 @@ void *PairPACE::extract(const char *str, int &dim)
   if (strcmp(str, "corerep_flag") == 0) return (void *) &flag_corerep_factor;
 
   if (strcmp(str, "compute_energy_only") == 0) return (void *) &flag_compute_energy_only;
+  if (strcmp(str, "debug_no_energy_only_calc") == 0) return (void *) &debug_no_energy_only_calc;
 
   dim = 2;
   if (strcmp(str, "scale") == 0) return (void *) scale;

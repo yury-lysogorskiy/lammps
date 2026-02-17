@@ -94,16 +94,24 @@ PairGRACE2LayerParallel::~PairGRACE2LayerParallel()
     double m2 = model2_timer.as_microseconds();
     double m3 = model3_timer.as_microseconds();
 
-    auto per_atom = [&](double t) { return t / total_real_atoms_processed; };
-    auto pct = [&](double t) { return (total > 0) ? (t / total * 100.0) : 0.0; };
+    auto per_atom = [&](double t) {
+      return t / total_real_atoms_processed;
+    };
+    auto pct = [&](double t) {
+      return (total > 0) ? (t / total * 100.0) : 0.0;
+    };
 
-    utils::logmesg(lmp, "[GRACE-PERF] Total real atoms processed: {:.0f}\n", total_real_atoms_processed);
+    utils::logmesg(lmp, "[GRACE-PERF] Total real atoms processed: {:.0f}\n",
+                   total_real_atoms_processed);
     utils::logmesg(lmp, "[GRACE-PERF] Total valid compute calls: {}\n", total_compute_calls);
     utils::logmesg(lmp, "[GRACE-PERF] Average atoms per step: {:.1f}\n",
                    total_real_atoms_processed / total_compute_calls);
-    utils::logmesg(lmp, "[GRACE-PERF] Performance (us/atom) [%%]: Total: {:.1f}, Data: {:.1f} ({:.1f}%%), Comm: {:.1f} ({:.1f}%%), M1: {:.1f} ({:.1f}%%), M2: {:.1f} ({:.1f}%%), M3: {:.1f} ({:.1f}%%)\n",
-                   per_atom(total), per_atom(data), pct(data), per_atom(comm_t), pct(comm_t),
-                   per_atom(m1), pct(m1), per_atom(m2), pct(m2), per_atom(m3), pct(m3));
+    utils::logmesg(
+        lmp,
+        "[GRACE-PERF] Performance (us/atom) [%%]: Total: {:.1f}, Data: {:.1f} ({:.1f}%%), Comm: "
+        "{:.1f} ({:.1f}%%), M1: {:.1f} ({:.1f}%%), M2: {:.1f} ({:.1f}%%), M3: {:.1f} ({:.1f}%%)\n",
+        per_atom(total), per_atom(data), pct(data), per_atom(comm_t), pct(comm_t), per_atom(m1),
+        pct(m1), per_atom(m2), pct(m2), per_atom(m3), pct(m3));
   }
 
   delete aceimpl;
@@ -163,8 +171,8 @@ void PairGRACE2LayerParallel::settings(int narg, char **arg)
       if (comm->me == 0)
         utils::logmesg(lmp, "[GRACE] Reducing padding fraction: {}\n",
                        p.reduction_threshold_fraction);
-    } else if (strcmp(arg[iarg], "deny_energy_only_calc") == 0) {
-      deny_energy_only_calc = true;
+    } else if (strcmp(arg[iarg], "debug_no_energy_only_calc") == 0) {
+      debug_no_energy_only_calc = true;
       iarg += 1;
     } else
       error->all(FLERR, "[GRACE] Unknown pair_style grace keyword: {}", arg[iarg]);
@@ -510,7 +518,7 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag)
 
   model2_timer.start();
   run_backward_layer_2(eflag, vflag);
-  bool do_energy_only = flag_compute_energy_only && !deny_energy_only_calc;
+  bool do_energy_only = flag_compute_energy_only && !debug_no_energy_only_calc;
 
   model2_timer.stop();
 
@@ -896,7 +904,7 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag)
   std::vector<std::string> out_names;
   std::vector<std::string> ordered_keys;
 
-  bool do_energy_only = flag_compute_energy_only && !deny_energy_only_calc;
+  bool do_energy_only = flag_compute_energy_only && !debug_no_energy_only_calc;
 
   // Energy
   if (sig.outputs.count(ENERGY_KEY)) {

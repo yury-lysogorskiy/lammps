@@ -37,50 +37,50 @@ PairStyle(grace/fs,PairGRACEFS);
 
 namespace LAMMPS_NS {
 
-    class PairGRACEFS : public Pair {
-    public:
-        PairGRACEFS(class LAMMPS *);
+class PairGRACEFS : public Pair {
+ public:
+  PairGRACEFS(class LAMMPS *);
 
-        ~PairGRACEFS() override;
+  ~PairGRACEFS() override;
 
-        void compute(int, int) override;
+  void compute(int, int) override;
 
-        void settings(int, char **) override;
+  void settings(int, char **) override;
 
-        void coeff(int, char **) override;
+  void coeff(int, char **) override;
 
-        void init_style() override;
+  void init_style() override;
 
-        double init_one(int, int) override;
+  double init_one(int, int) override;
 
-        void *extract(const char *, int &) override;
+  void *extract(const char *, int &) override;
 
-        void *extract_peratom(const char *, int &) override;
+  void *extract_peratom(const char *, int &) override;
 
-    protected:
-        struct ACEImpl *aceimpl;
-        int nmax = 0;
+ protected:
+  struct ACEImpl *aceimpl;
+  int nmax = 0;
 
-        virtual void allocate();
+  virtual void allocate();
 
-        bool request_extrapolation = false;
+  bool request_extrapolation = false;
 
-        double *extrapolation_grade_gamma = nullptr;         //per-atom gamma value
-        int flag_compute_extrapolation_grade = 0;
-        int flag_compute_energy_only = 0;
-        int enabled_compute_energy_only = 0;
+  double *extrapolation_grade_gamma = nullptr;    //per-atom gamma value
+  int flag_compute_extrapolation_grade = 0;
+  int flag_compute_energy_only = 0;
+  bool debug_no_energy_only_calc = false;
 
-        double **scale;
+  double **scale;
 
-        int chunksize;
+  int chunksize;
 
-        PACE::ACETimer total_timer;
-        PACE::ACETimer data_timer;
-        PACE::ACETimer model_timer;
+  PACE::ACETimer total_timer;
+  PACE::ACETimer data_timer;
+  PACE::ACETimer model_timer;
 
-        double total_real_atoms_processed = 0.0;
-        long long int total_compute_calls = 0;
-    };
+  double total_real_atoms_processed = 0.0;
+  long long int total_compute_calls = 0;
+};
 }    // namespace LAMMPS_NS
 
 #endif

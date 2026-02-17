@@ -62,7 +62,7 @@ class PairGRACE1LayerChunk : public Pair {
 
   bool has_compute_energy_only = false;
   bool warning_compute_energy_only_not_avail_shown = false;
-  bool deny_energy_only_calc = false;
+  bool debug_no_energy_only_calc = false;
 
   void allocate();
 

@@ -1,0 +1,90 @@
+2026-02-17 10:14:56.555369: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2026-02-17 10:14:56.568009: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:467] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+E0000 00:00:1771319696.581124 3532983 cuda_dnn.cc:8579] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+E0000 00:00:1771319696.584973 3532983 cuda_blas.cc:1407] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+W0000 00:00:1771319696.595464 3532983 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+W0000 00:00:1771319696.595485 3532983 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+W0000 00:00:1771319696.595487 3532983 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+W0000 00:00:1771319696.595489 3532983 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+LAMMPS (10 Sep 2025 - Development - patch_29Aug2024-5969-g275107956d-modified)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread.
+  using 1 OpenMP thread(s) per MPI task
+Reading data file ...
+  orthogonal box = (0 0 0) to (15.8 15.8 15.8)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  250 atoms
+  read_data CPU = 0.004 seconds
+[GRACE/FS]
+[GRACE-FS] Version: 2025.12.4p1
+[GRACE-FS] Product evaluator is used
+[GRACE-FS] Loading /home/users/lysogy36/CLionProjects/lammps-ace/test/GRACE-TESTS/potentials/FS_model.yaml
+[GRACE-FS] Supporting 25 elements: Ag Au Co Cr Cu Fe Hf Ir Lu Mn Mo Nb Ni Pd Pt Rh Ru Sc Ta Ti V W Y Zn Zr 
+[GRACE-FS] Number of functions per element: 180 
+[GRACE-FS] Mapping LAMMPS atom type #1(W) -> ACE species type #21
+[GRACE-FS] Mapping LAMMPS atom type #2(Mo) -> ACE species type #10
+WARNING: No fixes with time integration, atoms won't move
+For more information see https://docs.lammps.org/err0028 (src/verlet.cpp:60)
+Neighbor list info ...
+  update: every = 1 steps, delay = 0 steps, check = yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 9
+  ghost atom cutoff = 9
+  binsize = 4.5, bins = 4 4 4
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair grace/fs, perpetual
+      attributes: full, newton on
+      pair build: full/bin/atomonly
+      stencil: full/bin/3d
+      bin: standard
+Setting up Verlet run ...
+  Unit style    : metal
+  Current step  : 0
+  Time step     : 0.001
+Per MPI rank memory allocation (min/avg/max) = 3.152 | 3.152 | 3.152 Mbytes
+   Step          Temp          PotEng         KinEng          Fmax         f_mc[1]        f_mc[2]    
+         0   0             -3196.0133      0              0.089149521    0              0            
+         1   0             -3196.035       0              0.091752316    5              5            
+         2   0             -3196.0038      0              0.09726727     10             9            
+         3   0             -3196.0036      0              0.094536407    15             13           
+         4   0             -3195.9888      0              0.095808664    20             17           
+         5   0             -3196.0054      0              0.097304112    25             21           
+         6   0             -3196.0039      0              0.097011929    30             25           
+         7   0             -3196.0301      0              0.088199202    35             29           
+         8   0             -3196.0365      0              0.08519123     40             34           
+         9   0             -3196.0218      0              0.08639332     45             38           
+        10   0             -3196.0051      0              0.087269832    50             40           
+Loop time of 5.63249 on 1 procs for 10 steps with 250 atoms
+
+Performance: 0.153 ns/day, 156.458 hours/ns, 1.775 timesteps/s, 443.853 atom-step/s
+100.0% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0.78366    | 0.78366    | 0.78366    |   0.0 | 13.91
+Neigh   | 0.010379   | 0.010379   | 0.010379   |   0.0 |  0.18
+Comm    | 0.00030853 | 0.00030853 | 0.00030853 |   0.0 |  0.01
+Output  | 0.00018433 | 0.00018433 | 0.00018433 |   0.0 |  0.00
+Modify  | 4.8379     | 4.8379     | 4.8379     |   0.0 | 85.89
+Other   |            | 5.259e-05  |            |       |  0.00
+
+Nlocal:            250 ave         250 max         250 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:           2081 ave        2081 max        2081 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:              0 ave           0 max           0 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:        45000 ave       45000 max       45000 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 45000
+Ave neighs/atom = 180
+Neighbor list builds = 20
+Dangerous builds = 0
+[GRACE-PERF] Total real atoms processed: 17750
+[GRACE-PERF] Total valid compute calls: 71
+[GRACE-PERF] Average atoms per step: 250.0
+[GRACE-PERF] Performance (us/atom) [%%]: Total: 320.4, Data: 0.7 (0.2%%), Model: 319.7 (99.8%%)
+Total wall time: 0:00:06

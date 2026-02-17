@@ -37,10 +37,10 @@ Copyright 2022 Yury Lysogorskiy^1, Anton Bochkarev^1, Matous Mrovec^1, Ralf Drau
 #include <cstring>
 #include <exception>
 
-#include "ace/ace_b_basis.h"
-#include "ace/ace_b_evaluator.h"
 #include "ace-evaluator/ace_recursive.h"
 #include "ace-evaluator/ace_version.h"
+#include "ace/ace_b_basis.h"
+#include "ace/ace_b_evaluator.h"
 
 #include "utils_pace.h"
 
@@ -101,6 +101,7 @@ PairPACEExtrapolation::PairPACEExtrapolation(LAMMPS *lmp) : Pair(lmp)
   scale = nullptr;
   flag_compute_extrapolation_grade = 0;
   flag_compute_energy_only = 0;
+  debug_no_energy_only_calc = false;
   extrapolation_grade_gamma = nullptr;
   flag_corerep_factor = 0;
   corerep_factor = nullptr;
@@ -108,7 +109,6 @@ PairPACEExtrapolation::PairPACEExtrapolation(LAMMPS *lmp) : Pair(lmp)
   chunksize = 4096;
 
   centroidstressflag = CENTROID_AVAIL;
-
 }
 
 /* ----------------------------------------------------------------------
@@ -204,7 +204,8 @@ void PairPACEExtrapolation::compute(int eflag, int vflag)
     aceimpl->rec_ace->resize_neighbours_cache(max_jnum);
   std::vector<int> my_neigh_jlist(max_jnum);
 
-  aceimpl->ace->compute_energy_only = flag_compute_energy_only;
+  bool do_energy_only = flag_compute_energy_only && !debug_no_energy_only_calc;
+  aceimpl->ace->compute_energy_only = do_energy_only;
 
   //loop over atoms
   for (ii = 0; ii < inum; ii++) {
@@ -225,15 +226,12 @@ void PairPACEExtrapolation::compute(int eflag, int vflag)
     // i = 0 ,1
     // jnum(0) = 50
     // jlist(neigh ind of 0-atom) = [1,2,10,7,99,25, .. 50 element in total]
-    for (jj = 0; jj < jnum; ++jj) {
-      my_neigh_jlist[jj]= jlist[jj] & NEIGHMASK;
-    }
+    for (jj = 0; jj < jnum; ++jj) { my_neigh_jlist[jj] = jlist[jj] & NEIGHMASK; }
     try {
       if (flag_compute_extrapolation_grade) {
         aceimpl->ace->compute_projections = true;
         aceimpl->ace->compute_atom(i, x, type, jnum, my_neigh_jlist.data());
-      }
-      else
+      } else
         aceimpl->rec_ace->compute_atom(i, x, type, jnum, my_neigh_jlist.data());
     } catch (std::exception &e) {
       error->one(FLERR, e.what());
@@ -253,7 +251,7 @@ void PairPACEExtrapolation::compute(int eflag, int vflag)
                                           : aceimpl->rec_ace->neighbours_forces);
     //optionally assign global forces arrays
 
-    if (! flag_compute_energy_only) {
+    if (!do_energy_only) {
       for (jj = 0; jj < jnum; jj++) {
         j = jlist[jj];
         const int jtype = type[j];
@@ -282,26 +280,25 @@ void PairPACEExtrapolation::compute(int eflag, int vflag)
           if (cvflag_atom) {
             double fx = fij[0], fy = fij[1], fz = fij[2];
 
-            cvatom[i][0] += 0.5 * delx * fx; // xx
-            cvatom[i][1] += 0.5 * dely * fy; // yy
-            cvatom[i][2] += 0.5 * delz * fz; // zz
-            cvatom[i][3] += 0.5 * delx * fy;  // xy
-            cvatom[i][4] += 0.5 * delx * fz; // xz
-            cvatom[i][5] += 0.5 * dely * fz; // yz
-            cvatom[i][6] += 0.5 * dely * fx; // yx
-            cvatom[i][7] += 0.5 * delz * fx; // zx
-            cvatom[i][8] += 0.5 * delz * fy; // zy
+            cvatom[i][0] += 0.5 * delx * fx;    // xx
+            cvatom[i][1] += 0.5 * dely * fy;    // yy
+            cvatom[i][2] += 0.5 * delz * fz;    // zz
+            cvatom[i][3] += 0.5 * delx * fy;    // xy
+            cvatom[i][4] += 0.5 * delx * fz;    // xz
+            cvatom[i][5] += 0.5 * dely * fz;    // yz
+            cvatom[i][6] += 0.5 * dely * fx;    // yx
+            cvatom[i][7] += 0.5 * delz * fx;    // zx
+            cvatom[i][8] += 0.5 * delz * fy;    // zy
 
-
-            cvatom[j][0] += 0.5 * delx * fx; // xx
-            cvatom[j][1] += 0.5 * dely * fy; // yy
-            cvatom[j][2] += 0.5 * delz * fz; // zz
-            cvatom[j][3] += 0.5 * delx * fy;  // xy
-            cvatom[j][4] += 0.5 * delx * fz; // xz
-            cvatom[j][5] += 0.5 * dely * fz; // yz
-            cvatom[j][6] += 0.5 * dely * fx; // yx
-            cvatom[j][7] += 0.5 * delz * fx; // zx
-            cvatom[j][8] += 0.5 * delz * fy; // zy
+            cvatom[j][0] += 0.5 * delx * fx;    // xx
+            cvatom[j][1] += 0.5 * dely * fy;    // yy
+            cvatom[j][2] += 0.5 * delz * fz;    // zz
+            cvatom[j][3] += 0.5 * delx * fy;    // xy
+            cvatom[j][4] += 0.5 * delx * fz;    // xz
+            cvatom[j][5] += 0.5 * dely * fz;    // yz
+            cvatom[j][6] += 0.5 * dely * fx;    // yx
+            cvatom[j][7] += 0.5 * delz * fx;    // zx
+            cvatom[j][8] += 0.5 * delz * fy;    // zy
           }
         }
       }
@@ -354,6 +351,9 @@ void PairPACEExtrapolation::settings(int narg, char **arg)
     if (strcmp(arg[iarg], "chunksize") == 0) {
       chunksize = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
       iarg += 2;
+    } else if (strcmp(arg[iarg], "debug_no_energy_only_calc") == 0) {
+      debug_no_energy_only_calc = true;
+      iarg += 1;
     } else
       error->all(FLERR, "Unknown pair_style pace keyword: {}", arg[iarg]);
   }
@@ -504,6 +504,7 @@ void *PairPACEExtrapolation::extract(const char *str, int &dim)
   if (strcmp(str, "corerep_flag") == 0) return (void *) &flag_corerep_factor;
 
   if (strcmp(str, "compute_energy_only") == 0) return (void *) &flag_compute_energy_only;
+  if (strcmp(str, "debug_no_energy_only_calc") == 0) return (void *) &debug_no_energy_only_calc;
 
   dim = 2;
   if (strcmp(str, "scale") == 0) return (void *) scale;

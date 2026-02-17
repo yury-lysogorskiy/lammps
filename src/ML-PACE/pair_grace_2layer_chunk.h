@@ -20,11 +20,11 @@ PairStyle(grace/2layer/chunk,PairGRACE2LayerChunk);
 
 #include "pair.h"
 #include "utils_pace.h"
+#include <cppflow/tensor.h>
 #include <map>
 #include <string>
-#include <vector>
 #include <tuple>
-#include <cppflow/tensor.h>
+#include <vector>
 
 namespace LAMMPS_NS {
 
@@ -81,7 +81,7 @@ class PairGRACE2LayerChunk : public Pair {
   std::vector<int> element_type_mapping;
 
   int flag_compute_energy_only = 0;
-  bool deny_energy_only_calc = false;
+  bool debug_no_energy_only_calc = false;
 
   double total_real_atoms_processed = 0.0;
   long long int current_step_real_atoms = 0;

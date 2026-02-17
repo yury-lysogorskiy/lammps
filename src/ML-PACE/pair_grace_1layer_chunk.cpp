@@ -57,10 +57,10 @@ struct GRACE1LayerChunkImpl {
   std::map<std::string, cppflow::TensorInfo> compute_inputs_sig;
 
   // Persistent buffers for efficient indexing and marshalling
-  std::vector<int> global_to_chunk_map;   // size nall, init to -1
-  std::vector<int> chunk_to_global_map;   // size chunksize + buffer
+  std::vector<int> global_to_chunk_map;    // size nall, init to -1
+  std::vector<int> chunk_to_global_map;    // size chunksize + buffer
 
-  std::vector<int32_t> atomic_mu_i_local; // size n_real_padded
+  std::vector<int32_t> atomic_mu_i_local;    // size n_real_padded
   std::vector<int32_t> ind_i;
   std::vector<int32_t> ind_j;
   std::vector<int32_t> mu_i;
@@ -114,15 +114,23 @@ PairGRACE1LayerChunk::~PairGRACE1LayerChunk()
     double model = model_timer.as_microseconds();
     double tp = tp_timer.as_microseconds();
 
-    auto per_atom = [&](double t) { return t / total_real_atoms_processed; };
-    auto pct = [&](double t) { return (total > 0) ? (t / total * 100.0) : 0.0; };
+    auto per_atom = [&](double t) {
+      return t / total_real_atoms_processed;
+    };
+    auto pct = [&](double t) {
+      return (total > 0) ? (t / total * 100.0) : 0.0;
+    };
 
-    utils::logmesg(lmp, "[GRACE-PERF] Total real atoms processed: {:.0f}\n", total_real_atoms_processed);
+    utils::logmesg(lmp, "[GRACE-PERF] Total real atoms processed: {:.0f}\n",
+                   total_real_atoms_processed);
     utils::logmesg(lmp, "[GRACE-PERF] Total valid compute calls: {}\n", total_compute_calls);
     utils::logmesg(lmp, "[GRACE-PERF] Average atoms per step: {:.1f}\n",
                    total_real_atoms_processed / total_compute_calls);
-    utils::logmesg(lmp, "[GRACE-PERF] Performance (us/atom) [%]: Total: {:.1f}, Data: {:.1f} ({:.1f}%), Model: {:.1f} ({:.1f}%), TP: {:.1f} ({:.1f}%)\n",
-                   per_atom(total), per_atom(data), pct(data), per_atom(model), pct(model), per_atom(tp), pct(tp));
+    utils::logmesg(lmp,
+                   "[GRACE-PERF] Performance (us/atom) [%]: Total: {:.1f}, Data: {:.1f} ({:.1f}%), "
+                   "Model: {:.1f} ({:.1f}%), TP: {:.1f} ({:.1f}%)\n",
+                   per_atom(total), per_atom(data), pct(data), per_atom(model), pct(model),
+                   per_atom(tp), pct(tp));
   }
 
   delete impl;
@@ -175,15 +183,15 @@ void PairGRACE1LayerChunk::settings(int narg, char **arg)
     } else if (strcmp(arg[iarg], "reduce_padding") == 0) {
       reducing_neigh_padding_fraction = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
       iarg += 2;
-    } else if (strcmp(arg[iarg], "deny_energy_only_calc") == 0) {
-      deny_energy_only_calc = true;
+    } else if (strcmp(arg[iarg], "debug_no_energy_only_calc") == 0) {
+      debug_no_energy_only_calc = true;
       iarg += 1;
     } else
       error->all(FLERR, "[GRACE] Unknown pair_style grace/1layer/chunk keyword: {}", arg[iarg]);
   }
 
   do_padding = (neigh_padding_fraction > 0);
-  
+
   // Configure padding helpers
   impl->atom_padding.enabled = do_padding;
   impl->atom_padding.padding_fraction = neigh_padding_fraction;
@@ -213,19 +221,17 @@ void PairGRACE1LayerChunk::coeff(int narg, char **arg)
   if (!allocated) allocate();
 
   map_element2type(narg - 3, arg + 3);
-  
+
   auto potential_path = std::string(arg[2]);
 
   if (impl->model) {
-      delete impl->model;
-      impl->model = nullptr;
+    delete impl->model;
+    impl->model = nullptr;
   }
-  
+
   if (comm->me == 0) utils::logmesg(lmp, "[GRACE] Loading {}\n", potential_path);
 
-  const std::vector<uint8_t> config_bytes = {
-      0x32, 0x05, 0x82, 0x01, 0x02, 0x18, 0x00
-  };
+  const std::vector<uint8_t> config_bytes = {0x32, 0x05, 0x82, 0x01, 0x02, 0x18, 0x00};
 
   impl->model = new cppflow::model(potential_path, config_bytes);
   if (comm->me == 0) std::cerr << "[GRACE] model loaded" << std::endl;
@@ -261,7 +267,8 @@ void PairGRACE1LayerChunk::coeff(int narg, char **arg)
     cutoff_matrix_per_lammps_type.resize(ntypes + 1, std::vector<double>(ntypes + 1));
     for (int i = 1; i <= ntypes; i++) {
       for (int j = 1; j <= ntypes; j++) {
-        cutoff_matrix_per_lammps_type[i][j] = cutoff_matrix[element_type_mapping[i]][element_type_mapping[j]];
+        cutoff_matrix_per_lammps_type[i][j] =
+            cutoff_matrix[element_type_mapping[i]][element_type_mapping[j]];
       }
     }
   }
@@ -279,7 +286,8 @@ void PairGRACE1LayerChunk::coeff(int narg, char **arg)
   }
 
   this->DEFAULT_INPUT_PREFIX = this->compute_function_name + "_";
-  has_map_atoms_to_structure_op = impl->model->has_graph_input(DEFAULT_INPUT_PREFIX + "map_atoms_to_structure");
+  has_map_atoms_to_structure_op =
+      impl->model->has_graph_input(DEFAULT_INPUT_PREFIX + "map_atoms_to_structure");
   has_nstruct_total_op = impl->model->has_graph_input(DEFAULT_INPUT_PREFIX + "n_struct_total");
   has_mu_i_op = impl->model->has_graph_input(DEFAULT_INPUT_PREFIX + "mu_i");
   has_batch_tot_nat = impl->model->has_graph_input(DEFAULT_INPUT_PREFIX + "batch_tot_nat");
@@ -291,7 +299,8 @@ void PairGRACE1LayerChunk::coeff(int narg, char **arg)
 void PairGRACE1LayerChunk::init_style()
 {
   if (atom->tag_enable == 0) error->all(FLERR, "Pair style grace/1layer/chunk requires atom IDs");
-  if (force->newton_pair == 0) error->all(FLERR, "Pair style grace/1layer/chunk requires newton pair on");
+  if (force->newton_pair == 0)
+    error->all(FLERR, "Pair style grace/1layer/chunk requires newton pair on");
 
   neighbor->add_request(this, NeighConst::REQ_FULL);
 
@@ -347,14 +356,15 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
   int *numneigh = list->numneigh;
   int **firstneigh = list->firstneigh;
 
-  bool do_energy_only = flag_compute_energy_only & !deny_energy_only_calc;
+  bool do_energy_only = flag_compute_energy_only && !debug_no_energy_only_calc;
   auto compute_inputs_sig = impl->compute_inputs_sig;
 
   // Initialize/resize global-to-chunk map
-  if (impl->global_to_chunk_map.size() < (size_t)nall) {
+  if (impl->global_to_chunk_map.size() < (size_t) nall) {
     impl->global_to_chunk_map.assign(nall, -1);
   }
-  if (comm->me == 0) std::cerr << "[GRACE-CHUNK] compute() starts, inum=" << inum << ", nall=" << nall << std::endl;
+  if (comm->me == 0)
+    std::cerr << "[GRACE-CHUNK] compute() starts, inum=" << inum << ", nall=" << nall << std::endl;
 
   int chunk_offset = 0;
   int chunk_idx = 0;
@@ -390,12 +400,14 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
       for (int jj = 0; jj < i_neigh_num; ++jj) {
         int j = i_neigh_list[jj] & NEIGHMASK;
         int j_type = type[j];
-        
+
         double delx = xtmp - x[j][0];
         double dely = ytmp - x[j][1];
         double delz = ztmp - x[j][2];
-        double rsq = delx*delx + dely*dely + delz*delz;
-        double cutsq_ij = is_custom_cutoffs ? cutoff_matrix_per_lammps_type[i_type][j_type] * cutoff_matrix_per_lammps_type[i_type][j_type] : cutoff * cutoff;
+        double rsq = delx * delx + dely * dely + delz * delz;
+        double cutsq_ij = is_custom_cutoffs ? cutoff_matrix_per_lammps_type[i_type][j_type] *
+                cutoff_matrix_per_lammps_type[i_type][j_type]
+                                            : cutoff * cutoff;
 
         if (rsq < cutsq_ij) {
           if (impl->global_to_chunk_map[j] == -1) {
@@ -420,9 +432,12 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
 
 #ifdef GRACE_CHUNK_DEBUG
     {
-      utils::logmesg(lmp, "[CHUNK-DBG] chunk_idx={}, offset={}, size={}\n", chunk_idx, chunk_offset, current_chunk_size);
-      utils::logmesg(lmp, "[CHUNK-DBG] n_nodes={} (n_real={}), n_padded={}, n_real_padded={}\n", n_nodes_in_chunk, n_real, n_nodes_padded, n_real_padded);
-      utils::logmesg(lmp, "[CHUNK-DBG] n_bonds_real={}, n_bonds_padded={}\n", n_bonds_real, n_bonds_padded);
+      utils::logmesg(lmp, "[CHUNK-DBG] chunk_idx={}, offset={}, size={}\n", chunk_idx, chunk_offset,
+                     current_chunk_size);
+      utils::logmesg(lmp, "[CHUNK-DBG] n_nodes={} (n_real={}), n_padded={}, n_real_padded={}\n",
+                     n_nodes_in_chunk, n_real, n_nodes_padded, n_real_padded);
+      utils::logmesg(lmp, "[CHUNK-DBG] n_bonds_real={}, n_bonds_padded={}\n", n_bonds_real,
+                     n_bonds_padded);
     }
 #endif
 
@@ -456,8 +471,10 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
         double dx = x[j][0] - x[i][0];
         double dy = x[j][1] - x[i][1];
         double dz = x[j][2] - x[i][2];
-        double rsq = dx*dx + dy*dy + dz*dz;
-        double cutsq_ij = is_custom_cutoffs ? cutoff_matrix_per_lammps_type[i_type][j_type] * cutoff_matrix_per_lammps_type[i_type][j_type] : cutoff * cutoff;
+        double rsq = dx * dx + dy * dy + dz * dz;
+        double cutsq_ij = is_custom_cutoffs ? cutoff_matrix_per_lammps_type[i_type][j_type] *
+                cutoff_matrix_per_lammps_type[i_type][j_type]
+                                            : cutoff * cutoff;
 
         if (rsq < cutsq_ij) {
           int j_chunk = impl->global_to_chunk_map[j];
@@ -474,38 +491,54 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
     }
 
     std::vector<std::tuple<std::string, cppflow::tensor>> inputs;
-    inputs.emplace_back(compute_inputs_sig.at("atomic_mu_i").name, cppflow::tensor(impl->atomic_mu_i_local, {n_real_padded}));
-    if (has_atomic_mu_i_local) 
-      inputs.emplace_back(compute_inputs_sig.at("atomic_mu_i_local").name, cppflow::tensor(impl->atomic_mu_i_local, {n_real_padded}));
-    inputs.emplace_back(compute_inputs_sig.at("ind_i").name, cppflow::tensor(impl->ind_i, {n_bonds_padded}));
-    inputs.emplace_back(compute_inputs_sig.at("ind_j").name, cppflow::tensor(impl->ind_j, {n_bonds_padded}));
+    inputs.emplace_back(compute_inputs_sig.at("atomic_mu_i").name,
+                        cppflow::tensor(impl->atomic_mu_i_local, {n_real_padded}));
+    if (has_atomic_mu_i_local)
+      inputs.emplace_back(compute_inputs_sig.at("atomic_mu_i_local").name,
+                          cppflow::tensor(impl->atomic_mu_i_local, {n_real_padded}));
+    inputs.emplace_back(compute_inputs_sig.at("ind_i").name,
+                        cppflow::tensor(impl->ind_i, {n_bonds_padded}));
+    inputs.emplace_back(compute_inputs_sig.at("ind_j").name,
+                        cppflow::tensor(impl->ind_j, {n_bonds_padded}));
     if (has_mu_i_op)
-      inputs.emplace_back(compute_inputs_sig.at("mu_i").name, cppflow::tensor(impl->mu_i, {n_bonds_padded}));
-    inputs.emplace_back(compute_inputs_sig.at("mu_j").name, cppflow::tensor(impl->mu_j, {n_bonds_padded}));
-    inputs.emplace_back(compute_inputs_sig.at("bond_vector").name, cppflow::tensor(impl->bond_vector, {n_bonds_padded, 3}));
-    inputs.emplace_back(compute_inputs_sig.at("batch_tot_nat_real").name, cppflow::tensor(std::vector<int32_t>{n_real}, {}));
-    if (has_batch_tot_nat) inputs.emplace_back(compute_inputs_sig.at("batch_tot_nat").name, cppflow::tensor(std::vector<int32_t>{n_nodes_padded}, {}));
-    if (has_nstruct_total_op) inputs.emplace_back(compute_inputs_sig.at("n_struct_total").name, cppflow::tensor(std::vector<int32_t>{1}, {}));
-    if (has_map_atoms_to_structure_op) inputs.emplace_back(compute_inputs_sig.at("map_atoms_to_structure").name, cppflow::tensor(impl->map_atoms_to_structure, {n_nodes_padded}));
+      inputs.emplace_back(compute_inputs_sig.at("mu_i").name,
+                          cppflow::tensor(impl->mu_i, {n_bonds_padded}));
+    inputs.emplace_back(compute_inputs_sig.at("mu_j").name,
+                        cppflow::tensor(impl->mu_j, {n_bonds_padded}));
+    inputs.emplace_back(compute_inputs_sig.at("bond_vector").name,
+                        cppflow::tensor(impl->bond_vector, {n_bonds_padded, 3}));
+    inputs.emplace_back(compute_inputs_sig.at("batch_tot_nat_real").name,
+                        cppflow::tensor(std::vector<int32_t>{n_real}, {}));
+    if (has_batch_tot_nat)
+      inputs.emplace_back(compute_inputs_sig.at("batch_tot_nat").name,
+                          cppflow::tensor(std::vector<int32_t>{n_nodes_padded}, {}));
+    if (has_nstruct_total_op)
+      inputs.emplace_back(compute_inputs_sig.at("n_struct_total").name,
+                          cppflow::tensor(std::vector<int32_t>{1}, {}));
+    if (has_map_atoms_to_structure_op)
+      inputs.emplace_back(compute_inputs_sig.at("map_atoms_to_structure").name,
+                          cppflow::tensor(impl->map_atoms_to_structure, {n_nodes_padded}));
 
 #ifdef GRACE_CHUNK_DEBUG
     GRACE::print_tf_inputs(inputs, comm->me, lmp, false);
 #endif
-    
+
     std::vector<std::string> output_names;
     auto sig_outputs = impl->model->signatures.at(compute_function_name).outputs;
     output_names.push_back(sig_outputs.at("atomic_energy").name);
     output_names.push_back(sig_outputs.at("z_pair_f").name);
     data_timer.stop();
-    
+
     model_timer.start();
     auto outputs = impl->model->operator()(inputs, output_names);
     model_timer.stop();
-    
+
     data_timer.start();
 
-    const double *e_data = static_cast<const double *>(TF_TensorData(outputs[0].get_tensor().get()));
-    const double *f_data = static_cast<const double *>(TF_TensorData(outputs[1].get_tensor().get()));
+    const double *e_data =
+        static_cast<const double *>(TF_TensorData(outputs[0].get_tensor().get()));
+    const double *f_data =
+        static_cast<const double *>(TF_TensorData(outputs[1].get_tensor().get()));
 
     // -- Phase 4: Scattering --
     bond_idx = 0;
@@ -513,7 +546,7 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
       int i = ilist[chunk_offset + ii];
       int i_type = type[i];
       double i_scale = scale[i_type][i_type];
-      
+
       // Energy
       if (eflag_either) {
         double evdwl = i_scale * e_data[ii];
@@ -529,8 +562,10 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
         double dx = x[j][0] - x[i][0];
         double dy = x[j][1] - x[i][1];
         double dz = x[j][2] - x[i][2];
-        double rsq = dx*dx + dy*dy + dz*dz;
-        double cutsq_ij = is_custom_cutoffs ? cutoff_matrix_per_lammps_type[i_type][j_type] * cutoff_matrix_per_lammps_type[i_type][j_type] : cutoff * cutoff;
+        double rsq = dx * dx + dy * dy + dz * dz;
+        double cutsq_ij = is_custom_cutoffs ? cutoff_matrix_per_lammps_type[i_type][j_type] *
+                cutoff_matrix_per_lammps_type[i_type][j_type]
+                                            : cutoff * cutoff;
 
         if (rsq < cutsq_ij) {
           double fij[3];
@@ -538,8 +573,12 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
           fij[1] = -i_scale * f_data[3 * bond_idx + 1];
           fij[2] = -i_scale * f_data[3 * bond_idx + 2];
 
-          f[i][0] += fij[0]; f[i][1] += fij[1]; f[i][2] += fij[2];
-          f[j][0] -= fij[0]; f[j][1] -= fij[1]; f[j][2] -= fij[2];
+          f[i][0] += fij[0];
+          f[i][1] += fij[1];
+          f[i][2] += fij[2];
+          f[j][0] -= fij[0];
+          f[j][1] -= fij[1];
+          f[j][2] -= fij[2];
 
           if (vflag_either) {
             ev_tally_xyz(i, j, nlocal, 1, 0.0, 0.0, fij[0], fij[1], fij[2], -dx, -dy, -dz);
@@ -600,13 +639,17 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
 
 #ifdef GRACE_PROFILE
   if (inum > 0) {
-      double d_t = data_timer.as_microseconds();
-      double m_t = model_timer.as_microseconds();
-      double total_t = total_timer.as_microseconds();
-      auto pct = [&](double t) { return (total_t > 0) ? (t / total_t * 100.0) : 0.0; };
+    double d_t = data_timer.as_microseconds();
+    double m_t = model_timer.as_microseconds();
+    double total_t = total_timer.as_microseconds();
+    auto pct = [&](double t) {
+      return (total_t > 0) ? (t / total_t * 100.0) : 0.0;
+    };
 
-      fprintf(stderr, "[GRACE-PROFILE] [Rank %d] Timings (mcs): Data: %.1f (%.1f%%) | Model: %.1f (%.1f%%) | Total: %.1f\n",
-              comm->me, d_t, pct(d_t), m_t, pct(m_t), total_t);
+    fprintf(stderr,
+            "[GRACE-PROFILE] [Rank %d] Timings (mcs): Data: %.1f (%.1f%%) | Model: %.1f (%.1f%%) | "
+            "Total: %.1f\n",
+            comm->me, d_t, pct(d_t), m_t, pct(m_t), total_t);
   }
 #endif
 }

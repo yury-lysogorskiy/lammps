@@ -86,14 +86,21 @@ PairGRACE::~PairGRACE()
     double data = data_timer.as_microseconds();
     double model = model_timer.as_microseconds();
 
-    auto per_atom = [&](double t) { return t / total_real_atoms_processed; };
-    auto pct = [&](double t) { return (total > 0) ? (t / total * 100.0) : 0.0; };
+    auto per_atom = [&](double t) {
+      return t / total_real_atoms_processed;
+    };
+    auto pct = [&](double t) {
+      return (total > 0) ? (t / total * 100.0) : 0.0;
+    };
 
-    utils::logmesg(lmp, "[GRACE-PERF] Total real atoms processed: {:.0f}\n", total_real_atoms_processed);
+    utils::logmesg(lmp, "[GRACE-PERF] Total real atoms processed: {:.0f}\n",
+                   total_real_atoms_processed);
     utils::logmesg(lmp, "[GRACE-PERF] Total valid compute calls: {}\n", total_compute_calls);
     utils::logmesg(lmp, "[GRACE-PERF] Average atoms per step: {:.1f}\n",
                    total_real_atoms_processed / total_compute_calls);
-    utils::logmesg(lmp, "[GRACE-PERF] Performance (us/atom) [%]: Total: {:.1f}, Data: {:.1f} ({:.1f}%), Model: {:.1f} ({:.1f}%)\n",
+    utils::logmesg(lmp,
+                   "[GRACE-PERF] Performance (us/atom) [%]: Total: {:.1f}, Data: {:.1f} ({:.1f}%), "
+                   "Model: {:.1f} ({:.1f}%)\n",
                    per_atom(total), per_atom(data), pct(data), per_atom(model), pct(model));
   }
 
@@ -161,8 +168,8 @@ void PairGRACE::settings(int narg, char **arg)
       if (comm->me == 0)
         utils::logmesg(lmp, "[GRACE] Reducing padding fraction: {}\n",
                        reducing_neigh_padding_fraction);
-    } else if (strcmp(arg[iarg], "deny_energy_only_calc") == 0) {
-      deny_energy_only_calc = true;
+    } else if (strcmp(arg[iarg], "debug_no_energy_only_calc") == 0) {
+      debug_no_energy_only_calc = true;
       iarg += 1;
     } else
       error->all(FLERR, "[GRACE] Unknown pair_style grace keyword: {}", arg[iarg]);
@@ -507,7 +514,7 @@ void PairGRACE::compute(int eflag, int vflag)
   // the pointer to the list of neighbors of "i"
   firstneigh = list->firstneigh;
 
-  bool do_energy_only = flag_compute_energy_only & !deny_energy_only_calc;
+  bool do_energy_only = flag_compute_energy_only && !debug_no_energy_only_calc;
 
   auto compute_inputs_sig = graceimpl->compute_inputs_sig;
   if (do_energy_only) {
@@ -547,21 +554,21 @@ void PairGRACE::compute(int eflag, int vflag)
   inputs.emplace_back(compute_inputs_sig.at("atomic_mu_i").name,
                       cppflow::tensor(atomic_mu_i_vector, {tot_atoms}));
 
-  if (has_atomic_mu_i_local) {
+  if (compute_inputs_sig.count("atomic_mu_i_local")) {
     inputs.emplace_back(compute_inputs_sig.at("atomic_mu_i_local").name,
                         cppflow::tensor(atomic_mu_i_vector, {tot_atoms}));
   }
 
   // map_atoms_to_structure
-  if (has_map_atoms_to_structure_op) {
+  if (compute_inputs_sig.count("map_atoms_to_structure")) {
     inputs.emplace_back(compute_inputs_sig.at("map_atoms_to_structure").name,
                         cppflow::tensor(std::vector<int32_t>(tot_atoms, 0), {tot_atoms}));
   }
 
   // batch_nat = number of extened atoms + padding
-  if (has_batch_tot_nat) {
+  if (compute_inputs_sig.count("batch_tot_nat")) {
     inputs.emplace_back(compute_inputs_sig.at("batch_tot_nat").name,
-                        cppflow::tensor(std::vector<int32_t>{tot_atoms}, {}));
+                        cppflow::tensor(std::vector<int32_t>{(int32_t) tot_atoms}, {}));
   }
 
   // batch_nreal_atoms_per_structure: number of extened atoms (w/o padding)
@@ -604,7 +611,8 @@ void PairGRACE::compute(int eflag, int vflag)
   std::partial_sum(actual_jnum.begin(), actual_jnum.end() - 1, actual_jnum_shift.begin() + 1);
 
   tot_neighbours = graceimpl->neighbor_padding.update(n_real_neighbours);
-  if (graceimpl->neighbor_padding.last_update_triggered_resize()) graceimpl->graph_recompiled = true;
+  if (graceimpl->neighbor_padding.last_update_triggered_resize())
+    graceimpl->graph_recompiled = true;
   if (pad_verbose && graceimpl->neighbor_padding.last_update_triggered_resize()) {
     utils::logmesg(lmp,
                    "[GRACE] Neighbours padding: extending new num. of neighbours = {} (incl. "
@@ -676,7 +684,7 @@ void PairGRACE::compute(int eflag, int vflag)
       cppflow::tensor(ind_j_vector, {tot_neighbours}));
 
   // mu_i, mu_j: bonds
-  if (has_mu_i_op) {
+  if (compute_inputs_sig.count("mu_i")) {
     inputs.emplace_back(
         compute_inputs_sig.at("mu_i").name,    //DEFAULT_INPUT_PREFIX + "mu_i" + ":0",
         cppflow::tensor(mu_i_vector, {tot_neighbours}));
@@ -685,7 +693,7 @@ void PairGRACE::compute(int eflag, int vflag)
                       cppflow::tensor(mu_j_vector, {tot_neighbours}));
 
   // num_struc: 1
-  if (has_nstruct_total_op) {
+  if (compute_inputs_sig.count("n_struct_total")) {
     inputs.emplace_back(compute_inputs_sig.at("n_struct_total")
                             .name,    //DEFAULT_INPUT_PREFIX + "n_struct_total" + ":0",
                         cppflow::tensor(std::vector<int32_t>{1}, {}));
