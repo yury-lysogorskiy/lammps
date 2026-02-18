@@ -22,12 +22,14 @@ Syntax
 
   .. parsed-literal::
 
-     keyword = *padding* or *pad_verbose* or *pair_forces* or *max_number_of_reduction* or *reduce_padding*
+     keyword = *padding* or *pad_verbose* or *pair_forces* or *max_number_of_reduction* or *reduce_padding* or *chunksize* or *debug_no_energy_only_calc*
        *padding* value = fraction of neighbors to pad (default 0.01)
        *pad_verbose* = print messages when padding triggers recompilation
        *pair_forces* = compute pairwise forces (required for virials and MPI > 1)
        *max_number_of_reduction* value = maximum number of recompilations during padding reduction
        *reduce_padding* value = fraction to reduce padding by
+       *chunksize* value = size of atom blocks processed by TensorFlow (default 4096)
+       *debug_no_energy_only_calc* = disable energy-only optimization for debugging
 
 .. code-block:: LAMMPS
 
@@ -37,8 +39,9 @@ Syntax
 
   .. parsed-literal::
 
-     keyword = *extrapolation*
+     keyword = *extrapolation* or *chunksize*
        *extrapolation* = compute extrapolation grade (requires .asi file in pair_coeff)
+       *chunksize* value = size of atom blocks processed by the evaluator (default 4096)
 
 Examples
 """"""""
@@ -56,6 +59,9 @@ Examples
 
    pair_style grace/fs extrapolation
    pair_coeff * * FS_model.yaml FS_model.asi Mo Nb Ta W
+
+   pair_style grace/fs/kk
+   pair_coeff * * FS_model.yaml Mo Nb Ta W
 
 Description
 """""""""""
@@ -85,12 +91,22 @@ if the number of neighbors changes, the style uses a padding strategy.
 * **pad_verbose**: If specified, LAMMPS will output messages whenever new padding levels trigger a recompilation. By default this is false.
 * **pair_forces**: By default, the GRACE model provides total atomic forces. If *pair_forces* is enabled, the model calculates pairwise forces. This is **required** for calculating atomic virials (stress) and is automatically enforced if running on more than one MPI processor.
 * **max_number_of_reduction** and **reduce_padding**: Control the heuristics for reducing the padding buffer size dynamically during the simulation. This is a type of nice-to-have optimization.
+* **chunksize**: Controls the size of atom blocks processed by TensorFlow. This helps manage peak memory usage for large systems or models.
+
+The *grace* style also includes several variants:
+
+* **grace/1layer/chunk** and **grace/2layer/chunk**: Utilize chunked processing to reduce memory overhead and support standard MPI parallelization efficiently for both 1-layer and 2-layer models.
+* **grace/2layer/parallel**: Accelerated implementation for 2-layer models with MPI parallelization.
 
 **pair_style grace/fs**
 
 The *grace/fs* style provides a native C++ implementation (product evaluator)
 for the GRACE/FS family of models. It is lightweight, does not require
-TensorFlow or GPUs, and supports standard MPI parallelization efficiently.
+TensorFlow or GPUs.
+
+The *grace/fs/kk* style is the Kokkos-accelerated version of *grace/fs*,
+supporting execution on GPUs (via CUDA/HIP) and multi-core CPUs (via OpenMP)
+while maintaining efficient MPI parallelization.
 
 Only a single pair_coeff command is used with the *grace/fs* style:
 
@@ -137,6 +153,24 @@ grade among all atoms in a structure is reduced to the `c_max_grace_gamma`
 variable. Only if this value exceeds extrapolation threshold 5 will the
 structure be dumped.
 
+Energy-only calculation
+"""""""""""""""""""""""
+
+Both *grace* and *grace/fs* styles support an optimized energy-only calculation
+mode. In this mode, the styles skip the computation of atomic forces and
+virials, which significantly reduces the computational cost. For TensorFlow-based
+GRACE models, this also allows skipping the backward (gradient) pass.
+
+The energy-only mode is automatically triggered when LAMMPS requests only
+potential energy from the pair style, which is frequently used by Monte Carlo
+algorithms implemented in the MC package:
+
+* :doc:`fix atom/swap <fix_atom_swap>`
+* :doc:`fix neighbor/swap <fix_neighbor_swap>`
+* :doc:`fix widom <fix_widom>`
+* :doc:`fix gcmc <fix_gcmc>`
+* :doc:`fix sgcmc <fix_sgcmc>`
+
 Mixing, shift, table, tail correction, restart, rRESPA info
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
@@ -160,10 +194,11 @@ Both styles require `metal` units.
 
 *pair_style grace* relies on the TensorFlow library. While GPU usage is optional,
 TensorFlow is significantly less efficient when running solely on the CPU.
-Currently, only 1-LAYER models can be parallelized using MPI with domain
-decomposition.
+Standard MPI parallelization is supported for all model types via the `chunk`
+and `parallel` variants or their combinations.
 
-*pair_style grace/fs* does not require TensorFlow.
+*pair_style grace/fs* does not require TensorFlow. Kokkos support is available
+via `pair_style grace/fs/kk`.
 
 Further read
 """"""""""""""""
@@ -178,9 +213,9 @@ Related commands
 Default
 """""""
 
-For *grace*: padding = 0.01, pair_forces is OFF, pad_verbose is OFF, max_number_of_reduction=10, reduce_padding=0.2.
+For *grace*: padding = 0.01, pair_forces is OFF, pad_verbose is OFF, max_number_of_reduction=10, reduce_padding=0.2, chunksize=4096.
 
-For *grace/fs*: extrapolation is OFF.
+For *grace/fs*: extrapolation is OFF, chunksize=4096.
 
 .. _Bochkarev20241:
 
