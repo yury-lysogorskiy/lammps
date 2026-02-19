@@ -165,5 +165,37 @@ void print_f_data(const double *f_data, int me, LAMMPS *lmp,
     // ----------------------------------------------------------------------
 }
 
+void log_perf_stats(LAMMPS_NS::LAMMPS *lmp, const std::string &style_name,
+                    double total_atoms, long long int total_calls,
+                    const std::vector<std::pair<std::string, double>> &timers) {
+    if (total_calls == 0) return;
+
+    double total_time = 0.0;
+    for (const auto &[name, time] : timers) {
+        if (name == "Total") total_time = time;
+    }
+    if (total_time <= 0) return;
+
+    double avg_atoms = total_atoms / total_calls;
+    double us_per_atom = total_time / total_atoms;
+
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(1);
+    ss << "[" << style_name << "] " << static_cast<long long>(total_atoms) << " atoms, "
+       << total_calls << " calls, " << avg_atoms << " atoms/step, "
+       << us_per_atom << " us/atom | ";
+
+    bool first = true;
+    for (const auto &[name, time] : timers) {
+        if (name == "Total") continue;
+        double pct = (total_time > 0) ? (time / total_time * 100.0) : 0.0;
+        if (!first) ss << ", ";
+        ss << name << ": " << pct << "%";
+        first = false;
+    }
+
+    LAMMPS_NS::utils::logmesg(lmp, "{}\n", ss.str());
+}
+
 } // namespace GRACE
 #endif

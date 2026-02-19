@@ -100,23 +100,13 @@ PairGRACEFS::~PairGRACEFS()
     double total = total_timer.as_microseconds();
     double data = data_timer.as_microseconds();
     double model = model_timer.as_microseconds();
-
-    auto per_atom = [&](double t) {
-      return t / total_real_atoms_processed;
-    };
-    auto pct = [&](double t) {
-      return (total > 0) ? (t / total * 100.0) : 0.0;
-    };
-
-    utils::logmesg(lmp, "[GRACE-PERF] Total real atoms processed: {:.0f}\n",
-                   total_real_atoms_processed);
-    utils::logmesg(lmp, "[GRACE-PERF] Total valid compute calls: {}\n", total_compute_calls);
-    utils::logmesg(lmp, "[GRACE-PERF] Average atoms per step: {:.1f}\n",
-                   total_real_atoms_processed / (double) total_compute_calls);
-    utils::logmesg(lmp,
-                   "[GRACE-PERF] Performance (us/atom) [%%]: Total: {:.1f}, Data: {:.1f} "
-                   "({:.1f}%%), Model: {:.1f} ({:.1f}%%)\n",
-                   per_atom(total), per_atom(data), pct(data), per_atom(model), pct(model));
+    double avg = total_real_atoms_processed / (double) total_compute_calls;
+    double us = total / total_real_atoms_processed;
+    double d_pct = (total > 0) ? (data / total * 100.0) : 0.0;
+    double m_pct = (total > 0) ? (model / total * 100.0) : 0.0;
+    utils::logmesg(lmp, "[grace/fs] {:.0f} atoms, {} calls, {:.1f} atoms/step, {:.1f} us/atom | "
+                        "Data: {:.1f}%, Model: {:.1f}%\n",
+                   total_real_atoms_processed, total_compute_calls, avg, us, d_pct, m_pct);
   }
 
   delete aceimpl;
@@ -126,6 +116,7 @@ PairGRACEFS::~PairGRACEFS()
     memory->destroy(cutsq);
     memory->destroy(scale);
     memory->destroy(extrapolation_grade_gamma);
+    delete[] map;
   }
 }
 
@@ -146,24 +137,23 @@ void PairGRACEFS::compute(int eflag, int vflag)
 
   ev_init(eflag, vflag);
 
+  inum = list->inum;
+  // Early exit if no local atoms to process (e.g., vacuum region)
+  if (inum == 0) {
+    data_timer.stop();
+    total_timer.stop();
+    return;
+  }
+
   double **x = atom->x;
   double **f = atom->f;
   int *type = atom->type;
 
-  // number of atoms in cell
   int nlocal = atom->nlocal;
   int newton_pair = force->newton_pair;
 
-  // inum: length of the neighborlists list
-  inum = list->inum;
-
-  // ilist: list of "i" atoms for which neighbor lists exist
   ilist = list->ilist;
-
-  //numneigh: the length of each these neigbor list
   numneigh = list->numneigh;
-
-  // the pointer to the list of neighbors of "i"
   firstneigh = list->firstneigh;
 
   if (flag_compute_extrapolation_grade && atom->nlocal > nmax) {

@@ -65,7 +65,7 @@ if(NOT DEFINED NO_GRACE_TF)
       find_package(Python COMPONENTS Interpreter QUIET)
       set(PACE_PYTHON_EXEC ${Python_EXECUTABLE})
     endif()
-    message("Python interpreter found: ${PACE_PYTHON_EXEC}")
+    message("-- Python interpreter found: ${PACE_PYTHON_EXEC}")
     execute_process(
       COMMAND ${PACE_PYTHON_EXEC} -c "import os;import pkgutil;package = pkgutil.get_loader('tensorflow');print(os.path.dirname(package.get_filename()))"
       OUTPUT_VARIABLE TF_DISCOVER

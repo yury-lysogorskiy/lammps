@@ -9,7 +9,7 @@
 ------------------------------------------------------------------------- */
 
 #ifndef NO_GRACE_TF
-#define GRACE_2L_CHUNK_DEBUG
+// #define GRACE_2L_CHUNK_DEBUG
 
 #include "pair_grace_2layer_chunk.h"
 
@@ -105,31 +105,14 @@ PairGRACE2LayerChunk::~PairGRACE2LayerChunk()
   if (copymode) return;
 
   if (comm->me == 0 && total_real_atoms_processed > 0) {
-    double total = total_timer.as_microseconds();
-    double data = data_timer.as_microseconds();
-    double comm_t = comm_timer.as_microseconds();
-    double m1 = model1_timer.as_microseconds();
-    double m2 = model2_timer.as_microseconds();
-    double m3 = model3_timer.as_microseconds();
-
-    auto per_atom = [&](double t) {
-      return t / total_real_atoms_processed;
-    };
-    auto pct = [&](double t) {
-      return (total > 0) ? (t / total * 100.0) : 0.0;
-    };
-
-    utils::logmesg(lmp, "[GRACE-PERF] Total real atoms processed: {:.0f}\n",
-                   total_real_atoms_processed);
-    utils::logmesg(lmp, "[GRACE-PERF] Total valid compute calls: {}\n", total_compute_calls);
-    utils::logmesg(lmp, "[GRACE-PERF] Average atoms per step: {:.1f}\n",
-                   total_real_atoms_processed / total_compute_calls);
-    utils::logmesg(
-        lmp,
-        "[GRACE-PERF] Performance (us/atom) [%]: Total: {:.1f}, Data: {:.1f} ({:.1f}%), Comm: "
-        "{:.1f} ({:.1f}%), M1: {:.1f} ({:.1f}%), M2: {:.1f} ({:.1f}%), M3: {:.1f} ({:.1f}%)\n",
-        per_atom(total), per_atom(data), pct(data), per_atom(comm_t), pct(comm_t), per_atom(m1),
-        pct(m1), per_atom(m2), pct(m2), per_atom(m3), pct(m3));
+    GRACE::log_perf_stats(lmp, "grace/2layer/chunk", total_real_atoms_processed,
+                          total_compute_calls,
+                          {{"Total", total_timer.as_microseconds()},
+                           {"Data", data_timer.as_microseconds()},
+                           {"Comm", comm_timer.as_microseconds()},
+                           {"M1", model1_timer.as_microseconds()},
+                           {"M2", model2_timer.as_microseconds()},
+                           {"M3", model3_timer.as_microseconds()}});
   }
 
   delete aceimpl;
@@ -313,7 +296,9 @@ void PairGRACE2LayerChunk::init_style()
 double PairGRACE2LayerChunk::init_one(int i, int j)
 {
   if (setflag[i][j] == 0) error->all(FLERR, "All pair coeffs are not set");
-  return is_custom_cutoffs ? cutoff_matrix_per_lammps_type[i][j] : cutoff;
+  scale[j][i] = scale[i][j];
+  if (is_custom_cutoffs) return cutoff_matrix_per_lammps_type[i][j];
+  return cutoff;
 }
 
 void PairGRACE2LayerChunk::compute(int eflag, int vflag)
@@ -332,9 +317,16 @@ void PairGRACE2LayerChunk::compute(int eflag, int vflag)
   data_timer.start();
   ev_init(eflag, vflag);
 
+  int inum = list->inum;
+  // Early exit if no local atoms to process (e.g., vacuum region)
+  if (inum == 0) {
+    data_timer.stop();
+    total_timer.stop();
+    return;
+  }
+
   int nlocal = atom->nlocal;
   int nall = nlocal + atom->nghost;
-  int inum = list->inum;
 
   // Resize global buffers
   for (const auto &[key, size] : feature_sizes) {
@@ -504,13 +496,13 @@ void PairGRACE2LayerChunk::setup_chunk_graph(int offset, int current_chunk_size)
 
   for (int k = 0; k < node_counter; k++)
     aceimpl->atomic_mu_i[k] = element_type_mapping[type[aceimpl->chunk_to_global_map[k]]];
-  for (int k = node_counter; k < aceimpl->n_nodes_padded; k++)
-    aceimpl->atomic_mu_i[k] = element_type_mapping[type[0]];
+  // Use element type 0 for padding slots (safe default for any valid model)
+  for (int k = node_counter; k < aceimpl->n_nodes_padded; k++) aceimpl->atomic_mu_i[k] = 0;
 
   for (int k = 0; k < n_real; k++)
     aceimpl->atomic_mu_i_local[k] = element_type_mapping[type[aceimpl->chunk_to_global_map[k]]];
-  for (int k = n_real; k < aceimpl->n_real_padded; k++)
-    aceimpl->atomic_mu_i_local[k] = element_type_mapping[type[0]];
+  // Use element type 0 for padding slots (safe default for any valid model)
+  for (int k = n_real; k < aceimpl->n_real_padded; k++) aceimpl->atomic_mu_i_local[k] = 0;
 
   int bond_idx = 0;
   for (int ii = 0; ii < current_chunk_size; ii++) {
@@ -562,9 +554,6 @@ void PairGRACE2LayerChunk::run_forward_layer_1_chunk()
     if (sig.inputs.count(key)) inputs.emplace_back(sig.inputs.at(key).name, t);
   };
 
-  int n_real =
-      aceimpl->chunk_to_global_map
-          .size();    // Only counting mapped, correct? No, real is first current_chunk_size
   add_in("atomic_mu_i",
          GRACE::get_or_create_tensor(aceimpl->fwd_l1_tensors, "atomic_mu_i", aceimpl->atomic_mu_i,
                                      {(int64_t) aceimpl->n_nodes_padded},
@@ -593,9 +582,7 @@ void PairGRACE2LayerChunk::run_forward_layer_1_chunk()
          GRACE::get_or_create_tensor(aceimpl->fwd_l1_tensors, "bond_vector", aceimpl->bond_vector,
                                      {(int64_t) aceimpl->n_bonds_padded, 3},
                                      aceimpl->graph_recompiled));
-  // How many real atoms in this chunk? It's the current_chunk_size passed to setup.
-  // I'll assume n_real_padded.update(current_chunk_size) was done.
-  // Let's use the real count from setup.
+
   int n_real_actual = aceimpl->atomic_mu_i_local.size() - aceimpl->real_atom_padding.n_fake;
   add_in("batch_tot_nat_real",
          GRACE::get_or_create_tensor(aceimpl->fwd_l1_tensors, "batch_tot_nat_real",
@@ -609,6 +596,7 @@ void PairGRACE2LayerChunk::run_forward_layer_1_chunk()
     ordered_keys.push_back(key);
   }
 
+  // We rely on TF model returning correct output sizes (n_real_actual * feature_size)
   auto outputs = aceimpl->model->operator()(inputs, out_names);
   for (size_t i = 0; i < outputs.size(); i++) {
     std::string key = ordered_keys[i];
@@ -682,6 +670,7 @@ void PairGRACE2LayerChunk::run_backward_layer_1_chunk()
   }
 
   std::vector<std::string> out_names = {sig.outputs.at(GRAD_BOND_KEY).name};
+  // We rely on TF model returning correct output size
   auto outputs = aceimpl->model->operator()(inputs, out_names);
   const double *gbv_data = static_cast<double *>(TF_TensorData(outputs[0].get_tensor().get()));
 
@@ -690,12 +679,13 @@ void PairGRACE2LayerChunk::run_backward_layer_1_chunk()
   int *type = atom->type;
   int nlocal = atom->nlocal;
   int newton_pair = force->newton_pair;
+  int n_all_chunk = (int) aceimpl->chunk_to_global_map.size();    // real + ghost atoms in chunk
 
-  int bond_idx = 0;
   for (int k = 0; k < aceimpl->n_bonds_padded; k++) {
     int i_chunk = aceimpl->ind_i[k];
     int j_chunk = aceimpl->ind_j[k];
-    if (i_chunk >= n_real_actual || j_chunk >= (int) aceimpl->chunk_to_global_map.size()) continue;
+    // Skip padding bonds: i must be real, j must be within chunk (real or ghost, not padding)
+    if (i_chunk >= n_real_actual || j_chunk >= n_all_chunk) continue;
 
     int i = aceimpl->chunk_to_global_map[i_chunk];
     int j = aceimpl->chunk_to_global_map[j_chunk];
@@ -876,6 +866,7 @@ void PairGRACE2LayerChunk::run_backward_layer_2_chunk(int eflag, int vflag)
     ordered_keys.push_back(GRAD_BOND_KEY);
   }
 
+  // We rely on TF model returning correct output sizes
   auto outputs = aceimpl->model->operator()(inputs, out_names);
   int out_idx = 0;
   const double *e_data =
@@ -905,6 +896,7 @@ void PairGRACE2LayerChunk::run_backward_layer_2_chunk(int eflag, int vflag)
     for (int k = 0; k < aceimpl->n_bonds_padded; k++) {
       int i_chunk = aceimpl->ind_i[k];
       int j_chunk = aceimpl->ind_j[k];
+      // Skip padding bonds: i must be real, j must be within chunk (real or ghost, not padding)
       if (i_chunk >= n_real_actual || j_chunk >= n_all) continue;
       int i = aceimpl->chunk_to_global_map[i_chunk];
       int j = aceimpl->chunk_to_global_map[j_chunk];

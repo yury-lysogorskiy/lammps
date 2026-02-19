@@ -93,10 +93,32 @@ namespace GRACE {
       int * tag);
 
     /**
+     * @brief Print performance statistics at destruction time.
+     *
+     * Consolidates performance logging from all GRACE pair styles into a single
+     * compact output line showing atoms processed, call count, and timing breakdown.
+     *
+     * @param lmp LAMMPS pointer for logging
+     * @param style_name Name of the pair style (e.g., "grace/2layer/parallel")
+     * @param total_atoms Total real atoms processed
+     * @param total_calls Total compute calls
+     * @param timers Map of timer names to microsecond values
+     */
+    void log_perf_stats(LAMMPS_NS::LAMMPS *lmp, const std::string &style_name,
+                        double total_atoms, long long int total_calls,
+                        const std::vector<std::pair<std::string, double>> &timers);
+
+    /**
      * @brief Get a tensor from a pool or create it if it doesn't exist or size mismatch.
-     * 
+     *
      * If the tensor exists and has the correct byte size, it memcpys the data into the existing buffer.
      * This avoids heap allocations in the hot loop of chunked model calls.
+     *
+     * IMPORTANT: This function uses direct memcpy into TensorFlow tensor buffers for performance.
+     * This is safe ONLY for CPU-resident input tensors. The TensorFlow C API guarantees that
+     * TF_TensorData() returns valid writable memory for CPU tensors. Do NOT use this function
+     * for GPU tensors or tensors that may be relocated to GPU memory - in such cases, the
+     * memcpy would write to invalid memory causing silent corruption or crashes.
      */
     template<typename T>
     cppflow::tensor& get_or_create_tensor(

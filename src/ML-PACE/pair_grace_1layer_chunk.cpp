@@ -110,28 +110,12 @@ PairGRACE1LayerChunk::~PairGRACE1LayerChunk()
   if (copymode) return;
 
   if (comm->me == 0 && total_real_atoms_processed > 0) {
-    double total = total_timer.as_microseconds();
-    double data = data_timer.as_microseconds();
-    double model = model_timer.as_microseconds();
-    double tp = tp_timer.as_microseconds();
-
-    auto per_atom = [&](double t) {
-      return t / total_real_atoms_processed;
-    };
-    auto pct = [&](double t) {
-      return (total > 0) ? (t / total * 100.0) : 0.0;
-    };
-
-    utils::logmesg(lmp, "[GRACE-PERF] Total real atoms processed: {:.0f}\n",
-                   total_real_atoms_processed);
-    utils::logmesg(lmp, "[GRACE-PERF] Total valid compute calls: {}\n", total_compute_calls);
-    utils::logmesg(lmp, "[GRACE-PERF] Average atoms per step: {:.1f}\n",
-                   total_real_atoms_processed / total_compute_calls);
-    utils::logmesg(lmp,
-                   "[GRACE-PERF] Performance (us/atom) [%]: Total: {:.1f}, Data: {:.1f} ({:.1f}%), "
-                   "Model: {:.1f} ({:.1f}%), TP: {:.1f} ({:.1f}%)\n",
-                   per_atom(total), per_atom(data), pct(data), per_atom(model), pct(model),
-                   per_atom(tp), pct(tp));
+    GRACE::log_perf_stats(lmp, "grace/1layer/chunk", total_real_atoms_processed,
+                          total_compute_calls,
+                          {{"Total", total_timer.as_microseconds()},
+                           {"Data", data_timer.as_microseconds()},
+                           {"Model", model_timer.as_microseconds()},
+                           {"TP", tp_timer.as_microseconds()}});
   }
 
   delete impl;
@@ -160,8 +144,6 @@ void PairGRACE1LayerChunk::allocate()
 
 void PairGRACE1LayerChunk::settings(int narg, char **arg)
 {
-  if (narg < 0) utils::missing_cmd_args(FLERR, "pair_style grace/1layer/chunk", error);
-
   if (strcmp("metal", update->unit_style) != 0)
     error->all(FLERR, "GRACE potentials require 'metal' units");
 
@@ -200,17 +182,8 @@ void PairGRACE1LayerChunk::settings(int narg, char **arg)
   impl->atom_padding.max_reductions = max_number_of_reduction;
   impl->atom_padding.verbose = pad_verbose;
 
-  impl->real_atom_padding.enabled = do_padding;
-  impl->real_atom_padding.padding_fraction = neigh_padding_fraction;
-  impl->real_atom_padding.reduction_threshold_fraction = reducing_neigh_padding_fraction;
-  impl->real_atom_padding.max_reductions = max_number_of_reduction;
-  impl->real_atom_padding.verbose = pad_verbose;
-
-  impl->neighbor_padding.enabled = do_padding;
-  impl->neighbor_padding.padding_fraction = neigh_padding_fraction;
-  impl->neighbor_padding.reduction_threshold_fraction = reducing_neigh_padding_fraction;
-  impl->neighbor_padding.max_reductions = max_number_of_reduction;
-  impl->neighbor_padding.verbose = pad_verbose;
+  impl->real_atom_padding = impl->atom_padding;
+  impl->neighbor_padding = impl->atom_padding;
 
   centroidstressflag = CENTROID_AVAIL;
 }
@@ -348,6 +321,13 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
   impl->graph_recompiled = false;
   ev_init(eflag, vflag);
 
+  int inum = list->inum;
+  // Early exit if no local atoms to process (e.g., vacuum region)
+  if (inum == 0) {
+    total_timer.stop();
+    return;
+  }
+
   double **x = atom->x;
   double **f = atom->f;
   int *type = atom->type;
@@ -355,7 +335,6 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
   int nall = nlocal + atom->nghost;
 
   int *ilist = list->ilist;
-  int inum = list->inum;
   int *numneigh = list->numneigh;
   int **firstneigh = list->firstneigh;
 
@@ -381,8 +360,6 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
   if (impl->global_to_chunk_map.size() < (size_t) nall) {
     impl->global_to_chunk_map.assign(nall, -1);
   }
-  if (comm->me == 0)
-    std::cerr << "[GRACE-CHUNK] compute() starts, inum=" << inum << ", nall=" << nall << std::endl;
 
   int chunk_offset = 0;
   int chunk_idx = 0;
@@ -460,7 +437,8 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
 #endif
 
     // -- Phase 2: Build Tensors --
-    impl->atomic_mu_i_local.assign(n_real_padded, element_type_mapping[type[0]]);
+    // Use element type 0 for padding slots (safe default for any valid model)
+    impl->atomic_mu_i_local.assign(n_real_padded, 0);
     impl->ind_i.assign(n_bonds_padded, n_nodes_padded - 1);
     impl->ind_j.assign(n_bonds_padded, n_nodes_padded - 1);
     impl->mu_i.assign(n_bonds_padded, 0);
@@ -564,6 +542,7 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
 
     data_timer.start();
 
+    // We rely on TF model returning correct output sizes
     const double *e_data =
         static_cast<const double *>(TF_TensorData(outputs[0].get_tensor().get()));
 
@@ -623,15 +602,11 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
             f[i][1] += fy;
             f[i][2] += fz;
 
-            // Newton pair? z_pair_f is pair force, so -f for j if newton on?
-            // CHECK pair_grace_2layer_chunk logic for this.
-            // Usually z_pair_f is force ON i DUE TO j.
-            // If newton_pair is ON, we should add -f to j.
-            if (force->newton_pair || j < nlocal) {
-              f[j][0] -= fx;
-              f[j][1] -= fy;
-              f[j][2] -= fz;
-            }
+            // Apply reaction force to j. newton_pair is always ON for this pair style
+            // (enforced in init_style), so we always apply forces to both atoms.
+            f[j][0] -= fx;
+            f[j][1] -= fy;
+            f[j][2] -= fz;
 
             // Virial
             if (vflag_either || vflag_global) {
