@@ -952,8 +952,10 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag)
   auto e_tens = outputs[out_idx++].get_tensor();
   const double *e_data = static_cast<double *>(TF_TensorData(e_tens.get()));
   if (eflag_either) {
-    for (int i = 0; i < atom->nlocal; i++)
-      ev_tally_full(i, 2.0 * e_data[i], 0.0, 0.0, 0.0, 0.0, 0.0);
+    for (int i = 0; i < atom->nlocal; i++) {
+      double evdwl = scale[atom->type[i]][atom->type[i]] * e_data[i];
+      ev_tally_full(i, 2.0 * evdwl, 0.0, 0.0, 0.0, 0.0, 0.0);
+    }
   }
 
   if (!do_energy_only) {

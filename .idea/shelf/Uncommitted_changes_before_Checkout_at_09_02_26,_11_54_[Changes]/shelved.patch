@@ -1,0 +1,74 @@
+Index: performance_pg/L40s-1K/in.lammps.serial
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+># LAMMPS script for W-BCC cubic cell with 512 atoms\n\nunits metal\natom_style atomic\nboundary p p p\n\n# Create BCC lattice for Tungsten (W)\nlattice bcc 3.165  # Lattice constant for W in Angstroms\nregion box block 0 1 0 1 0 1  # Define a 4x4x4 unit cell region\ncreate_box 1 box\ncreate_atoms 1 box\n\nreplicate 8 8 8\n# Define potential\npair_style grace \n#pair_coeff * * /home/users/lysogy36/.cache/grace/GRACE-2L-OMAT-large-ft-E-parallel-comm  W  \n\n# Define simulation parameters\nmass 1 183.84  # Atomic mass of W in amu\nvelocity all create 300.0 12345 mom yes rot yes dist gaussian\n\ntimestep 0.001  # 1 fs timestep\nthermo 50  # Print thermodynamic data every 5 steps\n\n# Run first MD simulation\nfix 1 all nvt temp 300.0 300.0 0.1\nrun \nunfix 1\n\n# Run second MD simulation\nfix 2 all nvt temp 300.0 300.0 0.1\nrun 100\nunfix 2\n\n
+===================================================================
+diff --git a/performance_pg/L40s-1K/in.lammps.serial b/performance_pg/L40s-1K/in.lammps.serial
+--- a/performance_pg/L40s-1K/in.lammps.serial	(revision 50f49914f2db708ab8e4c0631d6af2481397196a)
++++ b/performance_pg/L40s-1K/in.lammps.serial	(date 1770128688907)
+@@ -13,7 +13,7 @@
+ replicate 8 8 8
+ # Define potential
+ pair_style grace 
+-#pair_coeff * * /home/users/lysogy36/.cache/grace/GRACE-2L-OMAT-large-ft-E-parallel-comm  W  
++pair_coeff * * /home/users/lysogy36/.cache/grace/GRACE-2L-OMAT-large-ft-E-parallel-comm  W  
+ 
+ # Define simulation parameters
+ mass 1 183.84  # Atomic mass of W in amu
+Index: performance_pg/L40s-1K/in.lammps.parallel.short
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+># LAMMPS script for W-BCC cubic cell with 512 atoms\n\nunits metal\natom_style atomic\nboundary p p p\n\n# Create BCC lattice for Tungsten (W)\nlattice bcc 3.165  # Lattice constant for W in Angstroms\nregion box block 0 1 0 1 0 1  # Define a 4x4x4 unit cell region\ncreate_box 1 box\ncreate_atoms 1 box\n\nreplicate 8 8 8 #30 30 30\n# Define potential\npair_style grace/2layer/parallel\npair_coeff * * /home/users/lysogy36/.cache/grace/GRACE-2L-OMAT-large-ft-E-parallel-comm  W  \n\n# Define simulation parameters\nmass 1 183.84  # Atomic mass of W in amu\nvelocity all create 300.0 12345 mom yes rot yes dist gaussian\n\ntimestep 0.001  # 1 fs timestep\nthermo 50  # Print thermodynamic data every 5 steps\n\n# Run first MD simulation\nfix 1 all nvt temp 300.0 300.0 0.1\nrun 1\nunfix 1\n\n# Run second MD simulation\nfix 2 all nvt temp 300.0 300.0 0.1\nrun 2\nunfix 2\n\n
+===================================================================
+diff --git a/performance_pg/L40s-1K/in.lammps.parallel.short b/performance_pg/L40s-1K/in.lammps.parallel.short
+--- a/performance_pg/L40s-1K/in.lammps.parallel.short	(revision 50f49914f2db708ab8e4c0631d6af2481397196a)
++++ b/performance_pg/L40s-1K/in.lammps.parallel.short	(date 1770135310547)
+@@ -10,7 +10,7 @@
+ create_box 1 box
+ create_atoms 1 box
+ 
+-replicate 8 8 8 #30 30 30
++replicate 15 15 15 #30 30 30
+ # Define potential
+ pair_style grace/2layer/parallel
+ pair_coeff * * /home/users/lysogy36/.cache/grace/GRACE-2L-OMAT-large-ft-E-parallel-comm  W  
+Index: performance_pg/L40s-1K/in.lammps.serial.short
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+># LAMMPS script for W-BCC cubic cell with 512 atoms\n\nunits metal\natom_style atomic\nboundary p p p\n\n# Create BCC lattice for Tungsten (W)\nlattice bcc 3.165  # Lattice constant for W in Angstroms\nregion box block 0 1 0 1 0 1  # Define a 4x4x4 unit cell region\ncreate_box 1 box\ncreate_atoms 1 box\n\nreplicate 8 8 8\n# Define potential\npair_style grace\n#pair_coeff * * /home/users/lysogy36/.cache/grace/GRACE-2L-OMAT-large-ft-E-parallel-comm  W  \npair_coeff * * /home/users/lysogy36/.cache/grace/GRACE-2L-OMAT-large-ft-E  W \n\n\n# Define simulation parameters\nmass 1 183.84  # Atomic mass of W in amu\nvelocity all create 300.0 12345 mom yes rot yes dist gaussian\n\ntimestep 0.001  # 1 fs timestep\nthermo 50  # Print thermodynamic data every 5 steps\n\n# Run first MD simulation\nfix 1 all nvt temp 300.0 300.0 0.1\nrun 1\nunfix 1\n\n# Run second MD simulation\nfix 2 all nvt temp 300.0 300.0 0.1\nrun 2\nunfix 2\n\n
+===================================================================
+diff --git a/performance_pg/L40s-1K/in.lammps.serial.short b/performance_pg/L40s-1K/in.lammps.serial.short
+--- a/performance_pg/L40s-1K/in.lammps.serial.short	(revision 50f49914f2db708ab8e4c0631d6af2481397196a)
++++ b/performance_pg/L40s-1K/in.lammps.serial.short	(date 1770135451991)
+@@ -10,11 +10,11 @@
+ create_box 1 box
+ create_atoms 1 box
+ 
+-replicate 8 8 8
++replicate 15 15 15 
+ # Define potential
+ pair_style grace
+-#pair_coeff * * /home/users/lysogy36/.cache/grace/GRACE-2L-OMAT-large-ft-E-parallel-comm  W  
+-pair_coeff * * /home/users/lysogy36/.cache/grace/GRACE-2L-OMAT-large-ft-E  W 
++pair_coeff * * /home/users/lysogy36/.cache/grace/GRACE-2L-OMAT-large-ft-E-parallel-comm  W  
++#pair_coeff * * /home/users/lysogy36/.cache/grace/GRACE-2L-OMAT-large-ft-E  W 
+ 
+ 
+ # Define simulation parameters
+Index: performance_pg/L40s-1K/run_compare.sh
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>#!/bin/bash\nsource ~/.bashrc\nmicromamba activate grace\nmodule load mpi/openmpi/gcc/\nexport TF_cpp_min_log_level=3\nLMP=../../build-parallel-comm/lmp\n\necho \"--- Generating Structure ---\"\npython generate_structure.py\n\necho \"--- Running Serial (grace) ---\"\n$LMP -in in.lammps.compare -var PAIRSTYLE grace -var SNAME serial > log.serial\n\necho \"--- Running Parallel (1 rank) ---\"\nmpirun -np 1 $LMP -in in.lammps.compare -var PAIRSTYLE grace/2layer/parallel -var SNAME para1np > log.para1np\n\necho \"--- Running Parallel (2 ranks) ---\"\nmpirun -np 2 $LMP -in in.lammps.compare -var PAIRSTYLE grace/2layer/parallel -var SNAME para2np > log.para2np\n\necho \"--- Comparing Forces ---\"\npython compare_forces.py forces.serial.dump forces.para1np.dump 1e-5\necho \"Diff Serial vs Para2np:\"\npython compare_forces.py forces.serial.dump forces.para2np.dump 1e-5\n\necho \"--- Energies ---\"\ngrep -B 1 \"Loop time of\" log.serial\ngrep -B 1 \"Loop time of\" log.para1np\ngrep -B 1 \"Loop time of\" log.para2np\n
+===================================================================
+diff --git a/performance_pg/L40s-1K/run_compare.sh b/performance_pg/L40s-1K/run_compare.sh
+--- a/performance_pg/L40s-1K/run_compare.sh	(revision 50f49914f2db708ab8e4c0631d6af2481397196a)
++++ b/performance_pg/L40s-1K/run_compare.sh	(date 1770127768176)
+@@ -6,7 +6,7 @@
+ LMP=../../build-parallel-comm/lmp
+ 
+ echo "--- Generating Structure ---"
+-python generate_structure.py
++# python generate_structure.py
+ 
+ echo "--- Running Serial (grace) ---"
+ $LMP -in in.lammps.compare -var PAIRSTYLE grace -var SNAME serial > log.serial

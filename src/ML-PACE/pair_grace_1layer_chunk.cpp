@@ -593,9 +593,9 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
           if (rsq < cutsq_ij) {
             // Access force from f_data [bond_idx, 3]
             // Note: f_data contains gradients, so force is negative gradient
-            double fx = -f_data[3 * bond_idx + 0];
-            double fy = -f_data[3 * bond_idx + 1];
-            double fz = -f_data[3 * bond_idx + 2];
+            double fx = -i_scale * f_data[3 * bond_idx + 0];
+            double fy = -i_scale * f_data[3 * bond_idx + 1];
+            double fz = -i_scale * f_data[3 * bond_idx + 2];
 
             // Apply to i
             f[i][0] += fx;
@@ -608,7 +608,7 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
             f[j][1] -= fy;
             f[j][2] -= fz;
 
-            // Virial
+            // Virial: ev_tally_xyz expects delx = x[i]-x[j] (LAMMPS convention); dx = x[j]-x[i] already computed above
             if (vflag_either || vflag_global) {
               ev_tally_xyz(i, j, nlocal, force->newton_pair, 0.0, 0.0, fx, fy, fz, -dx, -dy, -dz);
             }

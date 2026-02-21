@@ -816,7 +816,7 @@ void PairGRACE::compute(int eflag, int vflag)
           }
           const double rsq = delx * delx + dely * dely + delz * delz;
           if (rsq < cutoff_sq) {
-            // why "-" ?
+            // z_pair_f is dE/dr (bond gradient), not force; force on i is -dE/dr
             fij[0] = -scale[type_i][type_i] * f_data[tot_ind];
             fij[1] = -scale[type_i][type_i] * f_data[tot_ind + 1];
             fij[2] = -scale[type_i][type_i] * f_data[tot_ind + 2];

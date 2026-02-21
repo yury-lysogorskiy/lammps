@@ -872,8 +872,12 @@ void PairGRACE2LayerChunk::run_backward_layer_2_chunk(int eflag, int vflag)
   const double *e_data =
       static_cast<double *>(TF_TensorData(outputs[out_idx++].get_tensor().get()));
   if (eflag_either) {
-    for (int k = 0; k < n_real_actual; k++)
-      ev_tally_full(aceimpl->chunk_to_global_map[k], 2.0 * e_data[k], 0.0, 0.0, 0.0, 0.0, 0.0);
+    int *type = atom->type;
+    for (int k = 0; k < n_real_actual; k++) {
+      int i = aceimpl->chunk_to_global_map[k];
+      double evdwl = scale[type[i]][type[i]] * e_data[k];
+      ev_tally_full(i, 2.0 * evdwl, 0.0, 0.0, 0.0, 0.0, 0.0);
+    }
   }
 
   if (!do_energy_only) {
