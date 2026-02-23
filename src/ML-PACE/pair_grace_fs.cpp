@@ -104,19 +104,18 @@ PairGRACEFS::~PairGRACEFS()
     double us = total / total_real_atoms_processed;
     double d_pct = (total > 0) ? (data / total * 100.0) : 0.0;
     double m_pct = (total > 0) ? (model / total * 100.0) : 0.0;
-    utils::logmesg(lmp, "[grace/fs] {:.0f} atoms, {} calls, {:.1f} atoms/step, {:.1f} us/atom | "
-                        "Data: {:.1f}%, Model: {:.1f}%\n",
+    utils::logmesg(lmp,
+                   "[grace/fs] {:.0f} atoms, {} calls, {:.1f} atoms/step, {:.1f} us/atom | "
+                   "Data: {:.1f}%, Model: {:.1f}%\n",
                    total_real_atoms_processed, total_compute_calls, avg, us, d_pct, m_pct);
   }
 
   delete aceimpl;
-
   if (allocated) {
     memory->destroy(setflag);
     memory->destroy(cutsq);
     memory->destroy(scale);
     memory->destroy(extrapolation_grade_gamma);
-    delete[] map;
   }
 }
 
