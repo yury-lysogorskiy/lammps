@@ -588,6 +588,10 @@ void PairGRACE2LayerChunk::run_forward_layer_1_chunk()
          GRACE::get_or_create_tensor(aceimpl->fwd_l1_tensors, "batch_tot_nat_real",
                                      std::vector<int32_t>{n_real_actual}, {},
                                      aceimpl->graph_recompiled));
+  add_in("batch_tot_nat",
+         GRACE::get_or_create_tensor(aceimpl->fwd_l1_tensors, "batch_tot_nat",
+                                     std::vector<int32_t>{aceimpl->n_nodes_padded}, {},
+                                     aceimpl->graph_recompiled));
 
   std::vector<std::string> out_names;
   std::vector<std::string> ordered_keys;
@@ -652,6 +656,10 @@ void PairGRACE2LayerChunk::run_backward_layer_1_chunk()
   add_in("batch_tot_nat_real",
          GRACE::get_or_create_tensor(aceimpl->bwd_l1_tensors, "batch_tot_nat_real",
                                      std::vector<int32_t>{n_real_actual}, {},
+                                     aceimpl->graph_recompiled));
+  add_in("batch_tot_nat",
+         GRACE::get_or_create_tensor(aceimpl->bwd_l1_tensors, "batch_tot_nat",
+                                     std::vector<int32_t>{aceimpl->n_nodes_padded}, {},
                                      aceimpl->graph_recompiled));
 
   // GATHER gradients
@@ -834,6 +842,10 @@ void PairGRACE2LayerChunk::run_backward_layer_2_chunk(int eflag, int vflag)
   add_in("batch_tot_nat_real",
          GRACE::get_or_create_tensor(aceimpl->bwd_l2_tensors, "batch_tot_nat_real",
                                      std::vector<int32_t>{n_real_actual}, {},
+                                     aceimpl->graph_recompiled));
+  add_in("batch_tot_nat",
+         GRACE::get_or_create_tensor(aceimpl->bwd_l2_tensors, "batch_tot_nat",
+                                     std::vector<int32_t>{aceimpl->n_nodes_padded}, {},
                                      aceimpl->graph_recompiled));
 
   for (const auto &[key, shape] : feature_shapes) {

@@ -818,6 +818,9 @@ void PairGRACE2LayerParallel::run_forward_layer_1()
   add_input("bond_vector",
             cppflow::tensor(aceimpl->bond_vector, {aceimpl->n_neighbours_padded, 3}));
   add_input("batch_tot_nat_real", cppflow::tensor(std::vector<int32_t>{atom->nlocal}, {}));
+  if (sig.inputs.count("batch_tot_nat"))
+    inputs.emplace_back(sig.inputs.at("batch_tot_nat").name,
+                        cppflow::tensor(std::vector<int32_t>{aceimpl->n_all_atoms_padded}, {}));
 
 #ifdef GRACE_DEBUG
   if (comm->me == 0) print_tensors(forward_layer_1_name, inputs);
@@ -884,6 +887,9 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag)
   add_input("bond_vector",
             cppflow::tensor(aceimpl->bond_vector, {aceimpl->n_neighbours_padded, 3}));
   add_input("batch_tot_nat_real", cppflow::tensor(std::vector<int32_t>{atom->nlocal}, {}));
+  if (sig.inputs.count("batch_tot_nat"))
+    inputs.emplace_back(sig.inputs.at("batch_tot_nat").name,
+                        cppflow::tensor(std::vector<int32_t>{aceimpl->n_all_atoms_padded}, {}));
 
   for (const auto &[key, shape] : feature_shapes) {
     if (feature_is_local[key]) {
@@ -1005,6 +1011,9 @@ void PairGRACE2LayerParallel::run_backward_layer_1()
   add_input("bond_vector",
             cppflow::tensor(aceimpl->bond_vector, {aceimpl->n_neighbours_padded, 3}));
   add_input("batch_tot_nat_real", cppflow::tensor(std::vector<int32_t>{atom->nlocal}, {}));
+  if (sig.inputs.count("batch_tot_nat"))
+    inputs.emplace_back(sig.inputs.at("batch_tot_nat").name,
+                        cppflow::tensor(std::vector<int32_t>{aceimpl->n_all_atoms_padded}, {}));
 
   for (const auto &[key, shape] : feature_shapes) {
     std::string grad_key = "grad_" + key;
