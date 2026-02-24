@@ -144,15 +144,15 @@ template<class DeviceType>
 void PairGRACEFSKokkos<DeviceType>::init_style()
 {
   if (host_flag) {
+    if (lmp->kokkos->nthreads > 1)
+      error->all(FLERR,"Pair style grace/fs/kk can currently only run on a single "
+                         "CPU thread");
     PairGRACEFS::init_style();
     return;
   }
 
   if (atom->tag_enable == 0) error->all(FLERR, "Pair style grace/fs/kk requires atom IDs");
-  if (force->newton_pair == 0) {
-    if (comm->me == 0) error->warning(FLERR, "Pair style grace/fs/kk requires newton pair on. Auto-enabling 'newton on'.");
-    force->newton_pair = 1;
-  }
+  if (force->newton_pair == 0) error->all(FLERR, "Pair style grace/fs/kk requires newton pair on");
 
   neighflag = lmp->kokkos->neighflag;
   auto request = neighbor->add_request(this, NeighConst::REQ_FULL);
