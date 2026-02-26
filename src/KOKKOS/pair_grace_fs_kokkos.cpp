@@ -1531,15 +1531,18 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeForce<NEIGH
       }
 
       if (cvflag_atom) {
+        const KK_FLOAT v6 = dely * fx * energy_scale;    // yx
+        const KK_FLOAT v7 = delz * fx * energy_scale;    // zx
+        const KK_FLOAT v8 = delz * fy * energy_scale;    // zy
         Kokkos::atomic_add(&d_cvatom(i, 0), KK_FLOAT(0.5) * v0);    // xx
         Kokkos::atomic_add(&d_cvatom(i, 1), KK_FLOAT(0.5) * v1);    // yy
         Kokkos::atomic_add(&d_cvatom(i, 2), KK_FLOAT(0.5) * v2);    // zz
         Kokkos::atomic_add(&d_cvatom(i, 3), KK_FLOAT(0.5) * v3);    // xy
         Kokkos::atomic_add(&d_cvatom(i, 4), KK_FLOAT(0.5) * v4);    // xz
         Kokkos::atomic_add(&d_cvatom(i, 5), KK_FLOAT(0.5) * v5);    // yz
-        Kokkos::atomic_add(&d_cvatom(i, 6), KK_FLOAT(0.5) * v3);    // yx
-        Kokkos::atomic_add(&d_cvatom(i, 7), KK_FLOAT(0.5) * v4);    // zx
-        Kokkos::atomic_add(&d_cvatom(i, 8), KK_FLOAT(0.5) * v5);    // zy
+        Kokkos::atomic_add(&d_cvatom(i, 6), KK_FLOAT(0.5) * v6);    // yx
+        Kokkos::atomic_add(&d_cvatom(i, 7), KK_FLOAT(0.5) * v7);    // zx
+        Kokkos::atomic_add(&d_cvatom(i, 8), KK_FLOAT(0.5) * v8);    // zy
         if (NEIGHFLAG == HALF || NEIGHFLAG == HALFTHREAD) {
           Kokkos::atomic_add(&d_cvatom(j, 0), KK_FLOAT(0.5) * v0);
           Kokkos::atomic_add(&d_cvatom(j, 1), KK_FLOAT(0.5) * v1);
@@ -1547,9 +1550,9 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeForce<NEIGH
           Kokkos::atomic_add(&d_cvatom(j, 3), KK_FLOAT(0.5) * v3);
           Kokkos::atomic_add(&d_cvatom(j, 4), KK_FLOAT(0.5) * v4);
           Kokkos::atomic_add(&d_cvatom(j, 5), KK_FLOAT(0.5) * v5);
-          Kokkos::atomic_add(&d_cvatom(j, 6), KK_FLOAT(0.5) * v3);
-          Kokkos::atomic_add(&d_cvatom(j, 7), KK_FLOAT(0.5) * v4);
-          Kokkos::atomic_add(&d_cvatom(j, 8), KK_FLOAT(0.5) * v5);
+          Kokkos::atomic_add(&d_cvatom(j, 6), KK_FLOAT(0.5) * v6);
+          Kokkos::atomic_add(&d_cvatom(j, 7), KK_FLOAT(0.5) * v7);
+          Kokkos::atomic_add(&d_cvatom(j, 8), KK_FLOAT(0.5) * v8);
         }
       }
     }
