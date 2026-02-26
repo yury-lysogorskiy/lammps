@@ -716,6 +716,27 @@ void PairGRACE2LayerChunk::run_backward_layer_1_chunk()
       double dy = -aceimpl->bond_vector[3 * k + 1];
       double dz = -aceimpl->bond_vector[3 * k + 2];
       ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fx, fy, fz, dx, dy, dz);
+      if (cvflag_atom) {
+        cvatom[i][0] += 0.5 * dx * fx;    // xx
+        cvatom[i][1] += 0.5 * dy * fy;    // yy
+        cvatom[i][2] += 0.5 * dz * fz;    // zz
+        cvatom[i][3] += 0.5 * dx * fy;    // xy
+        cvatom[i][4] += 0.5 * dx * fz;    // xz
+        cvatom[i][5] += 0.5 * dy * fz;    // yz
+        cvatom[i][6] += 0.5 * dy * fx;    // yx
+        cvatom[i][7] += 0.5 * dz * fx;    // zx
+        cvatom[i][8] += 0.5 * dz * fy;    // zy
+
+        cvatom[j][0] += 0.5 * dx * fx;
+        cvatom[j][1] += 0.5 * dy * fy;
+        cvatom[j][2] += 0.5 * dz * fz;
+        cvatom[j][3] += 0.5 * dx * fy;
+        cvatom[j][4] += 0.5 * dx * fz;
+        cvatom[j][5] += 0.5 * dy * fz;
+        cvatom[j][6] += 0.5 * dy * fx;
+        cvatom[j][7] += 0.5 * dz * fx;
+        cvatom[j][8] += 0.5 * dz * fy;
+      }
     }
   }
 }
@@ -929,6 +950,27 @@ void PairGRACE2LayerChunk::run_backward_layer_2_chunk(int eflag, int vflag)
         double dx = -aceimpl->bond_vector[3 * k + 0], dy = -aceimpl->bond_vector[3 * k + 1],
                dz = -aceimpl->bond_vector[3 * k + 2];
         ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fx, fy, fz, dx, dy, dz);
+        if (cvflag_atom) {
+          cvatom[i][0] += 0.5 * dx * fx;    // xx
+          cvatom[i][1] += 0.5 * dy * fy;    // yy
+          cvatom[i][2] += 0.5 * dz * fz;    // zz
+          cvatom[i][3] += 0.5 * dx * fy;    // xy
+          cvatom[i][4] += 0.5 * dx * fz;    // xz
+          cvatom[i][5] += 0.5 * dy * fz;    // yz
+          cvatom[i][6] += 0.5 * dy * fx;    // yx
+          cvatom[i][7] += 0.5 * dz * fx;    // zx
+          cvatom[i][8] += 0.5 * dz * fy;    // zy
+
+          cvatom[j][0] += 0.5 * dx * fx;
+          cvatom[j][1] += 0.5 * dy * fy;
+          cvatom[j][2] += 0.5 * dz * fz;
+          cvatom[j][3] += 0.5 * dx * fy;
+          cvatom[j][4] += 0.5 * dx * fz;
+          cvatom[j][5] += 0.5 * dy * fz;
+          cvatom[j][6] += 0.5 * dy * fx;
+          cvatom[j][7] += 0.5 * dz * fx;
+          cvatom[j][8] += 0.5 * dz * fy;
+        }
       }
     }
   }

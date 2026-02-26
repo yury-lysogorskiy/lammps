@@ -612,6 +612,27 @@ void PairGRACE1LayerChunk::compute(int eflag, int vflag)
             if (vflag_either || vflag_global) {
               ev_tally_xyz(i, j, nlocal, force->newton_pair, 0.0, 0.0, fx, fy, fz, -dx, -dy, -dz);
             }
+            if (cvflag_atom) {
+              cvatom[i][0] += 0.5 * (-dx) * fx;    // xx
+              cvatom[i][1] += 0.5 * (-dy) * fy;    // yy
+              cvatom[i][2] += 0.5 * (-dz) * fz;    // zz
+              cvatom[i][3] += 0.5 * (-dx) * fy;    // xy
+              cvatom[i][4] += 0.5 * (-dx) * fz;    // xz
+              cvatom[i][5] += 0.5 * (-dy) * fz;    // yz
+              cvatom[i][6] += 0.5 * (-dy) * fx;    // yx
+              cvatom[i][7] += 0.5 * (-dz) * fx;    // zx
+              cvatom[i][8] += 0.5 * (-dz) * fy;    // zy
+
+              cvatom[j][0] += 0.5 * (-dx) * fx;
+              cvatom[j][1] += 0.5 * (-dy) * fy;
+              cvatom[j][2] += 0.5 * (-dz) * fz;
+              cvatom[j][3] += 0.5 * (-dx) * fy;
+              cvatom[j][4] += 0.5 * (-dx) * fz;
+              cvatom[j][5] += 0.5 * (-dy) * fz;
+              cvatom[j][6] += 0.5 * (-dy) * fx;
+              cvatom[j][7] += 0.5 * (-dz) * fx;
+              cvatom[j][8] += 0.5 * (-dz) * fy;
+            }
 
             bond_idx++;
           }

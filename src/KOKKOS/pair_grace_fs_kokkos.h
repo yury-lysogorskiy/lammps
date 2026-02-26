@@ -115,8 +115,10 @@ class PairGRACEFSKokkos : public PairGRACEFS {
 
   DAT::ttransform_kkacc_1d k_eatom;
   DAT::ttransform_kkacc_1d_6 k_vatom;
+  DAT::ttransform_kkacc_1d_9 k_cvatom;
   typename AT::t_kkacc_1d d_eatom;
   typename AT::t_kkacc_1d_6 d_vatom;
+  typename AT::t_kkacc_1d_9 d_cvatom;
 
   typename AT::t_kkfloat_1d_3_lr_randomread x;
   typename AT::t_kkacc_1d_3 f;
@@ -141,9 +143,11 @@ class PairGRACEFSKokkos : public PairGRACEFS {
 
   DupScatterView<KK_ACC_FLOAT*[3], typename DAT::t_kkacc_1d_3::array_layout> dup_f;
   DupScatterView<KK_ACC_FLOAT*[6], typename DAT::t_kkacc_1d_6::array_layout> dup_vatom;
+  DupScatterView<KK_ACC_FLOAT*[9], typename DAT::t_kkacc_1d_9::array_layout> dup_cvatom;
 
   NonDupScatterView<KK_ACC_FLOAT*[3], typename DAT::t_kkacc_1d_3::array_layout> ndup_f;
   NonDupScatterView<KK_ACC_FLOAT*[6], typename DAT::t_kkacc_1d_6::array_layout> ndup_vatom;
+  NonDupScatterView<KK_ACC_FLOAT*[9], typename DAT::t_kkacc_1d_9::array_layout> ndup_cvatom;
 
   friend void pair_virial_fdotr_compute<PairGRACEFSKokkos>(PairGRACEFSKokkos*);
 

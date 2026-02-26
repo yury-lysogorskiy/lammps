@@ -95,6 +95,7 @@ PairGRACEFSKokkos<DeviceType>::~PairGRACEFSKokkos()
   if (copymode) return;
   memoryKK->destroy_kokkos(k_eatom,eatom);
   memoryKK->destroy_kokkos(k_vatom,vatom);
+  memoryKK->destroy_kokkos(k_cvatom,cvatom);
   deallocate_views_of_views();
 }
 
@@ -549,6 +550,11 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
     memoryKK->create_kokkos(k_vatom,vatom,maxvatom,"pair:vatom");
     d_vatom = k_vatom.view<DeviceType>();
   }
+  if (cvflag_atom) {
+    memoryKK->destroy_kokkos(k_cvatom,cvatom);
+    memoryKK->create_kokkos(k_cvatom,cvatom,maxvatom,"pair:cvatom");
+    d_cvatom = k_cvatom.view<DeviceType>();
+  }
 
   if (flag_compute_extrapolation_grade && atom->nlocal > nmax) {
     memory->destroy(extrapolation_grade_gamma);
@@ -588,9 +594,11 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
   if (need_dup) {
     dup_f = Kokkos::Experimental::create_scatter_view<Kokkos::Experimental::ScatterSum, Kokkos::Experimental::ScatterDuplicated>(f);
     dup_vatom = Kokkos::Experimental::create_scatter_view<Kokkos::Experimental::ScatterSum, Kokkos::Experimental::ScatterDuplicated>(d_vatom);
+    dup_cvatom = Kokkos::Experimental::create_scatter_view<Kokkos::Experimental::ScatterSum, Kokkos::Experimental::ScatterDuplicated>(d_cvatom);
   } else {
     ndup_f = Kokkos::Experimental::create_scatter_view<Kokkos::Experimental::ScatterSum, Kokkos::Experimental::ScatterNonDuplicated>(f);
     ndup_vatom = Kokkos::Experimental::create_scatter_view<Kokkos::Experimental::ScatterSum, Kokkos::Experimental::ScatterNonDuplicated>(d_vatom);
+    ndup_cvatom = Kokkos::Experimental::create_scatter_view<Kokkos::Experimental::ScatterSum, Kokkos::Experimental::ScatterNonDuplicated>(d_cvatom);
   }
 
   maxneigh = 0;
@@ -761,12 +769,20 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
     k_vatom.sync_host();
   }
 
+  if (cvflag_atom) {
+    if (need_dup)
+      Kokkos::Experimental::contribute(d_cvatom, dup_cvatom);
+    k_cvatom.template modify<DeviceType>();
+    k_cvatom.sync_host();
+  }
+
   atomKK->modified(execution_space,F_MASK);
   copymode = 0;
 
   if (need_dup) {
     dup_f = {};
     dup_vatom = {};
+    dup_cvatom = {};
   }
 }
 
@@ -1512,6 +1528,29 @@ void PairGRACEFSKokkos<DeviceType>::operator() (TagPairGRACEFSComputeForce<NEIGH
         ev.v[3] += 0.5 * v3;
         ev.v[4] += 0.5 * v4;
         ev.v[5] += 0.5 * v5;
+      }
+
+      if (cvflag_atom) {
+        Kokkos::atomic_add(&d_cvatom(i, 0), KK_FLOAT(0.5) * v0);    // xx
+        Kokkos::atomic_add(&d_cvatom(i, 1), KK_FLOAT(0.5) * v1);    // yy
+        Kokkos::atomic_add(&d_cvatom(i, 2), KK_FLOAT(0.5) * v2);    // zz
+        Kokkos::atomic_add(&d_cvatom(i, 3), KK_FLOAT(0.5) * v3);    // xy
+        Kokkos::atomic_add(&d_cvatom(i, 4), KK_FLOAT(0.5) * v4);    // xz
+        Kokkos::atomic_add(&d_cvatom(i, 5), KK_FLOAT(0.5) * v5);    // yz
+        Kokkos::atomic_add(&d_cvatom(i, 6), KK_FLOAT(0.5) * v3);    // yx
+        Kokkos::atomic_add(&d_cvatom(i, 7), KK_FLOAT(0.5) * v4);    // zx
+        Kokkos::atomic_add(&d_cvatom(i, 8), KK_FLOAT(0.5) * v5);    // zy
+        if (NEIGHFLAG == HALF || NEIGHFLAG == HALFTHREAD) {
+          Kokkos::atomic_add(&d_cvatom(j, 0), KK_FLOAT(0.5) * v0);
+          Kokkos::atomic_add(&d_cvatom(j, 1), KK_FLOAT(0.5) * v1);
+          Kokkos::atomic_add(&d_cvatom(j, 2), KK_FLOAT(0.5) * v2);
+          Kokkos::atomic_add(&d_cvatom(j, 3), KK_FLOAT(0.5) * v3);
+          Kokkos::atomic_add(&d_cvatom(j, 4), KK_FLOAT(0.5) * v4);
+          Kokkos::atomic_add(&d_cvatom(j, 5), KK_FLOAT(0.5) * v5);
+          Kokkos::atomic_add(&d_cvatom(j, 6), KK_FLOAT(0.5) * v3);
+          Kokkos::atomic_add(&d_cvatom(j, 7), KK_FLOAT(0.5) * v4);
+          Kokkos::atomic_add(&d_cvatom(j, 8), KK_FLOAT(0.5) * v5);
+        }
       }
     }
   }
