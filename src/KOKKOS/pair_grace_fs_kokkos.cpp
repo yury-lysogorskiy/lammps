@@ -552,7 +552,7 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
   }
   if (cvflag_atom) {
     memoryKK->destroy_kokkos(k_cvatom,cvatom);
-    memoryKK->create_kokkos(k_cvatom,cvatom,maxvatom,"pair:cvatom");
+    memoryKK->create_kokkos(k_cvatom,cvatom,maxcvatom,"pair:cvatom");
     d_cvatom = k_cvatom.view<DeviceType>();
   }
 
