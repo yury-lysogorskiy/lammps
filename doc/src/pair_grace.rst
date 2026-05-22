@@ -5,6 +5,10 @@
 .. index:: pair_style grace/extrapolation
 .. index:: pair_style grace/fs
 .. index:: pair_style grace/fs/kk
+.. index:: pair_style grace/1l/kk
+.. index:: pair_style grace/1l/cpu/kk
+.. index:: pair_style grace/2l/kk
+.. index:: pair_style grace/2l/cpu/kk
 
 pair_style grace command
 ========================
@@ -23,6 +27,10 @@ Syntax
    pair_style grace/extrapolation keyword value ...
    pair_style grace/fs keyword value ...
    pair_style grace/fs/kk keyword value ...
+   pair_style grace/1l/kk keyword value ...
+   pair_style grace/1l/cpu/kk keyword value ...
+   pair_style grace/2l/kk keyword value ...
+   pair_style grace/2l/cpu/kk keyword value ...
 
 Zero or more keyword/value pairs may be appended to the ``pair_style``
 command.  The accepted keywords depend on the selected style.
@@ -59,6 +67,9 @@ command.  The accepted keywords depend on the selected style.
    * - ``grace/fs`` and ``grace/fs/kk``
      - ``extrapolation``, ``chunksize``, ``debug_no_energy_only_calc``
      - Native GRACE/FS evaluator
+   * - ``grace/{1,2}l/kk`` and ``grace/{1,2}l/cpu/kk``
+     - ``chunksize``, ``debug_no_energy_only_calc``
+     - Native Kokkos GRACE 1L/2L evaluator (gracemaker ``.npz`` export)
 
 The common TensorFlow keywords are:
 
@@ -69,7 +80,14 @@ The common TensorFlow keywords are:
   during padding reduction.
 * ``reduce_padding`` value = fraction by which to reduce the padding buffer.
 * ``debug_no_energy_only_calc`` = disable the optimized energy-only code path.
-  This keyword is intended for testing and debugging.
+  The optimized path is activated automatically by Monte Carlo fixes
+  (:doc:`fix sgcmc <fix_sgcmc>`, :doc:`fix atom/swap <fix_atom_swap>`,
+  :doc:`fix neighbor/swap <fix_neighbor_swap>`, :doc:`fix gcmc <fix_gcmc>`,
+  :doc:`fix widom <fix_widom>`) via the pair-style ``compute_energy_only``
+  flag they toggle through ``Pair::extract``; energies are computed without
+  forces or virials during their trial-state evaluations.  Setting
+  ``debug_no_energy_only_calc`` forces the full force/virial kernel even
+  under those fixes; it is intended for testing and debugging.
 
 The ``grace`` style additionally accepts:
 
@@ -202,6 +220,20 @@ Kokkos-accelerated GRACE/FS model:
    pair_style grace/fs/kk
    pair_coeff * * FS_model.yaml Mo Nb Ta W
 
+Native Kokkos GRACE 2L model on GPU (FP64, full accuracy):
+
+.. code-block:: LAMMPS
+
+   pair_style grace/2l/kk
+   pair_coeff * * grace_2l_weights.npz Mo Nb Ta W
+
+Native Kokkos GRACE 1L model on CPU with custom chunk size:
+
+.. code-block:: LAMMPS
+
+   pair_style grace/1l/cpu/kk chunksize 2048
+   pair_coeff * * grace_1l_weights.npz Cu
+
 Description
 """""""""""
 
@@ -218,6 +250,8 @@ This page documents the following related pair styles:
 * ``grace/extrapolation``
 * ``grace/fs``
 * ``grace/fs/kk``
+* ``grace/1l/kk`` and ``grace/1l/cpu/kk``
+* ``grace/2l/kk`` and ``grace/2l/cpu/kk``
 
 Choosing a GRACE pair style
 """"""""""""""""""""""""
@@ -265,6 +299,26 @@ Choosing a GRACE pair style
      - GRACE/FS YAML model
      - Kokkos-accelerated native evaluator
      - Yes
+     - Not required
+   * - ``grace/1l/kk``
+     - Native GRACE 1L ``.npz`` (gracemaker export)
+     - Kokkos GPU evaluator for single-layer models
+     - Yes (with chunking)
+     - Not required
+   * - ``grace/1l/cpu/kk``
+     - Native GRACE 1L ``.npz`` (gracemaker export)
+     - Kokkos CPU evaluator for single-layer models
+     - Yes (with chunking)
+     - Not required
+   * - ``grace/2l/kk``
+     - Native GRACE 2L ``.npz`` (gracemaker export)
+     - Kokkos GPU evaluator for two-layer models
+     - Yes (with chunking)
+     - Not required
+   * - ``grace/2l/cpu/kk``
+     - Native GRACE 2L ``.npz`` (gracemaker export)
+     - Kokkos CPU evaluator for two-layer models
+     - Yes (with chunking)
      - Not required
 
 TensorFlow GRACE models
@@ -329,6 +383,43 @@ When the ``extrapolation`` keyword is used, ``grace/fs`` and ``grace/fs/kk``
 compute the MaxVol extrapolation grade :math:`\gamma` using the Active Set
 Inverted (ASI) file supplied in the ``pair_coeff`` command.  This requires a
 matrix-vector multiplication per atom and is slower than plain evaluation.
+
+Native Kokkos GRACE 1L/2L models
+""""""""""""""""""""""""""""""""
+
+The ``grace/1l/kk`` and ``grace/2l/kk`` styles (and their ``/cpu/kk``
+companions) are native Kokkos implementations of single-layer and two-layer
+GRACE models.  Unlike the TensorFlow-based ``grace`` family, these styles
+read weights from a LAMMPS-specific ``.npz`` archive produced by the
+gracemaker export utilities; arbitrary TensorFlow saved models are not
+accepted.  See `gracemaker.readthedocs.io <https://gracemaker.readthedocs.io>`_
+for the export commands.
+
+The base styles (``grace/1l/kk``, ``grace/2l/kk``) are optimized for GPU
+execution; the ``/cpu/kk`` variants (``grace/1l/cpu/kk``,
+``grace/2l/cpu/kk``) are optimized for multicore CPU execution.  All four
+share the same ``.npz`` model format.  Newton's third law must be enabled
+with ``newton on``.
+
+All ``grace/{1,2}l{,/cpu}/kk`` styles support both atom chunking via the
+``chunksize`` keyword (default 4096) and MPI spatial decomposition.
+Chunking caps the per-rank atom batch processed in a single kernel call to
+bound peak memory and limit register pressure on GPUs; it is independent of
+MPI decomposition and works with any rank count.
+
+For each base style, ``/device`` and ``/host`` suffixes pin execution to the
+GPU or CPU regardless of the build's default Kokkos device, and ``/mixed``
+and ``/fp32`` select the floating-point precision used inside the kernels:
+
+* (default) -- 64-bit forward + backward (full accuracy).
+* ``/mixed`` -- 32-bit forward, 64-bit backward (intermediate cost and
+  accuracy).
+* ``/fp32`` -- 32-bit forward + backward (lowest memory and fastest,
+  reduced accuracy; suitable for screening or preview runs).
+
+For example, ``grace/2l/kk/fp32/device`` runs the two-layer GPU evaluator in
+fp32, while ``grace/2l/cpu/kk/mixed/host`` runs the CPU evaluator in mixed
+precision.
 
 .. _pair_grace_uq:
 
