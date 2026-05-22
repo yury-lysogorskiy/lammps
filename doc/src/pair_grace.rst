@@ -7,36 +7,12 @@
 .. index:: pair_style grace/fs/kk
 .. index:: pair_style grace/1l
 .. index:: pair_style grace/1l/kk
-.. index:: pair_style grace/1l/kk/mixed
-.. index:: pair_style grace/1l/kk/mixed/device
-.. index:: pair_style grace/1l/kk/mixed/host
-.. index:: pair_style grace/1l/kk/fp32
-.. index:: pair_style grace/1l/kk/fp32/device
-.. index:: pair_style grace/1l/kk/fp32/host
 .. index:: pair_style grace/1l/cpu
 .. index:: pair_style grace/1l/cpu/kk
-.. index:: pair_style grace/1l/cpu/kk/mixed
-.. index:: pair_style grace/1l/cpu/kk/mixed/device
-.. index:: pair_style grace/1l/cpu/kk/mixed/host
-.. index:: pair_style grace/1l/cpu/kk/fp32
-.. index:: pair_style grace/1l/cpu/kk/fp32/device
-.. index:: pair_style grace/1l/cpu/kk/fp32/host
 .. index:: pair_style grace/2l
 .. index:: pair_style grace/2l/kk
-.. index:: pair_style grace/2l/kk/mixed
-.. index:: pair_style grace/2l/kk/mixed/device
-.. index:: pair_style grace/2l/kk/mixed/host
-.. index:: pair_style grace/2l/kk/fp32
-.. index:: pair_style grace/2l/kk/fp32/device
-.. index:: pair_style grace/2l/kk/fp32/host
 .. index:: pair_style grace/2l/cpu
 .. index:: pair_style grace/2l/cpu/kk
-.. index:: pair_style grace/2l/cpu/kk/mixed
-.. index:: pair_style grace/2l/cpu/kk/mixed/device
-.. index:: pair_style grace/2l/cpu/kk/mixed/host
-.. index:: pair_style grace/2l/cpu/kk/fp32
-.. index:: pair_style grace/2l/cpu/kk/fp32/device
-.. index:: pair_style grace/2l/cpu/kk/fp32/host
 
 pair_style grace command
 ========================
@@ -150,7 +126,7 @@ The ``grace/fs`` and ``grace/fs/kk`` styles additionally accept:
   The default is 4096.
 
 Pair coefficients
-"""""""""""""""
+"""""""""""""""""
 
 Each style documented on this page uses a single ``pair_coeff`` command with
 ``* *`` followed by a model file or directory and one element name per LAMMPS
@@ -284,71 +260,83 @@ This page documents the following related pair styles:
 * ``grace/2l/kk`` and ``grace/2l/cpu/kk``
 
 Choosing a GRACE pair style
-""""""""""""""""""""""""
+"""""""""""""""""""""""""""
 
 .. list-table:: GRACE pair style variants
    :header-rows: 1
-   :widths: 24 24 28 12 12
+   :widths: 20 22 26 12 10 10
 
    * - Style
      - Model format
      - Main use case
      - MPI
+     - Chunking
      - TensorFlow
    * - ``grace``
      - TensorFlow saved model
-     - Single-layer model with simple setup
-     - Yes
+     - General model with simple setup
+     - Yes for 1L, no for 2L
+     - No
      - Required
    * - ``grace/1layer/chunk``
      - TensorFlow saved model
      - Single-layer model with lower peak memory use
+     - Yes
      - Yes
      - Required
    * - ``grace/2layer/chunk``
      - TensorFlow saved model
      - Two-layer model with chunked evaluation
      - Yes
+     - Yes
      - Required
    * - ``grace/2layer/parallel``
      - TensorFlow saved model
      - Two-layer model without chunking
      - Yes
+     - No
      - Required
    * - ``grace/extrapolation``
      - UQ-enabled TensorFlow saved model
      - Extrapolation grade and biased dynamics
-     - Yes for UQ; biased dynamics only on one rank
+     - Yes for 1L+UQ; biased dynamics only on one rank
+     - No
      - Required
    * - ``grace/fs``
      - GRACE/FS YAML model
      - Native CPU evaluator
+     - Yes
      - Yes
      - Not required
    * - ``grace/fs/kk``
      - GRACE/FS YAML model
      - Kokkos-accelerated native evaluator
      - Yes
+     - Yes
      - Not required
    * - ``grace/1l/kk``
      - Native GRACE 1L ``.npz`` (gracemaker export)
      - Kokkos GPU evaluator for single-layer models
-     - Yes (with chunking)
+     - Yes
+     - Yes
      - Not required
    * - ``grace/1l/cpu/kk``
      - Native GRACE 1L ``.npz`` (gracemaker export)
      - Kokkos CPU evaluator for single-layer models
-     - Yes (with chunking)
+     - Yes
+     - Yes
      - Not required
    * - ``grace/2l/kk``
      - Native GRACE 2L ``.npz`` (gracemaker export)
      - Kokkos GPU evaluator for two-layer models
-     - Yes (with chunking)
+     - Yes
+     - Yes
      - Not required
    * - ``grace/2l/cpu/kk``
      - Native GRACE 2L ``.npz`` (gracemaker export)
      - Kokkos CPU evaluator for two-layer models
-     - Yes (with chunking)
+     - Yes
+     - Yes
      - Not required
 
 TensorFlow GRACE models
@@ -369,7 +357,7 @@ chunked evaluation, use ``grace/1layer/chunk`` or ``grace/2layer/chunk``.
 Both styles accept the ``chunksize`` keyword.
 
 Chunking and MPI parallelization
-"""""""""""""""""""""""""""""
+""""""""""""""""""""""""""""""""
 
 The ``grace/1layer/chunk`` style is a chunked variant of ``grace`` for
 single-layer TensorFlow models.  Instead of processing all atoms at once, atoms
@@ -453,7 +441,7 @@ precision.
 .. _pair_grace_uq:
 
 Uncertainty quantification
-""""""""""""""""""""""""
+""""""""""""""""""""""""""
 
 .. versionadded:: 07May2026
 
@@ -590,7 +578,7 @@ cluster:
 .. _pair_grace_bias_dynamics:
 
 Bias-driven dynamics (experimental)
-""""""""""""""""""""
+"""""""""""""""""""""""""""""""""""
 
 .. warning::
 
@@ -656,7 +644,7 @@ All other ``pair_modify`` keywords, such as ``compute`` and ``special``, are
 forwarded to the standard pair-style parser unchanged.
 
 GRACE/FS extrapolation example
-"""""""""""""""""""""""""""""
+""""""""""""""""""""""""""""""
 
 The following input fragment computes the GRACE/FS MaxVol extrapolation grade
 every 100 steps, stores it in a per-atom ``fix pair`` output, dumps only
@@ -691,7 +679,7 @@ potential energy from the pair style.  This is commonly used by Monte Carlo
 algorithms implemented in the MC package.
 
 Mixing, shift, table, tail correction, restart, rRESPA info
-"""""""""""""""""""""""""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 Mixing is not used by these pair styles.  The element mapping and all model
 parameters are specified by the model file or directory and the ``pair_coeff``

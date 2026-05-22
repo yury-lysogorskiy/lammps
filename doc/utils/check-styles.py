@@ -302,7 +302,13 @@ print("Total number of style index entries:", total_index)
 
 skip_angle = ('sdk')
 skip_fix = ('python', 'NEIGH_HISTORY/omp', 'acks2/reax', 'qeq/reax', 'reax/c/bonds', 'reax/c/species', 'pimd', 'colvars/kk', 'wall/harmonic/returned', 'addtorque')
-skip_pair = ('meam/c','lj/sf','reax/c','lj/sdk','lj/sdk/coul/long','lj/sdk/coul/msm')
+skip_pair = ('meam/c','lj/sf','reax/c','lj/sdk','lj/sdk/coul/long','lj/sdk/coul/msm') + tuple(
+    f"grace/{layer}{cpu}/kk/{prec}{tail}"
+    for layer in ("1l", "2l")
+    for cpu in ("", "/cpu")
+    for prec in ("mixed", "fp32")
+    for tail in ("", "/device", "/host")
+)
 skip_compute = ('pressure/cylinder')
 
 counter = 0
@@ -338,7 +344,7 @@ counter += check_style_index("dihedral_style", dihedral, index["dihedral_style"]
 counter += check_style_index("improper_style", improper, index["improper_style"])
 counter += check_style_index("kspace_style", kspace, index["kspace_style"])
 counter += check_style_index("dump", dump, index["dump"])
-counter += check_style_index("pair_style", pair, index["pair_style"], skip=['meam/c','lj/sf','reax/c','lj/sdk','lj/sdk/coul/long','lj/sdk/coul/msm'])
+counter += check_style_index("pair_style", pair, index["pair_style"], skip=skip_pair)
 
 if counter:
     print(f"Found {counter} issue(s) with style index")
