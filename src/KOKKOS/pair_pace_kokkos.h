@@ -106,7 +106,7 @@ class PairPACEKokkos : public PairPACE {
   int host_flag;
 
   int eflag, vflag;
-  bool do_energy_only_calc;
+  bool do_energy_only_calc = false;
 
   int neighflag, max_ndensity;
   int nelements, lmax, nradmax, nradbase;

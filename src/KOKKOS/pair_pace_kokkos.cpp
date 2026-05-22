@@ -679,6 +679,9 @@ void PairPACEKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
       Kokkos::parallel_for("ComputeFS",policy_fs,*this);
     }
 
+    // NOTE: assigns the class member (declared in pair_pace_kokkos.h) — no `bool`
+    // keyword on the LHS is intentional. The device functor at line ~1596 reads
+    // this member via the captured *this, so it must not be shadowed by a local.
     do_energy_only_calc = eflag_only && !debug_no_energy_only_calc;
 
     //ComputeWeights
@@ -741,7 +744,7 @@ void PairPACEKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
     virial[5] += ev.v[5];
   }
 
-  if (vflag_fdotr) pair_virial_fdotr_compute(this);
+  if (vflag_fdotr && !do_energy_only_calc) pair_virial_fdotr_compute(this);
 
   if (eflag_atom) {
     k_eatom.template modify<DeviceType>();

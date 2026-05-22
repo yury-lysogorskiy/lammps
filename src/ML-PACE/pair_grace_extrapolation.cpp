@@ -71,9 +71,6 @@ void PairGRACEExtrapolation::settings(int narg, char **arg)
       error->all(FLERR,
                  "[GRACE/extrapolation] 'no_pair_forces' is incompatible: kappa-rescaling of "
                  "sigma-forces requires per-bond gradients (pair_forces mode).");
-    } else if (strcmp(arg[iarg], "debug_no_energy_only_calc") == 0) {
-      // not meaningful here -- silently ignore so existing scripts keep working
-      iarg += 1;
     } else {
       forwarded.push_back(arg[iarg]);
       iarg += 1;
