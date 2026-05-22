@@ -93,7 +93,6 @@ PairGRACE2LayerChunk::PairGRACE2LayerChunk(LAMMPS *lmp) : Pair(lmp)
   no_virial_fdotr_compute = 1;
   chunksize = 4096;
   nelements = 0;
-  flag_compute_energy_only = 0;
 #ifndef MLPACE_DO_NOT_DISABLE_TFLOAT32
   //disable tensor float 32 execution
   tsl::enable_tensor_float_32_execution(false);
@@ -358,7 +357,7 @@ void PairGRACE2LayerChunk::compute(int eflag, int vflag)
   if (aceimpl->global_to_chunk_map.size() < (size_t) nall)
     aceimpl->global_to_chunk_map.assign(nall, -1);
 
-  bool do_energy_only = flag_compute_energy_only && !debug_no_energy_only_calc;
+  bool do_energy_only = eflag_only && !debug_no_energy_only_calc;
 
   data_timer.stop();
 
@@ -823,8 +822,6 @@ void PairGRACE2LayerChunk::unpack_reverse_comm(int n, int *list, double *buf)
 
 void *PairGRACE2LayerChunk::extract(const char *str, int &dim)
 {
-  dim = 0;
-  if (strcmp(str, "compute_energy_only") == 0) return (void *) &flag_compute_energy_only;
   dim = 2;
   if (strcmp(str, "scale") == 0) return (void *) scale;
   return nullptr;
@@ -909,7 +906,7 @@ void PairGRACE2LayerChunk::run_backward_layer_2_chunk(int eflag, int vflag)
   std::vector<std::string> ordered_keys;
   out_names.push_back(sig.outputs.at(ENERGY_KEY).name);
   ordered_keys.push_back(ENERGY_KEY);
-  bool do_energy_only = flag_compute_energy_only && !debug_no_energy_only_calc;
+  bool do_energy_only = eflag_only && !debug_no_energy_only_calc;
   if (!do_energy_only) {
     for (const auto &[key, shape] : feature_shapes) {
       out_names.push_back(sig.outputs.at("grad_" + key).name);

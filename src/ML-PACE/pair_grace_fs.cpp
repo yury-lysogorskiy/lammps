@@ -75,7 +75,6 @@ PairGRACEFS::PairGRACEFS(LAMMPS *lmp) : Pair(lmp)
 
   aceimpl = new ACEImpl;
   flag_compute_extrapolation_grade = 0;
-  flag_compute_energy_only = 0;
   debug_no_energy_only_calc = false;
   extrapolation_grade_gamma = nullptr;
   scale = nullptr;
@@ -168,7 +167,7 @@ void PairGRACEFS::compute(int eflag, int vflag)
   std::vector<int> my_neigh_jlist(max_jnum);
 
   aceimpl->ace->compute_projections = flag_compute_extrapolation_grade;
-  bool do_energy_only = flag_compute_energy_only && !debug_no_energy_only_calc;
+  bool do_energy_only = eflag_only && !debug_no_energy_only_calc;
   aceimpl->ace->compute_energy_only = do_energy_only;
 
   //loop over atoms
@@ -460,7 +459,6 @@ void *PairGRACEFS::extract(const char *str, int &dim)
   dim = 0;
   if (strcmp(str, "gamma_flag") == 0) return (void *) &flag_compute_extrapolation_grade;
 
-  if (strcmp(str, "compute_energy_only") == 0) return (void *) &flag_compute_energy_only;
   if (strcmp(str, "debug_no_energy_only_calc") == 0) return (void *) &debug_no_energy_only_calc;
 
   dim = 2;

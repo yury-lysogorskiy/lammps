@@ -5,10 +5,38 @@
 .. index:: pair_style grace/extrapolation
 .. index:: pair_style grace/fs
 .. index:: pair_style grace/fs/kk
+.. index:: pair_style grace/1l
 .. index:: pair_style grace/1l/kk
+.. index:: pair_style grace/1l/kk/mixed
+.. index:: pair_style grace/1l/kk/mixed/device
+.. index:: pair_style grace/1l/kk/mixed/host
+.. index:: pair_style grace/1l/kk/fp32
+.. index:: pair_style grace/1l/kk/fp32/device
+.. index:: pair_style grace/1l/kk/fp32/host
+.. index:: pair_style grace/1l/cpu
 .. index:: pair_style grace/1l/cpu/kk
+.. index:: pair_style grace/1l/cpu/kk/mixed
+.. index:: pair_style grace/1l/cpu/kk/mixed/device
+.. index:: pair_style grace/1l/cpu/kk/mixed/host
+.. index:: pair_style grace/1l/cpu/kk/fp32
+.. index:: pair_style grace/1l/cpu/kk/fp32/device
+.. index:: pair_style grace/1l/cpu/kk/fp32/host
+.. index:: pair_style grace/2l
 .. index:: pair_style grace/2l/kk
+.. index:: pair_style grace/2l/kk/mixed
+.. index:: pair_style grace/2l/kk/mixed/device
+.. index:: pair_style grace/2l/kk/mixed/host
+.. index:: pair_style grace/2l/kk/fp32
+.. index:: pair_style grace/2l/kk/fp32/device
+.. index:: pair_style grace/2l/kk/fp32/host
+.. index:: pair_style grace/2l/cpu
 .. index:: pair_style grace/2l/cpu/kk
+.. index:: pair_style grace/2l/cpu/kk/mixed
+.. index:: pair_style grace/2l/cpu/kk/mixed/device
+.. index:: pair_style grace/2l/cpu/kk/mixed/host
+.. index:: pair_style grace/2l/cpu/kk/fp32
+.. index:: pair_style grace/2l/cpu/kk/fp32/device
+.. index:: pair_style grace/2l/cpu/kk/fp32/host
 
 pair_style grace command
 ========================
@@ -80,14 +108,16 @@ The common TensorFlow keywords are:
   during padding reduction.
 * ``reduce_padding`` value = fraction by which to reduce the padding buffer.
 * ``debug_no_energy_only_calc`` = disable the optimized energy-only code path.
-  The optimized path is activated automatically by Monte Carlo fixes
-  (:doc:`fix sgcmc <fix_sgcmc>`, :doc:`fix atom/swap <fix_atom_swap>`,
+  The optimized path is activated automatically whenever the caller of
+  ``Pair::compute`` passes ``ENERGY_ONLY`` in ``eflag`` (the standard LAMMPS
+  signal for "compute energy only, no forces or virials").  Callers that do
+  this include the Monte Carlo fixes (:doc:`fix sgcmc <fix_sgcmc>`,
+  :doc:`fix atom/swap <fix_atom_swap>`,
   :doc:`fix neighbor/swap <fix_neighbor_swap>`, :doc:`fix gcmc <fix_gcmc>`,
-  :doc:`fix widom <fix_widom>`) via the pair-style ``compute_energy_only``
-  flag they toggle through ``Pair::extract``; energies are computed without
-  forces or virials during their trial-state evaluations.  Setting
-  ``debug_no_energy_only_calc`` forces the full force/virial kernel even
-  under those fixes; it is intended for testing and debugging.
+  :doc:`fix widom <fix_widom>`), :doc:`compute fep <compute_fep>`,
+  :doc:`fix numdiff <fix_numdiff>`, and the DIELECTRIC polarize fixes.
+  Setting ``debug_no_energy_only_calc`` forces the full force/virial kernel
+  even when ``ENERGY_ONLY`` is set; it is intended for testing and debugging.
 
 The ``grace`` style additionally accepts:
 
@@ -220,11 +250,11 @@ Kokkos-accelerated GRACE/FS model:
    pair_style grace/fs/kk
    pair_coeff * * FS_model.yaml Mo Nb Ta W
 
-Native Kokkos GRACE 2L model on GPU (FP64, full accuracy):
+Native Kokkos GRACE 2L model on GPU (FP32, lower memory and faster):
 
 .. code-block:: LAMMPS
 
-   pair_style grace/2l/kk
+   pair_style grace/2l/kk/fp32
    pair_coeff * * grace_2l_weights.npz Mo Nb Ta W
 
 Native Kokkos GRACE 1L model on CPU with custom chunk size:
@@ -412,8 +442,7 @@ GPU or CPU regardless of the build's default Kokkos device, and ``/mixed``
 and ``/fp32`` select the floating-point precision used inside the kernels:
 
 * (default) -- 64-bit forward + backward (full accuracy).
-* ``/mixed`` -- 32-bit forward, 64-bit backward (intermediate cost and
-  accuracy).
+* ``/mixed`` -- 64-bit forward geometrical features, 32-bit trainable features.
 * ``/fp32`` -- 32-bit forward + backward (lowest memory and fastest,
   reduced accuracy; suitable for screening or preview runs).
 
@@ -429,10 +458,8 @@ Uncertainty quantification
 .. versionadded:: 07May2026
 
 The ``grace/extrapolation`` style requires a UQ-enabled GRACE saved model that
-exports a ``compute_uq`` TensorFlow signature.  If the model additionally
-exports a ``compute_uq_gamma_only`` signature, the style uses it automatically
-on the gamma-only fast path (see *Signature dispatch* below).  The
-``pair_coeff`` syntax is the same as for ``grace``.
+exports a ``compute_uq`` and ``compute_uq_gamma_only`` TensorFlow signature.
+The ``pair_coeff`` syntax is the same as for ``grace``.
 
 The style can expose seven per-atom fields through :doc:`fix pair <fix_pair>`:
 
@@ -442,9 +469,7 @@ The style can expose seven per-atom fields through :doc:`fix pair <fix_pair>`:
   (integer, returned as a per-atom double because *fix pair* accepts only
   doubles).
 * ``atomic_sigma`` = scalar raw per-atom uncertainty :math:`\sigma_i` as
-  produced by the UQ head of the saved model (eV).  This is the underlying
-  ensemble/dropout disagreement signal that ``uncertainty_force``,
-  ``eps_hat``, and the kappa rescale are derived from; exposing it directly
+  produced by the UQ head of the saved model.  Exposing it directly
   is useful for calibration plots, threshold tuning, and diagnostics.
 * ``uncertainty_force`` = three-vector uncertainty force
   :math:`\mathbf{F}^{\sigma}_i = \partial \sigma_{tot} / \partial \mathbf{r}_i`.
@@ -479,8 +504,7 @@ increasing cost:
 * ``compute_uq_gamma_only`` -- when only ``gamma``, ``gmm_cluster``,
   ``atomic_sigma``, ``eps_hat``, ``eps_hat_norm``, and/or ``gamma_combined``
   are requested and ``kappa = 0``.  Skips the :math:`\sigma`-gradient
-  backward pass.  Used automatically when the saved model exports this
-  signature; otherwise falls back to ``compute_uq``.
+  backward pass.
 * ``compute_uq`` -- when ``uncertainty_force`` is requested or ``kappa`` is
   nonzero.  Includes the :math:`\sigma`-gradient backward pass.
 
@@ -565,8 +589,12 @@ cluster:
 
 .. _pair_grace_bias_dynamics:
 
-Bias-driven dynamics
+Bias-driven dynamics (experimental)
 """"""""""""""""""""
+
+.. warning::
+
+   Bias-driven dynamics is experimental features and may be changed in the future.
 
 .. warning::
 
@@ -660,13 +688,7 @@ For TensorFlow-based GRACE models, this also avoids the backward gradient pass.
 
 The energy-only mode is selected automatically when LAMMPS requests only the
 potential energy from the pair style.  This is commonly used by Monte Carlo
-algorithms implemented in the MC package, including:
-
-* :doc:`fix atom/swap <fix_atom_swap>`
-* :doc:`fix neighbor/swap <fix_neighbor_swap>`
-* :doc:`fix widom <fix_widom>`
-* :doc:`fix gcmc <fix_gcmc>`
-* :doc:`fix sgcmc <fix_sgcmc>`
+algorithms implemented in the MC package.
 
 Mixing, shift, table, tail correction, restart, rRESPA info
 """""""""""""""""""""""""""""""""""""""""""""""""
@@ -699,6 +721,12 @@ These pair styles do not write their information to :doc:`binary restart files
 ``pair_style`` and ``pair_coeff`` commands must therefore be specified again in
 an input script that reads a restart file.
 
+----------
+
+.. include:: accel_styles.rst
+
+----------
+
 Restrictions
 """"""""""""
 
@@ -709,12 +737,12 @@ Restrictions
   ``libtensorflow``: ``grace``, ``grace/1layer/chunk``,
   ``grace/2layer/chunk``, ``grace/2layer/parallel``, and
   ``grace/extrapolation``.
-* ``grace/extrapolation`` requires a UQ-enabled saved model that exports a
-  ``compute_uq`` signature.
+* ``grace/extrapolation`` requires a UQ-enabled saved model that exports
+  corresponding  functions.
 * Biased dynamics with ``kappa != 0`` in ``grace/extrapolation`` is supported
   only on a single MPI rank.
 * ``grace/fs`` does not require TensorFlow.
-* ``grace/fs/kk`` requires ``newton on`` and supports only one CPU thread per
+* ``grace/*/kk`` requires ``newton on`` and supports only one CPU thread per
   MPI rank.
 
 Further reading

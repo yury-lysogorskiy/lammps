@@ -108,6 +108,40 @@ OPT.
    * :doc:`gauss (go) <pair_gauss>`
    * :doc:`gauss/cut (o) <pair_gauss>`
    * :doc:`gayberne (gio) <pair_gayberne>`
+   * :doc:`grace <pair_grace>`
+   * :doc:`grace/1l (k) <pair_grace>`
+   * :doc:`grace/1l/cpu (k) <pair_grace>`
+   * :doc:`grace/1l/cpu/kk/fp32 <pair_grace>`
+   * :doc:`grace/1l/cpu/kk/fp32/device <pair_grace>`
+   * :doc:`grace/1l/cpu/kk/fp32/host <pair_grace>`
+   * :doc:`grace/1l/cpu/kk/mixed <pair_grace>`
+   * :doc:`grace/1l/cpu/kk/mixed/device <pair_grace>`
+   * :doc:`grace/1l/cpu/kk/mixed/host <pair_grace>`
+   * :doc:`grace/1l/kk/fp32 <pair_grace>`
+   * :doc:`grace/1l/kk/fp32/device <pair_grace>`
+   * :doc:`grace/1l/kk/fp32/host <pair_grace>`
+   * :doc:`grace/1l/kk/mixed <pair_grace>`
+   * :doc:`grace/1l/kk/mixed/device <pair_grace>`
+   * :doc:`grace/1l/kk/mixed/host <pair_grace>`
+   * :doc:`grace/1layer/chunk <pair_grace>`
+   * :doc:`grace/2l (k) <pair_grace>`
+   * :doc:`grace/2l/cpu (k) <pair_grace>`
+   * :doc:`grace/2l/cpu/kk/fp32 <pair_grace>`
+   * :doc:`grace/2l/cpu/kk/fp32/device <pair_grace>`
+   * :doc:`grace/2l/cpu/kk/fp32/host <pair_grace>`
+   * :doc:`grace/2l/cpu/kk/mixed <pair_grace>`
+   * :doc:`grace/2l/cpu/kk/mixed/device <pair_grace>`
+   * :doc:`grace/2l/cpu/kk/mixed/host <pair_grace>`
+   * :doc:`grace/2l/kk/fp32 <pair_grace>`
+   * :doc:`grace/2l/kk/fp32/device <pair_grace>`
+   * :doc:`grace/2l/kk/fp32/host <pair_grace>`
+   * :doc:`grace/2l/kk/mixed <pair_grace>`
+   * :doc:`grace/2l/kk/mixed/device <pair_grace>`
+   * :doc:`grace/2l/kk/mixed/host <pair_grace>`
+   * :doc:`grace/2layer/chunk <pair_grace>`
+   * :doc:`grace/2layer/parallel <pair_grace>`
+   * :doc:`grace/extrapolation <pair_grace>`
+   * :doc:`grace/fs (k) <pair_grace>`
    * :doc:`gran/hertz/history (o) <pair_gran>`
    * :doc:`gran/hooke (o) <pair_gran>`
    * :doc:`gran/hooke/history (ko) <pair_gran>`

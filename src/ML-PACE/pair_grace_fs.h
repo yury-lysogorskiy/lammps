@@ -67,7 +67,6 @@ class PairGRACEFS : public Pair {
 
   double *extrapolation_grade_gamma = nullptr;    //per-atom gamma value
   int flag_compute_extrapolation_grade = 0;
-  int flag_compute_energy_only = 0;
   bool debug_no_energy_only_calc = false;
 
   double **scale;

@@ -79,7 +79,6 @@ class PairGRACE2LayerParallel : public Pair {
   std::map<std::string, int> elements_to_index_map;
   std::vector<int> element_type_mapping;
 
-  int flag_compute_energy_only = 0;
   bool debug_no_energy_only_calc = false;
 
   // Per-atom features (forward comm) and gradients (reverse comm)

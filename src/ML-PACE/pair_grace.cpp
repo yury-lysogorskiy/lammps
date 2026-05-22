@@ -102,7 +102,6 @@ PairGRACE::PairGRACE(LAMMPS *lmp) : Pair(lmp)
   data_timer.init();
 
   no_virial_fdotr_compute = 1;
-  flag_compute_energy_only = 0;
 #ifndef MLPACE_DO_NOT_DISABLE_TFLOAT32
   //disable tensor float 32 execution
   tsl::enable_tensor_float_32_execution(false);
@@ -506,7 +505,6 @@ double PairGRACE::init_one(int i, int j)
 void *PairGRACE::extract(const char *str, int &dim)
 {
   dim = 0;
-  if (strcmp(str, "compute_energy_only") == 0) return (void *) &flag_compute_energy_only;
   // UQ knobs (only meaningful when request_extrapolation is on, but harmless otherwise).
   if (strcmp(str, "gamma_flag") == 0) return (void *) &flag_compute_gamma;
   if (strcmp(str, "gmm_cluster_flag") == 0) return (void *) &flag_compute_gmm_cluster;
@@ -772,7 +770,7 @@ void PairGRACE::compute(int eflag, int vflag)
   // when the model exports it; fall back to compute_uq when it doesn't.
   const bool need_dsigma_dr = do_uq && (kappa != 0.0 || flag_compute_uncertainty_force);
   const bool use_uq_gamma_only = do_uq && !need_dsigma_dr && has_compute_uq_gamma_only;
-  bool do_energy_only = flag_compute_energy_only && !debug_no_energy_only_calc && !do_uq;
+  bool do_energy_only = eflag_only && !debug_no_energy_only_calc && !do_uq;
 
   if (do_uq) {
     // (re)allocate per-atom UQ arrays sized to atom->nmax (covers ghosts too)

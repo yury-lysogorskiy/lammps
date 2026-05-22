@@ -200,6 +200,40 @@ accelerated styles exist.
 * :doc:`gauss <pair_gauss>` - Gaussian potential
 * :doc:`gauss/cut <pair_gauss>` - generalized Gaussian potential
 * :doc:`gayberne <pair_gayberne>` - Gay-Berne ellipsoidal potential
+* :doc:`grace <pair_grace>` - Graph Atomic Cluster Expansion (GRACE) machine-learning potential
+* :doc:`grace/1l <pair_grace>` - GRACE single-layer evaluator
+* :doc:`grace/1l/cpu <pair_grace>` - GRACE single-layer evaluator (CPU build)
+* :doc:`grace/1l/cpu/kk/fp32 <pair_grace>` - GRACE single-layer evaluator (CPU build, FP32 precision)
+* :doc:`grace/1l/cpu/kk/fp32/device <pair_grace>` - GRACE single-layer evaluator (CPU build, FP32, device)
+* :doc:`grace/1l/cpu/kk/fp32/host <pair_grace>` - GRACE single-layer evaluator (CPU build, FP32, host)
+* :doc:`grace/1l/cpu/kk/mixed <pair_grace>` - GRACE single-layer evaluator (CPU build, mixed precision)
+* :doc:`grace/1l/cpu/kk/mixed/device <pair_grace>` - GRACE single-layer evaluator (CPU build, mixed, device)
+* :doc:`grace/1l/cpu/kk/mixed/host <pair_grace>` - GRACE single-layer evaluator (CPU build, mixed, host)
+* :doc:`grace/1l/kk/fp32 <pair_grace>` - GRACE single-layer evaluator (FP32 precision)
+* :doc:`grace/1l/kk/fp32/device <pair_grace>` - GRACE single-layer evaluator (FP32, device)
+* :doc:`grace/1l/kk/fp32/host <pair_grace>` - GRACE single-layer evaluator (FP32, host)
+* :doc:`grace/1l/kk/mixed <pair_grace>` - GRACE single-layer evaluator (mixed precision)
+* :doc:`grace/1l/kk/mixed/device <pair_grace>` - GRACE single-layer evaluator (mixed, device)
+* :doc:`grace/1l/kk/mixed/host <pair_grace>` - GRACE single-layer evaluator (mixed, host)
+* :doc:`grace/1layer/chunk <pair_grace>` - Chunked single-layer GRACE TensorFlow evaluator
+* :doc:`grace/2l <pair_grace>` - GRACE two-layer evaluator
+* :doc:`grace/2l/cpu <pair_grace>` - GRACE two-layer evaluator (CPU build)
+* :doc:`grace/2l/cpu/kk/fp32 <pair_grace>` - GRACE two-layer evaluator (CPU build, FP32 precision)
+* :doc:`grace/2l/cpu/kk/fp32/device <pair_grace>` - GRACE two-layer evaluator (CPU build, FP32, device)
+* :doc:`grace/2l/cpu/kk/fp32/host <pair_grace>` - GRACE two-layer evaluator (CPU build, FP32, host)
+* :doc:`grace/2l/cpu/kk/mixed <pair_grace>` - GRACE two-layer evaluator (CPU build, mixed precision)
+* :doc:`grace/2l/cpu/kk/mixed/device <pair_grace>` - GRACE two-layer evaluator (CPU build, mixed, device)
+* :doc:`grace/2l/cpu/kk/mixed/host <pair_grace>` - GRACE two-layer evaluator (CPU build, mixed, host)
+* :doc:`grace/2l/kk/fp32 <pair_grace>` - GRACE two-layer evaluator (FP32 precision)
+* :doc:`grace/2l/kk/fp32/device <pair_grace>` - GRACE two-layer evaluator (FP32, device)
+* :doc:`grace/2l/kk/fp32/host <pair_grace>` - GRACE two-layer evaluator (FP32, host)
+* :doc:`grace/2l/kk/mixed <pair_grace>` - GRACE two-layer evaluator (mixed precision)
+* :doc:`grace/2l/kk/mixed/device <pair_grace>` - GRACE two-layer evaluator (mixed, device)
+* :doc:`grace/2l/kk/mixed/host <pair_grace>` - GRACE two-layer evaluator (mixed, host)
+* :doc:`grace/2layer/chunk <pair_grace>` - Chunked two-layer GRACE TensorFlow evaluator
+* :doc:`grace/2layer/parallel <pair_grace>` - Two-layer GRACE MPI TensorFlow evaluator without chunking
+* :doc:`grace/extrapolation <pair_grace>` - UQ-enabled GRACE TensorFlow evaluator
+* :doc:`grace/fs <pair_grace>` - native GRACE/FS evaluator
 * :doc:`granular <pair_granular>` - Generalized granular potential
 * :doc:`granular/superellipsoid <pair_granular_superellipsoid>` - Generalized granular potential for superellipsoids
 * :doc:`gran/hertz/history <pair_gran>` - granular potential with Hertzian interactions

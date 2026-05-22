@@ -305,7 +305,6 @@ void PairGRACE1LCPUKokkos<DeviceType, NNScalarT, GeomScalarT>::settings(int narg
 template<class DeviceType, typename NNScalarT, typename GeomScalarT>
 void *PairGRACE1LCPUKokkos<DeviceType, NNScalarT, GeomScalarT>::extract(const char *str, int & /*dim*/)
 {
-  if (strcmp(str, "compute_energy_only") == 0) return (void *) &flag_compute_energy_only;
   if (strcmp(str, "debug_no_energy_only_calc") == 0) return (void *) &debug_no_energy_only_calc;
   return nullptr;
 }
@@ -968,10 +967,13 @@ void PairGRACE1LCPUKokkos<DeviceType, NNScalarT, GeomScalarT>::compute(int eflag
   eflag = eflag_in;
   vflag = vflag_in;
 
-  bool do_energy_only = flag_compute_energy_only && !debug_no_energy_only_calc;
-
   if (neighflag == FULL) no_virial_fdotr_compute = 1;
   ev_init(eflag, vflag, 0);
+
+  // eflag_only is populated by ev_init/ev_setup above; energy-only path is
+  // selected when the caller passes ENERGY_ONLY in eflag (e.g. MC fixes,
+  // fix_numdiff, compute_fep, DIELECTRIC fixes).
+  bool do_energy_only = eflag_only && !debug_no_energy_only_calc;
 
   // Reallocate per-atom arrays if necessary
   if (eflag_atom) {

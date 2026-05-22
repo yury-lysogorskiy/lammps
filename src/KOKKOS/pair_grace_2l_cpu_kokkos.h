@@ -702,7 +702,6 @@ class PairGRACE2LCPUKokkos : public Pair, public KokkosBase {
   }
 
   // Energy-only mode
-  int flag_compute_energy_only = 0;
   bool debug_no_energy_only_calc = false;
 
   // Comm helper views for Kokkos-native communication

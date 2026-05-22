@@ -433,7 +433,6 @@ class PairGRACE1LCPUKokkos : public Pair {
   }
 
   // Energy-only mode (skips backward pass / forces)
-  int flag_compute_energy_only = 0;
   bool debug_no_energy_only_calc = false;
 
   // Host-side model data

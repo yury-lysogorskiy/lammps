@@ -679,7 +679,7 @@ void PairPACEKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
       Kokkos::parallel_for("ComputeFS",policy_fs,*this);
     }
 
-    do_energy_only_calc = flag_compute_energy_only && !debug_no_energy_only_calc;
+    do_energy_only_calc = eflag_only && !debug_no_energy_only_calc;
 
     //ComputeWeights
     if (!do_energy_only_calc) {

@@ -674,7 +674,7 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
       Kokkos::parallel_for("ComputeGamma",policy_gamma,*this);
     }
 
-    bool do_energy_only_calc = flag_compute_energy_only && !debug_no_energy_only_calc;
+    bool do_energy_only_calc = eflag_only && !debug_no_energy_only_calc;
     //ComputeWeights
     if (! do_energy_only_calc) {
       typename Kokkos::RangePolicy<DeviceType,TagPairGRACEFSComputeWeights> policy_weights(0,chunk_size * idx_ms_combs_max);
