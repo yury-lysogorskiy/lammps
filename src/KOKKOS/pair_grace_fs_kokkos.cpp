@@ -582,7 +582,7 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
 
   int vector_length_default = 1;
   int team_size_default = 1;
-  if(Kokkos::DefaultExecutionSpace::concurrency() > 1)
+  if(Kokkos::DefaultExecutionSpace().concurrency() > 1)
     team_size_default = 32;
 
   k_splines_gk.sync_device();

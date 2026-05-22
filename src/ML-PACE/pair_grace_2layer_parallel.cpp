@@ -26,6 +26,9 @@
 #include <cppflow/model.h>
 #include <cppflow/ops.h>
 #include <cppflow/tensor.h>
+#ifndef MLPACE_DO_NOT_DISABLE_TFLOAT32
+#include "tensorflow/core/platform/tensor_float_32_utils.h"
+#endif
 #include <tensorflow/c/c_api.h>
 #include <unistd.h>
 
@@ -80,22 +83,24 @@ PairGRACE2LayerParallel::PairGRACE2LayerParallel(LAMMPS *lmp) : Pair(lmp)
   chunksize = 4096;
   nelements = 0;
   flag_compute_energy_only = 0;
+#ifndef MLPACE_DO_NOT_DISABLE_TFLOAT32
+  //disable tensor float 32 execution
+  tsl::enable_tensor_float_32_execution(false);
+#endif
 }
 
 PairGRACE2LayerParallel::~PairGRACE2LayerParallel()
 {
   if (copymode) return;
 
-  if (comm->me == 0 && total_real_atoms_processed > 0) {
-    GRACE::log_perf_stats(lmp, "grace/2layer/parallel", total_real_atoms_processed,
-                          total_compute_calls,
-                          {{"Total", total_timer.as_microseconds()},
-                           {"Data", data_timer.as_microseconds()},
-                           {"Comm", comm_timer.as_microseconds()},
-                           {"M1", model1_timer.as_microseconds()},
-                           {"M2", model2_timer.as_microseconds()},
-                           {"M3", model3_timer.as_microseconds()}});
-  }
+  GRACE::log_perf_stats(lmp, "grace/2layer/parallel", total_real_atoms_processed,
+                        total_compute_calls,
+                        {{"Total", total_timer.as_microseconds()},
+                         {"Data", data_timer.as_microseconds()},
+                         {"Comm", comm_timer.as_microseconds()},
+                         {"M1", model1_timer.as_microseconds()},
+                         {"M2", model2_timer.as_microseconds()},
+                         {"M3", model3_timer.as_microseconds()}});
 
   delete aceimpl;
   if (allocated) {
@@ -169,6 +174,8 @@ void PairGRACE2LayerParallel::settings(int narg, char **arg)
                      "before reduction: {}, max number of reduction(s): {}\n",
                      p.padding_fraction, p.reduction_threshold_fraction, p.max_reductions);
   }
+
+  GRACE::warn_padding_reduction_disabled(lmp, p.padding_fraction, p.reduction_threshold_fraction);
 
   // Apply to padding helpers
   aceimpl->all_atoms_padding = p;
@@ -298,6 +305,19 @@ void PairGRACE2LayerParallel::coeff(int narg, char **arg)
   if (!aceimpl->model->has_signature(backward_layer_1_name))
     error->all(FLERR, "Model missing backward_layer_1");
 
+  auto fwd_sig = aceimpl->model->signatures.at(forward_layer_1_name);
+  for (const auto &[key, shape] : feature_shapes) {
+    if (fwd_sig.outputs.count(key)) {
+      feature_dtypes[key] = fwd_sig.outputs.at(key).dtype;
+      if (comm->me == 0) {
+        utils::logmesg(lmp, "[GRACE] Feature '{}' deduced dtype: {}\n", key,
+                       cppflow::to_string(feature_dtypes[key]));
+      }
+    } else {
+      error->all(FLERR, "[GRACE-ERROR] Feature '{}' missing in forward_layer_1 outputs", key);
+    }
+  }
+
   if (metadata_yaml["cutoff_matrix"]) {
     cutoff_matrix = metadata_yaml["cutoff_matrix"].as<vector<vector<double>>>();
     is_custom_cutoffs = true;
@@ -385,11 +405,12 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag)
       (aceimpl->all_atoms_padding.last_update_triggered_resize() ||
        aceimpl->real_atoms_padding.last_update_triggered_resize())) {
     utils::logmesg(lmp,
-                   "[GRACE:proc #{:d}] Atoms padding: new num. of atoms: all = {} (incl. {:.3f}%% "
-                   "fake), real = {} (incl. {:.3f}%% fake)\n",
-                   comm->me, aceimpl->n_all_atoms_padded,
+                   "[GRACE:proc #{:d}] step {} Atoms padding: new num. of atoms: all ({}) = {} (incl. "
+                   "{:.3f}%% fake), real ({}) = {} (incl. {:.3f}%% fake)\n",
+                   comm->me, update->ntimestep, aceimpl->all_atoms_padding.action_str(),
+                   aceimpl->n_all_atoms_padded,
                    100. * (double) aceimpl->all_atoms_padding.n_fake / aceimpl->n_all_atoms_padded,
-                   aceimpl->n_local_atoms_padded,
+                   aceimpl->real_atoms_padding.action_str(), aceimpl->n_local_atoms_padded,
                    100. * (double) aceimpl->real_atoms_padding.n_fake /
                        aceimpl->n_local_atoms_padded);
   }
@@ -431,9 +452,10 @@ void PairGRACE2LayerParallel::compute(int eflag, int vflag)
   if (aceimpl->neighbor_padding.verbose &&
       aceimpl->neighbor_padding.last_update_triggered_resize()) {
     utils::logmesg(lmp,
-                   "[GRACE:proc #{:d}] Neighbours padding: extending new num. of neighbours = {} "
-                   "(incl. {:.3f}%% fake neighbours)\n",
-                   comm->me, aceimpl->n_neighbours_padded,
+                   "[GRACE:proc #{:d}] step {} Neighbours padding: {} new num. of "
+                   "neighbours = {} (incl. {:.3f}%% fake neighbours)\n",
+                   comm->me, update->ntimestep, aceimpl->neighbor_padding.action_str(),
+                   aceimpl->n_neighbours_padded,
                    100. * (double) aceimpl->neighbor_padding.n_fake / aceimpl->n_neighbours_padded);
   }
 
@@ -854,10 +876,9 @@ void PairGRACE2LayerParallel::run_forward_layer_1()
   // (n_local_atoms_padded * feature_size). No runtime validation is performed.
   for (size_t i = 0; i < outputs.size(); ++i) {
     std::string key = ordered_keys[i];
-    auto tens = outputs[i].get_tensor();
-    const double *data = static_cast<double *>(TF_TensorData(tens.get()));
     int size = feature_sizes[key];
-    std::copy_n(data, aceimpl->n_local_atoms_padded * size, &features[key][0]);
+    GRACE::copy_tensor_to_vector(outputs[i], features[key], 0, 0,
+                                 aceimpl->n_local_atoms_padded * size);
   }
 }
 
@@ -895,11 +916,13 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag)
     if (feature_is_local[key]) {
       std::vector<int64_t> local_shape = {aceimpl->n_local_atoms_padded};
       local_shape.insert(local_shape.end(), shape.begin(), shape.end());
-      add_input(key, cppflow::tensor(features[key], local_shape));
+      add_input(key,
+                GRACE::create_tensor_dtype(features[key], local_shape, feature_dtypes[key]));
     } else {
       std::vector<int64_t> full_shape = {aceimpl->n_all_atoms_padded};
       full_shape.insert(full_shape.end(), shape.begin(), shape.end());
-      add_input(key, cppflow::tensor(features[key], full_shape));
+      add_input(key,
+                GRACE::create_tensor_dtype(features[key], full_shape, feature_dtypes[key]));
     }
   }
 
@@ -955,8 +978,8 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag)
   int out_idx = 0;
 
   // Energy
-  auto e_tens = outputs[out_idx++].get_tensor();
-  const double *e_data = static_cast<double *>(TF_TensorData(e_tens.get()));
+  const double *e_data =
+      static_cast<const double *>(TF_TensorData(outputs[out_idx++].get_tensor().get()));
   if (eflag_either) {
     for (int i = 0; i < atom->nlocal; i++) {
       double evdwl = scale[atom->type[i]][atom->type[i]] * e_data[i];
@@ -968,17 +991,15 @@ void PairGRACE2LayerParallel::run_backward_layer_2(int eflag, int vflag)
     // Gradients - we rely on TF model returning correct output sizes
     for (const auto &[key, shape] : feature_shapes) {
       std::string grad_key = "grad_" + key;
-      auto g_tens = outputs[out_idx++].get_tensor();
-      const double *g_data = static_cast<double *>(TF_TensorData(g_tens.get()));
       int size = feature_sizes[key];
       int n_padded = feature_is_local[key] ? aceimpl->n_local_atoms_padded
                                            : aceimpl->n_all_atoms_padded;
-      std::copy_n(g_data, n_padded * size, &gradients[key][0]);
+      GRACE::copy_tensor_to_vector(outputs[out_idx++], gradients[key], 0, 0, n_padded * size);
     }
 
     // Grad bond vector - relies on TF model returning n_neighbours_padded * 3 elements
     auto gf_tens = outputs[out_idx++].get_tensor();
-    const double *gf_data = static_cast<double *>(TF_TensorData(gf_tens.get()));
+    const double *gf_data = static_cast<const double *>(TF_TensorData(gf_tens.get()));
     aceimpl->grad_bond_vector.resize(3 * aceimpl->n_neighbours_padded);
     std::copy_n(gf_data, aceimpl->n_neighbours_padded * 3, aceimpl->grad_bond_vector.data());
     grad_bv_L2 = aceimpl->grad_bond_vector;
@@ -1021,20 +1042,15 @@ void PairGRACE2LayerParallel::run_backward_layer_1()
     local_shape.insert(local_shape.end(), shape.begin(), shape.end());
 
     if (feature_is_local[key]) {
-      add_input(grad_key, cppflow::tensor(gradients[key], local_shape));
+      add_input(grad_key,
+                GRACE::create_tensor_dtype(gradients[key], local_shape, feature_dtypes[key]));
     } else {
       // For non-local features, gradients are sized to n_all_atoms_padded but
-      // backward_layer_1 expects n_local_atoms_padded. We can safely pass a
-      // smaller view since n_local_atoms_padded <= n_all_atoms_padded always.
-      // The cppflow::tensor constructor copies the data, so resizing back is safe.
-      size_t original_size = gradients[key].size();
-      size_t local_size = aceimpl->n_local_atoms_padded * feature_sizes[key];
-      if (local_size > original_size)
-        error->one(FLERR,
-                   "[GRACE] Internal error: local padded size exceeds all atoms padded size");
-      gradients[key].resize(local_size);
-      add_input(grad_key, cppflow::tensor(gradients[key], local_shape));
-      gradients[key].resize(original_size);
+      // backward_layer_1 expects n_local_atoms_padded.
+      std::vector<double> local_grad(aceimpl->n_local_atoms_padded * feature_sizes[key]);
+      std::copy_n(gradients[key].data(), local_grad.size(), local_grad.data());
+      add_input(grad_key,
+                GRACE::create_tensor_dtype(local_grad, local_shape, feature_dtypes[key]));
     }
   }
 
@@ -1061,7 +1077,7 @@ void PairGRACE2LayerParallel::run_backward_layer_1()
 
   // We rely on TF model returning n_neighbours_padded * 3 elements
   auto gf_tens = outputs[0].get_tensor();
-  const double *gf_data = static_cast<double *>(TF_TensorData(gf_tens.get()));
+  const double *gf_data = static_cast<const double *>(TF_TensorData(gf_tens.get()));
   // Combine with L2 gradients
   for (int k = 0; k < aceimpl->n_neighbours_padded * 3; k++)
     aceimpl->grad_bond_vector[k] += gf_data[k];
@@ -1124,7 +1140,7 @@ void PairGRACE2LayerParallel::print_tensors(
         const int32_t *data = static_cast<int32_t *>(TF_TensorData(t.get_tensor().get()));
         utils::logmesg(lmp, "    Value: {}\n", data[0]);
       } else if (dtype == TF_DOUBLE) {
-        const double *data = static_cast<double *>(TF_TensorData(t.get_tensor().get()));
+        const double *data = static_cast<const double *>(TF_TensorData(t.get_tensor().get()));
         utils::logmesg(lmp, "    Value: {:8.4f}\n", data[0]);
       }
     }

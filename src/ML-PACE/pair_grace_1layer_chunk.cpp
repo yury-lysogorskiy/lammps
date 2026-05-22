@@ -43,6 +43,9 @@ Copyright 2025 Yury Lysogorskiy^1,  Anton Bochkarev^1, Ralf Drautz^1
 #include <cppflow/ops.h>
 #include <cppflow/tensor.h>
 #include <string>
+#ifndef MLPACE_DO_NOT_DISABLE_TFLOAT32
+#include "tensorflow/core/platform/tensor_float_32_utils.h"
+#endif
 #include <tensorflow/c/c_api.h>
 #include <unistd.h>
 
@@ -101,6 +104,10 @@ PairGRACE1LayerChunk::PairGRACE1LayerChunk(LAMMPS *lmp) : Pair(lmp)
 
   no_virial_fdotr_compute = 1;
   flag_compute_energy_only = 0;
+#ifndef MLPACE_DO_NOT_DISABLE_TFLOAT32
+  //disable tensor float 32 execution
+  tsl::enable_tensor_float_32_execution(false);
+#endif
 }
 
 /* ---------------------------------------------------------------------- */
@@ -109,14 +116,12 @@ PairGRACE1LayerChunk::~PairGRACE1LayerChunk()
 {
   if (copymode) return;
 
-  if (comm->me == 0 && total_real_atoms_processed > 0) {
-    GRACE::log_perf_stats(lmp, "grace/1layer/chunk", total_real_atoms_processed,
-                          total_compute_calls,
-                          {{"Total", total_timer.as_microseconds()},
-                           {"Data", data_timer.as_microseconds()},
-                           {"Model", model_timer.as_microseconds()},
-                           {"TP", tp_timer.as_microseconds()}});
-  }
+  GRACE::log_perf_stats(lmp, "grace/1layer/chunk", total_real_atoms_processed,
+                        total_compute_calls,
+                        {{"Total", total_timer.as_microseconds()},
+                         {"Data", data_timer.as_microseconds()},
+                         {"Model", model_timer.as_microseconds()},
+                         {"TP", tp_timer.as_microseconds()}});
 
   delete impl;
 

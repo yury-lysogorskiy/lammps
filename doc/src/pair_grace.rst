@@ -2,6 +2,7 @@
 .. index:: pair_style grace/1layer/chunk
 .. index:: pair_style grace/2layer/chunk
 .. index:: pair_style grace/2layer/parallel
+.. index:: pair_style grace/extrapolation
 .. index:: pair_style grace/fs
 .. index:: pair_style grace/fs/kk
 
@@ -10,124 +11,193 @@ pair_style grace command
 
 .. versionadded:: 03Dec2025
 
-pair_style grace/1layer/chunk command
-======================================
-
-.. versionadded:: 03Dec2025
-
-pair_style grace/2layer/chunk command
-======================================
-
-.. versionadded:: 03Dec2025
-
-pair_style grace/2layer/parallel command
-=========================================
-
-.. versionadded:: 03Dec2025
-
-pair_style grace/fs command
-============================
-
-.. versionadded:: 03Dec2025
-
-pair_style grace/fs/kk command
-================================
-
-.. versionadded:: 03Dec2025
-
 Syntax
 """"""
 
 .. code-block:: LAMMPS
 
-   pair_style grace keyword values ...
+   pair_style grace keyword value ...
+   pair_style grace/1layer/chunk keyword value ...
+   pair_style grace/2layer/chunk keyword value ...
+   pair_style grace/2layer/parallel keyword value ...
+   pair_style grace/extrapolation keyword value ...
+   pair_style grace/fs keyword value ...
+   pair_style grace/fs/kk keyword value ...
 
-* one or more keyword/value pairs may be appended
+Zero or more keyword/value pairs may be appended to the ``pair_style``
+command.  The accepted keywords depend on the selected style.
 
-  .. parsed-literal::
+.. list-table:: Pair style keywords
+   :header-rows: 1
+   :widths: 28 52 20
 
-     keyword = *padding* or *pad_verbose* or *pair_forces* or *max_number_of_reduction* or *reduce_padding* or *debug_no_energy_only_calc*
-       *padding* value = fraction of neighbors to pad (default 0.01)
-       *pad_verbose* = print messages when padding triggers recompilation
-       *pair_forces* = compute pairwise forces (required for virials and MPI > 1)
-       *max_number_of_reduction* value = maximum number of recompilations during padding reduction
-       *reduce_padding* value = fraction to reduce padding by
-       *debug_no_energy_only_calc* = disable energy-only optimization for debugging
+   * - Style
+     - Accepted keywords
+     - Notes
+   * - ``grace``
+     - ``padding``, ``pad_verbose``, ``pair_forces``,
+       ``max_number_of_reduction``, ``reduce_padding``,
+       ``debug_no_energy_only_calc``
+     - TensorFlow saved-model evaluator
+   * - ``grace/1layer/chunk``
+     - ``padding``, ``pad_verbose``, ``max_number_of_reduction``,
+       ``reduce_padding``, ``chunksize``, ``debug_no_energy_only_calc``
+     - Chunked single-layer TensorFlow evaluator
+   * - ``grace/2layer/chunk``
+     - ``padding``, ``pad_verbose``, ``max_number_of_reduction``,
+       ``reduce_padding``, ``chunksize``, ``debug_no_energy_only_calc``
+     - Chunked two-layer TensorFlow evaluator
+   * - ``grace/2layer/parallel``
+     - ``padding``, ``pad_verbose``, ``max_number_of_reduction``,
+       ``reduce_padding``, ``debug_no_energy_only_calc``
+     - Two-layer MPI TensorFlow evaluator without chunking
+   * - ``grace/extrapolation``
+     - ``kappa``, ``bias_virial``, ``kappa_norm``, ``kappa_group``,
+       ``padding``, ``pad_verbose``, ``max_number_of_reduction``,
+       ``reduce_padding``
+     - UQ-enabled TensorFlow evaluator
+   * - ``grace/fs`` and ``grace/fs/kk``
+     - ``extrapolation``, ``chunksize``, ``debug_no_energy_only_calc``
+     - Native GRACE/FS evaluator
+
+The common TensorFlow keywords are:
+
+* ``padding`` value = fraction of neighbors to pad.  The default is 0.01.
+* ``pad_verbose`` = print messages when a new padding level triggers
+  recompilation.
+* ``max_number_of_reduction`` value = maximum number of recompilations
+  during padding reduction.
+* ``reduce_padding`` value = fraction by which to reduce the padding buffer.
+* ``debug_no_energy_only_calc`` = disable the optimized energy-only code path.
+  This keyword is intended for testing and debugging.
+
+The ``grace`` style additionally accepts:
+
+* ``pair_forces`` = compute pairwise forces.  This is required for virials
+  and stress with ``grace`` and is enabled automatically when running on more
+  than one MPI rank.
+
+The chunked TensorFlow styles additionally accept:
+
+* ``chunksize`` value = number of atoms processed in each TensorFlow block.
+  The default is 4096.
+
+The ``grace/extrapolation`` style additionally accepts:
+
+* ``kappa`` value = relative-force bias coefficient :math:`\kappa`.  The
+  default is 0, which disables biased dynamics.
+* ``bias_virial`` = include the :math:`\kappa` bias contribution in the
+  global virial.  Per-atom stress is unaffected.
+* ``kappa_norm`` value = ``max`` or ``mean``.  This selects the norm used to
+  rescale the uncertainty force in biased dynamics.  The default is ``max``.
+* ``kappa_group`` value = LAMMPS atom group name restricting the
+  :math:`\kappa` bias.  The default is ``all``.  See
+  :ref:`pair_grace_bias_dynamics` for the precise semantics.
+
+The ``grace/fs`` and ``grace/fs/kk`` styles additionally accept:
+
+* ``extrapolation`` = compute the MaxVol extrapolation grade.  This requires
+  an Active Set Inverted file in the ``pair_coeff`` command.
+* ``chunksize`` value = number of atoms processed in each evaluator block.
+  The default is 4096.
+
+Pair coefficients
+"""""""""""""""
+
+Each style documented on this page uses a single ``pair_coeff`` command with
+``* *`` followed by a model file or directory and one element name per LAMMPS
+atom type.
+
+For TensorFlow GRACE styles:
 
 .. code-block:: LAMMPS
 
-   pair_style grace/1layer/chunk keyword values ...
-   pair_style grace/2layer/chunk keyword values ...
+   pair_coeff * * saved_model_dir elem1 elem2 ...
 
-* one or more keyword/value pairs may be appended
-
-  .. parsed-literal::
-
-     keyword = *padding* or *pad_verbose* or *max_number_of_reduction* or *reduce_padding* or *chunksize* or *debug_no_energy_only_calc*
-       *padding* value = fraction of neighbors to pad (default 0.01)
-       *pad_verbose* = print messages when padding triggers recompilation
-       *max_number_of_reduction* value = maximum number of recompilations during padding reduction
-       *reduce_padding* value = fraction to reduce padding by
-       *chunksize* value = size of atom blocks processed by TensorFlow (default 4096)
-       *debug_no_energy_only_calc* = disable energy-only optimization for debugging
+For ``grace/fs`` and ``grace/fs/kk`` without extrapolation:
 
 .. code-block:: LAMMPS
 
-   pair_style grace/2layer/parallel keyword values ...
+   pair_coeff * * model.yaml elem1 elem2 ...
 
-* one or more keyword/value pairs may be appended
-
-  .. parsed-literal::
-
-     keyword = *padding* or *pad_verbose* or *max_number_of_reduction* or *reduce_padding* or *debug_no_energy_only_calc*
-       *padding* value = fraction of neighbors to pad (default 0.01)
-       *pad_verbose* = print messages when padding triggers recompilation
-       *max_number_of_reduction* value = maximum number of recompilations during padding reduction
-       *reduce_padding* value = fraction to reduce padding by
-       *debug_no_energy_only_calc* = disable energy-only optimization for debugging
+For ``grace/fs`` and ``grace/fs/kk`` with extrapolation:
 
 .. code-block:: LAMMPS
 
-   pair_style grace/fs keyword values ...
-   pair_style grace/fs/kk keyword values ...
+   pair_coeff * * model.yaml model.asi elem1 elem2 ...
 
-* one or more keyword/value pairs may be appended
-
-  .. parsed-literal::
-
-     keyword = *extrapolation* or *chunksize* or *debug_no_energy_only_calc*
-       *extrapolation* = compute extrapolation grade (requires .asi file in pair_coeff)
-       *chunksize* value = size of atom blocks processed by the evaluator (default 4096)
-       *debug_no_energy_only_calc* = disable energy-only optimization for debugging
+The number of element names must equal the number of LAMMPS atom types.  The
+element names define the mapping from LAMMPS atom types to model elements.
 
 Examples
 """"""""
+
+Basic TensorFlow GRACE model:
 
 .. code-block:: LAMMPS
 
    pair_style grace
    pair_coeff * * /path/to/saved_model Al Li
 
+TensorFlow GRACE model with explicit padding and pairwise forces:
+
+.. code-block:: LAMMPS
+
    pair_style grace padding 0.05 pad_verbose pair_forces
    pair_coeff * * /path/to/grace_cache/AlLi_model Al Li
 
-   pair_style grace/1layer/chunk
-   pair_coeff * * /path/to/saved_model Al Li
+Chunked single-layer TensorFlow model:
+
+.. code-block:: LAMMPS
 
    pair_style grace/1layer/chunk chunksize 2048 padding 0.05
    pair_coeff * * /path/to/saved_model Al Li
 
+Chunked two-layer TensorFlow model:
+
+.. code-block:: LAMMPS
+
    pair_style grace/2layer/chunk
    pair_coeff * * /path/to/2layer_model Al Li
+
+Two-layer TensorFlow model with the non-chunked MPI-parallel implementation:
+
+.. code-block:: LAMMPS
 
    pair_style grace/2layer/parallel
    pair_coeff * * /path/to/2layer_model Al Li
 
+UQ-enabled TensorFlow model:
+
+.. code-block:: LAMMPS
+
+   pair_style grace/extrapolation
+   pair_coeff * * /path/to/uq_saved_model W
+
+UQ-enabled TensorFlow model with biased dynamics:
+
+.. code-block:: LAMMPS
+
+   pair_style grace/extrapolation kappa 0.1
+   pair_coeff * * /path/to/uq_saved_model W
+
+Native GRACE/FS model:
+
+.. code-block:: LAMMPS
+
    pair_style grace/fs
    pair_coeff * * FS_model.yaml Mo Nb Ta W
 
+Native GRACE/FS model with MaxVol extrapolation grade:
+
+.. code-block:: LAMMPS
+
    pair_style grace/fs extrapolation
    pair_coeff * * FS_model.yaml FS_model.asi Mo Nb Ta W
+
+Kokkos-accelerated GRACE/FS model:
+
+.. code-block:: LAMMPS
 
    pair_style grace/fs/kk
    pair_coeff * * FS_model.yaml Mo Nb Ta W
@@ -135,140 +205,371 @@ Examples
 Description
 """""""""""
 
-The *grace*, *grace/fs*, and their variants compute interactions using the
-Graph Atomic Cluster Expansions (GRACE) framework :ref:`(Bochkarev24) <Bochkarev20241>`,
+The ``grace`` pair styles compute interactions using the Graph Atomic Cluster
+Expansion (GRACE) framework :ref:`(Bochkarev24) <Bochkarev20241>`,
 :ref:`(Lysogorskiy25) <Lysogorskiy20251>`.
 
-**pair_style grace**
+This page documents the following related pair styles:
 
-The *grace* style utilizes *libtensorflow* to load and execute GRACE models
-saved in TensorFlow ``saved_model`` format. It is designed for single-layer
-models and processes all local atoms in a single TensorFlow call.
+* ``grace``
+* ``grace/1layer/chunk``
+* ``grace/2layer/chunk``
+* ``grace/2layer/parallel``
+* ``grace/extrapolation``
+* ``grace/fs``
+* ``grace/fs/kk``
 
-Only a single pair_coeff command is used with the *grace* style which
-specifies the directory containing the saved model followed by N additional
-arguments specifying the mapping of GRACE model elements to LAMMPS atom types,
-where N is the number of LAMMPS atom types:
+Choosing a GRACE pair style
+""""""""""""""""""""""""
 
-* path to ``saved_model`` directory
-* N element names = mapping of model elements to atom types
+.. list-table:: GRACE pair style variants
+   :header-rows: 1
+   :widths: 24 24 28 12 12
 
-GRACE models in TensorFlow are Just-In-Time (JIT) compiled. This means the
-first evaluation will be slower than subsequent steps. To maintain performance
-if the number of neighbors changes, the style uses a padding strategy.
+   * - Style
+     - Model format
+     - Main use case
+     - MPI
+     - TensorFlow
+   * - ``grace``
+     - TensorFlow saved model
+     - Single-layer model with simple setup
+     - Yes
+     - Required
+   * - ``grace/1layer/chunk``
+     - TensorFlow saved model
+     - Single-layer model with lower peak memory use
+     - Yes
+     - Required
+   * - ``grace/2layer/chunk``
+     - TensorFlow saved model
+     - Two-layer model with chunked evaluation
+     - Yes
+     - Required
+   * - ``grace/2layer/parallel``
+     - TensorFlow saved model
+     - Two-layer model without chunking
+     - Yes
+     - Required
+   * - ``grace/extrapolation``
+     - UQ-enabled TensorFlow saved model
+     - Extrapolation grade and biased dynamics
+     - Yes for UQ; biased dynamics only on one rank
+     - Required
+   * - ``grace/fs``
+     - GRACE/FS YAML model
+     - Native CPU evaluator
+     - Yes
+     - Not required
+   * - ``grace/fs/kk``
+     - GRACE/FS YAML model
+     - Kokkos-accelerated native evaluator
+     - Yes
+     - Not required
 
-* **padding**: Sets the fraction of neighbors to pad (default is 0.01 or 1%). Increasing this can reduce the frequency of recompilations but increases the time and memory overhead.
-* **pad_verbose**: If specified, LAMMPS will output messages whenever new padding levels trigger a recompilation. By default this is false.
-* **pair_forces**: By default, the GRACE model provides total atomic forces. If *pair_forces* is enabled, the model calculates pairwise forces. This is **required** for calculating atomic virials (stress) and is automatically enforced if running on more than one MPI processor.
-* **max_number_of_reduction** and **reduce_padding**: Control the heuristics for reducing the padding buffer size dynamically during the simulation.
-* **chunksize**: Controls the size of atom blocks processed by TensorFlow. This helps manage peak memory usage for large systems or models.
+TensorFlow GRACE models
+"""""""""""""""""""""""
 
-**pair_style grace/1layer/chunk**
+The ``grace`` style uses ``libtensorflow`` to load and execute GRACE models
+stored in TensorFlow ``saved_model`` format.  
 
-The *grace/1layer/chunk* style is a chunked variant of *grace* for single-layer
-TensorFlow models. Instead of processing all atoms at once, atoms are processed
-in blocks of *chunksize*. This reduces peak memory usage and is safe for MPI
-parallelization without requiring the *pair_forces* keyword (virial/stress
-computation is always available).
 
-Accepted keywords are the same as *grace* except *pair_forces* is not needed
-and is not accepted.
+GRACE TensorFlow models are just-in-time (JIT) compiled.  The first evaluation
+is therefore slower than subsequent evaluations.  To maintain performance when
+the number of neighbors changes, the TensorFlow-based styles use padding.  A
+larger ``padding`` value can reduce the frequency of recompilations, but
+increases memory use and the cost of each TensorFlow call.
 
-**pair_style grace/2layer/chunk**
+The plain ``grace`` style does not chunk atoms.  To control peak memory through
+chunked evaluation, use ``grace/1layer/chunk`` or ``grace/2layer/chunk``.
+Both styles accept the ``chunksize`` keyword.
 
-The *grace/2layer/chunk* style supports two-layer GRACE TensorFlow models
-using a chunked processing strategy. Two-layer models split computation into
-a forward pass (layer 1: descriptors) and a backward pass (layer 2: energy/forces).
-Between the two passes, inter-processor communication of per-atom features is
-performed using MPI forward and reverse communication. The *chunksize* keyword
-controls the block size for each layer independently.
+Chunking and MPI parallelization
+"""""""""""""""""""""""""""""
 
-pair_coeff syntax:
+The ``grace/1layer/chunk`` style is a chunked variant of ``grace`` for
+single-layer TensorFlow models.  Instead of processing all atoms at once, atoms
+are processed in blocks of ``chunksize``.  This reduces peak memory use and is
+safe for MPI parallelization without the ``pair_forces`` keyword.  Virial and
+stress computation are always available.
 
-* path to ``saved_model`` directory (must contain ``forward_layer_1`` and ``backward_layer_2`` signatures)
-* N element names = mapping of model elements to atom types
+The ``grace/2layer/chunk`` style supports two-layer TensorFlow GRACE models
+using a chunked processing strategy.  Two-layer models split the computation
+into a forward pass, which evaluates descriptors, and a backward pass, which
+evaluates energies and forces.  Between the two passes, MPI forward and reverse
+communication exchange per-atom features between ranks.  The ``chunksize``
+keyword controls the block size used for each layer.
 
-**pair_style grace/2layer/parallel**
+The ``grace/2layer/parallel`` style is an alternative MPI-parallel
+implementation for two-layer TensorFlow GRACE models.  Each MPI rank performs
+the full forward and backward layer evaluation locally, with explicit forward
+and reverse communication of per-atom features between layers.  Unlike
+``grace/2layer/chunk``, this style does not chunk TensorFlow calls and does not
+accept the ``chunksize`` keyword.
 
-The *grace/2layer/parallel* style is an alternative MPI-parallel implementation
-for two-layer GRACE TensorFlow models. Unlike *grace/2layer/chunk*, this style
-does not use chunked processing (no *chunksize* keyword) and instead performs
-the full layer evaluation per MPI rank with explicit forward and reverse
-communication of per-atom features between layers.
+For ``grace/2layer/chunk`` and ``grace/2layer/parallel``, the saved-model
+directory must contain the TensorFlow signatures required by the two-layer
+model, including ``forward_layer_1`` and ``backward_layer_2``.
 
-pair_coeff syntax is the same as *grace/2layer/chunk*.
+GRACE/FS models
+"""""""""""""""
 
-**pair_style grace/fs**
+The ``grace/fs`` style provides a native C++ implementation, the product
+evaluator, for the GRACE/FS family of models.  It does not require TensorFlow
+or GPUs and supports MPI parallelization.
 
-The *grace/fs* style provides a native C++ implementation (product evaluator)
-for the GRACE/FS family of models. It is lightweight and does not require
-TensorFlow or GPUs. MPI parallelization is natively supported.
+The ``grace/fs/kk`` style is the Kokkos-accelerated version of ``grace/fs``.
+It supports GPU execution through Kokkos backends such as CUDA or HIP and
+multicore CPU execution through OpenMP.  Newton's third law must be enabled
+with ``newton on`` and only one CPU thread per MPI rank is supported.  The
+device and host variants are also available as ``grace/fs/kk/device`` and
+``grace/fs/kk/host``.
 
-Only a single pair_coeff command is used with the *grace/fs* style:
+When the ``extrapolation`` keyword is used, ``grace/fs`` and ``grace/fs/kk``
+compute the MaxVol extrapolation grade :math:`\gamma` using the Active Set
+Inverted (ASI) file supplied in the ``pair_coeff`` command.  This requires a
+matrix-vector multiplication per atom and is slower than plain evaluation.
 
-* GRACE/FS coefficient file (.yaml format)
-* (Optional) Active Set Inverted file (.asi format) if *extrapolation* keyword is used
-* N element names = mapping of elements to atom types
+.. _pair_grace_uq:
 
-**pair_style grace/fs/kk**
+Uncertainty quantification
+""""""""""""""""""""""""
 
-The *grace/fs/kk* style is the Kokkos-accelerated version of *grace/fs*,
-supporting execution on GPUs (via CUDA/HIP) and multi-core CPUs (via OpenMP)
-while maintaining efficient MPI parallelization. It accepts the same keywords
-as *grace/fs*. Newton must be on and only a single CPU thread per MPI rank
-is supported. The device and host variants are also available as
-*grace/fs/kk/device* and *grace/fs/kk/host*.
+.. versionadded:: 07May2026
 
-Extrapolation grade
-"""""""""""""""""""
+The ``grace/extrapolation`` style requires a UQ-enabled GRACE saved model that
+exports a ``compute_uq`` TensorFlow signature.  If the model additionally
+exports a ``compute_uq_gamma_only`` signature, the style uses it automatically
+on the gamma-only fast path (see *Signature dispatch* below).  The
+``pair_coeff`` syntax is the same as for ``grace``.
 
-Calculation of extrapolation grade is implemented in `pair_style grace/fs`
-via the *extrapolation* keyword. It is based on the MaxVol algorithm.
-In order to compute the extrapolation grade one needs to provide:
+The style can expose seven per-atom fields through :doc:`fix pair <fix_pair>`:
 
-#. GRACE/FS potential in `.yaml` format
-#. Active Set Inverted (ASI) file for the corresponding potential (`.asi` format)
+* ``gamma`` = scalar extrapolation grade :math:`\gamma` (Mahalanobis-based;
+  see below).
+* ``gmm_cluster`` = scalar GMM cluster index :math:`k^*` for the atom
+  (integer, returned as a per-atom double because *fix pair* accepts only
+  doubles).
+* ``atomic_sigma`` = scalar raw per-atom uncertainty :math:`\sigma_i` as
+  produced by the UQ head of the saved model (eV).  This is the underlying
+  ensemble/dropout disagreement signal that ``uncertainty_force``,
+  ``eps_hat``, and the kappa rescale are derived from; exposing it directly
+  is useful for calibration plots, threshold tuning, and diagnostics.
+* ``uncertainty_force`` = three-vector uncertainty force
+  :math:`\mathbf{F}^{\sigma}_i = \partial \sigma_{tot} / \partial \mathbf{r}_i`.
+  This is the raw uncertainty force and is not scaled by ``kappa``.
+* ``eps_hat`` = scalar predicted per-atom force-error magnitude
+  :math:`\hat{\varepsilon}_i = |\widehat{\Delta\mathbf{F}}_i|` in eV/Angstrom,
+  computed from a per-cluster log-linear error model fitted during UQ build:
+  :math:`\log_{10}|\Delta\mathbf{F}|_i \approx a_{k^*} + c_{k^*}\,\sigma_i`,
+  with cluster index :math:`k^*` from the GMM head.
+* ``eps_hat_norm`` = scalar element-normalized counterpart,
+  :math:`\hat{\varepsilon}_{i,\mathrm{norm}} = \hat{\varepsilon}_i / \tau_{e}`,
+  dimensionless.  :math:`\tau_e` is the 95th percentile of training
+  :math:`|\Delta\mathbf{F}|` for atom :math:`i`'s element, so the field is
+  comparable across elements with very different intrinsic force scales
+  (e.g. Li vs. W).  Values :math:`\gg 1` flag atoms whose predicted force
+  error exceeds the bulk of training-set errors for their element
+  (out-of-distribution); values :math:`\ll 1` sit comfortably inside the
+  training distribution.
+* ``gamma_combined`` = scalar :math:`\max(\gamma_i, \hat{\varepsilon}_{i,\mathrm{norm}})`,
+  a single worst-case extrapolation indicator that fires when either UQ
+  signal flags an outlier.
 
-Calculation of extrapolation grades requires matrix-vector multiplication
-for each atom and is slower than the standard evaluation. The extrapolation
-grade is accessed via `fix pair`, which requests to compute `gamma`.
 
-Example of monitoring extrapolation warnings:
+The ``uncertainty_force`` output is accumulated consistently with Newton's
+third law when Newton pair communication is enabled.
+
+**Signature dispatch.** The pair style selects the TensorFlow signature based
+on which UQ outputs are requested and on the value of ``kappa``, in order of
+increasing cost:
+
+* Regular ``compute`` -- when no UQ field is requested and ``kappa = 0``.
+* ``compute_uq_gamma_only`` -- when only ``gamma``, ``gmm_cluster``,
+  ``atomic_sigma``, ``eps_hat``, ``eps_hat_norm``, and/or ``gamma_combined``
+  are requested and ``kappa = 0``.  Skips the :math:`\sigma`-gradient
+  backward pass.  Used automatically when the saved model exports this
+  signature; otherwise falls back to ``compute_uq``.
+* ``compute_uq`` -- when ``uncertainty_force`` is requested or ``kappa`` is
+  nonzero.  Includes the :math:`\sigma`-gradient backward pass.
+
+Example with the ``grace/extrapolation`` UQ head, biased dynamics, and thermo
+output containing the maximum extrapolation grade, maximum total force, and
+maximum raw uncertainty-force magnitude:
 
 .. code-block:: LAMMPS
 
-    pair_style  grace/fs extrapolation
-    pair_coeff  * * FS_model.yaml FS_model.asi Mo Nb Ta W
+   pair_style  grace/extrapolation kappa 0.1
+   pair_coeff  * * /path/to/uq_saved_model Mo Nb Ta W
 
-    # Compute gamma every 100 steps, store in f_grace_gamma
-    fix grace_gamma all pair 100 grace/fs gamma 1
+   # Per-atom UQ outputs.
+   # uncertainty_force is exposed as f_uf[1], f_uf[2], and f_uf[3].
+   fix gp  all pair 1 grace/extrapolation gamma             1
+   fix gc  all pair 1 grace/extrapolation gmm_cluster       1
+   fix as  all pair 1 grace/extrapolation atomic_sigma      1
+   fix uf  all pair 1 grace/extrapolation uncertainty_force 1
+   fix eh  all pair 1 grace/extrapolation eps_hat           1
+   fix ehn all pair 1 grace/extrapolation eps_hat_norm      1
+   fix gcb all pair 1 grace/extrapolation gamma_combined    1
 
-    compute max_grace_gamma all reduce max f_grace_gamma
-    variable dump_skip equal "c_max_grace_gamma < 5"
+   # Magnitude of the raw uncertainty force.
+   variable ufmag atom sqrt(f_uf[1]^2 + f_uf[2]^2 + f_uf[3]^2)
 
-    dump grace_dump all custom 20 extrapolative_structures.dump id type x y z f_grace_gamma
-    dump_modify grace_dump skip v_dump_skip
+   compute max_gamma    all reduce max f_gp
+   compute max_combined all reduce max f_gcb
+   compute fmax_uq      all reduce max v_ufmag
 
-    variable max_grace_gamma equal c_max_grace_gamma
-    fix extreme_extrapolation all halt 10 v_max_grace_gamma > 25
+   thermo_style custom step pe c_max_gamma c_max_combined fmax c_fmax_uq
+   thermo 50
 
-Here extrapolation grade gamma is computed every 100 steps and is stored
-in the `f_grace_gamma` per-atom variable. The largest value of extrapolation
-grade among all atoms in a structure is reduced to the `c_max_grace_gamma`
-variable. Only if this value exceeds extrapolation threshold 5 will the
-structure be dumped.
+   # Dump every UQ field per atom. The cluster index is stored as a per-atom
+   # double; "%.0f" prints it as a whole number.
+   dump uq all custom 100 uq.dump id type x y z f_gp f_gc f_as f_eh f_ehn f_gcb
+   dump_modify uq format line "%d %d %g %g %g %g %.0f %g %g %g %g"
+
+   # Stop the run when either UQ signal exceeds its threshold.
+   fix stop all halt 10 c_max_combined > 1.0
+
+In this example, ``fmax`` is the maximum magnitude of the LAMMPS-stored force,
+which includes the :math:`\kappa`-scaled bias when ``kappa`` is nonzero.
+``c_fmax_uq`` is the maximum raw uncertainty-force magnitude.  The
+``fix halt`` command stops the run when ``c_max_gamma`` exceeds 25.
+
+For UQ-enabled TensorFlow GRACE models, the extrapolation grade is computed
+from a per-element Gaussian mixture model fitted to latent feature vectors
+during model export.  The latent feature vector :math:`\mathbf{z}` is taken
+from the last hidden layer of the energy readout network.  The exported saved
+model contains both the fitted GMM parameters and the per-cluster calibration
+thresholds.
+
+For each local atom :math:`i` of element :math:`e` with latent vector
+:math:`\mathbf{z}_i`, the UQ head assigns the atom to the nearest cluster by
+Euclidean distance to the per-element centroids
+:math:`\boldsymbol{\mu}_{e,k}`:
+
+.. math::
+
+   k^{\!*} = \arg\min_k \| \mathbf{z}_i - \boldsymbol{\mu}_{e,k} \|^2 .
+
+It then computes ``atomic_sigma`` as the Mahalanobis distance of
+:math:`\mathbf{z}_i` to the assigned centroid in the metric induced by the
+cluster covariance :math:`\Sigma_{e,k^{\!*}}`:
+
+.. math::
+
+   \sigma_i =
+   \sqrt{
+   (\mathbf{z}_i - \boldsymbol{\mu}_{e,k^{\!*}})^\top
+   \Sigma_{e,k^{\!*}}^{-1}
+   (\mathbf{z}_i - \boldsymbol{\mu}_{e,k^{\!*}})
+   } .
+
+The extrapolation grade :math:`\gamma_i` is ``atomic_sigma`` normalized by the
+calibrated 99th-percentile threshold :math:`\theta_{e,k^{\!*}}` of the assigned
+cluster:
+
+.. math::
+
+   \gamma_i = \frac{\sigma_i}{\theta_{e,k^{\!*}}} .
+
+.. _pair_grace_bias_dynamics:
+
+Bias-driven dynamics
+""""""""""""""""""""
+
+.. warning::
+
+   Bias-driven dynamics with ``kappa != 0`` is supported only on a single MPI
+   rank.  LAMMPS stops with an error during initialization if ``kappa`` is
+   nonzero and more than one MPI rank is used.
+
+The ``kappa`` keyword sets :math:`\kappa \geq 0`.  When nonzero, it adds a
+relative-force uncertainty bias on top of the physical force:
+
+.. math::
+
+   \mathbf{f}_i = \mathbf{F}^{phys}_i + s\,\mathbf{F}^{\sigma}_i,
+   \qquad
+   s = \kappa \cdot
+       \frac{N(\|\mathbf{F}^{phys}_j\|) + \varepsilon}
+            {N(\|\mathbf{F}^{\sigma}_j\|) + \varepsilon}
+
+with :math:`\varepsilon = 10^{-8}`.  The scale factor :math:`s` is one
+system-wide scalar applied uniformly to every atom.  The aggregator
+:math:`N(\cdot)` over all atoms :math:`j` is selected by ``kappa_norm``:
+
+* ``max`` = use the maximum force norm over atoms.  This is the default.
+* ``mean`` = use the sum of force norms over atoms.
+
+By default, the :math:`\kappa` bias is applied to every atom and the
+aggregator :math:`N(\cdot)` runs over every atom.  When ``kappa_group`` names a
+LAMMPS atom group, both the reduction and the force application are restricted
+to atoms in that group: :math:`s` is built from the in-group atoms only and
+:math:`s\,\mathbf{F}^{\sigma}_i` is added only to in-group atoms.  Atoms
+outside the group experience the physical force only.  ``gamma``,
+``gmm_cluster``, and ``uncertainty_force`` are still exposed for every local
+atom regardless of ``kappa_group``.
+
+By default, the global virial and per-atom stress reflect only the physical
+force.  With ``bias_virial``, the uncertainty contribution is added to the
+global virial.  Per-atom stress is built from the physical force only in either
+case.
+
+.. _pair_grace_runtime_tuning:
+
+Runtime tuning
+""""""""""""""
+
+The following ``grace/extrapolation`` parameters can be changed between
+``run`` commands with :doc:`pair_modify <pair_modify>`:
+
+.. code-block:: LAMMPS
+
+   pair_modify kappa 0.5
+   pair_modify bias_virial yes
+   pair_modify kappa_norm mean
+   pair_modify kappa_group boundary
+
+The current value of ``kappa`` can be accessed from the pair style through the
+LAMMPS ``extract`` interface using the key ``"kappa"``.
+
+All other ``pair_modify`` keywords, such as ``compute`` and ``special``, are
+forwarded to the standard pair-style parser unchanged.
+
+GRACE/FS extrapolation example
+"""""""""""""""""""""""""""""
+
+The following input fragment computes the GRACE/FS MaxVol extrapolation grade
+every 100 steps, stores it in a per-atom ``fix pair`` output, dumps only
+structures whose maximum extrapolation grade exceeds 5, and stops when the
+maximum grade exceeds 25.
+
+.. code-block:: LAMMPS
+
+   pair_style  grace/fs extrapolation
+   pair_coeff  * * FS_model.yaml FS_model.asi Mo Nb Ta W
+
+   fix grace_gamma all pair 100 grace/fs gamma 1
+
+   compute max_grace_gamma all reduce max f_grace_gamma
+   variable dump_skip equal "c_max_grace_gamma < 5"
+
+   dump grace_dump all custom 20 extrapolative_structures.dump id type x y z f_grace_gamma
+   dump_modify grace_dump skip v_dump_skip
+
+   variable max_grace_gamma equal c_max_grace_gamma
+   fix extreme_extrapolation all halt 10 v_max_grace_gamma > 25
 
 Energy-only calculation
 """""""""""""""""""""""
 
-All styles support an optimized energy-only calculation mode. In this mode,
-the styles skip the computation of atomic forces and virials, which significantly
-reduces the computational cost. For TensorFlow-based GRACE models, this also
-allows skipping the backward (gradient) pass.
+All styles support an optimized energy-only calculation mode.  In this mode,
+the styles skip atomic forces and virials, which reduces computational cost.
+For TensorFlow-based GRACE models, this also avoids the backward gradient pass.
 
-The energy-only mode is automatically triggered when LAMMPS requests only
-potential energy from the pair style, which is frequently used by Monte Carlo
-algorithms implemented in the MC package:
+The energy-only mode is selected automatically when LAMMPS requests only the
+potential energy from the pair style.  This is commonly used by Monte Carlo
+algorithms implemented in the MC package, including:
 
 * :doc:`fix atom/swap <fix_atom_swap>`
 * :doc:`fix neighbor/swap <fix_neighbor_swap>`
@@ -277,64 +578,97 @@ algorithms implemented in the MC package:
 * :doc:`fix sgcmc <fix_sgcmc>`
 
 Mixing, shift, table, tail correction, restart, rRESPA info
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""""""""""""""""""
 
-This pair style does not support the :doc:`pair_modify <pair_modify>`
-shift, table, and tail options.
+Mixing is not used by these pair styles.  The element mapping and all model
+parameters are specified by the model file or directory and the ``pair_coeff``
+command.
 
-This pair style does not write its information to :doc:`binary restart
-files <restart>`, since it is stored in potential files/directories. Thus,
-you need to re-specify the pair_style and pair_coeff commands in an input
-script that reads a restart file.
+These pair styles do not support the :doc:`pair_modify <pair_modify>`
+``shift``, ``table``, and ``tail`` options.
 
-----------
+The ``grace/extrapolation`` style additionally accepts four
+biased-dynamics-specific :doc:`pair_modify <pair_modify>` keywords:
+
+* ``pair_modify kappa value`` = reset the relative-force biased-dynamics
+  coefficient :math:`\kappa`.  A nonzero value is rejected with an error when
+  more than one MPI rank is used.
+* ``pair_modify bias_virial yes|no`` = toggle whether the :math:`\kappa`
+  contribution is included in the global virial.  Per-atom stress is
+  unaffected.
+* ``pair_modify kappa_norm max|mean`` = switch the norm used in the
+  :math:`\kappa` rescaling.
+* ``pair_modify kappa_group name`` = restrict the :math:`\kappa` bias to
+  atoms in the named LAMMPS group.  Pass ``all`` to remove the restriction.
+
+These settings can be changed between ``run`` commands.
+
+These pair styles do not write their information to :doc:`binary restart files
+<restart>`, since the information is stored in model files or directories.  The
+``pair_style`` and ``pair_coeff`` commands must therefore be specified again in
+an input script that reads a restart file.
 
 Restrictions
 """"""""""""
 
-These pair styles are part of the ML-PACE package. They are only enabled if
-LAMMPS was built with that package.
+* These styles are part of the ML-PACE package.  They are enabled only if
+  LAMMPS is built with that package.
+* All styles require :doc:`units metal <units>`.
+* The TensorFlow-based styles require LAMMPS to be linked with
+  ``libtensorflow``: ``grace``, ``grace/1layer/chunk``,
+  ``grace/2layer/chunk``, ``grace/2layer/parallel``, and
+  ``grace/extrapolation``.
+* ``grace/extrapolation`` requires a UQ-enabled saved model that exports a
+  ``compute_uq`` signature.
+* Biased dynamics with ``kappa != 0`` in ``grace/extrapolation`` is supported
+  only on a single MPI rank.
+* ``grace/fs`` does not require TensorFlow.
+* ``grace/fs/kk`` requires ``newton on`` and supports only one CPU thread per
+  MPI rank.
 
-All styles require `metal` units.
+Further reading
+"""""""""""""""
 
-*pair_style grace*, *grace/1layer/chunk*, *grace/2layer/chunk*, and
-*grace/2layer/parallel* rely on the TensorFlow library (via *libtensorflow*).
-While GPU usage is optional, TensorFlow is significantly less efficient when
-running solely on the CPU.
-
-*pair_style grace* requires *pair_forces* (enabled automatically for MPI > 1)
-to compute virials and stress. The *grace/1layer/chunk*, *grace/2layer/chunk*,
-and *grace/2layer/parallel* styles always support virial/stress computation.
-
-*pair_style grace/fs* does not require TensorFlow. Kokkos support is available
-via *pair_style grace/fs/kk*. The *grace/fs/kk* style requires Newton's third
-law to be on (``newton on``) and supports only a single CPU thread per MPI rank.
-
-Further read
-""""""""""""
-
-See `gracemaker.readthedocs.io <https://gracemaker.readthedocs.io>`_ for more details.
+See `gracemaker.readthedocs.io <https://gracemaker.readthedocs.io>`_ for more
+details.
 
 Related commands
 """"""""""""""""
 
-:doc:`pair_style pace  <pair_pace>`,
-:doc:`fix pair  <fix_pair>`
+:doc:`pair_style pace <pair_pace>`, :doc:`fix pair <fix_pair>`
 
 Default
 """""""
 
-For *grace*: padding = 0.01, pair_forces is OFF (auto-enabled for MPI > 1), pad_verbose is OFF, max_number_of_reduction = 10, reduce_padding = 0.2.
+.. list-table:: Default settings
+   :header-rows: 1
+   :widths: 32 68
 
-For *grace/1layer/chunk* and *grace/2layer/chunk*: padding = 0.01, pad_verbose is OFF, max_number_of_reduction = 10, reduce_padding = 0.2, chunksize = 4096.
+   * - Style
+     - Defaults
+   * - ``grace``
+     - ``padding = 0.01``, ``pair_forces = off`` except for MPI runs with
+       more than one rank, ``pad_verbose = off``,
+       ``max_number_of_reduction = 10``, ``reduce_padding = 0.2``
+   * - ``grace/1layer/chunk`` and ``grace/2layer/chunk``
+     - ``padding = 0.01``, ``chunksize = 4096``, ``pad_verbose = off``,
+       ``max_number_of_reduction = 10``, ``reduce_padding = 0.2``
+   * - ``grace/2layer/parallel``
+     - ``padding = 0.01``, ``pad_verbose = off``,
+       ``max_number_of_reduction = 10``, ``reduce_padding = 0.2``
+   * - ``grace/extrapolation``
+     - ``kappa = 0``, ``kappa_norm = max``, ``kappa_group = all``,
+       ``bias_virial = off``, ``padding = 0.01``, ``pad_verbose = off``,
+       ``max_number_of_reduction = 10``, ``reduce_padding = 0.2``
+   * - ``grace/fs`` and ``grace/fs/kk``
+     - ``extrapolation = off``, ``chunksize = 4096``
 
-For *grace/2layer/parallel*: padding = 0.01, pad_verbose is OFF, max_number_of_reduction = 10, reduce_padding = 0.2.
-
-For *grace/fs* and *grace/fs/kk*: extrapolation is OFF, chunksize = 4096.
+----------
 
 .. _Bochkarev20241:
 
-**(Bochkarev24)** Bochkarev, Lysogorskiy, Drautz, Phys Rev X, 14, 021036 (2024).
+**(Bochkarev24)** Bochkarev, Lysogorskiy, Drautz, Phys. Rev. X, 14, 021036
+(2024).
 
 .. _Lysogorskiy20251:
 

@@ -93,6 +93,7 @@ class PairGRACE2LayerChunk : public Pair {
   std::map<std::string, std::vector<int64_t>> feature_shapes;
   std::map<std::string, int> feature_sizes;
   std::map<std::string, bool> feature_is_local;
+  std::map<std::string, cppflow::datatype> feature_dtypes;
 
   std::vector<double> grad_bond_vector;
 

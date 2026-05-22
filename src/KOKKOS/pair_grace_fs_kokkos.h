@@ -209,7 +209,7 @@ class PairGRACEFSKokkos : public PairGRACEFS {
   typedef Kokkos::View<complex***, DeviceType> t_ace_3c;
   typedef Kokkos::View<complex**[3], DeviceType> t_ace_3c3;
 
-  typedef typename Kokkos::View<KK_FLOAT*, DeviceType>::HostMirror th_ace_1d;
+  typedef typename Kokkos::View<KK_FLOAT*, DeviceType>::host_mirror_type th_ace_1d;
 
   // GRACE FS specific: A arrays (simplified, no element indexing)
   t_ace_3d A;          // [natom, (lmax+1)^2, nradmax]

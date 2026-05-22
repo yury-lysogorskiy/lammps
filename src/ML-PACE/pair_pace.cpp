@@ -432,7 +432,6 @@ void *PairPACE::extract(const char *str, int &dim)
   if (strcmp(str, "corerep_flag") == 0) return (void *) &flag_corerep_factor;
 
   if (strcmp(str, "compute_energy_only") == 0) return (void *) &flag_compute_energy_only;
-  if (strcmp(str, "debug_no_energy_only_calc") == 0) return (void *) &debug_no_energy_only_calc;
 
   dim = 2;
   if (strcmp(str, "scale") == 0) return (void *) scale;

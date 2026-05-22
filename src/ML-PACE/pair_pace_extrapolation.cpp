@@ -78,12 +78,6 @@ const char *const elements_pace_al[] = {
     "Th", "Pa", "U",  "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"};
 constexpr int elements_num_pace_al = sizeof(elements_pace_al) / sizeof(const char *);
 
-int AtomicNumberByName_pace_al(char *elname)
-{
-  for (int i = 1; i < elements_num_pace_al; i++)
-    if (strcmp(elname, elements_pace_al[i]) == 0) return i;
-  return -1;
-}
 }    // namespace
 
 /* ---------------------------------------------------------------------- */
