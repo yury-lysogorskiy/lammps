@@ -263,6 +263,50 @@ void GRACE1LModel::load(const std::string &filepath) {
       element_names[i] = s;
     }
   }
+
+  // ---- UQ / extrapolation-grade artifacts (optional) ----
+  // Present when the model was exported with --uq-artifacts (grace_kokkos_uq.npz).
+  uq_schema_version = npz_get_int_scalar(npz, "uq_schema_version", 0);
+  if (uq_schema_version != 0) {
+    const int uq_schema_supported = 2;
+    if (uq_schema_version != uq_schema_supported)
+      throw std::runtime_error("GRACE-1L/KK: unsupported uq_schema_version " +
+                               std::to_string(uq_schema_version) + " (expected " +
+                               std::to_string(uq_schema_supported) + "). "
+                               "Re-export the UQ artifacts with a current grace_utils.");
+    has_uq = true;
+    uq_n_elements = npz_get_int_scalar(npz, "uq_n_elements", n_elements);
+    uq_max_clusters = npz_get_int_scalar(npz, "uq_max_clusters", 0);
+    uq_feature_dim = npz_get_int_scalar(npz, "uq_feature_dim", 0);
+    uq_has_error_model = npz_get_int_scalar(npz, "uq_has_error_model", 0);
+    uq_centroids = npz_require_double(npz, "uq_centroids");
+    uq_inv_cov = npz_require_double(npz, "uq_inv_cov");
+    uq_n_clusters = npz_require_int(npz, "uq_n_clusters");
+    uq_interp_thresholds = npz_require_double(npz, "uq_interp_thresholds");
+    if (uq_has_error_model) {
+      uq_a_per_cluster = npz_require_double(npz, "uq_a_per_cluster");
+      uq_c_per_cluster = npz_require_double(npz, "uq_c_per_cluster");
+      uq_tau_e = npz_require_double(npz, "uq_tau_e");
+    }
+    // Validate the dense arrays against the declared (E, Kmax, D); copy_3d/4d
+    // index these flat with no bounds check, so a stale/mismatched export must
+    // fail here rather than read out of bounds in copy_weights_to_device().
+    const size_t E = uq_n_elements, K = uq_max_clusters, D = uq_feature_dim;
+    auto uq_chk = [](const char *name, size_t got, size_t want) {
+      if (got != want)
+        throw std::runtime_error(std::string("GRACE-1L/KK UQ: ") + name + " has " +
+            std::to_string(got) + " elements, expected " + std::to_string(want));
+    };
+    uq_chk("uq_centroids",         uq_centroids.size(),         E * K * D);
+    uq_chk("uq_inv_cov",           uq_inv_cov.size(),           E * K * D * D);
+    uq_chk("uq_n_clusters",        uq_n_clusters.size(),        E);
+    uq_chk("uq_interp_thresholds", uq_interp_thresholds.size(), E * K);
+    if (uq_has_error_model) {
+      uq_chk("uq_a_per_cluster", uq_a_per_cluster.size(), E * K);
+      uq_chk("uq_c_per_cluster", uq_c_per_cluster.size(), E * K);
+      uq_chk("uq_tau_e",         uq_tau_e.size(),         E);
+    }
+  }
 }
 
 // ======================================================================
@@ -296,6 +340,12 @@ PairGRACE1LKokkos<DeviceType, NNScalarT, GeomScalarT>::~PairGRACE1LKokkos()
   memoryKK->destroy_kokkos(k_eatom, eatom);
   memoryKK->destroy_kokkos(k_vatom, vatom);
   memoryKK->destroy_kokkos(k_cvatom, cvatom);
+  memory->destroy(gamma);
+  memory->destroy(atomic_sigma);
+  memory->destroy(gmm_cluster);
+  memory->destroy(eps_hat);
+  memory->destroy(eps_hat_norm);
+  memory->destroy(gamma_combined);
   delete grace_model;
 }
 
@@ -328,9 +378,42 @@ void PairGRACE1LKokkos<DeviceType, NNScalarT, GeomScalarT>::settings(int narg, c
 // ======================================================================
 
 template<class DeviceType, typename NNScalarT, typename GeomScalarT>
-void *PairGRACE1LKokkos<DeviceType, NNScalarT, GeomScalarT>::extract(const char *str, int & /*dim*/)
+void *PairGRACE1LKokkos<DeviceType, NNScalarT, GeomScalarT>::extract(const char *str, int &dim)
 {
+  dim = 0;   // every value exposed here is a global scalar (fix pair triggers, flags)
   if (strcmp(str, "debug_no_energy_only_calc") == 0) return (void *) &debug_no_energy_only_calc;
+  // UQ trigger flags — only exposed when the model carries UQ artifacts so that
+  // `fix pair ... gamma` errors cleanly on a non-UQ .npz.
+  if (has_uq) {
+    if (strcmp(str, "gamma_flag") == 0) return (void *) &flag_compute_gamma;
+    if (strcmp(str, "atomic_sigma_flag") == 0) return (void *) &flag_compute_atomic_sigma;
+    if (strcmp(str, "gmm_cluster_flag") == 0) return (void *) &flag_compute_gmm_cluster;
+    if (uq_has_error_model) {
+      if (strcmp(str, "eps_hat_flag") == 0) return (void *) &flag_compute_eps_hat;
+      if (strcmp(str, "eps_hat_norm_flag") == 0) return (void *) &flag_compute_eps_hat_norm;
+      if (strcmp(str, "gamma_combined_flag") == 0) return (void *) &flag_compute_gamma_combined;
+    }
+  }
+  return nullptr;
+}
+
+// ======================================================================
+// extract_peratom: expose per-atom UQ arrays to fix pair
+// ======================================================================
+
+template<class DeviceType, typename NNScalarT, typename GeomScalarT>
+void *PairGRACE1LKokkos<DeviceType, NNScalarT, GeomScalarT>::extract_peratom(const char *str, int &ncol)
+{
+  ncol = 0;   // all UQ fields are per-atom scalars
+  if (!has_uq) return nullptr;
+  if (strcmp(str, "gamma") == 0) return (void *) gamma;
+  if (strcmp(str, "atomic_sigma") == 0) return (void *) atomic_sigma;
+  if (strcmp(str, "gmm_cluster") == 0) return (void *) gmm_cluster;
+  if (uq_has_error_model) {
+    if (strcmp(str, "eps_hat") == 0) return (void *) eps_hat;
+    if (strcmp(str, "eps_hat_norm") == 0) return (void *) eps_hat_norm;
+    if (strcmp(str, "gamma_combined") == 0) return (void *) gamma_combined;
+  }
   return nullptr;
 }
 
@@ -370,6 +453,16 @@ void PairGRACE1LKokkos<DeviceType, NNScalarT, GeomScalarT>::coeff(int narg, char
     utils::logmesg(lmp, "[GRACE-1L/KK] Loading weights from {}\n", weights_path);
 
   grace_model->load(weights_path);
+
+  // Surface UQ availability to fixes/computes already at coeff() time (fix pair
+  // queries extract("<field>_flag") in its constructor, before init_style()).
+  has_uq = grace_model->has_uq;
+  uq_has_error_model = grace_model->uq_has_error_model;
+  uq_Kmax = grace_model->uq_max_clusters;
+  uq_D = grace_model->uq_feature_dim;
+  if (has_uq && comm->me == 0)
+    utils::logmesg(lmp, "[GRACE-1L/KK] UQ artifacts loaded: Kmax={}, D={}, error_model={}\n",
+                   uq_Kmax, uq_D, uq_has_error_model);
 
   if (comm->me == 0) {
     utils::logmesg(lmp, "[GRACE-1L/KK] n_elements={}, lmax={}, nradbase={}, nradmax={}, rcut={}, bond_specific_cutoff={}\n",
@@ -933,6 +1026,34 @@ void PairGRACE1LKokkos<DeviceType, NNScalarT, GeomScalarT>::copy_weights_to_devi
 
   // Bond-specific cutoff map [nelements, nelements]
   copy_2d(m.bond_cutoff_map, d_bond_cutoff, nelements, nelements, "g1l:bond_cutoff");
+
+  // ---- UQ / extrapolation-grade artifacts (optional) ----
+  if (m.has_uq) {
+    const int E = m.uq_n_elements;
+    const int K = m.uq_max_clusters;
+    const int D = m.uq_feature_dim;
+    // f = [lin_origin, hidden]; hidden width = input width of the last energy-MLP
+    // layer, so D must equal 1 + that width.
+    const int nin_last = m.energy_mlp_layers.back().n_in;
+    if (D != 1 + nin_last)
+      error->all(FLERR, "GRACE-1L/KK UQ: uq_feature_dim ({}) != 1 + energy-MLP last "
+                        "hidden width ({})", D, nin_last);
+    if (E != m.n_elements)
+      error->all(FLERR, "GRACE-1L/KK UQ: uq_n_elements ({}) != model n_elements ({})",
+                 E, m.n_elements);
+    if (D > GRACE1L_MAX_MLP_DIM + 1)
+      error->all(FLERR, "GRACE-1L/KK UQ: feature_dim ({}) exceeds GRACE1L_MAX_MLP_DIM+1 ({})",
+                 D, GRACE1L_MAX_MLP_DIM + 1);
+    copy_3d(m.uq_centroids, d_uq_centroids, E, K, D, "g1l:uq_centroids");
+    copy_4d(m.uq_inv_cov, d_uq_inv_cov, E, K, D, D, "g1l:uq_inv_cov");
+    copy_1d_int(m.uq_n_clusters, d_uq_n_clusters, "g1l:uq_n_clusters");
+    copy_2d(m.uq_interp_thresholds, d_uq_interp_thresholds, E, K, "g1l:uq_interp_thr");
+    if (m.uq_has_error_model) {
+      copy_2d(m.uq_a_per_cluster, d_uq_a, E, K, "g1l:uq_a");
+      copy_2d(m.uq_c_per_cluster, d_uq_c, E, K, "g1l:uq_c");
+      copy_1d_double(m.uq_tau_e, d_uq_tau_e, "g1l:uq_tau_e");
+    }
+  }
 }
 
 // ======================================================================
@@ -1046,6 +1167,34 @@ void PairGRACE1LKokkos<DeviceType, NNScalarT, GeomScalarT>::compute(int eflag_in
   chunk_size = MIN(chunksize, inum);
   chunk_offset = 0;
   grow(chunk_size, maxneigh);
+
+  // ---- UQ / extrapolation grade: allocate per-atom outputs if requested ----
+  const bool any_uq = has_uq && (flag_compute_gamma || flag_compute_atomic_sigma || flag_compute_gmm_cluster ||
+      flag_compute_eps_hat || flag_compute_eps_hat_norm || flag_compute_gamma_combined);
+  if (any_uq) {
+    const int nlocal = atom->nlocal;
+    if (nlocal > nmax_uq) {
+      memory->destroy(gamma);          memory->create(gamma, nlocal, "grace:gamma");
+      memory->destroy(atomic_sigma);   memory->create(atomic_sigma, nlocal, "grace:atomic_sigma");
+      memory->destroy(gmm_cluster);    memory->create(gmm_cluster, nlocal, "grace:gmm_cluster");
+      if (uq_has_error_model) {        // eps_hat* fields only exist with an error model
+        memory->destroy(eps_hat);        memory->create(eps_hat, nlocal, "grace:eps_hat");
+        memory->destroy(eps_hat_norm);   memory->create(eps_hat_norm, nlocal, "grace:eps_hat_norm");
+        memory->destroy(gamma_combined); memory->create(gamma_combined, nlocal, "grace:gamma_combined");
+      }
+      nmax_uq = nlocal;
+    }
+    if ((int)d_gamma.extent(0) < nlocal) {
+      MemKK::realloc_kokkos(d_gamma, "g1l:d_gamma", nlocal);
+      MemKK::realloc_kokkos(d_sigma, "g1l:d_sigma", nlocal);
+      MemKK::realloc_kokkos(d_gmm_cluster, "g1l:d_gmm_cluster", nlocal);
+      if (uq_has_error_model) {
+        MemKK::realloc_kokkos(d_eps_hat, "g1l:d_eps_hat", nlocal);
+        MemKK::realloc_kokkos(d_eps_hat_norm, "g1l:d_eps_hat_norm", nlocal);
+        MemKK::realloc_kokkos(d_gamma_combined, "g1l:d_gamma_combined", nlocal);
+      }
+    }
+  }
 
   EV_FLOAT ev;
 
@@ -1428,6 +1577,12 @@ void PairGRACE1LKokkos<DeviceType, NNScalarT, GeomScalarT>::compute(int eflag_in
         KOKKOS_LAMBDA(const int ii) {
           e_lammps(il[ii + co]) += e_chunk(ii);
         });
+    }
+
+    // ---- UQ / extrapolation grade (forward only; runs on energy-only path too) ----
+    if (any_uq) {
+      Kokkos::parallel_for("ComputeUQ",
+          Kokkos::RangePolicy<DeviceType, TagComputeUQ>(0, chunk_size), *this);
     }
 
     // ============ BACKWARD PASS (Forces) ============
@@ -1915,6 +2070,23 @@ void PairGRACE1LKokkos<DeviceType, NNScalarT, GeomScalarT>::compute(int eflag_in
     chunk_offset += chunk_size;
   }
 
+  // ---- Copy per-atom UQ results device -> host arrays (indexed by local atom) ----
+  if (any_uq) {
+    const int nlocal = atom->nlocal;
+    auto copy_out = [&](double *host, t_uq_1d &dview) {
+      Kokkos::View<double*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged> hwrap(host, nlocal);
+      Kokkos::deep_copy(hwrap, Kokkos::subview(dview, Kokkos::make_pair(0, nlocal)));
+    };
+    copy_out(gamma, d_gamma);
+    copy_out(atomic_sigma, d_sigma);
+    copy_out(gmm_cluster, d_gmm_cluster);
+    if (uq_has_error_model) {
+      copy_out(eps_hat, d_eps_hat);
+      copy_out(eps_hat_norm, d_eps_hat_norm);
+      copy_out(gamma_combined, d_gamma_combined);
+    }
+  }
+
   if (vflag_fdotr && !do_energy_only) pair_virial_fdotr_compute(this);
 
   if (eflag_atom) {
@@ -2333,6 +2505,104 @@ void PairGRACE1LKokkos<DeviceType, NNScalarT, GeomScalarT>::operator() (TagCompu
 }
 
 // ======================================================================
+// Kernel: ComputeUQ - per-atom extrapolation grade (gamma), sigma, and the
+// optional error model (eps_hat / eps_hat_norm / gamma_combined). Forward only.
+// Self-contained: recomputes the energy-MLP hidden activation so the energy
+// hot path (ComputeMLPEnergy) is untouched and the no-UQ run pays nothing.
+// Feature f = [lin_origin = rho[0], hidden = penultimate-MLP-layer output], dim D.
+// ======================================================================
+
+template<class DeviceType, typename NNScalarT, typename GeomScalarT>
+KOKKOS_INLINE_FUNCTION
+void PairGRACE1LKokkos<DeviceType, NNScalarT, GeomScalarT>::operator() (TagComputeUQ, const int& ii) const
+{
+  const int i = d_ilist[ii + chunk_offset];
+  const int mu_i = d_map(type(i));
+
+  // --- Rebuild feature f = [linear_term, hidden] (mirror ComputeMLPEnergy fwd) ---
+  const NNScalar linear_term = d_rho(ii, 0);
+  NNScalar ebuf_a[GRACE1L_MAX_MLP_DIM], ebuf_b[GRACE1L_MAX_MLP_DIM];
+  NNScalar* h_cur = ebuf_a;
+  NNScalar* h_nxt = ebuf_b;
+  const int nin0 = d_energy_dims(0);
+  for (int k = 0; k < nin0; k++)
+    h_cur[k] = d_rho(ii, k + 1);
+  for (int layer = 0; layer < energy_n_layers - 1; layer++) {
+    const int nin  = d_energy_dims(layer);
+    const int nout = d_energy_dims(layer + 1);
+    const NNScalar norm = d_energy_norms(layer);
+    for (int j = 0; j < nout; j++) {
+      NNScalar sum = 0.0;
+      for (int k = 0; k < nin; k++)
+        sum += d_energy_W(layer, k, j) * h_cur[k];
+      sum *= norm;
+      h_nxt[j] = (energy_activation == 1) ? tanh_act(sum) : silu(sum);
+    }
+    NNScalar* tmp = h_cur; h_cur = h_nxt; h_nxt = tmp;
+  }
+  // hidden = h_cur (width = d_energy_dims(energy_n_layers-1)); D = 1 + that width
+  const int nin_last = d_energy_dims(energy_n_layers - 1);
+  const int D = uq_D;
+  double f[GRACE1L_MAX_MLP_DIM + 1];
+  f[0] = (double) linear_term;
+  for (int k = 0; k < nin_last; k++) f[1 + k] = (double) h_cur[k];
+
+  // --- Cluster assignment: nearest centroid (squared Euclidean) ---
+  const int ncl = d_uq_n_clusters(mu_i);
+  int kstar = 0;
+  double best = 1.0e300;
+  for (int k = 0; k < ncl; k++) {
+    double d2 = 0.0;
+    for (int p = 0; p < D; p++) {
+      const double diff = f[p] - d_uq_centroids(mu_i, k, p);
+      d2 += diff * diff;
+    }
+    if (d2 < best) { best = d2; kstar = k; }
+  }
+
+  // --- Mahalanobis distance to assigned cluster ---
+  double delta[GRACE1L_MAX_MLP_DIM + 1];
+  for (int p = 0; p < D; p++) delta[p] = f[p] - d_uq_centroids(mu_i, kstar, p);
+  double sig2 = 0.0;
+  for (int p = 0; p < D; p++) {
+    double acc = 0.0;
+    for (int q = 0; q < D; q++)
+      acc += d_uq_inv_cov(mu_i, kstar, p, q) * delta[q];
+    sig2 += delta[p] * acc;
+  }
+  const double sigma = Kokkos::sqrt(sig2 + 1.0e-8);
+
+  double t = d_uq_interp_thresholds(mu_i, kstar);
+  if (t < 1.0e-10) t = 1.0e-10;
+  const double gamma_val = sigma / t;
+
+  d_sigma(i) = sigma;
+  d_gamma(i) = gamma_val;
+  d_gmm_cluster(i) = (double) kstar;
+
+  // --- Optional error model: eps_hat / eps_hat_norm / gamma_combined ---
+  if (uq_has_error_model) {
+    const double a = d_uq_a(mu_i, kstar);
+    const double c = d_uq_c(mu_i, kstar);
+    double eh, ehn;
+    if (a != a || c != c) {            // NaN propagation (no fit for this cluster)
+      eh = NAN; ehn = NAN;
+    } else {
+      double expo = a + c * sigma;
+      if (expo > 10.0) expo = 10.0;
+      else if (expo < -10.0) expo = -10.0;
+      eh = Kokkos::pow(10.0, expo);
+      const double tau = d_uq_tau_e(mu_i);
+      ehn = (tau == tau && tau > 0.0 && tau < HUGE_VAL) ? eh / tau : NAN;
+    }
+    d_eps_hat(i) = eh;
+    d_eps_hat_norm(i) = ehn;
+    // gamma_combined = max(gamma, eps_hat_norm); falls back to gamma if ehn is NaN
+    d_gamma_combined(i) = (ehn != ehn) ? gamma_val : (gamma_val > ehn ? gamma_val : ehn);
+  }
+}
+
+// ======================================================================
 // Kernel: ComputeDerivative - per-bond forces from d_A_adj
 // Uses forward-mode AD through MLP for dR_nl/dr + SH derivatives
 // ======================================================================
@@ -2567,6 +2837,11 @@ double PairGRACE1LKokkos<DeviceType, NNScalarT, GeomScalarT>::memory_usage()
   bytes += MemKK::memory_usage(d_radial_basis);
   bytes += MemKK::memory_usage(d_e_atom);
   bytes += MemKK::memory_usage(d_rho);
+  if (has_uq) {
+    bytes += MemKK::memory_usage(d_uq_centroids);
+    bytes += MemKK::memory_usage(d_uq_inv_cov);
+    bytes += MemKK::memory_usage(d_uq_interp_thresholds);
+  }
   return bytes;
 }
 

@@ -127,6 +127,21 @@ struct GRACE1LModel {
   // Element names (for type mapping)
   std::vector<std::string> element_names;
 
+  // ---- UQ / extrapolation-grade artifacts (optional; present iff has_uq) ----
+  bool has_uq = false;
+  int uq_schema_version = 0;
+  int uq_n_elements = 0;
+  int uq_max_clusters = 0;            // Kmax
+  int uq_feature_dim = 0;            // D
+  int uq_has_error_model = 0;
+  std::vector<double> uq_centroids;          // [E*Kmax*D]
+  std::vector<double> uq_inv_cov;            // [E*Kmax*D*D] (pre-inverted precision)
+  std::vector<int>    uq_n_clusters;         // [E]
+  std::vector<double> uq_interp_thresholds;  // [E*Kmax]
+  std::vector<double> uq_a_per_cluster;      // [E*Kmax] (may be NaN)
+  std::vector<double> uq_c_per_cluster;      // [E*Kmax] (may be NaN)
+  std::vector<double> uq_tau_e;              // [E]      (may be NaN)
+
   void load(const std::string &filepath);
 };
 
@@ -149,6 +164,7 @@ class PairGRACE1LKokkos : public Pair {
   // FC, Product, ReduceN dispatched via inline lambdas in compute()
   struct TagComputeMLPEnergy{};
   struct TagComputeDerivative{};
+  struct TagComputeUQ{};   // extrapolation grade (gamma) + error model — forward only
 
   // Force computation tags (Stage 2)
   template<int NEIGHFLAG, int EVFLAG>
@@ -172,6 +188,7 @@ class PairGRACE1LKokkos : public Pair {
   double init_one(int, int) override;
   double memory_usage() override;
   void *extract(const char *, int &) override;
+  void *extract_peratom(const char *, int &) override;
 
   // Kernel operators (to be implemented)
   KOKKOS_INLINE_FUNCTION
@@ -191,6 +208,9 @@ class PairGRACE1LKokkos : public Pair {
 
   KOKKOS_INLINE_FUNCTION
   void operator() (TagComputeDerivative, const typename Kokkos::TeamPolicy<DeviceType, TagComputeDerivative>::member_type& team) const;
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (TagComputeUQ, const int& ii) const;
 
   template<int NEIGHFLAG, int EVFLAG>
   KOKKOS_INLINE_FUNCTION
@@ -439,6 +459,31 @@ class PairGRACE1LKokkos : public Pair {
 
   // Energy-only mode (skips backward pass / forces)
   bool debug_no_energy_only_calc = false;
+
+  // ---------- UQ / extrapolation grade (forward only) ----------
+  // FP64 device storage regardless of NNScalar (numerical safety: 1e6 untrained
+  // precision, wide sigma^2 dynamic range).
+  typedef Kokkos::View<double*, DeviceType>    t_uq_1d;
+  typedef Kokkos::View<double**, DeviceType>   t_uq_2d;
+  typedef Kokkos::View<double***, DeviceType>  t_uq_3d;
+  typedef Kokkos::View<double****, DeviceType> t_uq_4d;
+  t_uq_3d d_uq_centroids;          // [E, Kmax, D]
+  t_uq_4d d_uq_inv_cov;            // [E, Kmax, D, D]
+  t_int_1d d_uq_n_clusters;        // [E]
+  t_uq_2d d_uq_interp_thresholds;  // [E, Kmax]
+  t_uq_2d d_uq_a, d_uq_c;          // [E, Kmax] error-model coeffs
+  t_uq_1d d_uq_tau_e;              // [E]
+  // per-atom UQ outputs (device, indexed by local atom; sized nmax_uq)
+  t_uq_1d d_gamma, d_sigma, d_gmm_cluster, d_eps_hat, d_eps_hat_norm, d_gamma_combined;
+
+  bool has_uq = false;
+  int uq_Kmax = 0, uq_D = 0, uq_has_error_model = 0;
+  int flag_compute_gamma = 0, flag_compute_atomic_sigma = 0, flag_compute_gmm_cluster = 0;
+  int flag_compute_eps_hat = 0, flag_compute_eps_hat_norm = 0, flag_compute_gamma_combined = 0;
+  int nmax_uq = 0;
+  // host per-atom arrays exposed via extract_peratom (indexed by local atom)
+  double *gamma = nullptr, *atomic_sigma = nullptr, *gmm_cluster = nullptr, *eps_hat = nullptr;
+  double *eps_hat_norm = nullptr, *gamma_combined = nullptr;
 
   // Host-side model data
   GRACE1LModel *grace_model;

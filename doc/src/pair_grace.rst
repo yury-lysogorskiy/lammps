@@ -446,8 +446,10 @@ Uncertainty quantification
 .. versionadded:: 07May2026
 
 The ``grace/extrapolation`` style requires a UQ-enabled GRACE saved model that
-exports a ``compute_uq`` and ``compute_uq_gamma_only`` TensorFlow signature.
-The ``pair_coeff`` syntax is the same as for ``grace``.
+exports a ``compute_uq`` TensorFlow signature.  If the model additionally
+exports a ``compute_uq_gamma_only`` signature, the style uses it automatically
+on the gamma-only fast path (see *Signature dispatch* below).  The
+``pair_coeff`` syntax is the same as for ``grace``.
 
 The style can expose seven per-atom fields through :doc:`fix pair <fix_pair>`:
 
@@ -457,7 +459,9 @@ The style can expose seven per-atom fields through :doc:`fix pair <fix_pair>`:
   (integer, returned as a per-atom double because *fix pair* accepts only
   doubles).
 * ``atomic_sigma`` = scalar raw per-atom uncertainty :math:`\sigma_i` as
-  produced by the UQ head of the saved model.  Exposing it directly
+  produced by the UQ head of the saved model (eV).  This is the underlying
+  ensemble/dropout disagreement signal that ``uncertainty_force``,
+  ``eps_hat``, and the kappa rescale are derived from; exposing it directly
   is useful for calibration plots, threshold tuning, and diagnostics.
 * ``uncertainty_force`` = three-vector uncertainty force
   :math:`\mathbf{F}^{\sigma}_i = \partial \sigma_{tot} / \partial \mathbf{r}_i`.
@@ -492,7 +496,8 @@ increasing cost:
 * ``compute_uq_gamma_only`` -- when only ``gamma``, ``gmm_cluster``,
   ``atomic_sigma``, ``eps_hat``, ``eps_hat_norm``, and/or ``gamma_combined``
   are requested and ``kappa = 0``.  Skips the :math:`\sigma`-gradient
-  backward pass.
+  backward pass.  Used automatically when the saved model exports this
+  signature; otherwise falls back to ``compute_uq``.
 * ``compute_uq`` -- when ``uncertainty_force`` is requested or ``kappa`` is
   nonzero.  Includes the :math:`\sigma`-gradient backward pass.
 
@@ -574,6 +579,54 @@ cluster:
 .. math::
 
    \gamma_i = \frac{\sigma_i}{\theta_{e,k^{\!*}}} .
+
+.. _pair_grace_uq_kokkos:
+
+Native Kokkos GRACE UQ
+""""""""""""""""""""""
+
+.. versionadded:: TBD
+
+The native Kokkos GRACE styles ``grace/1l/kk``, ``grace/2l/kk``,
+``grace/1l/cpu/kk``, and ``grace/2l/cpu/kk`` (including their ``/device``,
+``/host``, ``/mixed``, and ``/fp32`` precision variants) compute the same
+per-atom uncertainty quantities on the GPU, directly from a UQ-enabled Kokkos
+``.npz`` model file.  The pair style detects UQ artifacts automatically.
+
+These styles expose six per-atom fields through :doc:`fix pair <fix_pair>`,
+with the same names and semantics as ``grace/extrapolation`` above:
+
+* ``gamma`` = extrapolation grade :math:`\gamma_i`,
+* ``atomic_sigma`` = raw Mahalanobis uncertainty :math:`\sigma_i`,
+* ``gmm_cluster`` = GMM cluster index :math:`k^*` for the atom (an integer
+  stored as a double),
+* ``eps_hat`` = predicted force-error magnitude
+  :math:`\hat{\varepsilon}_i` (``NaN`` for clusters with no fitted error
+  model),
+* ``eps_hat_norm`` = element-normalized :math:`\hat{\varepsilon}_i / \tau_e`,
+* ``gamma_combined`` = :math:`\max(\gamma_i, \hat{\varepsilon}_{i,\mathrm{norm}})`
+  (falls back to :math:`\gamma_i` where ``eps_hat_norm`` is ``NaN``).
+
+Unlike the TensorFlow ``grace/extrapolation`` style, the native Kokkos styles
+provide **no** ``uncertainty_force``,  ``kappa``/HAL biasing, or
+:math:`\partial\gamma/\partial\mathbf{r}` gradient: only the forward per-atom
+scalars listed above are available.
+
+.. code-block:: LAMMPS
+
+   pair_style grace/1l/kk          # or grace/2l/kk, grace/1l/cpu/kk, grace/2l/cpu/kk
+   pair_coeff * * grace_kokkos_uq.npz Mo Nb Ta W
+
+   fix gp  all pair 1 grace/1l/kk gamma          1
+   fix as  all pair 1 grace/1l/kk atomic_sigma   1
+   fix gm  all pair 1 grace/1l/kk gmm_cluster    1
+   fix eh  all pair 1 grace/1l/kk eps_hat        1
+   fix ehn all pair 1 grace/1l/kk eps_hat_norm   1
+   fix gcb all pair 1 grace/1l/kk gamma_combined 1
+
+   compute max_gamma all reduce max f_gp
+   thermo_style custom step pe c_max_gamma
+   dump uq all custom 100 uq.dump id type x y z f_gp f_as f_gm f_eh f_ehn f_gcb
 
 .. _pair_grace_bias_dynamics:
 
