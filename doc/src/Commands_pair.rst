@@ -116,7 +116,6 @@ OPT.
    * :doc:`grace/2l/cpu (k) <pair_grace>`
    * :doc:`grace/2layer/chunk <pair_grace>`
    * :doc:`grace/2layer/parallel <pair_grace>`
-   * :doc:`grace/extrapolation <pair_grace>`
    * :doc:`grace/fs (k) <pair_grace>`
    * :doc:`gran/hertz/history (o) <pair_gran>`
    * :doc:`gran/hooke (o) <pair_gran>`

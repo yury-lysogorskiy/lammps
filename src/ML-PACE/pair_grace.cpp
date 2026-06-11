@@ -84,6 +84,17 @@ struct UQOutputIdx {
 using namespace LAMMPS_NS;
 using namespace MathConst;
 
+namespace {
+// True if the token is one of the boolean literals utils::logical accepts. Lets
+// `bias_virial` accept either a bare-flag form or an explicit yes/no in settings(),
+// matching the `pair_modify bias_virial yes|no` spelling.
+bool is_logical_token(const char *s)
+{
+  return !strcmp(s, "yes") || !strcmp(s, "no") || !strcmp(s, "on") || !strcmp(s, "off") ||
+      !strcmp(s, "true") || !strcmp(s, "false");
+}
+}    // namespace
+
 /* ---------------------------------------------------------------------- */
 PairGRACE::PairGRACE(LAMMPS *lmp) : Pair(lmp)
 {
@@ -156,8 +167,6 @@ void PairGRACE::allocate()
 ------------------------------------------------------------------------- */
 void PairGRACE::settings(int narg, char **arg)
 {
-  if (narg > 3) utils::missing_cmd_args(FLERR, "pair_style grace", error);
-
   // ACE potentials are parameterized in metal units
   if (strcmp("metal", update->unit_style) != 0)
     error->all(FLERR, "GRACE potentials require 'metal' units");
@@ -168,6 +177,7 @@ void PairGRACE::settings(int narg, char **arg)
   int iarg = 0;
   while (iarg < narg) {
     if (strcmp(arg[iarg], "padding") == 0) {
+      if (iarg + 1 >= narg) utils::missing_cmd_args(FLERR, "pair_style grace padding", error);
       neigh_padding_fraction = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
       iarg += 2;
 
@@ -183,6 +193,8 @@ void PairGRACE::settings(int narg, char **arg)
       iarg += 1;
       if (comm->me == 0) utils::logmesg(lmp, "[GRACE] Pair forces are ON \n");
     } else if (strcmp(arg[iarg], "max_number_of_reduction") == 0) {
+      if (iarg + 1 >= narg)
+        utils::missing_cmd_args(FLERR, "pair_style grace max_number_of_reduction", error);
       max_number_of_reduction = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
       iarg += 2;
       if (comm->me == 0)
@@ -190,6 +202,7 @@ void PairGRACE::settings(int narg, char **arg)
                        "[GRACE] Maximum number of recompilation during padding reduction: {}\n",
                        max_number_of_reduction);
     } else if (strcmp(arg[iarg], "reduce_padding") == 0) {
+      if (iarg + 1 >= narg) utils::missing_cmd_args(FLERR, "pair_style grace reduce_padding", error);
       reducing_neigh_padding_fraction = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
       iarg += 2;
       if (comm->me == 0)
@@ -198,6 +211,36 @@ void PairGRACE::settings(int narg, char **arg)
     } else if (strcmp(arg[iarg], "debug_no_energy_only_calc") == 0) {
       debug_no_energy_only_calc = true;
       iarg += 1;
+    } else if (strcmp(arg[iarg], "kappa") == 0) {
+      // UQ / extrapolation knobs (formerly pair_style grace/extrapolation). UQ itself
+      // activates implicitly when the model has a UQ head and a `fix pair grace <field>`
+      // toggle is set or kappa != 0; these keywords just configure the HAL kappa-rescale.
+      if (iarg + 1 >= narg)
+        error->all(FLERR,
+                   "[GRACE] kappa requires a numeric argument (relative-force uncertainty "
+                   "bias coefficient; e.g. 0.1 = 10 % of ||F^phys||)");
+      parse_kappa(arg[iarg + 1], "pair_style grace kappa");
+      iarg += 2;
+    } else if (strcmp(arg[iarg], "bias_virial") == 0) {
+      // Accept a bare flag (-> on) or an explicit yes/no, so it matches the
+      // `pair_modify bias_virial yes|no` spelling instead of erroring on the value.
+      if (iarg + 1 < narg && is_logical_token(arg[iarg + 1])) {
+        parse_bias_virial(arg[iarg + 1]);
+        iarg += 2;
+      } else {
+        parse_bias_virial("on");
+        iarg += 1;
+      }
+    } else if (strcmp(arg[iarg], "kappa_norm") == 0) {
+      if (iarg + 1 >= narg)
+        error->all(FLERR, "[GRACE] kappa_norm requires 'max' or 'mean'");
+      parse_kappa_norm(arg[iarg + 1], "[GRACE] kappa_norm");
+      iarg += 2;
+    } else if (strcmp(arg[iarg], "kappa_group") == 0) {
+      if (iarg + 1 >= narg)
+        error->all(FLERR, "[GRACE] kappa_group requires a LAMMPS group name");
+      parse_kappa_group(arg[iarg + 1], "[GRACE] kappa_group");
+      iarg += 2;
     } else
       error->all(FLERR, "[GRACE] Unknown pair_style grace keyword: {}", arg[iarg]);
   }
@@ -388,12 +431,10 @@ void PairGRACE::coeff(int narg, char **arg)
     if (comm->me == 0)
       utils::logmesg(lmp, "[GRACE] compute_uq_gamma_only signature is available\n");
   }
-  if (request_extrapolation && !has_compute_uq) {
-    error->all(FLERR,
-               "pair_style grace/extrapolation requires a UQ-trained model: "
-               "signature '{}' not found in saved model. Use a model trained with UQ head.",
-               COMPUTE_UQ_KEY);
-  }
+  // NB: UQ-head availability is no longer enforced here. Activation is implicit
+  // (parity with grace/kk) -- whether UQ is actually requested is only known at
+  // run time (fix-pair flags / kappa), so the "model has no UQ head" error is
+  // raised lazily in compute() when a UQ output is first requested.
 
   // Predicted force-error heads (eps_hat, eps_hat_norm) -- exported by newer
   // UQ models. Both come together or not at all.
@@ -470,10 +511,15 @@ void PairGRACE::init_style()
   if (kappa != 0.0 && comm->nprocs > 1)
     error->all(
         FLERR,
-        "[GRACE/extrapolation] HAL/kappa-mode (kappa != 0) is not supported with nprocs > 1: "
+        "[GRACE] HAL/kappa-mode (kappa != 0) is not supported with nprocs > 1: "
         "the kappa-rescale uses per-atom force norms that are only complete after the "
         "post-compute reverse_comm, so multi-rank runs would tally biased kappa on "
         "subdomain-boundary atoms. Run single-rank for kappa-mode.");
+
+  if (kappa != 0.0 && !pair_forces)
+    error->all(FLERR,
+               "[GRACE] kappa != 0 needs per-bond sigma gradients, which require pair-force "
+               "mode. Remove 'no_pair_forces' from the pair_style grace command.");
 
   // request a full neighbor list
   neighbor->add_request(this, NeighConst::REQ_FULL);
@@ -505,7 +551,7 @@ double PairGRACE::init_one(int i, int j)
 void *PairGRACE::extract(const char *str, int &dim)
 {
   dim = 0;
-  // UQ knobs (only meaningful when request_extrapolation is on, but harmless otherwise).
+  // UQ knobs (only meaningful when the model exports a UQ head; harmless otherwise).
   if (strcmp(str, "gamma_flag") == 0) return (void *) &flag_compute_gamma;
   if (strcmp(str, "gmm_cluster_flag") == 0) return (void *) &flag_compute_gmm_cluster;
   if (strcmp(str, "uncertainty_force_flag") == 0) return (void *) &flag_compute_uncertainty_force;
@@ -537,21 +583,17 @@ void PairGRACE::modify_params(int narg, char **arg)
   while (iarg < narg) {
     if (strcmp(arg[iarg], "kappa") == 0) {
       if (iarg + 1 >= narg) utils::missing_cmd_args(FLERR, "pair_modify kappa", error);
-      kappa = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
-      if (kappa != 0.0 && comm->nprocs > 1)
-        error->all(FLERR,
-                   "[GRACE/extrapolation] pair_modify kappa != 0 requires single MPI rank "
-                   "(see pair_style grace/extrapolation docs).");
+      parse_kappa(arg[iarg + 1], "pair_modify kappa");
       iarg += 2;
     } else if (strcmp(arg[iarg], "bias_virial") == 0) {
       if (iarg + 1 >= narg) utils::missing_cmd_args(FLERR, "pair_modify bias_virial", error);
-      bias_virial = utils::logical(FLERR, arg[iarg + 1], false, lmp);
+      parse_bias_virial(arg[iarg + 1]);
       iarg += 2;
     } else if (strcmp(arg[iarg], "kappa_norm") == 0) {
       if (iarg + 1 >= narg) utils::missing_cmd_args(FLERR, "pair_modify kappa_norm", error);
       parse_kappa_norm(arg[iarg + 1], "pair_modify kappa_norm");
       if (comm->me == 0)
-        utils::logmesg(lmp, "[GRACE/extrapolation] kappa_norm = {}\n", kappa_norm_str());
+        utils::logmesg(lmp, "[GRACE] kappa_norm = {}\n", kappa_norm_str());
       iarg += 2;
     } else if (strcmp(arg[iarg], "kappa_group") == 0) {
       if (iarg + 1 >= narg) utils::missing_cmd_args(FLERR, "pair_modify kappa_group", error);
@@ -559,12 +601,12 @@ void PairGRACE::modify_params(int narg, char **arg)
       if (comm->me == 0) {
         if (kappa_group_id)
           utils::logmesg(lmp,
-                         "[GRACE/extrapolation] kappa_group = {} (HAL bias restricted to "
+                         "[GRACE] kappa_group = {} (HAL bias restricted to "
                          "this group; gamma/gmm_cluster/uncertainty_force unaffected)\n",
                          kappa_group_id);
         else
           utils::logmesg(lmp,
-                         "[GRACE/extrapolation] kappa_group = all (HAL bias applies to "
+                         "[GRACE] kappa_group = all (HAL bias applies to "
                          "every atom; no restriction)\n");
       }
       iarg += 2;
@@ -578,8 +620,39 @@ void PairGRACE::modify_params(int narg, char **arg)
 }
 
 /* ----------------------------------------------------------------------
-    Shared kappa_norm keyword parser used by both PairGRACE::modify_params
-    and PairGRACEExtrapolation::settings. Errors (no return) on bad value.
+    Shared kappa setter used by both PairGRACE::settings and
+    PairGRACE::modify_params. Errors if kappa != 0 under nprocs > 1 (the
+    kappa-rescale uses per-atom force norms completed only after reverse_comm).
+ ---------------------------------------------------------------------- */
+void PairGRACE::parse_kappa(const char *val, const char *ctx)
+{
+  kappa = utils::numeric(FLERR, val, false, lmp);
+  if (kappa != 0.0 && comm->nprocs > 1)
+    error->all(FLERR,
+               "[GRACE] {}: kappa != 0 requires a single MPI rank (the kappa-rescale uses "
+               "per-atom force norms completed only after reverse_comm).",
+               ctx);
+  if (comm->me == 0)
+    utils::logmesg(lmp, "[GRACE] kappa = {} (relative-force HAL bias)\n", kappa);
+}
+
+/* ----------------------------------------------------------------------
+    Shared bias_virial setter used by both PairGRACE::settings and
+    PairGRACE::modify_params.
+ ---------------------------------------------------------------------- */
+void PairGRACE::parse_bias_virial(const char *val)
+{
+  bias_virial = utils::logical(FLERR, val, false, lmp);
+  if (comm->me == 0)
+    utils::logmesg(lmp,
+                   "[GRACE] bias_virial = {} (kappa contribution {} the global virial; "
+                   "per-atom stress unchanged)\n",
+                   bias_virial ? "yes" : "no", bias_virial ? "added to" : "excluded from");
+}
+
+/* ----------------------------------------------------------------------
+    Shared kappa_norm keyword parser used by both PairGRACE::settings and
+    PairGRACE::modify_params. Errors (no return) on bad value.
  ---------------------------------------------------------------------- */
 void PairGRACE::parse_kappa_norm(const char *mode, const char *ctx)
 {
@@ -732,6 +805,22 @@ void PairGRACE::compute(int eflag, int vflag)
   // the pointer to the list of neighbors of "i"
   firstneigh = list->firstneigh;
 
+  // Was any UQ output (or kappa) requested? Evaluate from the RAW flags, BEFORE the
+  // per-head availability zeroing below, so the "model has no compute_uq head"
+  // fail-fast fires consistently for every field -- a gamma request and an eps_hat
+  // request both error on a non-UQ model, rather than one erroring and the other
+  // silently degrading to a confusing downstream "cannot extract" later.
+  const bool uq_requested =
+      flag_compute_gamma || flag_compute_gmm_cluster || flag_compute_uncertainty_force ||
+      flag_compute_eps_hat || flag_compute_eps_hat_norm || flag_compute_gamma_combined ||
+      flag_compute_atomic_sigma || kappa != 0.0;
+  if (uq_requested && !has_compute_uq)
+    error->all(FLERR,
+               "[GRACE] a UQ output (gamma/uncertainty_force/eps_hat/...) or kappa != 0 was "
+               "requested, but the saved model does not export the '{}' signature. Use a GRACE "
+               "model trained with a UQ head.",
+               COMPUTE_UQ_KEY);
+
   // Predicted-error flags need the eps_hat / eps_hat_norm heads -- clear them
   // once with a warning if the loaded model doesn't export them. gamma_combined
   // depends on eps_hat_norm too, so it falls under the same gate. Cleared flags
@@ -760,8 +849,13 @@ void PairGRACE::compute(int eflag, int vflag)
     flag_compute_atomic_sigma = 0;
   }
 
-  // UQ / extrapolation path takes precedence over energy-only when active
-  bool do_uq = request_extrapolation && has_compute_uq &&
+  // UQ / extrapolation path takes precedence over energy-only when active. do_uq
+  // uses the POST-zeroing flags (a request for a head this model lacks was cleared
+  // above), so it won't spin up the UQ path for a field that cannot be produced.
+  // Activation is implicit (parity with grace/kk): plain `grace` -- and any run with
+  // no surviving UQ field requested -- never enters this path and dispatches the
+  // regular compute / compute_energy signature below at no extra per-step cost.
+  bool do_uq = has_compute_uq &&
       (flag_compute_gamma || flag_compute_gmm_cluster || flag_compute_uncertainty_force ||
        flag_compute_eps_hat || flag_compute_eps_hat_norm || flag_compute_gamma_combined ||
        flag_compute_atomic_sigma || kappa != 0.0);
@@ -769,6 +863,14 @@ void PairGRACE::compute(int eflag, int vflag)
   // Otherwise prefer the faster gamma-only signature (skips the σ-grad backward pass)
   // when the model exports it; fall back to compute_uq when it doesn't.
   const bool need_dsigma_dr = do_uq && (kappa != 0.0 || flag_compute_uncertainty_force);
+  // kappa-rescale and the per-atom uncertainty_force tally both need per-bond
+  // sigma-gradients, which only exist in pair-force mode (the old grace/extrapolation
+  // subclass forced this). Plain gamma/sigma/gmm/eps_hat do NOT need forces.
+  if (need_dsigma_dr && !pair_forces)
+    error->all(FLERR,
+               "[GRACE] kappa != 0 or an uncertainty_force request needs per-bond sigma "
+               "gradients, which require pair-force mode. Remove 'no_pair_forces' from the "
+               "pair_style grace command.");
   const bool use_uq_gamma_only = do_uq && !need_dsigma_dr && has_compute_uq_gamma_only;
   bool do_energy_only = eflag_only && !debug_no_energy_only_calc && !do_uq;
 
@@ -784,6 +886,11 @@ void PairGRACE::compute(int eflag, int vflag)
       };
       memory->grow(gamma, atom->nmax, "grace:gamma");
       memory->grow(uncertainty_force, atom->nmax, 3, "grace:uncertainty_force");
+      // Zero uncertainty_force on (re)grow: a fix pair / dump can map it without its
+      // own trigger set (need_dsigma_dr false below), in which case the per-step
+      // memset is skipped and the array is never written -- a reader must see 0, not
+      // malloc garbage. (gamma needs no such zeroing: fully overwritten over nlocal.)
+      std::memset(&uncertainty_force[0][0], 0, sizeof(double) * 3 * atom->nmax);
       grow_zero(gmm_cluster_arr, "grace:gmm_cluster");
       grow_zero(eps_hat, "grace:eps_hat");
       grow_zero(eps_hat_norm, "grace:eps_hat_norm");
@@ -1274,7 +1381,7 @@ void PairGRACE::compute(int eflag, int vflag)
         for (i = 0; i < nlocal; ++i) dest[i] = src[i];
       } else {
         error->all(FLERR,
-                   "[GRACE/extrapolation] unexpected dtype id {} for output '{}' "
+                   "[GRACE] unexpected dtype id {} for output '{}' "
                    "(expected float32 or float64)",
                    static_cast<int>(dt), name);
       }

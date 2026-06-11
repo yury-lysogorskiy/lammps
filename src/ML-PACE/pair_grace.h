@@ -75,8 +75,9 @@ class PairGRACE : public Pair {
   bool warning_compute_energy_only_not_avail_shown = false;
   bool debug_no_energy_only_calc = false;
 
-  // UQ / extrapolation scaffolding (no-op when request_extrapolation == false)
-  bool request_extrapolation = false;
+  // UQ / extrapolation scaffolding. Activation is implicit (parity with grace/kk):
+  // UQ runs when the model exports a UQ head (has_compute_uq) AND a per-atom UQ
+  // output is requested via `fix pair grace <field>` or kappa != 0. See compute().
   bool has_compute_uq = false;
   // Faster gamma-only signature: skips the dsigma/dr backward pass. When kappa==0
   // and uncertainty_force is not requested, the compute() path prefers this
@@ -107,6 +108,10 @@ class PairGRACE : public Pair {
   int kappa_groupbit = -1;
   char *kappa_group_id = nullptr;
   void parse_kappa_group(const char *name, const char *ctx);
+  // Shared setters for kappa / bias_virial, used by both settings() and
+  // modify_params() so the two keyword parsers cannot drift.
+  void parse_kappa(const char *val, const char *ctx);
+  void parse_bias_virial(const char *val);
   const char *kappa_group_str() const {
     return kappa_group_id ? kappa_group_id : "all";
   }

@@ -2,7 +2,6 @@
 .. index:: pair_style grace/1layer/chunk
 .. index:: pair_style grace/2layer/chunk
 .. index:: pair_style grace/2layer/parallel
-.. index:: pair_style grace/extrapolation
 .. index:: pair_style grace/fs
 .. index:: pair_style grace/fs/kk
 .. index:: pair_style grace/1l
@@ -28,7 +27,6 @@ Syntax
    pair_style grace/1layer/chunk keyword value ...
    pair_style grace/2layer/chunk keyword value ...
    pair_style grace/2layer/parallel keyword value ...
-   pair_style grace/extrapolation keyword value ...
    pair_style grace/fs keyword value ...
    pair_style grace/fs/kk keyword value ...
    pair_style grace/1l/kk keyword value ...
@@ -49,8 +47,10 @@ command.  The accepted keywords depend on the selected style.
    * - ``grace``
      - ``padding``, ``pad_verbose``, ``pair_forces``,
        ``max_number_of_reduction``, ``reduce_padding``,
-       ``debug_no_energy_only_calc``
-     - TensorFlow saved-model evaluator
+       ``debug_no_energy_only_calc``, ``kappa``, ``bias_virial``,
+       ``kappa_norm``, ``kappa_group``
+     - TensorFlow saved-model evaluator; uncertainty quantification (UQ)
+       activates automatically when the model exports a UQ head
    * - ``grace/1layer/chunk``
      - ``padding``, ``pad_verbose``, ``max_number_of_reduction``,
        ``reduce_padding``, ``chunksize``, ``debug_no_energy_only_calc``
@@ -63,11 +63,6 @@ command.  The accepted keywords depend on the selected style.
      - ``padding``, ``pad_verbose``, ``max_number_of_reduction``,
        ``reduce_padding``, ``debug_no_energy_only_calc``
      - Two-layer MPI TensorFlow evaluator without chunking
-   * - ``grace/extrapolation``
-     - ``kappa``, ``bias_virial``, ``kappa_norm``, ``kappa_group``,
-       ``padding``, ``pad_verbose``, ``max_number_of_reduction``,
-       ``reduce_padding``
-     - UQ-enabled TensorFlow evaluator
    * - ``grace/fs`` and ``grace/fs/kk``
      - ``extrapolation``, ``chunksize``, ``debug_no_energy_only_calc``
      - Native GRACE/FS evaluator
@@ -106,7 +101,10 @@ The chunked TensorFlow styles additionally accept:
 * ``chunksize`` value = number of atoms processed in each TensorFlow block.
   The default is 4096.
 
-The ``grace/extrapolation`` style additionally accepts:
+For uncertainty quantification and biased dynamics, the ``grace`` style
+additionally accepts the following keywords.  They are only meaningful when the
+saved model exports a UQ head (see :ref:`pair_grace_uq`); on a non-UQ model they
+configure nothing and UQ output is never produced.
 
 * ``kappa`` value = relative-force bias coefficient :math:`\kappa`.  The
   default is 0, which disables biased dynamics.
@@ -191,18 +189,18 @@ Two-layer TensorFlow model with the non-chunked MPI-parallel implementation:
    pair_style grace/2layer/parallel
    pair_coeff * * /path/to/2layer_model Al Li
 
-UQ-enabled TensorFlow model:
+UQ-enabled TensorFlow model (UQ output activates via :doc:`fix pair <fix_pair>`):
 
 .. code-block:: LAMMPS
 
-   pair_style grace/extrapolation
+   pair_style grace
    pair_coeff * * /path/to/uq_saved_model W
 
 UQ-enabled TensorFlow model with biased dynamics:
 
 .. code-block:: LAMMPS
 
-   pair_style grace/extrapolation kappa 0.1
+   pair_style grace kappa 0.1
    pair_coeff * * /path/to/uq_saved_model W
 
 Native GRACE/FS model:
@@ -253,7 +251,6 @@ This page documents the following related pair styles:
 * ``grace/1layer/chunk``
 * ``grace/2layer/chunk``
 * ``grace/2layer/parallel``
-* ``grace/extrapolation``
 * ``grace/fs``
 * ``grace/fs/kk``
 * ``grace/1l/kk`` and ``grace/1l/cpu/kk``
@@ -274,7 +271,8 @@ Choosing a GRACE pair style
      - TensorFlow
    * - ``grace``
      - TensorFlow saved model
-     - General model with simple setup
+     - General model with simple setup; uncertainty quantification and biased
+       dynamics when the model has a UQ head (biased dynamics: one rank only)
      - Yes for 1L, no for 2L
      - No
      - Required
@@ -294,12 +292,6 @@ Choosing a GRACE pair style
      - TensorFlow saved model
      - Two-layer model without chunking
      - Yes
-     - No
-     - Required
-   * - ``grace/extrapolation``
-     - UQ-enabled TensorFlow saved model
-     - Extrapolation grade and biased dynamics
-     - Yes for 1L+UQ; biased dynamics only on one rank
      - No
      - Required
    * - ``grace/fs``
@@ -445,11 +437,18 @@ Uncertainty quantification
 
 .. versionadded:: 07May2026
 
-The ``grace/extrapolation`` style requires a UQ-enabled GRACE saved model that
-exports a ``compute_uq`` TensorFlow signature.  If the model additionally
-exports a ``compute_uq_gamma_only`` signature, the style uses it automatically
-on the gamma-only fast path (see *Signature dispatch* below).  The
-``pair_coeff`` syntax is the same as for ``grace``.
+The ``grace`` style computes uncertainty quantification (UQ) whenever the loaded
+GRACE saved model exports a ``compute_uq`` TensorFlow signature.  The UQ head is
+detected automatically at ``pair_coeff`` time -- no separate pair style and no
+opt-in keyword are required.  If the model additionally exports a
+``compute_uq_gamma_only`` signature, the style uses it automatically on the
+gamma-only fast path (see *Signature dispatch* below).
+
+UQ is computed only when a per-atom UQ field is requested at run time through
+:doc:`fix pair <fix_pair>`, or when ``kappa != 0``.  Otherwise -- including every
+plain ``grace`` run, even on a UQ-capable model -- the regular non-UQ code path
+runs at no extra per-step cost.  If a UQ field (or ``kappa``) is requested but the
+model has no ``compute_uq`` head, LAMMPS stops with an error.
 
 The style can expose seven per-atom fields through :doc:`fix pair <fix_pair>`:
 
@@ -501,24 +500,24 @@ increasing cost:
 * ``compute_uq`` -- when ``uncertainty_force`` is requested or ``kappa`` is
   nonzero.  Includes the :math:`\sigma`-gradient backward pass.
 
-Example with the ``grace/extrapolation`` UQ head, biased dynamics, and thermo
+Example with the ``grace`` UQ head, biased dynamics, and thermo
 output containing the maximum extrapolation grade, maximum total force, and
 maximum raw uncertainty-force magnitude:
 
 .. code-block:: LAMMPS
 
-   pair_style  grace/extrapolation kappa 0.1
+   pair_style  grace kappa 0.1
    pair_coeff  * * /path/to/uq_saved_model Mo Nb Ta W
 
    # Per-atom UQ outputs.
    # uncertainty_force is exposed as f_uf[1], f_uf[2], and f_uf[3].
-   fix gp  all pair 1 grace/extrapolation gamma             1
-   fix gc  all pair 1 grace/extrapolation gmm_cluster       1
-   fix as  all pair 1 grace/extrapolation atomic_sigma      1
-   fix uf  all pair 1 grace/extrapolation uncertainty_force 1
-   fix eh  all pair 1 grace/extrapolation eps_hat           1
-   fix ehn all pair 1 grace/extrapolation eps_hat_norm      1
-   fix gcb all pair 1 grace/extrapolation gamma_combined    1
+   fix gp  all pair 1 grace gamma             1
+   fix gc  all pair 1 grace gmm_cluster       1
+   fix as  all pair 1 grace atomic_sigma      1
+   fix uf  all pair 1 grace uncertainty_force 1
+   fix eh  all pair 1 grace eps_hat           1
+   fix ehn all pair 1 grace eps_hat_norm      1
+   fix gcb all pair 1 grace gamma_combined    1
 
    # Magnitude of the raw uncertainty force.
    variable ufmag atom sqrt(f_uf[1]^2 + f_uf[2]^2 + f_uf[3]^2)
@@ -541,7 +540,7 @@ maximum raw uncertainty-force magnitude:
 In this example, ``fmax`` is the maximum magnitude of the LAMMPS-stored force,
 which includes the :math:`\kappa`-scaled bias when ``kappa`` is nonzero.
 ``c_fmax_uq`` is the maximum raw uncertainty-force magnitude.  The
-``fix halt`` command stops the run when ``c_max_gamma`` exceeds 25.
+``fix halt`` command stops the run when ``c_max_combined`` exceeds 1.0.
 
 For UQ-enabled TensorFlow GRACE models, the extrapolation grade is computed
 from a per-element Gaussian mixture model fitted to latent feature vectors
@@ -594,7 +593,7 @@ per-atom uncertainty quantities on the GPU, directly from a UQ-enabled Kokkos
 ``.npz`` model file.  The pair style detects UQ artifacts automatically.
 
 These styles expose six per-atom fields through :doc:`fix pair <fix_pair>`,
-with the same names and semantics as ``grace/extrapolation`` above:
+with the same names and semantics as the TensorFlow ``grace`` style above:
 
 * ``gamma`` = extrapolation grade :math:`\gamma_i`,
 * ``atomic_sigma`` = raw Mahalanobis uncertainty :math:`\sigma_i`,
@@ -607,7 +606,7 @@ with the same names and semantics as ``grace/extrapolation`` above:
 * ``gamma_combined`` = :math:`\max(\gamma_i, \hat{\varepsilon}_{i,\mathrm{norm}})`
   (falls back to :math:`\gamma_i` where ``eps_hat_norm`` is ``NaN``).
 
-Unlike the TensorFlow ``grace/extrapolation`` style, the native Kokkos styles
+Unlike the TensorFlow ``grace`` UQ path, the native Kokkos styles
 provide **no** ``uncertainty_force``,  ``kappa``/HAL biasing, or
 :math:`\partial\gamma/\partial\mathbf{r}` gradient: only the forward per-atom
 scalars listed above are available.
@@ -680,7 +679,7 @@ case.
 Runtime tuning
 """"""""""""""
 
-The following ``grace/extrapolation`` parameters can be changed between
+The following ``grace`` UQ / biased-dynamics parameters can be changed between
 ``run`` commands with :doc:`pair_modify <pair_modify>`:
 
 .. code-block:: LAMMPS
@@ -741,7 +740,7 @@ command.
 These pair styles do not support the :doc:`pair_modify <pair_modify>`
 ``shift``, ``table``, and ``tail`` options.
 
-The ``grace/extrapolation`` style additionally accepts four
+The ``grace`` style additionally accepts four
 biased-dynamics-specific :doc:`pair_modify <pair_modify>` keywords:
 
 * ``pair_modify kappa value`` = reset the relative-force biased-dynamics
@@ -776,11 +775,10 @@ Restrictions
 * All styles require :doc:`units metal <units>`.
 * The TensorFlow-based styles require LAMMPS to be linked with
   ``libtensorflow``: ``grace``, ``grace/1layer/chunk``,
-  ``grace/2layer/chunk``, ``grace/2layer/parallel``, and
-  ``grace/extrapolation``.
-* ``grace/extrapolation`` requires a UQ-enabled saved model that exports
-  corresponding  functions.
-* Biased dynamics with ``kappa != 0`` in ``grace/extrapolation`` is supported
+  ``grace/2layer/chunk``, and ``grace/2layer/parallel``.
+* Uncertainty quantification output and biased dynamics in ``grace`` require a
+  UQ-enabled saved model that exports the ``compute_uq`` signature.
+* Biased dynamics with ``kappa != 0`` in ``grace`` is supported
   only on a single MPI rank.
 * ``grace/fs`` does not require TensorFlow.
 * ``grace/*/kk`` requires ``newton on`` and supports only one CPU thread per
@@ -807,18 +805,16 @@ Default
    * - Style
      - Defaults
    * - ``grace``
-     - ``padding = 0.01``, ``pair_forces = off`` except for MPI runs with
-       more than one rank, ``pad_verbose = off``,
-       ``max_number_of_reduction = 10``, ``reduce_padding = 0.2``
+     - ``padding = 0.01``, ``pair_forces = on`` (use ``no_pair_forces`` to
+       disable; forces are always on under MPI with more than one rank),
+       ``pad_verbose = off``, ``max_number_of_reduction = 10``,
+       ``reduce_padding = 0.2``, ``kappa = 0``, ``kappa_norm = max``,
+       ``kappa_group = all``, ``bias_virial = off``
    * - ``grace/1layer/chunk`` and ``grace/2layer/chunk``
      - ``padding = 0.01``, ``chunksize = 4096``, ``pad_verbose = off``,
        ``max_number_of_reduction = 10``, ``reduce_padding = 0.2``
    * - ``grace/2layer/parallel``
      - ``padding = 0.01``, ``pad_verbose = off``,
-       ``max_number_of_reduction = 10``, ``reduce_padding = 0.2``
-   * - ``grace/extrapolation``
-     - ``kappa = 0``, ``kappa_norm = max``, ``kappa_group = all``,
-       ``bias_virial = off``, ``padding = 0.01``, ``pad_verbose = off``,
        ``max_number_of_reduction = 10``, ``reduce_padding = 0.2``
    * - ``grace/fs`` and ``grace/fs/kk``
      - ``extrapolation = off``, ``chunksize = 4096``

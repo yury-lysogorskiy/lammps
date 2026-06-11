@@ -208,7 +208,6 @@ accelerated styles exist.
 * :doc:`grace/2l/cpu <pair_grace>` - GRACE two-layer Kokkos evaluator (CPU build)
 * :doc:`grace/2layer/chunk <pair_grace>` - chunked two-layer GRACE TensorFlow evaluator
 * :doc:`grace/2layer/parallel <pair_grace>` - two-layer GRACE MPI TensorFlow evaluator without chunking
-* :doc:`grace/extrapolation <pair_grace>` - UQ-enabled GRACE TensorFlow evaluator
 * :doc:`grace/fs <pair_grace>` - native GRACE/FS evaluator
 * :doc:`granular <pair_granular>` - Generalized granular potential
 * :doc:`granular/superellipsoid <pair_granular_superellipsoid>` - Generalized granular potential for superellipsoids
