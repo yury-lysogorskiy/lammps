@@ -80,7 +80,6 @@ class PairGRACE2LayerChunk : public Pair {
   std::map<std::string, int> elements_to_index_map;
   std::vector<int> element_type_mapping;
 
-  int flag_compute_energy_only = 0;
   bool debug_no_energy_only_calc = false;
 
   double total_real_atoms_processed = 0.0;
@@ -93,6 +92,7 @@ class PairGRACE2LayerChunk : public Pair {
   std::map<std::string, std::vector<int64_t>> feature_shapes;
   std::map<std::string, int> feature_sizes;
   std::map<std::string, bool> feature_is_local;
+  std::map<std::string, cppflow::datatype> feature_dtypes;
 
   std::vector<double> grad_bond_vector;
 

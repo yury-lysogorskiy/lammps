@@ -44,6 +44,7 @@ Copyright 2021 Yury Lysogorskiy^1, Cas van der Oord^2, Anton Bochkarev^1,
 #include "ace-evaluator/ace_version.h"
 #include "ace/grace_fs_evaluator.h"
 
+#include "utils_grace.h"
 #include "utils_pace.h"
 
 namespace LAMMPS_NS {
@@ -74,7 +75,6 @@ PairGRACEFS::PairGRACEFS(LAMMPS *lmp) : Pair(lmp)
 
   aceimpl = new ACEImpl;
   flag_compute_extrapolation_grade = 0;
-  flag_compute_energy_only = 0;
   debug_no_energy_only_calc = false;
   extrapolation_grade_gamma = nullptr;
   scale = nullptr;
@@ -96,19 +96,10 @@ PairGRACEFS::~PairGRACEFS()
 {
   if (copymode) return;
 
-  if (comm->me == 0 && total_real_atoms_processed > 0) {
-    double total = total_timer.as_microseconds();
-    double data = data_timer.as_microseconds();
-    double model = model_timer.as_microseconds();
-    double avg = total_real_atoms_processed / (double) total_compute_calls;
-    double us = total / total_real_atoms_processed;
-    double d_pct = (total > 0) ? (data / total * 100.0) : 0.0;
-    double m_pct = (total > 0) ? (model / total * 100.0) : 0.0;
-    utils::logmesg(lmp,
-                   "[grace/fs] {:.0f} atoms, {} calls, {:.1f} atoms/step, {:.1f} us/atom | "
-                   "Data: {:.1f}%, Model: {:.1f}%\n",
-                   total_real_atoms_processed, total_compute_calls, avg, us, d_pct, m_pct);
-  }
+  GRACE::log_perf_stats(lmp, "grace/fs", total_real_atoms_processed, total_compute_calls,
+                        {{"Total", total_timer.as_microseconds()},
+                         {"Data", data_timer.as_microseconds()},
+                         {"Model", model_timer.as_microseconds()}});
 
   delete aceimpl;
   if (allocated) {
@@ -176,7 +167,7 @@ void PairGRACEFS::compute(int eflag, int vflag)
   std::vector<int> my_neigh_jlist(max_jnum);
 
   aceimpl->ace->compute_projections = flag_compute_extrapolation_grade;
-  bool do_energy_only = flag_compute_energy_only && !debug_no_energy_only_calc;
+  bool do_energy_only = eflag_only && !debug_no_energy_only_calc;
   aceimpl->ace->compute_energy_only = do_energy_only;
 
   //loop over atoms
@@ -468,7 +459,6 @@ void *PairGRACEFS::extract(const char *str, int &dim)
   dim = 0;
   if (strcmp(str, "gamma_flag") == 0) return (void *) &flag_compute_extrapolation_grade;
 
-  if (strcmp(str, "compute_energy_only") == 0) return (void *) &flag_compute_energy_only;
   if (strcmp(str, "debug_no_energy_only_calc") == 0) return (void *) &debug_no_energy_only_calc;
 
   dim = 2;

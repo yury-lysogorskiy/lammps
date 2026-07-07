@@ -35,6 +35,9 @@
 #include <cppflow/model.h>
 #include <cppflow/ops.h>
 #include <cppflow/tensor.h>
+#ifndef MLPACE_DO_NOT_DISABLE_TFLOAT32
+#include "tensorflow/core/platform/tensor_float_32_utils.h"
+#endif
 #include <tensorflow/c/c_api.h>
 #include <unistd.h>
 
@@ -90,7 +93,10 @@ PairGRACE2LayerChunk::PairGRACE2LayerChunk(LAMMPS *lmp) : Pair(lmp)
   no_virial_fdotr_compute = 1;
   chunksize = 4096;
   nelements = 0;
-  flag_compute_energy_only = 0;
+#ifndef MLPACE_DO_NOT_DISABLE_TFLOAT32
+  //disable tensor float 32 execution
+  tsl::enable_tensor_float_32_execution(false);
+#endif
 
   total_timer.init();
   data_timer.init();
@@ -104,16 +110,14 @@ PairGRACE2LayerChunk::~PairGRACE2LayerChunk()
 {
   if (copymode) return;
 
-  if (comm->me == 0 && total_real_atoms_processed > 0) {
-    GRACE::log_perf_stats(lmp, "grace/2layer/chunk", total_real_atoms_processed,
-                          total_compute_calls,
-                          {{"Total", total_timer.as_microseconds()},
-                           {"Data", data_timer.as_microseconds()},
-                           {"Comm", comm_timer.as_microseconds()},
-                           {"M1", model1_timer.as_microseconds()},
-                           {"M2", model2_timer.as_microseconds()},
-                           {"M3", model3_timer.as_microseconds()}});
-  }
+  GRACE::log_perf_stats(lmp, "grace/2layer/chunk", total_real_atoms_processed,
+                        total_compute_calls,
+                        {{"Total", total_timer.as_microseconds()},
+                         {"Data", data_timer.as_microseconds()},
+                         {"Comm", comm_timer.as_microseconds()},
+                         {"M1", model1_timer.as_microseconds()},
+                         {"M2", model2_timer.as_microseconds()},
+                         {"M3", model3_timer.as_microseconds()}});
 
   delete aceimpl;
   if (allocated) {
@@ -165,6 +169,9 @@ void PairGRACE2LayerChunk::settings(int narg, char **arg)
   }
 
   do_padding = (neigh_padding_fraction > 0);
+
+  GRACE::warn_padding_reduction_disabled(lmp, neigh_padding_fraction,
+                                         reducing_neigh_padding_fraction);
 
   // Apply to padding helpers in aceimpl
   auto apply_pad = [&](GRACE::GracePaddingDimension &p) {
@@ -277,6 +284,18 @@ void PairGRACE2LayerChunk::coeff(int narg, char **arg)
   if (!aceimpl->model->has_signature(backward_layer_1_name))
     error->all(FLERR, "Model missing backward_layer_1");
 
+  auto fwd_sig = aceimpl->model->signatures.at(forward_layer_1_name);
+  for (const auto &[key, shape] : feature_shapes) {
+    if (fwd_sig.outputs.count(key)) {
+      feature_dtypes[key] = fwd_sig.outputs.at(key).dtype;
+      if (comm->me == 0) {
+        utils::logmesg(lmp, "[GRACE] Feature '{}' deduced dtype: {}\n", key,
+                       cppflow::to_string(feature_dtypes[key]));
+      }
+    } else
+      error->all(FLERR, "[GRACE] Feature '{}' missing in forward_layer_1 outputs", key);
+  }
+
   has_atomic_mu_i_local =
       aceimpl->model->has_graph_input(DEFAULT_INPUT_PREFIX + "atomic_mu_i_local");
 }
@@ -338,7 +357,7 @@ void PairGRACE2LayerChunk::compute(int eflag, int vflag)
   if (aceimpl->global_to_chunk_map.size() < (size_t) nall)
     aceimpl->global_to_chunk_map.assign(nall, -1);
 
-  bool do_energy_only = flag_compute_energy_only && !debug_no_energy_only_calc;
+  bool do_energy_only = eflag_only && !debug_no_energy_only_calc;
 
   data_timer.stop();
 
@@ -605,11 +624,10 @@ void PairGRACE2LayerChunk::run_forward_layer_1_chunk()
   for (size_t i = 0; i < outputs.size(); i++) {
     std::string key = ordered_keys[i];
     int size = feature_sizes[key];
-    const double *data = static_cast<double *>(TF_TensorData(outputs[i].get_tensor().get()));
     // Scatter only real atoms
     for (int k = 0; k < n_real_actual; k++) {
       int g_idx = aceimpl->chunk_to_global_map[k];
-      std::copy_n(&data[k * size], size, &features[key][g_idx * size]);
+      GRACE::copy_tensor_to_vector(outputs[i], features[key], k * size, g_idx * size, size);
     }
   }
 }
@@ -673,14 +691,15 @@ void PairGRACE2LayerChunk::run_backward_layer_1_chunk()
     std::vector<int64_t> t_shape = {(int64_t) aceimpl->n_real_padded};
     t_shape.insert(t_shape.end(), shape.begin(), shape.end());
     add_in("grad_" + key,
-           GRACE::get_or_create_tensor(aceimpl->bwd_l1_tensors, "grad_" + key, chunk_grad, t_shape,
-                                       aceimpl->graph_recompiled));
+           GRACE::get_or_create_tensor_dtype(aceimpl->bwd_l1_tensors, "grad_" + key, chunk_grad,
+                                             t_shape, feature_dtypes[key],
+                                             aceimpl->graph_recompiled));
   }
 
   std::vector<std::string> out_names = {sig.outputs.at(GRAD_BOND_KEY).name};
   // We rely on TF model returning correct output size
   auto outputs = aceimpl->model->operator()(inputs, out_names);
-  const double *gbv_data = static_cast<double *>(TF_TensorData(outputs[0].get_tensor().get()));
+  const double *gbv_data = static_cast<const double *>(TF_TensorData(outputs[0].get_tensor().get()));
 
   // Apply forces (L1 part)
   double **f = atom->f;
@@ -803,8 +822,6 @@ void PairGRACE2LayerChunk::unpack_reverse_comm(int n, int *list, double *buf)
 
 void *PairGRACE2LayerChunk::extract(const char *str, int &dim)
 {
-  dim = 0;
-  if (strcmp(str, "compute_energy_only") == 0) return (void *) &flag_compute_energy_only;
   dim = 2;
   if (strcmp(str, "scale") == 0) return (void *) scale;
   return nullptr;
@@ -881,15 +898,15 @@ void PairGRACE2LayerChunk::run_backward_layer_2_chunk(int eflag, int vflag)
     std::vector<int64_t> t_shape = {(int64_t) n_padded};
     t_shape.insert(t_shape.end(), shape.begin(), shape.end());
     add_in(key,
-           GRACE::get_or_create_tensor(aceimpl->bwd_l2_tensors, key, chunk_feat, t_shape,
-                                       aceimpl->graph_recompiled));
+           GRACE::get_or_create_tensor_dtype(aceimpl->bwd_l2_tensors, key, chunk_feat, t_shape,
+                                             feature_dtypes[key], aceimpl->graph_recompiled));
   }
 
   std::vector<std::string> out_names;
   std::vector<std::string> ordered_keys;
   out_names.push_back(sig.outputs.at(ENERGY_KEY).name);
   ordered_keys.push_back(ENERGY_KEY);
-  bool do_energy_only = flag_compute_energy_only && !debug_no_energy_only_calc;
+  bool do_energy_only = eflag_only && !debug_no_energy_only_calc;
   if (!do_energy_only) {
     for (const auto &[key, shape] : feature_shapes) {
       out_names.push_back(sig.outputs.at("grad_" + key).name);
@@ -903,7 +920,7 @@ void PairGRACE2LayerChunk::run_backward_layer_2_chunk(int eflag, int vflag)
   auto outputs = aceimpl->model->operator()(inputs, out_names);
   int out_idx = 0;
   const double *e_data =
-      static_cast<double *>(TF_TensorData(outputs[out_idx++].get_tensor().get()));
+      static_cast<const double *>(TF_TensorData(outputs[out_idx++].get_tensor().get()));
   if (eflag_either) {
     int *type = atom->type;
     for (int k = 0; k < n_real_actual; k++) {
@@ -917,15 +934,16 @@ void PairGRACE2LayerChunk::run_backward_layer_2_chunk(int eflag, int vflag)
     for (const auto &[key, shape] : feature_shapes) {
       int size = feature_sizes[key];
       int n_actual = feature_is_local[key] ? n_real_actual : n_all;
-      const double *g_data =
-          static_cast<double *>(TF_TensorData(outputs[out_idx++].get_tensor().get()));
+      const auto &g_tens = outputs[out_idx++];
       for (int k = 0; k < n_actual; k++) {
         int g_idx = aceimpl->chunk_to_global_map[k];
-        for (int s = 0; s < size; s++) gradients[key][g_idx * size + s] += g_data[k * size + s];
+        std::vector<double> atomic_grad(size);
+        GRACE::copy_tensor_to_vector(g_tens, atomic_grad, k * size, 0, size);
+        for (int s = 0; s < size; s++) gradients[key][g_idx * size + s] += atomic_grad[s];
       }
     }
     const double *gbv_data =
-        static_cast<double *>(TF_TensorData(outputs[out_idx++].get_tensor().get()));
+        static_cast<const double *>(TF_TensorData(outputs[out_idx++].get_tensor().get()));
     double **f = atom->f;
     int *type = atom->type;
     int nlocal = atom->nlocal;

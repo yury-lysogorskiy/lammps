@@ -41,6 +41,7 @@
 #include "neigh_list.h"
 #include "neighbor.h"
 #include "pair.h"
+#include "suffix.h"
 #include "universe.h"
 #include "update.h"
 
@@ -241,6 +242,9 @@ int FixSemiGrandCanonicalMC::setmask()
  *********************************************************************/
 void FixSemiGrandCanonicalMC::init()
 {
+  if (force->pair && (force->pair->suffix_flag & Suffix::INTEL))
+    error->all(FLERR, Error::NOLASTLINE, "Fix {} is not compatible with /intel pair styles", style);
+
   if (!atom->mass) error->all(FLERR, "Fix sgcmc requires per atom type masses");
   if (atom->rmass_flag && (comm->me == 0))
     error->warning(FLERR, "Fix sgcmc will use per atom type masses for velocity initialization");
@@ -892,17 +896,11 @@ double FixSemiGrandCanonicalMC::computeEnergyChangeGeneric(int flipAtom, int old
  *********************************************************************/
 double FixSemiGrandCanonicalMC::computeTotalEnergy()
 {
-  int eflag = 1;
-  int vflag = 0;
+  // flag that we only need to compute the global energy
+  int eflag = ENERGY_GLOBAL | ENERGY_ONLY;
+  int vflag = VIRIAL_NONE;
 
-  if (force->pair) {
-    // if available, set the flag "compute_energy_only" to compute only energies
-    int dim = 0;
-    int* flag_compute_energy_only = (int *)force->pair->extract("compute_energy_only",dim);
-    if (flag_compute_energy_only) *flag_compute_energy_only = 1;
-    force->pair->compute(eflag, vflag);
-    if (flag_compute_energy_only) *flag_compute_energy_only = 0;
-  }
+  if (force->pair) force->pair->compute(eflag, vflag);
 
   if (atom->molecular) {
     if (force->bond) force->bond->compute(eflag,vflag);

@@ -4864,7 +4864,7 @@ template < typename BasicJsonType, typename ArithmeticType,
                          int > = 0 >
 void get_arithmetic_value(const BasicJsonType& j, ArithmeticType& val)
 {
-    switch (static_cast<value_t>(j))
+    switch (j.type())
     {
         case value_t::number_unsigned:
         {
@@ -5201,7 +5201,7 @@ template < typename BasicJsonType, typename ArithmeticType,
                int > = 0 >
 inline void from_json(const BasicJsonType& j, ArithmeticType& val)
 {
-    switch (static_cast<value_t>(j))
+    switch (j.type())
     {
         case value_t::number_unsigned:
         {
@@ -17382,7 +17382,7 @@ class binary_writer
         };
 
         string_t key = "_ArrayType_";
-        auto it = bjdtype.find(static_cast<string_t>(value.at(key)));
+        auto it = bjdtype.find(value.at(key).template get<string_t>());
         if (it == bjdtype.end())
         {
             return true;

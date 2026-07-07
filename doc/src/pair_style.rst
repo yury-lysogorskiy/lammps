@@ -200,10 +200,20 @@ accelerated styles exist.
 * :doc:`gauss <pair_gauss>` - Gaussian potential
 * :doc:`gauss/cut <pair_gauss>` - generalized Gaussian potential
 * :doc:`gayberne <pair_gayberne>` - Gay-Berne ellipsoidal potential
+* :doc:`grace <pair_grace>` - Graph Atomic Cluster Expansion (GRACE) machine-learning potential
+* :doc:`grace/1l <pair_grace>` - GRACE single-layer Kokkos evaluator
+* :doc:`grace/1l/cpu <pair_grace>` - GRACE single-layer Kokkos evaluator (CPU build)
+* :doc:`grace/1layer/chunk <pair_grace>` - chunked single-layer GRACE TensorFlow evaluator
+* :doc:`grace/2l <pair_grace>` - GRACE two-layer Kokkos evaluator
+* :doc:`grace/2l/cpu <pair_grace>` - GRACE two-layer Kokkos evaluator (CPU build)
+* :doc:`grace/2layer/chunk <pair_grace>` - chunked two-layer GRACE TensorFlow evaluator
+* :doc:`grace/2layer/parallel <pair_grace>` - two-layer GRACE MPI TensorFlow evaluator without chunking
+* :doc:`grace/fs <pair_grace>` - native GRACE/FS evaluator
 * :doc:`granular <pair_granular>` - Generalized granular potential
+* :doc:`granular/superellipsoid <pair_granular_superellipsoid>` - Generalized granular potential for superellipsoids
 * :doc:`gran/hertz/history <pair_gran>` - granular potential with Hertzian interactions
-* :doc:`gran/hooke <pair_gran>` - granular potential with history effects
-* :doc:`gran/hooke/history <pair_gran>` - granular potential without history effects
+* :doc:`gran/hooke <pair_gran>` - granular potential without history effects
+* :doc:`gran/hooke/history <pair_gran>` - granular potential with history effects
 * :doc:`gw <pair_gw>` - Gao-Weber potential
 * :doc:`gw/zbl <pair_gw>` - Gao-Weber potential with a repulsive ZBL core
 * :doc:`harmonic/cut <pair_harmonic_cut>` - repulsive-only harmonic potential
@@ -291,6 +301,7 @@ accelerated styles exist.
 * :doc:`lubricate/poly <pair_lubricate>` - Hydrodynamic lubrication forces with polydispersity
 * :doc:`lubricateU <pair_lubricateU>` - Hydrodynamic lubrication forces for Fast Lubrication Dynamics
 * :doc:`lubricateU/poly <pair_lubricateU>` - Hydrodynamic lubrication forces for Fast Lubrication with polydispersity
+* :doc:`mbx <pair_mbx>` - Many-Body eXpansion (MBX) potential
 * :doc:`mdpd <pair_mesodpd>` - mDPD particle interactions
 * :doc:`mdpd/rhosum <pair_mesodpd>` - mDPD particle interactions for mass density
 * :doc:`meam <pair_meam>` - Modified embedded atom method (MEAM)

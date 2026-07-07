@@ -582,7 +582,7 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
 
   int vector_length_default = 1;
   int team_size_default = 1;
-  if(Kokkos::DefaultExecutionSpace::concurrency() > 1)
+  if(Kokkos::DefaultExecutionSpace().concurrency() > 1)
     team_size_default = 32;
 
   k_splines_gk.sync_device();
@@ -610,6 +610,8 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
   grow(chunk_size, maxneigh);
 
   EV_FLOAT ev;
+
+  const bool do_energy_only_calc = eflag_only && !debug_no_energy_only_calc;
 
   while (chunk_offset < inum) {
     Kokkos::deep_copy(weights, 0.0);
@@ -674,7 +676,6 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
       Kokkos::parallel_for("ComputeGamma",policy_gamma,*this);
     }
 
-    bool do_energy_only_calc = flag_compute_energy_only && !debug_no_energy_only_calc;
     //ComputeWeights
     if (! do_energy_only_calc) {
       typename Kokkos::RangePolicy<DeviceType,TagPairGRACEFSComputeWeights> policy_weights(0,chunk_size * idx_ms_combs_max);
@@ -755,7 +756,7 @@ void PairGRACEFSKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
     virial[5] += ev.v[5];
   }
 
-  if (vflag_fdotr) pair_virial_fdotr_compute(this);
+  if (vflag_fdotr && !do_energy_only_calc) pair_virial_fdotr_compute(this);
 
   if (eflag_atom) {
     k_eatom.template modify<DeviceType>();

@@ -78,12 +78,6 @@ const char *const elements_pace_al[] = {
     "Th", "Pa", "U",  "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"};
 constexpr int elements_num_pace_al = sizeof(elements_pace_al) / sizeof(const char *);
 
-int AtomicNumberByName_pace_al(char *elname)
-{
-  for (int i = 1; i < elements_num_pace_al; i++)
-    if (strcmp(elname, elements_pace_al[i]) == 0) return i;
-  return -1;
-}
 }    // namespace
 
 /* ---------------------------------------------------------------------- */
@@ -100,7 +94,6 @@ PairPACEExtrapolation::PairPACEExtrapolation(LAMMPS *lmp) : Pair(lmp)
   aceimpl = new ACEALImpl;
   scale = nullptr;
   flag_compute_extrapolation_grade = 0;
-  flag_compute_energy_only = 0;
   debug_no_energy_only_calc = false;
   extrapolation_grade_gamma = nullptr;
   flag_corerep_factor = 0;
@@ -204,7 +197,7 @@ void PairPACEExtrapolation::compute(int eflag, int vflag)
     aceimpl->rec_ace->resize_neighbours_cache(max_jnum);
   std::vector<int> my_neigh_jlist(max_jnum);
 
-  bool do_energy_only = flag_compute_energy_only && !debug_no_energy_only_calc;
+  bool do_energy_only = eflag_only && !debug_no_energy_only_calc;
   aceimpl->ace->compute_energy_only = do_energy_only;
 
   //loop over atoms
@@ -503,7 +496,6 @@ void *PairPACEExtrapolation::extract(const char *str, int &dim)
 
   if (strcmp(str, "corerep_flag") == 0) return (void *) &flag_corerep_factor;
 
-  if (strcmp(str, "compute_energy_only") == 0) return (void *) &flag_compute_energy_only;
   if (strcmp(str, "debug_no_energy_only_calc") == 0) return (void *) &debug_no_energy_only_calc;
 
   dim = 2;
