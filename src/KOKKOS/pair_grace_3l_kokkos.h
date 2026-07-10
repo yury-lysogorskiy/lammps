@@ -425,11 +425,11 @@ class PairGRACE3LKokkos : public Pair, public KokkosBase {
   KOKKOS_INLINE_FUNCTION
   void operator() (TagComputeMLPEnergy, const typename Kokkos::TeamPolicy<DeviceType, TagComputeMLPEnergy>::member_type& team) const;
   KOKKOS_INLINE_FUNCTION
-  void operator() (TagComputeUQ_rho1, const int&) const;
+  void operator() (TagComputeUQ_rho1, const typename Kokkos::TeamPolicy<DeviceType, TagComputeUQ_rho1>::member_type& team) const;
   KOKKOS_INLINE_FUNCTION
-  void operator() (TagComputeUQ_rho2, const int&) const;
+  void operator() (TagComputeUQ_rho2, const typename Kokkos::TeamPolicy<DeviceType, TagComputeUQ_rho2>::member_type& team) const;
   KOKKOS_INLINE_FUNCTION
-  void operator() (TagComputeUQ, const int&) const;
+  void operator() (TagComputeUQ, const typename Kokkos::TeamPolicy<DeviceType, TagComputeUQ>::member_type& team) const;
 
   // Kernel operators (Task 3.1: readout + L3 backward / generic bwd routines)
   KOKKOS_INLINE_FUNCTION
@@ -1281,9 +1281,13 @@ class PairGRACE3LKokkos : public Pair, public KokkosBase {
   // is the basis-RP projection of the three per-layer scalar reduces rho1/rho2/rho3
   // (R-row order [rho1, rho2, rho3]; density channels [full, rho1, rho2, rho3]).
   typedef Kokkos::View<double*, DeviceType>    t_uq_1d;
-  typedef Kokkos::View<double**, DeviceType>   t_uq_2d;
-  typedef Kokkos::View<double***, DeviceType>  t_uq_3d;
-  typedef Kokkos::View<double****, DeviceType> t_uq_4d;
+  // LayoutRight so the last (contiguous) index — split/reduced across team lanes in
+  // the team-parallel ComputeUQ kernels — gives coalesced lane reads (rp_matrix over
+  // rp_dim, centroids/inv_cov over the feature dims, d_uq_z over rp_dim). Transparent
+  // to the logical-index copy_* loaders.
+  typedef Kokkos::View<double**, Kokkos::LayoutRight, DeviceType>   t_uq_2d;
+  typedef Kokkos::View<double***, Kokkos::LayoutRight, DeviceType>  t_uq_3d;
+  typedef Kokkos::View<double****, Kokkos::LayoutRight, DeviceType> t_uq_4d;
   t_uq_3d d_uq_centroids;          // [E, Kmax, D]
   t_uq_4d d_uq_inv_cov;            // [E, Kmax, D, D]
   t_int_1d d_uq_n_clusters;        // [E]

@@ -3579,124 +3579,153 @@ void PairGRACE3LKokkos<DeviceType, NNScalarT, GeomScalarT>::operator() (TagCompu
 // TagReduceN order), accumulate ACC[d] += b_inv*R[B,d] over the RP columns, add
 // b_inv² into N2, and advance the R-row cursor B. Expands against each kernel's
 // local RP/ii, the d_uq_rp_matrix member, and the reduce metadata.
-#define GRACE3L_UQ_ACC_BLOCK(REDUCE, VIEWS, ROLE, ACC, N2, B)                       \
-    { const DeviceReduce &_r = (REDUCE);                                            \
-      for (int _j = 0; _j < _r.n_instr; _j++) {                                     \
-        const t_nn_3d &_A = (VIEWS)[(ROLE)[_j]];                                    \
-        const int _nin = _r.n_in[_j];                                              \
-        const int _nc = _r.n_conn[_j];                                             \
-        const auto &_ci = _r.collect_ind[_j];                                      \
-        for (int _n = 0; _n < _nin; _n++)                                          \
-          for (int _c = 0; _c < _nc; _c++) {                                       \
-            const double _bv = (double)(_A)(ii, _n, _ci(_c));                       \
-            (N2) += _bv * _bv;                                                      \
-            for (int _d = 0; _d < RP; _d++) (ACC)[_d] += _bv * d_uq_rp_matrix((B), _d); \
-            (B)++;                                                                  \
+// Single projection column: for each gathered product _bv = A(ii,_n,_ci(_c)) (n
+// outer, connection inner — TagReduceN order), accumulate ACC += _bv*R[B,d] for this
+// lane's column d, add _bv² into the block norm² N2, and advance the R-row cursor B.
+#define GRACE3L_UQ_WALK_BLOCK(REDUCE, VIEWS, ROLE, ACC, N2, B)                      \
+    { const DeviceReduce &_r = (REDUCE);                                           \
+      for (int _j = 0; _j < _r.n_instr; _j++) {                                    \
+        const t_nn_3d &_A = (VIEWS)[(ROLE)[_j]];                                   \
+        const int _nin = _r.n_in[_j];                                             \
+        const int _nc = _r.n_conn[_j];                                            \
+        const auto &_ci = _r.collect_ind[_j];                                     \
+        for (int _n = 0; _n < _nin; _n++)                                         \
+          for (int _c = 0; _c < _nc; _c++) {                                      \
+            const double _bv = (double)(_A)(ii, _n, _ci(_c));                      \
+            (N2)  += _bv * _bv;                                                    \
+            (ACC) += _bv * d_uq_rp_matrix((B), d);                                 \
+            (B)++;                                                                 \
           } } }
 
 template<class DeviceType, typename NNScalarT, typename GeomScalarT>
 KOKKOS_INLINE_FUNCTION
-void PairGRACE3LKokkos<DeviceType, NNScalarT, GeomScalarT>::operator() (TagComputeUQ_rho1, const int& ii) const
+void PairGRACE3LKokkos<DeviceType, NNScalarT, GeomScalarT>::operator() (TagComputeUQ_rho1,
+    const typename Kokkos::TeamPolicy<DeviceType, TagComputeUQ_rho1>::member_type& team) const
 {
+  const int ii = team.league_rank();
+  if (ii >= chunk_size) return;
   const int i = d_ilist[ii + chunk_offset];
   const int RP = uq_rp_dim;
-  double z[GRACE3L_UQ_MAX_RP_DIM];
-  for (int d = 0; d < RP; d++) z[d] = 0.0;
-  double n2_rho1 = 0.0;
-  // rho1 block occupies R-rows [0, d_basis_rho1); cursor starts at 0.
-  int b = 0;
+  const int TS = team.team_size();
+  const int lane = team.team_rank();
+  // Each lane owns column(s) d, walks the rho1 block once per column with a register
+  // accumulator (no per-thread array => no local-memory spill). rho1 occupies R-rows
+  // [0, d_basis_rho1). ||B^(rho1)||² recomputed per column (same value); lane 0 stores.
   t_nn_3d views[4] = {d_A1, d_A1_2_red, d_A1_3_red, d_A1_4_red};
-  GRACE3L_UQ_ACC_BLOCK(d_reduce[idx_reduce_rho1], views, rho1_input_role, z, n2_rho1, b);
-  for (int d = 0; d < RP; d++) d_uq_z(i, d) = z[d];
-  d_uq_n2_rho1(i) = n2_rho1;
+  double n2_rho1 = 0.0;
+  for (int d = lane; d < RP; d += TS) {
+    double z = 0.0; n2_rho1 = 0.0; int b = 0;
+    GRACE3L_UQ_WALK_BLOCK(d_reduce[idx_reduce_rho1], views, rho1_input_role, z, n2_rho1, b);
+    d_uq_z(i, d) = z;
+  }
+  if (lane == 0) d_uq_n2_rho1(i) = n2_rho1;
 }
 
 template<class DeviceType, typename NNScalarT, typename GeomScalarT>
 KOKKOS_INLINE_FUNCTION
-void PairGRACE3LKokkos<DeviceType, NNScalarT, GeomScalarT>::operator() (TagComputeUQ_rho2, const int& ii) const
+void PairGRACE3LKokkos<DeviceType, NNScalarT, GeomScalarT>::operator() (TagComputeUQ_rho2,
+    const typename Kokkos::TeamPolicy<DeviceType, TagComputeUQ_rho2>::member_type& team) const
 {
+  const int ii = team.league_rank();
+  if (ii >= chunk_size) return;
   const int i = d_ilist[ii + chunk_offset];
   const int RP = uq_rp_dim;
-  double z[GRACE3L_UQ_MAX_RP_DIM];
-  for (int d = 0; d < RP; d++) z[d] = d_uq_z(i, d);   // carry rho1 projection
-  double n2_rho2 = 0.0;
-  // rho2 block occupies R-rows [d_basis_rho1, d_basis_rho1 + d_basis_rho2).
-  int b = uq_d_basis_rho1;
+  const int TS = team.team_size();
+  const int lane = team.team_rank();
+  // rho2 block occupies R-rows [d_basis_rho1, d_basis_rho1 + d_basis_rho2); each lane
+  // adds its column onto the carried rho1 projection in d_uq_z.
   t_nn_3d views[4] = {d_A2_red, d_A2_2_red, d_A2_3_red, d_A2_4_red};
-  GRACE3L_UQ_ACC_BLOCK(d_reduce[idx_reduce_rho2], views, rho2_input_role, z, n2_rho2, b);
-  for (int d = 0; d < RP; d++) d_uq_z(i, d) = z[d];
-  d_uq_n2_rho2(i) = n2_rho2;
+  double n2_rho2 = 0.0;
+  for (int d = lane; d < RP; d += TS) {
+    double z = d_uq_z(i, d); n2_rho2 = 0.0; int b = uq_d_basis_rho1;
+    GRACE3L_UQ_WALK_BLOCK(d_reduce[idx_reduce_rho2], views, rho2_input_role, z, n2_rho2, b);
+    d_uq_z(i, d) = z;
+  }
+  if (lane == 0) d_uq_n2_rho2(i) = n2_rho2;
 }
 
 template<class DeviceType, typename NNScalarT, typename GeomScalarT>
 KOKKOS_INLINE_FUNCTION
-void PairGRACE3LKokkos<DeviceType, NNScalarT, GeomScalarT>::operator() (TagComputeUQ, const int& ii) const
+void PairGRACE3LKokkos<DeviceType, NNScalarT, GeomScalarT>::operator() (TagComputeUQ,
+    const typename Kokkos::TeamPolicy<DeviceType, TagComputeUQ>::member_type& team) const
 {
+  const int ii = team.league_rank();
+  if (ii >= chunk_size) return;
   const int i = d_ilist[ii + chunk_offset];
   const int mu_i = d_map(type(i));
-  const int D = uq_D;          // full feature dim (rp_dim + n_density)
+  const int D  = uq_D;         // full feature dim (rp_dim + n_density)
   const int RP = uq_rp_dim;    // projection width (R cols)
+  const int TS = team.team_size();
+  const int lane = team.team_rank();
 
-  // RAW projection proj = B·R: rho1 (P1) + rho2 (P2) from d_uq_z + rho3 here.
-  double f[GRACE3L_UQ_MAX_RP_DIM];
-  for (int d = 0; d < RP; d++) f[d] = d_uq_z(i, d);
+  // Team-shared scratch: normalized feature f[D], Mahalanobis delta[D], and a pair
+  // of scalars [n2_rho3, nrm_full] carried from the projection loop to the density code.
+  double* f     = (double*) team.team_shmem().get_shmem(D * sizeof(double));
+  double* delta = (double*) team.team_shmem().get_shmem(D * sizeof(double));
+  double* sc    = (double*) team.team_shmem().get_shmem(2 * sizeof(double));
+
   const double n2_rho1 = d_uq_n2_rho1(i);
   const double n2_rho2 = d_uq_n2_rho2(i);
-  double n2_rho3 = 0.0;
-  // rho3 block occupies R-rows [d_basis_rho1 + d_basis_rho2, d_basis).
-  int b = uq_d_basis_rho1 + uq_d_basis_rho2;
+
+  // Combined projection proj = B·R: rho1 (P1) + rho2 (P2) from d_uq_z + rho3 added
+  // here. rho3 block occupies R-rows [d_basis_rho1 + d_basis_rho2, d_basis).
   t_nn_3d views[4] = {d_A3_red, d_A3_2_red, d_A3_3_red, d_A3_4_red};
-  GRACE3L_UQ_ACC_BLOCK(d_reduce[idx_reduce_rho3], views, rho3_input_role, f, n2_rho3, b);
-  #undef GRACE3L_UQ_ACC_BLOCK
-
-  // --- L2-normalize the projection: proj = (B/||B||)·R = (B·R)/||B|| ---
-  const double n2_full = n2_rho1 + n2_rho2 + n2_rho3;
-  const double nrm_full = Kokkos::sqrt(n2_full);   // ||B||, reused below
-  if (uq_normalize) {
-    const double inv = 1.0 / (nrm_full + 1.0e-12);
-    for (int d = 0; d < RP; d++) f[d] *= inv;
+  for (int d = lane; d < RP; d += TS) {
+    double acc = d_uq_z(i, d);
+    double n2_rho3 = 0.0;
+    int b = uq_d_basis_rho1 + uq_d_basis_rho2;
+    GRACE3L_UQ_WALK_BLOCK(d_reduce[idx_reduce_rho3], views, rho3_input_role, acc, n2_rho3, b);
+    const double nrm_full = Kokkos::sqrt(n2_rho1 + n2_rho2 + n2_rho3);   // ||B||
+    if (uq_normalize) acc /= (nrm_full + 1.0e-12);
+    f[d] = acc;
+    if (d == 0) { sc[0] = n2_rho3; sc[1] = nrm_full; }
   }
+  #undef GRACE3L_UQ_WALK_BLOCK
+  team.team_barrier();
 
-  // --- Density channels appended after the projection: [full, rho1, rho2, rho3] ---
-  // Block order is the sorted-by-reduce-name order (rho1 < rho2 < rho3), matching
-  // the R-row layout and the reference centroid density block.
-  if (uq_n_density > 0) f[RP + 0] = Kokkos::log(nrm_full + 1.0e-12) * uq_density_scale;
-  if (uq_n_density > 1) f[RP + 1] = Kokkos::log(Kokkos::sqrt(n2_rho1) + 1.0e-12) * uq_density_scale;
-  if (uq_n_density > 2) f[RP + 2] = Kokkos::log(Kokkos::sqrt(n2_rho2) + 1.0e-12) * uq_density_scale;
-  if (uq_n_density > 3) f[RP + 3] = Kokkos::log(Kokkos::sqrt(n2_rho3) + 1.0e-12) * uq_density_scale;
+  // Density channels [full, rho1, rho2, rho3] — sorted-by-reduce-name order matching
+  // R's row layout. Cheap; lane 0 writes them.
+  if (lane == 0) {
+    if (uq_n_density > 0) f[RP + 0] = Kokkos::log(sc[1]                + 1.0e-12) * uq_density_scale;
+    if (uq_n_density > 1) f[RP + 1] = Kokkos::log(Kokkos::sqrt(n2_rho1) + 1.0e-12) * uq_density_scale;
+    if (uq_n_density > 2) f[RP + 2] = Kokkos::log(Kokkos::sqrt(n2_rho2) + 1.0e-12) * uq_density_scale;
+    if (uq_n_density > 3) f[RP + 3] = Kokkos::log(Kokkos::sqrt(sc[0])   + 1.0e-12) * uq_density_scale;
+  }
+  team.team_barrier();
 
-  // --- Cluster assignment: nearest centroid (squared Euclidean) ---
-  // ncl > 0 for every element is guaranteed at load time (uqv6 artifacts cover all elements).
+  // Cluster assignment: nearest centroid (squared Euclidean over D). Each reduce
+  // broadcasts d2 to all lanes, so kstar is identical across the team.
   const int ncl = d_uq_n_clusters(mu_i);
   int kstar = 0;
   double best = 1.0e300;
   for (int k = 0; k < ncl; k++) {
     double d2 = 0.0;
-    for (int p = 0; p < D; p++) {
-      const double diff = f[p] - d_uq_centroids(mu_i, k, p);
-      d2 += diff * diff;
-    }
+    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, D),
+      [&](const int p, double& s) {
+        const double diff = f[p] - d_uq_centroids(mu_i, k, p);
+        s += diff * diff;
+      }, d2);
     if (d2 < best) { best = d2; kstar = k; }
   }
 
-  // --- Mahalanobis distance to assigned cluster ---
-  double delta[GRACE3L_UQ_MAX_RP_DIM];
-  for (int p = 0; p < D; p++) delta[p] = f[p] - d_uq_centroids(mu_i, kstar, p);
+  // Mahalanobis distance to assigned cluster: sig2 = deltaᵀ · Σ⁻¹ · delta.
+  for (int p = lane; p < D; p += TS) delta[p] = f[p] - d_uq_centroids(mu_i, kstar, p);
+  team.team_barrier();
   double sig2 = 0.0;
-  for (int p = 0; p < D; p++) {
-    double acc = 0.0;
-    for (int q = 0; q < D; q++)
-      acc += d_uq_inv_cov(mu_i, kstar, p, q) * delta[q];
-    sig2 += delta[p] * acc;
-  }
-  const double sigma = Kokkos::sqrt(sig2 + 1.0e-8);
+  Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, D * D),
+    [&](const int idx, double& s) {
+      const int p = idx / D, q = idx % D;
+      s += delta[p] * d_uq_inv_cov(mu_i, kstar, p, q) * delta[q];
+    }, sig2);
 
-  double t = d_uq_interp_thresholds(mu_i, kstar);
-  if (t < 1.0e-10) t = 1.0e-10;
-
-  d_sigma(i) = sigma;
-  d_gamma(i) = sigma / t;
-  d_gmm_cluster(i) = (double) kstar;
+  Kokkos::single(Kokkos::PerTeam(team), [&]() {
+    const double sigma = Kokkos::sqrt(sig2 + 1.0e-8);
+    double t = d_uq_interp_thresholds(mu_i, kstar);
+    if (t < 1.0e-10) t = 1.0e-10;
+    d_sigma(i) = sigma;
+    d_gamma(i) = sigma / t;
+    d_gmm_cluster(i) = (double) kstar;
+  });
 }
 
 // ======================================================================
@@ -5955,9 +5984,14 @@ void PairGRACE3LKokkos<DeviceType, NNScalarT, GeomScalarT>::compute(int eflag_in
 
     // ---- UQ basis-RP (Phase 1): project the rho1 (L1) scalar basis into d_uq_z
     // for this chunk (d_A1/d_A1_2_red/d_A1_3_red/d_A1_4_red are current here). ----
-    if (any_uq)
+    if (any_uq) {
+      // Team-per-atom: lanes split the rho1 B·R projection over rp_dim (register acc).
+      auto probe = Kokkos::TeamPolicy<DeviceType, TagComputeUQ_rho1>(chunk_size, 1, 1);
+      int ts = probe.team_size_max(*this, Kokkos::ParallelForTag());
+      if (ts > 128) ts = 128; if (ts < 1) ts = 1;
       Kokkos::parallel_for("ComputeUQ_rho1",
-          Kokkos::RangePolicy<DeviceType, TagComputeUQ_rho1>(0, chunk_size), *this);
+          Kokkos::TeamPolicy<DeviceType, TagComputeUQ_rho1>(chunk_size, ts, 1), *this);
+    }
 
     Kokkos::fence();
     chunk_offset += chunk_size;
@@ -6014,9 +6048,14 @@ void PairGRACE3LKokkos<DeviceType, NNScalarT, GeomScalarT>::compute(int eflag_in
 
     // ---- UQ basis-RP (Phase 2): accumulate the rho2 (L2) scalar basis into d_uq_z
     // (d_A2_red/d_A2_2_red/d_A2_3_red/d_A2_4_red are current here). ----
-    if (any_uq)
+    if (any_uq) {
+      // Team-per-atom: lanes split the rho2 B·R projection over rp_dim (register acc).
+      auto probe = Kokkos::TeamPolicy<DeviceType, TagComputeUQ_rho2>(chunk_size, 1, 1);
+      int ts = probe.team_size_max(*this, Kokkos::ParallelForTag());
+      if (ts > 128) ts = 128; if (ts < 1) ts = 1;
       Kokkos::parallel_for("ComputeUQ_rho2",
-          Kokkos::RangePolicy<DeviceType, TagComputeUQ_rho2>(0, chunk_size), *this);
+          Kokkos::TeamPolicy<DeviceType, TagComputeUQ_rho2>(chunk_size, ts, 1), *this);
+    }
 
     Kokkos::fence();
     chunk_offset += chunk_size;
@@ -6154,9 +6193,18 @@ void PairGRACE3LKokkos<DeviceType, NNScalarT, GeomScalarT>::compute(int eflag_in
     // L2-normalize, append density channels [full, rho1, rho2, rho3], and run the
     // GMM (nearest centroid, Mahalanobis sigma, gamma). Forward only. Placed here so
     // it reads the L3 forward views before the L3 backward (Stage 15) begins. ----
-    if (any_uq)
-      Kokkos::parallel_for("ComputeUQ",
-          Kokkos::RangePolicy<DeviceType, TagComputeUQ>(0, chunk_size), *this);
+    if (any_uq) {
+      // Team-per-atom: lanes split the rho3 projection add over rp_dim, the cluster
+      // search over the feature dim, and the D×D Mahalanobis over its quadratic form.
+      const int scratch_bytes = (2 * uq_D + 8) * (int)sizeof(double);
+      auto probe = Kokkos::TeamPolicy<DeviceType, TagComputeUQ>(chunk_size, 1, 1)
+          .set_scratch_size(0, Kokkos::PerTeam(scratch_bytes));
+      int ts = probe.team_size_max(*this, Kokkos::ParallelForTag());
+      if (ts > 128) ts = 128; if (ts < 1) ts = 1;
+      auto policy = Kokkos::TeamPolicy<DeviceType, TagComputeUQ>(chunk_size, ts, 1)
+          .set_scratch_size(0, Kokkos::PerTeam(scratch_bytes));
+      Kokkos::parallel_for("ComputeUQ", policy, *this);
+    }
 
     // ---- L3 Stage 13: InvariantLayerRMSNorm rho3_norm = invariant_rms_norm(rho3)
     // (FULL branch, same as rho2_norm — data-driven off scale_len). END of the

@@ -475,7 +475,7 @@ PairGRACE2LKokkos<DeviceType, NNScalarT, GeomScalarT>::PairGRACE2LKokkos(LAMMPS 
   host_flag = (execution_space == Host);
 
   grace_model = new GRACE2LModel();
-  chunksize = 4096;
+  chunksize = 0;  // auto: one chunk over current inum unless user sets chunksize
   no_virial_fdotr_compute = 1;
 }
 
@@ -757,21 +757,27 @@ void PairGRACE2LKokkos<DeviceType, NNScalarT, GeomScalarT>::init_style()
   // assemble/act/scatter kernels execute in issue order, no race, no fences.
   // The if constexpr guards the CUDA-only cuda_stream() from the host
   // instantiation (grace/2l/kk/host etc.); sizeof gate skips the fp64 style. ----
-  if constexpr (std::is_same_v<DeviceType, LMPDeviceType> && sizeof(NNScalar) == 4) {
-    if (!cublas_handle) {
+  // Handle is needed for the fp32 radial-MLP SGEMM path (NNScalar=float) AND for
+  // the fp64 UQ DGEMM projection (UQ arrays are double, so the fp64 style uses
+  // cuBLAS for UQ even though its MLP path stays hand-written).
+  if constexpr (std::is_same_v<DeviceType, LMPDeviceType>) {
+    if ((sizeof(NNScalar) == 4 || has_uq) && !cublas_handle) {
       if (cublasCreate(&cublas_handle) != CUBLAS_STATUS_SUCCESS)
         error->all(FLERR, "GRACE-2L/KK: cublasCreate failed");
       cublasSetStream(cublas_handle, DeviceType().cuda_stream());
-      cublasSetMathMode(cublas_handle, CUBLAS_PEDANTIC_MATH);
-      mlp_cublas_selftest();   // tiny-case transpose/leading-dim gate (aborts on mismatch)
+      cublasSetMathMode(cublas_handle, CUBLAS_PEDANTIC_MATH);  // no tf32 (fp32 & fp64)
+      if constexpr (sizeof(NNScalar) == 4)
+        mlp_cublas_selftest();   // tiny-case transpose/leading-dim gate (aborts on mismatch)
     }
   }
   if (comm->me == 0) {
-    if (cublas_handle)
+    if (cublas_handle && sizeof(NNScalar) == 4)
       utils::logmesg(lmp, "[GRACE-2L/KK] radial MLP: true-fp32 cuBLAS SGEMM enabled (CUDA)\n");
     else
       utils::logmesg(lmp, "[GRACE-2L/KK] radial MLP: hand-written Kokkos kernels "
                      "(cuBLAS is CUDA+fp32/Mixed only; fp64 & non-CUDA use the fallback)\n");
+    if (cublas_handle && has_uq)
+      utils::logmesg(lmp, "[GRACE-2L/KK] UQ projection: fp64 cuBLAS DGEMM enabled (CUDA)\n");
   }
 #else
   if (comm->me == 0)
@@ -1866,12 +1872,13 @@ void PairGRACE2LKokkos<DeviceType, NNScalarT, GeomScalarT>::compute(int eflag_in
   d_neighbors = k_list->d_neighbors;
   d_ilist = k_list->d_ilist;
   inum = list->inum;
+  const int chunk_limit = (chunksize > 0) ? chunksize : inum;
 
   maxneigh = 0;
   Kokkos::parallel_reduce("grace_2l::find_maxneigh", inum,
       FindMaxNumNeighs2L<DeviceType>(k_list), Kokkos::Max<int>(maxneigh));
 
-  chunk_size = MIN(chunksize, inum);
+  chunk_size = MIN(chunk_limit, inum);
   chunk_offset = 0;
   grow(chunk_size, maxneigh);
 
@@ -2322,8 +2329,20 @@ void PairGRACE2LKokkos<DeviceType, NNScalarT, GeomScalarT>::compute(int eflag_in
     // d_A..d_AAAA hold the current chunk's L1 products now (they are reused per
     // chunk, so the projection MUST happen here, not in the Phase-3 UQ kernel). ----
     if (any_uq) {
+#ifdef KOKKOS_ENABLE_CUDA
+      if (cublas_handle) {
+        compute_uq_cublas_L1();   // gather rho block -> DGEMM -> raw L1 proj into d_uq_z
+      } else
+#endif
+      {
+      // Team-per-atom: lanes split the L1 (rho) B·R projection over rp_dim with a
+      // register accumulator (no per-thread array => no local-memory spill).
+      auto probe = Kokkos::TeamPolicy<DeviceType, TagComputeUQ_L1basis>(chunk_size, 1, 1);
+      int ts = probe.team_size_max(*this, Kokkos::ParallelForTag());
+      if (ts > 128) ts = 128; if (ts < 1) ts = 1;
       Kokkos::parallel_for("ComputeUQ_L1basis",
-          Kokkos::RangePolicy<DeviceType, TagComputeUQ_L1basis>(0, chunk_size), *this);
+          Kokkos::TeamPolicy<DeviceType, TagComputeUQ_L1basis>(chunk_size, ts, 1), *this);
+      }
     }
 
     Kokkos::fence();
@@ -2343,7 +2362,7 @@ void PairGRACE2LKokkos<DeviceType, NNScalarT, GeomScalarT>::compute(int eflag_in
 
   // ============ PHASE 3: Layer 2 forward (chunked) ============
 
-  chunk_size = MIN(chunksize, inum);
+  chunk_size = MIN(chunk_limit, inum);
   chunk_offset = 0;
 
   while (chunk_offset < inum) {
@@ -2363,7 +2382,7 @@ void PairGRACE2LKokkos<DeviceType, NNScalarT, GeomScalarT>::compute(int eflag_in
     // ---- L2 Stage 0: Recompute neighbor data for this L2 chunk ----
     // Multi-chunk: d_ncount/d_nearest/d_rhats/d_radial_basis/d_Y_bond are stale
     // from Phase 1's last chunk. Single-chunk: Phase 1 data is still valid, skip.
-    if (inum > chunksize) {
+    if (inum > chunk_limit) {
       {
         check_team_size_for<TagComputeNeigh>(chunk_size, team_size, vector_length);
         int scratch_size = scratch_size_helper<int>(team_size * maxneigh);
@@ -2797,9 +2816,25 @@ void PairGRACE2LKokkos<DeviceType, NNScalarT, GeomScalarT>::compute(int eflag_in
     }
 
     // ---- UQ / extrapolation grade (forward only; reads Phase-3 L2 features) ----
+    // Team-per-atom: lanes split the I2 (L2) projection add over rp_dim, the cluster
+    // search over the feature dim, and the D×D Mahalanobis over its quadratic form.
     if (any_uq) {
-      Kokkos::parallel_for("ComputeUQ",
-          Kokkos::RangePolicy<DeviceType, TagComputeUQ>(0, chunk_size), *this);
+#ifdef KOKKOS_ENABLE_CUDA
+      if (cublas_handle) {
+        compute_uq_cublas_L2();   // gather I2 block -> DGEMM -> add L1 carry, normalize, GMM
+      } else
+#endif
+      {
+      // f_sh[D] + delta_sh[D] + (n2_L2, nrm_full) scalars (+ alignment slack).
+      const int scratch_bytes = (2 * uq_D + 8) * (int)sizeof(double);
+      auto probe = Kokkos::TeamPolicy<DeviceType, TagComputeUQ>(chunk_size, 1, 1)
+          .set_scratch_size(0, Kokkos::PerTeam(scratch_bytes));
+      int ts = probe.team_size_max(*this, Kokkos::ParallelForTag());
+      if (ts > 128) ts = 128; if (ts < 1) ts = 1;
+      auto policy = Kokkos::TeamPolicy<DeviceType, TagComputeUQ>(chunk_size, ts, 1)
+          .set_scratch_size(0, Kokkos::PerTeam(scratch_bytes));
+      Kokkos::parallel_for("ComputeUQ", policy, *this);
+      }
     }
 
     // ============ BACKWARD PASS — Layer 2 (Forces) ============
@@ -3515,7 +3550,7 @@ void PairGRACE2LKokkos<DeviceType, NNScalarT, GeomScalarT>::compute(int eflag_in
 
   // ============ PHASE 5: Layer 1 backward (recompute L1 forward + backward) ============
   if (!do_energy_only) {
-    chunk_size = MIN(chunksize, inum);
+    chunk_size = MIN(chunk_limit, inum);
     chunk_offset = 0;
 
     while (chunk_offset < inum) {
@@ -3527,7 +3562,7 @@ void PairGRACE2LKokkos<DeviceType, NNScalarT, GeomScalarT>::compute(int eflag_in
       if (Kokkos::DefaultExecutionSpace().concurrency() > 1)
         team_size = 32;
 
-      if (inum > chunksize) {
+      if (inum > chunk_limit) {
       // --- Recompute L1 forward intermediates ---
       // Multi-chunk: L1 data was overwritten by later chunks + L2_ComputeNeigh.
       // d_A zeroed inline inside Recompute_ComputeAi kernel
@@ -4901,6 +4936,171 @@ void PairGRACE2LKokkos<DeviceType, NNScalarT, GeomScalarT>::reduce_forward_cubla
         }
       }); }
 }
+
+// ======================================================================
+// cuBLAS DGEMM UQ projection drivers (2L). The B->R projection that dominated
+// small-N UQ (each of the two team kernels re-walked its whole basis block per
+// lane, a 128x-redundant indirect gather at low occupancy) becomes gather +
+// one fp64 GEMM per block. R-row order is [I2(L2), rho(L1)]; the L1 (rho) block
+// occupies rows [d_basis_L2, d_basis), the L2 (I2) block rows [0, d_basis_L2).
+// Sub-blocked to <=8192 atoms to bound the Bmat buffer; fp64, CUBLAS_PEDANTIC.
+// ======================================================================
+
+// Ensure sub-block scratch is sized for uq_subN >= min(8192, chunk_size).
+template<class DeviceType, typename NNScalarT, typename GeomScalarT>
+void PairGRACE2LKokkos<DeviceType, NNScalarT, GeomScalarT>::compute_uq_cublas_L1()
+{
+  if (chunk_size <= 0) return;
+  const int RP = uq_rp_dim;
+  const int Db_L1 = uq_d_basis_L1;
+  const int Db_L2 = uq_d_basis - uq_d_basis_L1;
+  const int maxDb = Db_L1 > Db_L2 ? Db_L1 : Db_L2;
+
+  // Build the rho (L1) gather map once (Phase 1: d_A.. are live here).
+  if ((int) d_uq_mapL1_view.extent(0) == 0) {
+    d_uq_mapL1_view = t_int_1d("g2l:uq_mapL1_view", Db_L1);
+    d_uq_mapL1_n    = t_int_1d("g2l:uq_mapL1_n",    Db_L1);
+    d_uq_mapL1_col  = t_int_1d("g2l:uq_mapL1_col",  Db_L1);
+    auto mv = d_uq_mapL1_view; auto mn = d_uq_mapL1_n; auto mc = d_uq_mapL1_col;
+    auto ciA = d_rho_ci_A; auto ciAA = d_rho_ci_AA;
+    auto ciAAA = d_rho_ci_AAA; auto ciAAAA = d_rho_ci_AAAA;
+    const int ninA = (int) d_A.extent(1),   ninAA = (int) d_AA.extent(1);
+    const int ninAAA = (int) d_AAA.extent(1), ninAAAA = (int) d_AAAA.extent(1);
+    const int Dbc = Db_L1;
+    Kokkos::parallel_for("UQBuildMapL1", Kokkos::RangePolicy<DeviceType>(0, 1),
+      KOKKOS_LAMBDA(const int) {
+        int b = 0;
+        #define GRACE2L_UQ_MAP(VID, NIN, CIV)                                   \
+          { const int nc = (int)(CIV).extent(0);                               \
+            for (int n = 0; n < (NIN); n++)                                    \
+              for (int c = 0; c < nc; c++) {                                   \
+                if (b < Dbc) { mv(b) = (VID); mn(b) = n; mc(b) = (CIV)(c); }   \
+                b++;                                                           \
+              } }
+        GRACE2L_UQ_MAP(0, ninA,    ciA);
+        GRACE2L_UQ_MAP(1, ninAA,   ciAA);
+        GRACE2L_UQ_MAP(2, ninAAA,  ciAAA);
+        GRACE2L_UQ_MAP(3, ninAAAA, ciAAAA);
+        #undef GRACE2L_UQ_MAP
+      });
+  }
+
+  const int want = std::min(8192, chunk_size);
+  if (want > uq_subN) {
+    uq_subN = want;
+    MemKK::realloc_kokkos(d_uq_Bmat, "g2l:uq_Bmat", (size_t) maxDb * uq_subN);
+    MemKK::realloc_kokkos(d_uq_proj, "g2l:uq_proj", (size_t) RP * uq_subN);
+    MemKK::realloc_kokkos(d_uq_n2,   "g2l:uq_n2",   (size_t) uq_subN);
+  }
+
+  const double one = 1.0, zero = 0.0;
+  uq_bmat_level = 1;
+  for (int s0 = 0; s0 < chunk_size; s0 += uq_subN) {
+    const int sN = std::min(uq_subN, chunk_size - s0);
+    uq_bmat_s0 = s0;
+
+    Kokkos::parallel_for("UQBmatL1",
+        Kokkos::TeamPolicy<DeviceType, TagUQBmat>(sN, Kokkos::AUTO), *this);
+
+    // zproj[RP x sN] = R_rho[RP x Db_L1] · Bmat_L1[Db_L1 x sN]; R_rho = rows
+    // [Db_L2, d_basis) of the row-major [D_basis,RP] R -> offset Db_L2*RP, lda=RP.
+    cublasStatus_t st = cublasDgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_N,
+        RP, sN, Db_L1, &one,
+        d_uq_rp_matrix.data() + (size_t) Db_L2 * RP, RP,
+        d_uq_Bmat.data(), Db_L1,
+        &zero, d_uq_proj.data(), RP);
+    if (st != CUBLAS_STATUS_SUCCESS)
+      error->all(FLERR, "GRACE-2L/KK: UQ cublasDgemm(L1) failed (status {})", (int) st);
+
+    // Scatter the raw L1 projection into the per-global-atom carry d_uq_z(i,d).
+    { auto proj = d_uq_proj; auto z = d_uq_z; auto il = d_ilist;
+      const int co = chunk_offset, s0c = s0, rp = RP;
+      Kokkos::parallel_for("UQScatterZ",
+        Kokkos::MDRangePolicy<DeviceType, Kokkos::Rank<2>>({0,0}, {sN, RP}),
+        KOKKOS_LAMBDA(const int loc, const int d) {
+          const int gi = il(s0c + loc + co);
+          z(gi, d) = proj((size_t) rp * loc + d);
+        }); }
+  }
+}
+
+template<class DeviceType, typename NNScalarT, typename GeomScalarT>
+void PairGRACE2LKokkos<DeviceType, NNScalarT, GeomScalarT>::compute_uq_cublas_L2()
+{
+  if (chunk_size <= 0) return;
+  const int RP = uq_rp_dim;
+  const int Db_L2 = uq_d_basis - uq_d_basis_L1;
+
+  // Build the I2 (L2) gather map once (Phase 3: d_B.. are live here).
+  if ((int) d_uq_mapL2_view.extent(0) == 0) {
+    d_uq_mapL2_view = t_int_1d("g2l:uq_mapL2_view", Db_L2);
+    d_uq_mapL2_n    = t_int_1d("g2l:uq_mapL2_n",    Db_L2);
+    d_uq_mapL2_col  = t_int_1d("g2l:uq_mapL2_col",  Db_L2);
+    auto mv = d_uq_mapL2_view; auto mn = d_uq_mapL2_n; auto mc = d_uq_mapL2_col;
+    auto ciB = d_I2_ci_B; auto ciBB = d_I2_ci_BB;
+    auto ciBBB = d_I2_ci_BBB; auto ciBBBB = d_I2_ci_BBBB;
+    const int ninB = (int) d_B.extent(1),   ninBB = (int) d_BB.extent(1);
+    const int ninBBB = (int) d_BBB.extent(1), ninBBBB = (int) d_BBBB.extent(1);
+    const int Dbc = Db_L2;
+    Kokkos::parallel_for("UQBuildMapL2", Kokkos::RangePolicy<DeviceType>(0, 1),
+      KOKKOS_LAMBDA(const int) {
+        int b = 0;
+        #define GRACE2L_UQ_MAP(VID, NIN, CIV)                                   \
+          { const int nc = (int)(CIV).extent(0);                               \
+            for (int n = 0; n < (NIN); n++)                                    \
+              for (int c = 0; c < nc; c++) {                                   \
+                if (b < Dbc) { mv(b) = (VID); mn(b) = n; mc(b) = (CIV)(c); }   \
+                b++;                                                           \
+              } }
+        GRACE2L_UQ_MAP(0, ninB,    ciB);
+        GRACE2L_UQ_MAP(1, ninBB,   ciBB);
+        GRACE2L_UQ_MAP(2, ninBBB,  ciBBB);
+        GRACE2L_UQ_MAP(3, ninBBBB, ciBBBB);
+        #undef GRACE2L_UQ_MAP
+      });
+  }
+
+  const int want = std::min(8192, chunk_size);
+  if (want > uq_subN) {   // defensive: L1 sized this first in normal flow
+    const int Db_L1 = uq_d_basis_L1;
+    const int maxDb = Db_L1 > Db_L2 ? Db_L1 : Db_L2;
+    uq_subN = want;
+    MemKK::realloc_kokkos(d_uq_Bmat, "g2l:uq_Bmat", (size_t) maxDb * uq_subN);
+    MemKK::realloc_kokkos(d_uq_proj, "g2l:uq_proj", (size_t) RP * uq_subN);
+    MemKK::realloc_kokkos(d_uq_n2,   "g2l:uq_n2",   (size_t) uq_subN);
+  }
+
+  const double one = 1.0, zero = 0.0;
+  const int scratch_bytes = (2 * uq_D + 8) * (int) sizeof(double);
+  auto fprobe = Kokkos::TeamPolicy<DeviceType, TagUQFinish>(1, 1, 1)
+      .set_scratch_size(0, Kokkos::PerTeam(scratch_bytes));
+  int fts = fprobe.team_size_max(*this, Kokkos::ParallelForTag());
+  if (fts > 128) fts = 128;
+  if (fts < 1)   fts = 1;
+
+  uq_bmat_level = 2;
+  for (int s0 = 0; s0 < chunk_size; s0 += uq_subN) {
+    const int sN = std::min(uq_subN, chunk_size - s0);
+    uq_bmat_s0 = s0;
+
+    Kokkos::parallel_for("UQBmatL2",
+        Kokkos::TeamPolicy<DeviceType, TagUQBmat>(sN, Kokkos::AUTO), *this);
+
+    // proj[RP x sN] = R_I2[RP x Db_L2] · Bmat_L2[Db_L2 x sN]; R_I2 = rows
+    // [0, Db_L2) of R -> offset 0, lda=RP.
+    cublasStatus_t st = cublasDgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_N,
+        RP, sN, Db_L2, &one,
+        d_uq_rp_matrix.data(), RP,
+        d_uq_Bmat.data(), Db_L2,
+        &zero, d_uq_proj.data(), RP);
+    if (st != CUBLAS_STATUS_SUCCESS)
+      error->all(FLERR, "GRACE-2L/KK: UQ cublasDgemm(L2) failed (status {})", (int) st);
+
+    Kokkos::parallel_for("UQFinish",
+        Kokkos::TeamPolicy<DeviceType, TagUQFinish>(sN, fts, 1)
+            .set_scratch_size(0, Kokkos::PerTeam(scratch_bytes)), *this);
+  }
+}
 #endif  // KOKKOS_ENABLE_CUDA
 
 // ======================================================================
@@ -5331,36 +5531,49 @@ void PairGRACE2LKokkos<DeviceType, NNScalarT, GeomScalarT>::operator() (TagCompu
 // all 4 KK styles (1l/1l_cpu/2l/2l_cpu). The R-row traversal order here is coupled
 // to the exporter's reshape order and the load-time d_basis check guards width, not
 // ordering — a shared helper would remove the drift risk. Follow-up refactor.
-#define GRACE2L_UQ_ACC(XVIEW, CIVIEW, ACC, N2)                                     \
+// Single projection column: for each gathered product b_inv[b]=XVIEW(ii,n,CIVIEW(c))
+// (n outer, c inner — Python reshape order), accumulate ACC += b_inv[b]*R[b,d] for
+// this lane's column d, add b_inv[b]^2 into the block norm² N2, advance R-row cursor b.
+#define GRACE2L_UQ_WALK(XVIEW, CIVIEW, ACC, N2)                                    \
     { const int nin = (int)(XVIEW).extent(1); const int nc = (int)(CIVIEW).extent(0); \
-      for (int n = 0; n < nin; n++)                                                \
+      for (int n = 0; n < nin; n++)                                               \
         for (int c = 0; c < nc; c++) {                                            \
-          const double bval = (double)(XVIEW)(ii, n, (CIVIEW)(c));                 \
-          (N2) += bval * bval;                                                     \
-          for (int d = 0; d < RP; d++) (ACC)[d] += bval * d_uq_rp_matrix(b, d);    \
-          b++;                                                                     \
+          const double bval = (double)(XVIEW)(ii, n, (CIVIEW)(c));                \
+          (N2)  += bval * bval;                                                   \
+          (ACC) += bval * d_uq_rp_matrix(b, d);                                   \
+          b++;                                                                    \
         } }
 
 template<class DeviceType, typename NNScalarT, typename GeomScalarT>
 KOKKOS_INLINE_FUNCTION
-void PairGRACE2LKokkos<DeviceType, NNScalarT, GeomScalarT>::operator() (TagComputeUQ_L1basis, const int& ii) const
+void PairGRACE2LKokkos<DeviceType, NNScalarT, GeomScalarT>::operator() (TagComputeUQ_L1basis,
+    const typename Kokkos::TeamPolicy<DeviceType, TagComputeUQ_L1basis>::member_type& team) const
 {
+  const int ii = team.league_rank();
+  if (ii >= chunk_size) return;
   const int i = d_ilist[ii + chunk_offset];
   const int RP = uq_rp_dim;
-  double z[GRACE2L_UQ_MAX_RP_DIM];
-  for (int d = 0; d < RP; d++) z[d] = 0.0;
-  double n2_L1 = 0.0;
+  const int TS = team.team_size();
+  const int lane = team.team_rank();
 
+  // Each lane owns projection column(s) d = lane, lane+TS, ...; it walks the L1 (rho)
+  // scalar-basis stream once per column, accumulating that column in a register (no
+  // per-thread array => no local-memory spill). ||B^(L1)||² is recomputed per column
+  // (identical value, cheap) and written once by lane 0.
   // R-row order is [I2-block, rho-block] (sorted by reduce name); the rho (L1) block
-  // therefore occupies rows [d_basis_L2, d_basis), so the cursor starts past I2.
-  int b = uq_d_basis - uq_d_basis_L1;
-  GRACE2L_UQ_ACC(d_A,    d_rho_ci_A,    z, n2_L1);
-  GRACE2L_UQ_ACC(d_AA,   d_rho_ci_AA,   z, n2_L1);
-  GRACE2L_UQ_ACC(d_AAA,  d_rho_ci_AAA,  z, n2_L1);
-  GRACE2L_UQ_ACC(d_AAAA, d_rho_ci_AAAA, z, n2_L1);
-
-  for (int d = 0; d < RP; d++) d_uq_z(i, d) = z[d];
-  d_uq_n2L1(i) = n2_L1;
+  // occupies rows [d_basis_L2, d_basis), so the cursor starts past I2.
+  double n2_L1 = 0.0;
+  for (int d = lane; d < RP; d += TS) {
+    double z = 0.0;
+    n2_L1 = 0.0;
+    int b = uq_d_basis - uq_d_basis_L1;
+    GRACE2L_UQ_WALK(d_A,    d_rho_ci_A,    z, n2_L1);
+    GRACE2L_UQ_WALK(d_AA,   d_rho_ci_AA,   z, n2_L1);
+    GRACE2L_UQ_WALK(d_AAA,  d_rho_ci_AAA,  z, n2_L1);
+    GRACE2L_UQ_WALK(d_AAAA, d_rho_ci_AAAA, z, n2_L1);
+    d_uq_z(i, d) = z;
+  }
+  if (lane == 0) d_uq_n2L1(i) = n2_L1;   // lane 0 always processes column 0
 }
 
 // ======================================================================
@@ -5376,74 +5589,209 @@ void PairGRACE2LKokkos<DeviceType, NNScalarT, GeomScalarT>::operator() (TagCompu
 
 template<class DeviceType, typename NNScalarT, typename GeomScalarT>
 KOKKOS_INLINE_FUNCTION
-void PairGRACE2LKokkos<DeviceType, NNScalarT, GeomScalarT>::operator() (TagComputeUQ, const int& ii) const
+void PairGRACE2LKokkos<DeviceType, NNScalarT, GeomScalarT>::operator() (TagComputeUQ,
+    const typename Kokkos::TeamPolicy<DeviceType, TagComputeUQ>::member_type& team) const
 {
+  const int ii = team.league_rank();
+  if (ii >= chunk_size) return;
   const int i = d_ilist[ii + chunk_offset];
   const int mu_i = d_map(type(i));
-  const int D = uq_D;          // full feature dim (rp_dim + n_density)
+  const int D  = uq_D;         // full feature dim (rp_dim + n_density)
   const int RP = uq_rp_dim;    // projection width (R cols)
+  const int TS = team.team_size();
+  const int lane = team.team_rank();
 
-  // RAW projection proj = B·R: L1 part from Phase 1 (d_uq_z) + L2 part here.
-  double f[GRACE2L_UQ_MAX_RP_DIM];
-  for (int d = 0; d < RP; d++) f[d] = d_uq_z(i, d);
-  const double n2_L1 = d_uq_n2L1(i);     // rho (L1) block norm²
-  double n2_L2 = 0.0;                    // I2 (L2) block norm²
-  // R-row order is [I2-block, rho-block]: the I2 (L2) block occupies rows [0, d_basis_L2).
-  int b = 0;
-  GRACE2L_UQ_ACC(d_B,    d_I2_ci_B,    f, n2_L2);
-  GRACE2L_UQ_ACC(d_BB,   d_I2_ci_BB,   f, n2_L2);
-  GRACE2L_UQ_ACC(d_BBB,  d_I2_ci_BBB,  f, n2_L2);
-  GRACE2L_UQ_ACC(d_BBBB, d_I2_ci_BBBB, f, n2_L2);
-  #undef GRACE2L_UQ_ACC
+  // Team-shared scratch: normalized feature f[D], Mahalanobis delta[D], and a pair
+  // of scalars [n2_L2, nrm_full] carried from the projection loop to the density code.
+  double* f     = (double*) team.team_shmem().get_shmem(D * sizeof(double));
+  double* delta = (double*) team.team_shmem().get_shmem(D * sizeof(double));
+  double* sc    = (double*) team.team_shmem().get_shmem(2 * sizeof(double));
 
-  // --- L2-normalize the projection: proj = (B/||B||)·R = (B·R)/||B|| ---
-  const double n2_full = n2_L1 + n2_L2;
-  const double nrm_full = Kokkos::sqrt(n2_full);   // ||B||, reused below
-  if (uq_normalize) {
-    const double inv = 1.0 / (nrm_full + 1.0e-12);
-    for (int d = 0; d < RP; d++) f[d] *= inv;
+  const double n2_L1 = d_uq_n2L1(i);   // rho (L1) block norm² from Phase 1
+
+  // Combined projection proj = B·R: L1 part from Phase 1 (d_uq_z) + L2 (I2) added here.
+  // Each lane owns column(s) d, accumulating in a register. R-row order is
+  // [I2-block, rho-block]: the I2 (L2) block occupies rows [0, d_basis_L2).
+  for (int d = lane; d < RP; d += TS) {
+    double acc = d_uq_z(i, d);
+    double n2_L2 = 0.0;
+    int b = 0;
+    GRACE2L_UQ_WALK(d_B,    d_I2_ci_B,    acc, n2_L2);
+    GRACE2L_UQ_WALK(d_BB,   d_I2_ci_BB,   acc, n2_L2);
+    GRACE2L_UQ_WALK(d_BBB,  d_I2_ci_BBB,  acc, n2_L2);
+    GRACE2L_UQ_WALK(d_BBBB, d_I2_ci_BBBB, acc, n2_L2);
+    const double nrm_full = Kokkos::sqrt(n2_L1 + n2_L2);   // ||B||
+    if (uq_normalize) acc /= (nrm_full + 1.0e-12);
+    f[d] = acc;
+    if (d == 0) { sc[0] = n2_L2; sc[1] = nrm_full; }
   }
+  #undef GRACE2L_UQ_WALK
+  team.team_barrier();
 
-  // --- Density channels appended after the projection: [full, block0=I2(L2), block1=rho(L1)] ---
-  // Block order is the sorted-by-reduce-name order (I2 sorts before rho), confirmed
-  // empirically against the reference centroid density block.
-  if (uq_n_density > 0) f[RP + 0] = Kokkos::log(nrm_full + 1.0e-12) * uq_density_scale;
-  if (uq_n_density > 1) f[RP + 1] = Kokkos::log(Kokkos::sqrt(n2_L2)   + 1.0e-12) * uq_density_scale;
-  if (uq_n_density > 2) f[RP + 2] = Kokkos::log(Kokkos::sqrt(n2_L1)   + 1.0e-12) * uq_density_scale;
+  // Density channels [full, block0=I2(L2), block1=rho(L1)] — sorted-by-reduce-name
+  // order (I2 sorts before rho), matching R's row layout. Cheap; lane 0 writes them.
+  if (lane == 0) {
+    if (uq_n_density > 0) f[RP + 0] = Kokkos::log(sc[1]               + 1.0e-12) * uq_density_scale;
+    if (uq_n_density > 1) f[RP + 1] = Kokkos::log(Kokkos::sqrt(sc[0]) + 1.0e-12) * uq_density_scale;
+    if (uq_n_density > 2) f[RP + 2] = Kokkos::log(Kokkos::sqrt(n2_L1) + 1.0e-12) * uq_density_scale;
+  }
+  team.team_barrier();
 
-  // --- Cluster assignment: nearest centroid (squared Euclidean) ---
-  // ncl > 0 for every element is guaranteed at load time (uqv6 artifacts cover all elements).
+  // Cluster assignment: nearest centroid (squared Euclidean over D). Each reduce
+  // broadcasts d2 to all lanes, so kstar is identical across the team.
   const int ncl = d_uq_n_clusters(mu_i);
   int kstar = 0;
   double best = 1.0e300;
   for (int k = 0; k < ncl; k++) {
     double d2 = 0.0;
-    for (int p = 0; p < D; p++) {
-      const double diff = f[p] - d_uq_centroids(mu_i, k, p);
-      d2 += diff * diff;
-    }
+    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, D),
+      [&](const int p, double& s) {
+        const double diff = f[p] - d_uq_centroids(mu_i, k, p);
+        s += diff * diff;
+      }, d2);
     if (d2 < best) { best = d2; kstar = k; }
   }
 
-  // --- Mahalanobis distance to assigned cluster ---
-  double delta[GRACE2L_UQ_MAX_RP_DIM];
-  for (int p = 0; p < D; p++) delta[p] = f[p] - d_uq_centroids(mu_i, kstar, p);
+  // Mahalanobis distance to assigned cluster: sig2 = deltaᵀ · Σ⁻¹ · delta.
+  for (int p = lane; p < D; p += TS) delta[p] = f[p] - d_uq_centroids(mu_i, kstar, p);
+  team.team_barrier();
   double sig2 = 0.0;
-  for (int p = 0; p < D; p++) {
-    double acc = 0.0;
-    for (int q = 0; q < D; q++)
-      acc += d_uq_inv_cov(mu_i, kstar, p, q) * delta[q];
-    sig2 += delta[p] * acc;
-  }
-  const double sigma = Kokkos::sqrt(sig2 + 1.0e-8);
+  Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, D * D),
+    [&](const int idx, double& s) {
+      const int p = idx / D, q = idx % D;
+      s += delta[p] * d_uq_inv_cov(mu_i, kstar, p, q) * delta[q];
+    }, sig2);
 
-  double t = d_uq_interp_thresholds(mu_i, kstar);
-  if (t < 1.0e-10) t = 1.0e-10;
-
-  d_sigma(i) = sigma;
-  d_gamma(i) = sigma / t;
-  d_gmm_cluster(i) = (double) kstar;
+  Kokkos::single(Kokkos::PerTeam(team), [&]() {
+    const double sigma = Kokkos::sqrt(sig2 + 1.0e-8);
+    double t = d_uq_interp_thresholds(mu_i, kstar);
+    if (t < 1.0e-10) t = 1.0e-10;
+    d_sigma(i) = sigma;
+    d_gamma(i) = sigma / t;
+    d_gmm_cluster(i) = (double) kstar;
+  });
 }
+
+#ifdef KOKKOS_ENABLE_CUDA
+// ======================================================================
+// Kernel: UQBmat - gather one block's dense invariant basis for a sub-block of
+// atoms so its B->R projection can be a single cuBLAS DGEMM. uq_bmat_level picks
+// the block: 1 = rho/L1 (views d_A..d_AAAA, rho gather map) written for Phase 1,
+// 2 = I2/L2 (views d_B..d_BBBB, I2 gather map) for Phase 3. league = sub-block
+// atom; team lanes split the Db basis rows, gather col-major into d_uq_Bmat and
+// team-reduce the block norm ||B_blk||^2. Replaces the per-lane basis re-walk.
+// ======================================================================
+template<class DeviceType, typename NNScalarT, typename GeomScalarT>
+KOKKOS_INLINE_FUNCTION
+void PairGRACE2LKokkos<DeviceType, NNScalarT, GeomScalarT>::operator() (TagUQBmat,
+    const typename Kokkos::TeamPolicy<DeviceType, TagUQBmat>::member_type& team) const
+{
+  const int ii_local = team.league_rank();
+  const int ii = uq_bmat_s0 + ii_local;
+  if (ii >= chunk_size) return;
+  const int i = d_ilist[ii + chunk_offset];
+  const bool L2 = (uq_bmat_level == 2);
+  const int Db = L2 ? (uq_d_basis - uq_d_basis_L1) : uq_d_basis_L1;
+  const size_t base = (size_t) Db * ii_local;
+
+  double n2 = 0.0;
+  Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, Db),
+    [&](const int b, double& s) {
+      int vid, n, col;
+      if (L2) { vid = d_uq_mapL2_view(b); n = d_uq_mapL2_n(b); col = d_uq_mapL2_col(b); }
+      else    { vid = d_uq_mapL1_view(b); n = d_uq_mapL1_n(b); col = d_uq_mapL1_col(b); }
+      double v;
+      if (L2) {
+        if      (vid == 0) v = (double) d_B(ii, n, col);
+        else if (vid == 1) v = (double) d_BB(ii, n, col);
+        else if (vid == 2) v = (double) d_BBB(ii, n, col);
+        else               v = (double) d_BBBB(ii, n, col);
+      } else {
+        if      (vid == 0) v = (double) d_A(ii, n, col);
+        else if (vid == 1) v = (double) d_AA(ii, n, col);
+        else if (vid == 2) v = (double) d_AAA(ii, n, col);
+        else               v = (double) d_AAAA(ii, n, col);
+      }
+      d_uq_Bmat(base + b) = v;
+      s += v * v;
+    }, n2);
+  Kokkos::single(Kokkos::PerTeam(team), [&]() {
+    if (L2) d_uq_n2(ii_local) = n2;   // L2 norm carried to UQFinish (sub-block local)
+    else    d_uq_n2L1(i) = n2;         // L1 norm carried per global atom to Phase 3
+  });
+}
+
+// ======================================================================
+// Kernel: UQFinish (Phase 3) - combine the Phase-1 raw L1 projection (d_uq_z)
+// with the DGEMM L2 projection (d_uq_proj), L2-normalize by the combined ||B|| =
+// sqrt(n2_L1+n2_L2), append density channels [full, ||B_L2||, ||B_L1||], and run
+// the GMM. Identical math to ComputeUQ; only the projection source changes.
+// ======================================================================
+template<class DeviceType, typename NNScalarT, typename GeomScalarT>
+KOKKOS_INLINE_FUNCTION
+void PairGRACE2LKokkos<DeviceType, NNScalarT, GeomScalarT>::operator() (TagUQFinish,
+    const typename Kokkos::TeamPolicy<DeviceType, TagUQFinish>::member_type& team) const
+{
+  const int ii_local = team.league_rank();
+  const int ii = uq_bmat_s0 + ii_local;
+  if (ii >= chunk_size) return;
+  const int i = d_ilist[ii + chunk_offset];
+  const int mu_i = d_map(type(i));
+  const int D  = uq_D;
+  const int RP = uq_rp_dim;
+  const int TS = team.team_size();
+  const int lane = team.team_rank();
+
+  double* f     = (double*) team.team_shmem().get_shmem(D * sizeof(double));
+  double* delta = (double*) team.team_shmem().get_shmem(D * sizeof(double));
+
+  const double n2_L1 = d_uq_n2L1(i);
+  const double n2_L2 = d_uq_n2(ii_local);
+  const double nrm_full = Kokkos::sqrt(n2_L1 + n2_L2);
+  const double inv = uq_normalize ? (1.0 / (nrm_full + 1.0e-12)) : 1.0;
+  const size_t pbase = (size_t) RP * ii_local;
+  for (int d = lane; d < RP; d += TS)
+    f[d] = (d_uq_z(i, d) + d_uq_proj(pbase + d)) * inv;
+
+  if (lane == 0) {
+    if (uq_n_density > 0) f[RP + 0] = Kokkos::log(nrm_full            + 1.0e-12) * uq_density_scale;
+    if (uq_n_density > 1) f[RP + 1] = Kokkos::log(Kokkos::sqrt(n2_L2) + 1.0e-12) * uq_density_scale;
+    if (uq_n_density > 2) f[RP + 2] = Kokkos::log(Kokkos::sqrt(n2_L1) + 1.0e-12) * uq_density_scale;
+  }
+  team.team_barrier();
+
+  const int ncl = d_uq_n_clusters(mu_i);
+  int kstar = 0;
+  double best = 1.0e300;
+  for (int k = 0; k < ncl; k++) {
+    double d2 = 0.0;
+    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, D),
+      [&](const int p, double& s) {
+        const double diff = f[p] - d_uq_centroids(mu_i, k, p);
+        s += diff * diff;
+      }, d2);
+    if (d2 < best) { best = d2; kstar = k; }
+  }
+
+  for (int p = lane; p < D; p += TS) delta[p] = f[p] - d_uq_centroids(mu_i, kstar, p);
+  team.team_barrier();
+  double sig2 = 0.0;
+  Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, D * D),
+    [&](const int idx, double& s) {
+      const int p = idx / D, q = idx % D;
+      s += delta[p] * d_uq_inv_cov(mu_i, kstar, p, q) * delta[q];
+    }, sig2);
+
+  Kokkos::single(Kokkos::PerTeam(team), [&]() {
+    const double sigma = Kokkos::sqrt(sig2 + 1.0e-8);
+    double t = d_uq_interp_thresholds(mu_i, kstar);
+    if (t < 1.0e-10) t = 1.0e-10;
+    d_sigma(i) = sigma;
+    d_gamma(i) = sigma / t;
+    d_gmm_cluster(i) = (double) kstar;
+  });
+}
+#endif  // KOKKOS_ENABLE_CUDA
 
 // ======================================================================
 // Kernel: ComputeDerivative_L1 — per-bond forces from d_A_adj

@@ -253,6 +253,8 @@ class PairGRACE2LKokkos : public Pair, public KokkosBase {
   struct TagMLPAssemble{};          // pack row-major X[M x nradbase] + dX[M x nradbase]; zero padding rows
   struct TagMLPActDeriv{};          // fused value+deriv silu between GEMMs (2L MLP has no bias)
   struct TagMLPScatterR{};          // scatter LayoutRight [M x d3] -> LayoutLeft d_{R,DR}{,1}_nl(ii,jj,n,l)
+  struct TagUQBmat{};    // gather dense Bmat[Db x subN] + block ||B||^2 (cuBLAS UQ; level 1=rho, 2=I2)
+  struct TagUQFinish{};  // combine L1 carry + L2 proj -> normalize + density + GMM
 #endif
 
   template<int NEIGHFLAG, int EVFLAG>
@@ -328,12 +330,16 @@ class PairGRACE2LKokkos : public Pair, public KokkosBase {
   void operator() (TagComputeDerivative_L1, const typename Kokkos::TeamPolicy<DeviceType, TagComputeDerivative_L1>::member_type& team) const;
 
   KOKKOS_INLINE_FUNCTION
-  void operator() (TagComputeUQ_L1basis, const int& ii) const;
+  void operator() (TagComputeUQ_L1basis, const typename Kokkos::TeamPolicy<DeviceType, TagComputeUQ_L1basis>::member_type& team) const;
 
   KOKKOS_INLINE_FUNCTION
-  void operator() (TagComputeUQ, const int& ii) const;
+  void operator() (TagComputeUQ, const typename Kokkos::TeamPolicy<DeviceType, TagComputeUQ>::member_type& team) const;
 
 #ifdef KOKKOS_ENABLE_CUDA
+  KOKKOS_INLINE_FUNCTION
+  void operator() (TagUQBmat, const typename Kokkos::TeamPolicy<DeviceType, TagUQBmat>::member_type& team) const;
+  KOKKOS_INLINE_FUNCTION
+  void operator() (TagUQFinish, const typename Kokkos::TeamPolicy<DeviceType, TagUQFinish>::member_type& team) const;
   KOKKOS_INLINE_FUNCTION
   void operator() (TagMLPAssemble, const int) const;
   KOKKOS_INLINE_FUNCTION
@@ -841,6 +847,13 @@ class PairGRACE2LKokkos : public Pair, public KokkosBase {
   // fc_forward_cublas (contains extended device lambdas).
   void reduce_forward_cublas(ReduceCublasOp &op, const t_nn_3d &X,
       const t_nn_3d &Bout, bool zero_first, int nBf);
+  // cuBLAS DGEMM UQ projection (two phases, sharing the d_uq_z carry):
+  //  _L1 (Phase 1, d_A.. live): gather the rho block -> DGEMM -> RAW L1 proj into
+  //      d_uq_z, and ||B^(L1)||^2 into d_uq_n2L1.
+  //  _L2 (Phase 3, d_B.. live): gather the I2 block -> DGEMM -> add to d_uq_z ->
+  //      normalize by the combined ||B|| -> density -> GMM.
+  void compute_uq_cublas_L1();
+  void compute_uq_cublas_L2();
 #endif
  protected:
 
@@ -868,9 +881,13 @@ class PairGRACE2LKokkos : public Pair, public KokkosBase {
   // ---------- UQ / extrapolation grade (forward only) ----------
   // FP64 device storage regardless of NNScalar (numerical safety).
   typedef Kokkos::View<double*, DeviceType>    t_uq_1d;
-  typedef Kokkos::View<double**, DeviceType>   t_uq_2d;
-  typedef Kokkos::View<double***, DeviceType>  t_uq_3d;
-  typedef Kokkos::View<double****, DeviceType> t_uq_4d;
+  // LayoutRight so the last (contiguous) index — reduced/split across team lanes in
+  // the team-parallel ComputeUQ kernels — gives coalesced lane reads (rp_matrix over
+  // rp_dim, centroids/inv_cov over the feature dims, d_uq_z over rp_dim). Transparent
+  // to the logical-index copy_* loaders.
+  typedef Kokkos::View<double**, Kokkos::LayoutRight, DeviceType>   t_uq_2d;
+  typedef Kokkos::View<double***, Kokkos::LayoutRight, DeviceType>  t_uq_3d;
+  typedef Kokkos::View<double****, Kokkos::LayoutRight, DeviceType> t_uq_4d;
   t_uq_3d d_uq_centroids;          // [E, Kmax, D]
   t_uq_4d d_uq_inv_cov;            // [E, Kmax, D, D]
   t_int_1d d_uq_n_clusters;        // [E]
@@ -879,6 +896,21 @@ class PairGRACE2LKokkos : public Pair, public KokkosBase {
   t_uq_2d d_uq_z;                  // [nlocal, rp_dim] per-atom RAW L1 projection (set in Phase 1)
   t_uq_1d d_uq_n2L1;               // [nlocal] ||B^(L1)||^2 from Phase 1 (block0 density carry)
   t_uq_1d d_gamma, d_sigma, d_gmm_cluster;
+
+#ifdef KOKKOS_ENABLE_CUDA
+  // ---- cuBLAS DGEMM UQ projection scratch (CUDA; built lazily on 1st UQ call) ----
+  // Two gather maps replay the walk of each block (rho / I2) so Bmat rows line up
+  // with the corresponding R-row range (I2 = rows [0,d_basis_L2); rho = rows
+  // [d_basis_L2,d_basis)). Bmat/proj/n2 are sub-block scratch reused across L1/L2.
+  Kokkos::View<double*, DeviceType> d_uq_Bmat;    // [max(Db_L1,Db_L2) * subN] col-major
+  Kokkos::View<double*, DeviceType> d_uq_proj;    // [rp_dim * subN] col-major
+  Kokkos::View<double*, DeviceType> d_uq_n2;      // [subN] current-block ||B_L2||^2 carry to finish
+  t_int_1d d_uq_mapL1_view, d_uq_mapL1_n, d_uq_mapL1_col;  // [d_basis_L1] rho-block gather map (built lazily Phase 1)
+  t_int_1d d_uq_mapL2_view, d_uq_mapL2_n, d_uq_mapL2_col;  // [d_basis_L2] I2-block gather map (built lazily Phase 3)
+  int uq_subN = 0;                 // Bmat sub-chunk width
+  int uq_bmat_s0 = 0;              // current sub-block base (into the chunk)
+  int uq_bmat_level = 0;           // 1 = rho/L1 gather, 2 = I2/L2 gather (selects views/map/Db)
+#endif
 
   bool has_uq = false;
   int uq_Kmax = 0, uq_D = 0;          // uq_D = full GMM feature dim (rp_dim + n_density)

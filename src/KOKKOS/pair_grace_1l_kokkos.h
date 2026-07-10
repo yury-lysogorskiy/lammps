@@ -176,6 +176,13 @@ class PairGRACE1LKokkos : public Pair {
   struct TagComputeMLPEnergy{};
   struct TagComputeDerivative{};
   struct TagComputeUQ{};   // extrapolation grade (gamma) + error model — forward only
+#ifdef KOKKOS_ENABLE_CUDA
+  struct TagMLPAssemble{};
+  struct TagMLPActDeriv{};
+  struct TagMLPScatterR{};
+  struct TagUQBmat{};    // materialize dense Bmat[D_basis x subN] + ||B||^2 (cuBLAS UQ)
+  struct TagUQFinish{};  // normalize proj + density + GMM from cuBLAS projection
+#endif
 
   // Force computation tags (Stage 2)
   template<int NEIGHFLAG, int EVFLAG>
@@ -221,7 +228,24 @@ class PairGRACE1LKokkos : public Pair {
   void operator() (TagComputeDerivative, const typename Kokkos::TeamPolicy<DeviceType, TagComputeDerivative>::member_type& team) const;
 
   KOKKOS_INLINE_FUNCTION
-  void operator() (TagComputeUQ, const int& ii) const;
+  void operator() (TagComputeUQ, const typename Kokkos::TeamPolicy<DeviceType, TagComputeUQ>::member_type& team) const;
+
+#ifdef KOKKOS_ENABLE_CUDA
+  KOKKOS_INLINE_FUNCTION
+  void operator() (TagUQBmat, const typename Kokkos::TeamPolicy<DeviceType, TagUQBmat>::member_type& team) const;
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (TagUQFinish, const typename Kokkos::TeamPolicy<DeviceType, TagUQFinish>::member_type& team) const;
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (TagMLPAssemble, const int b) const;
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (TagMLPActDeriv, const int idx) const;
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (TagMLPScatterR, const int idx) const;
+#endif
 
   template<int NEIGHFLAG, int EVFLAG>
   KOKKOS_INLINE_FUNCTION
@@ -449,6 +473,7 @@ class PairGRACE1LKokkos : public Pair {
   void copy_weights_to_device();
   void precompute_harmonics();
   void allocate();
+  void compute_mlp_radial();
 
   template<class TagStyle>
   void check_team_size_for(int, int&, int);
@@ -475,9 +500,13 @@ class PairGRACE1LKokkos : public Pair {
   // FP64 device storage regardless of NNScalar (numerical safety: 1e6 untrained
   // precision, wide sigma^2 dynamic range).
   typedef Kokkos::View<double*, DeviceType>    t_uq_1d;
-  typedef Kokkos::View<double**, DeviceType>   t_uq_2d;
-  typedef Kokkos::View<double***, DeviceType>  t_uq_3d;
-  typedef Kokkos::View<double****, DeviceType> t_uq_4d;
+  // UQ GMM artifacts are read in the team-parallel ComputeUQ kernel with the
+  // last (contiguous) index reduced across team lanes; LayoutRight makes those
+  // lane reads coalesced (rp_matrix over rp_dim, centroids/inv_cov over the
+  // feature dims). Layout is transparent to the logical-index copy_* loaders.
+  typedef Kokkos::View<double**, Kokkos::LayoutRight, DeviceType>   t_uq_2d;
+  typedef Kokkos::View<double***, Kokkos::LayoutRight, DeviceType>  t_uq_3d;
+  typedef Kokkos::View<double****, Kokkos::LayoutRight, DeviceType> t_uq_4d;
   t_uq_3d d_uq_centroids;          // [E, Kmax, D]
   t_uq_4d d_uq_inv_cov;            // [E, Kmax, D, D]
   t_int_1d d_uq_n_clusters;        // [E]
@@ -485,6 +514,22 @@ class PairGRACE1LKokkos : public Pair {
   t_uq_2d d_uq_rp_matrix;          // [D_basis, rp_dim] projection R
   // per-atom UQ outputs (device, indexed by local atom; sized nmax_uq)
   t_uq_1d d_gamma, d_sigma, d_gmm_cluster;
+
+#ifdef KOKKOS_ENABLE_CUDA
+  // ---- cuBLAS DGEMM UQ projection scratch (CUDA only; built lazily on 1st UQ call) ----
+  // Bmat = dense gathered invariant basis, col-major [D_basis x subN]; proj = R·Bmat
+  // col-major [rp_dim x subN]; n2 = ||B||^2 per sub-block atom. The gather map replays
+  // the exact (view,n,collect) walk of ComputeUQ so R-row order matches uq_rp_matrix.
+  Kokkos::View<double*, DeviceType> d_uq_Bmat;    // [D_basis * subN]
+  Kokkos::View<double*, DeviceType> d_uq_proj;    // [rp_dim * subN]
+  Kokkos::View<double*, DeviceType> d_uq_n2;      // [subN]
+  t_int_1d d_uq_map_view;          // [D_basis] source view id 0..3 (A/AA/AAA/AAAA)
+  t_int_1d d_uq_map_n;             // [D_basis] middle index n
+  t_int_1d d_uq_map_col;           // [D_basis] resolved collect column (= reduce_*_ci(c))
+  bool uq_map_built = false;
+  int uq_subN = 0;                 // Bmat sub-chunk width (caps device memory)
+  int uq_bmat_s0 = 0;              // current sub-block base (set before each Bmat/Finish launch)
+#endif
 
   bool has_uq = false;
   int uq_Kmax = 0, uq_D = 0;          // uq_D = full GMM feature dim (rp_dim + n_density)
@@ -499,6 +544,19 @@ class PairGRACE1LKokkos : public Pair {
   double *gamma = nullptr, *atomic_sigma = nullptr, *gmm_cluster = nullptr;
 
 #ifdef KOKKOS_ENABLE_CUDA
+  // ---- cuBLAS true-fp32 radial MLP (CUDA device + NNScalar=float only) ----
+  // Repack the padded LayoutLeft d_mlp_rad_W into tight row-major [n_in x n_out]
+  // weights and run the per-bond MLP as batched true-fp32 SGEMMs. The fp64 style
+  // and non-CUDA backends keep TagComputeMLPRadial.
+  typedef Kokkos::View<NNScalar**, Kokkos::LayoutRight, DeviceType> t_nn_2d_r;
+  t_nn_2d_r d_mlp_Wg[GRACE1L_MAX_MLP_LAYERS];
+  t_nn_2d_r d_mlp_X, d_mlp_dX, d_mlp_h0, d_mlp_h1, d_mlp_dh0, d_mlp_dh1, d_mlp_R;
+  int mlp_M = 0;
+  int mlp_scatter_deriv = 0;
+  int mlp_act_layer = 0;
+  int mlp_act_n = 0;
+  NNScalar mlp_act_norm = 1;
+
   // ---- cuBLAS true-fp32 block-sparse FC forward (mirror of 2l Opt-2L-17) ----
   // Each FC output is out(ii,k,func) [=|+=] norm*nof(func) * Σ_n W(k,n,tile(func))
   // * in(ii,n,src(func)): a contraction over n with a per-function TILE-selected
@@ -530,6 +588,13 @@ class PairGRACE1LKokkos : public Pair {
   // hard gate: verify a tiny SGEMM (transpose/leading-dim convention + true-fp32
   // path) reproduces a host reference before use.
   void fc_cublas_selftest();
+  void mlp_sgemm(const NNScalar* Wg, const NNScalar* In, NNScalar* C,
+      int n_out, int M, int n_in, int ldW, int ldIn, int ldC, NNScalar alpha);
+  void mlp_cublas_selftest();
+  // cuBLAS DGEMM UQ projection: build gather map (once), then per sub-block
+  // gather Bmat -> cublasDgemm proj = R·Bmat -> GMM finish. Runs on the current
+  // chunk (chunk_size/chunk_offset). Falls back to nothing if cublas_handle null.
+  void compute_uq_cublas();
  protected:
   cublasHandle_t cublas_handle = nullptr;
   FCCublasOp fc_op_AA1, fc_op_AA2;
