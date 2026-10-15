@@ -49,8 +49,8 @@ command.  The accepted keywords depend on the selected style.
    * - ``grace``
      - ``padding``, ``pad_verbose``, ``pair_forces``,
        ``max_number_of_reduction``, ``reduce_padding``,
-       ``debug_no_energy_only_calc``, ``kappa``, ``bias_virial``,
-       ``kappa_norm``, ``kappa_group``
+       ``debug_no_energy_only_calc``, ``tau``, ``tau_norm``,
+       ``tau_group``, ``stress_tau``, ``bulk_modulus``
      - TensorFlow saved-model evaluator; uncertainty quantification (UQ)
        activates automatically when the model exports a UQ head
    * - ``grace/1layer/chunk``
@@ -108,15 +108,18 @@ additionally accepts the following keywords.  They are only meaningful when the
 saved model exports a UQ head (see :ref:`pair_grace_uq`); on a non-UQ model they
 configure nothing and UQ output is never produced.
 
-* ``kappa`` value = relative-force bias coefficient :math:`\kappa`.  The
+* ``tau`` value = relative-force bias coefficient :math:`\tau`.  The
   default is 0, which disables biased dynamics.
-* ``bias_virial`` = include the :math:`\kappa` bias contribution in the
-  global virial.  Per-atom stress is unaffected.
-* ``kappa_norm`` value = ``max`` or ``mean``.  This selects the norm used to
-  rescale the uncertainty force in biased dynamics.  The default is ``max``.
-* ``kappa_group`` value = LAMMPS atom group name restricting the
-  :math:`\kappa` bias.  The default is ``all``.  See
+* ``tau_norm`` value = ``sum`` or ``max``.  This selects how the per-atom
+  force norms are aggregated to rescale the uncertainty force in biased
+  dynamics.  The default is ``sum``.
+* ``tau_group`` value = LAMMPS atom group name restricting the
+  :math:`\tau` bias.  The default is ``all``.  See
   :ref:`pair_grace_bias_dynamics` for the precise semantics.
+* ``stress_tau`` value = stress-bias coefficient :math:`\tau_s`.  The default
+  is 0, which disables the stress bias.
+* ``bulk_modulus`` value = bulk modulus :math:`B` (GPa) that sets the scale of
+  the stress bias.  The default is 100.
 
 The ``grace/fs`` and ``grace/fs/kk`` styles additionally accept:
 
@@ -202,7 +205,7 @@ UQ-enabled TensorFlow model with biased dynamics:
 
 .. code-block:: LAMMPS
 
-   pair_style grace kappa 0.1
+   pair_style grace tau 0.1
    pair_coeff * * /path/to/uq_saved_model W
 
 Native GRACE/FS model:
@@ -488,9 +491,9 @@ opt-in keyword are required.  If the model additionally exports a
 gamma-only fast path (see *Signature dispatch* below).
 
 UQ is computed only when a per-atom UQ field is requested at run time through
-:doc:`fix pair <fix_pair>`, or when ``kappa != 0``.  Otherwise -- including every
+:doc:`fix pair <fix_pair>`, or when ``tau != 0``.  Otherwise -- including every
 plain ``grace`` run, even on a UQ-capable model -- the regular non-UQ code path
-runs at no extra per-step cost.  If a UQ field (or ``kappa``) is requested but the
+runs at no extra per-step cost.  If a UQ field (or ``tau``) is requested but the
 model has no ``compute_uq`` head, LAMMPS stops with an error.
 
 The style can expose four per-atom fields through :doc:`fix pair <fix_pair>`:
@@ -500,29 +503,33 @@ The style can expose four per-atom fields through :doc:`fix pair <fix_pair>`:
 * ``gmm_cluster`` = scalar GMM cluster index :math:`k^*` for the atom
   (integer, returned as a per-atom double because *fix pair* accepts only
   doubles).
-* ``atomic_sigma`` = scalar raw per-atom uncertainty :math:`\sigma_i` as
-  produced by the UQ head of the saved model (eV).  This is the underlying
-  ensemble/dropout disagreement signal that ``uncertainty_force`` and the
-  kappa rescale are derived from; exposing it directly is useful for
-  calibration plots, threshold tuning, and diagnostics.
+* ``atomic_sigma`` = scalar raw per-atom uncertainty :math:`\sigma_i`, the
+  Mahalanobis distance of the atom's latent feature vector to its assigned
+  GMM cluster (dimensionless; see below).  This is :math:`\gamma_i` before
+  normalization by the per-cluster threshold; exposing it directly is useful
+  for calibration plots, threshold tuning, and diagnostics.
 * ``uncertainty_force`` = three-vector uncertainty force
-  :math:`\mathbf{F}^{\sigma}_i = \partial \sigma_{tot} / \partial \mathbf{r}_i`.
-  This is the raw uncertainty force and is not scaled by ``kappa``.
+  :math:`\mathbf{F}^{\sigma}_i = \partial \left( \sum_j \gamma_j \right) /
+  \partial \mathbf{r}_i`, the gradient of the summed extrapolation grade with
+  respect to the position of atom :math:`i`.  It points towards increasing
+  uncertainty.  For a model exported without calibration thresholds,
+  :math:`\sum_j \sigma_j` is differentiated instead.  This is the raw
+  uncertainty force and is not scaled by ``tau``.
 
 
 The ``uncertainty_force`` output is accumulated consistently with Newton's
 third law when Newton pair communication is enabled.
 
 **Signature dispatch.** The pair style selects the TensorFlow signature based
-on which UQ outputs are requested and on the value of ``kappa``, in order of
+on which UQ outputs are requested and on the value of ``tau``, in order of
 increasing cost:
 
-* Regular ``compute`` -- when no UQ field is requested and ``kappa = 0``.
+* Regular ``compute`` -- when no UQ field is requested and ``tau = 0``.
 * ``compute_uq_gamma_only`` -- when only ``gamma``, ``gmm_cluster``, and/or
-  ``atomic_sigma`` are requested and ``kappa = 0``.  Skips the
+  ``atomic_sigma`` are requested and ``tau = 0``.  Skips the
   :math:`\sigma`-gradient backward pass.  Used automatically when the saved
   model exports this signature; otherwise falls back to ``compute_uq``.
-* ``compute_uq`` -- when ``uncertainty_force`` is requested or ``kappa`` is
+* ``compute_uq`` -- when ``uncertainty_force`` is requested or ``tau`` is
   nonzero.  Includes the :math:`\sigma`-gradient backward pass.
 
 Example with the ``grace`` UQ head, biased dynamics, and thermo
@@ -531,7 +538,7 @@ maximum raw uncertainty-force magnitude:
 
 .. code-block:: LAMMPS
 
-   pair_style  grace kappa 0.1
+   pair_style  grace tau 0.1
    pair_coeff  * * /path/to/uq_saved_model Mo Nb Ta W
 
    # Per-atom UQ outputs.
@@ -559,7 +566,7 @@ maximum raw uncertainty-force magnitude:
    fix stop all halt 10 c_max_gamma > 1.0
 
 In this example, ``fmax`` is the maximum magnitude of the LAMMPS-stored force,
-which includes the :math:`\kappa`-scaled bias when ``kappa`` is nonzero.
+which includes the :math:`\tau`-scaled bias when ``tau`` is nonzero.
 ``c_fmax_uq`` is the maximum raw uncertainty-force magnitude.  The
 ``fix halt`` command stops the run when ``c_max_gamma`` exceeds 1.0.
 
@@ -593,12 +600,28 @@ cluster covariance :math:`\Sigma_{e,k^{\!*}}`:
    } .
 
 The extrapolation grade :math:`\gamma_i` is ``atomic_sigma`` normalized by the
-calibrated 99th-percentile threshold :math:`\theta_{e,k^{\!*}}` of the assigned
-cluster:
+calibrated threshold :math:`\theta_{e,k^{\!*}}` of the assigned cluster:
 
 .. math::
 
    \gamma_i = \frac{\sigma_i}{\theta_{e,k^{\!*}}} .
+
+The threshold is a robust outlier fence on the :math:`\sigma` distribution of
+the training atoms assigned to that cluster,
+
+.. math::
+
+   \theta_{e,k} = \operatorname{median}(\sigma) + 3 \cdot 1.4826 \cdot
+   \operatorname{MAD}(\sigma) ,
+
+where MAD is the median absolute deviation (:math:`1.4826\,\mathrm{MAD}`
+estimates one standard deviation for a normal distribution).  Unlike a tail
+percentile, this threshold is not inflated by a few outlier environments in
+the training set.  :math:`\gamma_i > 1` therefore marks an atom outside the
+training distribution of its cluster.  This is the default; a model exported
+with ``grace_uq build --threshold-percentile Q`` uses the Q-th percentile of the
+training :math:`\sigma` instead, and its :math:`\gamma` values are not
+comparable with those of a default model.
 
 .. _pair_grace_uq_kokkos:
 
@@ -648,7 +671,7 @@ must also provide GMM clusters for **every** model element; an incomplete export
 fallback.
 
 Unlike the TensorFlow ``grace`` UQ path, the native Kokkos styles
-provide **no** ``uncertainty_force``,  ``kappa``/HAL biasing, or
+provide **no** ``uncertainty_force``,  ``tau``/HAL biasing, or
 :math:`\partial\gamma/\partial\mathbf{r}` gradient: only the forward per-atom
 scalars listed above are available.
 
@@ -676,41 +699,65 @@ Bias-driven dynamics (experimental)
 
 .. warning::
 
-   Bias-driven dynamics with ``kappa != 0`` is supported only on a single MPI
-   rank.  LAMMPS stops with an error during initialization if ``kappa`` is
-   nonzero and more than one MPI rank is used.
+   Bias-driven dynamics with ``tau != 0`` or ``stress_tau != 0`` is supported
+   only on a single MPI rank.  LAMMPS stops with an error during
+   initialization if either is nonzero and more than one MPI rank is used.
 
-The ``kappa`` keyword sets :math:`\kappa \geq 0`.  When nonzero, it adds a
+The ``tau`` keyword sets :math:`\tau \geq 0`.  When nonzero, it adds a
 relative-force uncertainty bias on top of the physical force:
 
 .. math::
 
    \mathbf{f}_i = \mathbf{F}^{phys}_i + s\,\mathbf{F}^{\sigma}_i,
    \qquad
-   s = \kappa \cdot
+   s = \tau \cdot
        \frac{N(\|\mathbf{F}^{phys}_j\|) + \varepsilon}
             {N(\|\mathbf{F}^{\sigma}_j\|) + \varepsilon}
 
 with :math:`\varepsilon = 10^{-8}`.  The scale factor :math:`s` is one
 system-wide scalar applied uniformly to every atom.  The aggregator
-:math:`N(\cdot)` over all atoms :math:`j` is selected by ``kappa_norm``:
+:math:`N(\cdot)` over all atoms :math:`j` is selected by ``tau_norm``:
 
-* ``max`` = use the maximum force norm over atoms.  This is the default.
-* ``mean`` = use the sum of force norms over atoms.
+* ``sum`` = use the sum of force norms over atoms.  This is the default.
+* ``max`` = use the maximum force norm over atoms.
 
-By default, the :math:`\kappa` bias is applied to every atom and the
-aggregator :math:`N(\cdot)` runs over every atom.  When ``kappa_group`` names a
+:math:`\mathbf{F}^{phys}_i` is the force of the ``grace`` model alone, so
+with :doc:`pair_style hybrid/overlay <pair_hybrid>` the forces of other
+sub-styles (for example ``zbl``) do not enter :math:`s`.
+
+By default, the :math:`\tau` bias is applied to every atom and the
+aggregator :math:`N(\cdot)` runs over every atom.  When ``tau_group`` names a
 LAMMPS atom group, both the reduction and the force application are restricted
 to atoms in that group: :math:`s` is built from the in-group atoms only and
 :math:`s\,\mathbf{F}^{\sigma}_i` is added only to in-group atoms.  Atoms
 outside the group experience the physical force only.  ``gamma``,
 ``gmm_cluster``, and ``uncertainty_force`` are still exposed for every local
-atom regardless of ``kappa_group``.
+atom regardless of ``tau_group``.
 
-By default, the global virial and per-atom stress reflect only the physical
-force.  With ``bias_virial``, the uncertainty contribution is added to the
-global virial.  Per-atom stress is built from the physical force only in either
-case.
+The bias force is not conservative and has no pairwise decomposition.  It
+adds nothing to the energy, the global virial, or the per-atom stress.
+
+The ``stress_tau`` keyword adds a separate bias on the cell, for use with a
+barostat such as :doc:`fix npt <fix_nh>`.  It adds a pressure tensor of fixed
+magnitude :math:`\tau_s B` along the unit direction of the virial of the
+uncertainty force:
+
+.. math::
+
+   \mathbf{P} = \mathbf{P}^{phys} + \tau_s B\,
+   \frac{\mathbf{W}^{\sigma}}{\|\mathbf{W}^{\sigma}\|},
+   \qquad
+   W^{\sigma}_{ab} = \sum_{\text{bonds } ij} r_{ij,a}\,F^{\sigma}_{ij,b} ,
+
+where :math:`\mathbf{F}^{\sigma}_{ij}` is the per-bond uncertainty force and
+the norm is taken over the six Voigt components.  The diagonal components are
+:math:`W^{\sigma}_{aa} = \partial(\sum_j \gamma_j)/\partial\varepsilon_{aa}`,
+so the bias expands the cell along directions in which tensile strain raises
+the extrapolation grade and compresses it otherwise.  :math:`B` only sets the
+scale of the bias and does not have to be the exact bulk modulus of the
+system; the default of 100 GPa is typical for metals.  The stress bias is
+applied to the global virial only, so per-atom stress is unaffected, and it is
+independent of ``tau`` and ``tau_group``.
 
 .. _pair_grace_runtime_tuning:
 
@@ -722,13 +769,13 @@ The following ``grace`` UQ / biased-dynamics parameters can be changed between
 
 .. code-block:: LAMMPS
 
-   pair_modify kappa 0.5
-   pair_modify bias_virial yes
-   pair_modify kappa_norm mean
-   pair_modify kappa_group boundary
+   pair_modify tau 0.5
+   pair_modify tau_norm max
+   pair_modify tau_group boundary
+   pair_modify stress_tau 0.02 bulk_modulus 150
 
-The current value of ``kappa`` can be accessed from the pair style through the
-LAMMPS ``extract`` interface using the key ``"kappa"``.
+The current value of ``tau`` can be accessed from the pair style through the
+LAMMPS ``extract`` interface using the key ``"tau"``.
 
 All other ``pair_modify`` keywords, such as ``compute`` and ``special``, are
 forwarded to the standard pair-style parser unchanged.
@@ -778,19 +825,21 @@ command.
 These pair styles do not support the :doc:`pair_modify <pair_modify>`
 ``shift``, ``table``, and ``tail`` options.
 
-The ``grace`` style additionally accepts four
+The ``grace`` style additionally accepts five
 biased-dynamics-specific :doc:`pair_modify <pair_modify>` keywords:
 
-* ``pair_modify kappa value`` = reset the relative-force biased-dynamics
-  coefficient :math:`\kappa`.  A nonzero value is rejected with an error when
+* ``pair_modify tau value`` = reset the relative-force biased-dynamics
+  coefficient :math:`\tau`.  A nonzero value is rejected with an error when
   more than one MPI rank is used.
-* ``pair_modify bias_virial yes|no`` = toggle whether the :math:`\kappa`
-  contribution is included in the global virial.  Per-atom stress is
-  unaffected.
-* ``pair_modify kappa_norm max|mean`` = switch the norm used in the
-  :math:`\kappa` rescaling.
-* ``pair_modify kappa_group name`` = restrict the :math:`\kappa` bias to
+* ``pair_modify tau_norm sum|max`` = switch the norm used in the
+  :math:`\tau` rescaling.
+* ``pair_modify tau_group name`` = restrict the :math:`\tau` bias to
   atoms in the named LAMMPS group.  Pass ``all`` to remove the restriction.
+* ``pair_modify stress_tau value`` = reset the stress-bias coefficient
+  :math:`\tau_s`.  A nonzero value is rejected with an error when more than
+  one MPI rank is used.
+* ``pair_modify bulk_modulus value`` = reset the bulk modulus :math:`B` (GPa)
+  used by the stress bias.
 
 These settings can be changed between ``run`` commands.
 
@@ -816,8 +865,8 @@ Restrictions
   ``grace/2layer/chunk``, and ``grace/2layer/parallel``.
 * Uncertainty quantification output and biased dynamics in ``grace`` require a
   UQ-enabled saved model that exports the ``compute_uq`` signature.
-* Biased dynamics with ``kappa != 0`` in ``grace`` is supported
-  only on a single MPI rank.
+* Biased dynamics with ``tau != 0`` or ``stress_tau != 0`` in ``grace`` is
+  supported only on a single MPI rank.
 * ``grace/fs`` does not require TensorFlow.
 * ``grace/*/kk`` requires ``newton on`` and supports only one CPU thread per
   MPI rank.
@@ -846,8 +895,8 @@ Default
      - ``padding = 0.01``, ``pair_forces = on`` (use ``no_pair_forces`` to
        disable; forces are always on under MPI with more than one rank),
        ``pad_verbose = off``, ``max_number_of_reduction = 10``,
-       ``reduce_padding = 0.2``, ``kappa = 0``, ``kappa_norm = max``,
-       ``kappa_group = all``, ``bias_virial = off``
+       ``reduce_padding = 0.2``, ``tau = 0``, ``tau_norm = sum``,
+       ``tau_group = all``, ``stress_tau = 0``, ``bulk_modulus = 100``
    * - ``grace/1layer/chunk`` and ``grace/2layer/chunk``
      - ``padding = 0.01``, ``chunksize = 4096``, ``pad_verbose = off``,
        ``max_number_of_reduction = 10``, ``reduce_padding = 0.2``

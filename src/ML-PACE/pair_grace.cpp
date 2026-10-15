@@ -87,17 +87,6 @@ struct UQOutputIdx {
 using namespace LAMMPS_NS;
 using namespace MathConst;
 
-namespace {
-// True if the token is one of the boolean literals utils::logical accepts. Lets
-// `bias_virial` accept either a bare-flag form or an explicit yes/no in settings(),
-// matching the `pair_modify bias_virial yes|no` spelling.
-bool is_logical_token(const char *s)
-{
-  return !strcmp(s, "yes") || !strcmp(s, "no") || !strcmp(s, "on") || !strcmp(s, "off") ||
-      !strcmp(s, "true") || !strcmp(s, "false");
-}
-}    // namespace
-
 /* ---------------------------------------------------------------------- */
 PairGRACE::PairGRACE(LAMMPS *lmp) : Pair(lmp)
 {
@@ -150,7 +139,7 @@ PairGRACE::~PairGRACE()
   if (uncertainty_force) memory->destroy(uncertainty_force);
   if (atomic_sigma) memory->destroy(atomic_sigma);
 
-  delete[] kappa_group_id;
+  delete[] tau_group_id;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -219,35 +208,32 @@ void PairGRACE::settings(int narg, char **arg)
       iarg += 1;
       if (comm->me == 0)
         utils::logmesg(lmp, "[GRACE] Dense (compute_dense) engine requested\n");
-    } else if (strcmp(arg[iarg], "kappa") == 0) {
+    } else if (strcmp(arg[iarg], "tau") == 0) {
       // UQ / extrapolation knobs (formerly pair_style grace/extrapolation). UQ itself
       // activates implicitly when the model has a UQ head and a `fix pair grace <field>`
-      // toggle is set or kappa != 0; these keywords just configure the HAL kappa-rescale.
+      // toggle is set or tau != 0; these keywords just configure the HAL tau-rescale.
       if (iarg + 1 >= narg)
         error->all(FLERR,
-                   "[GRACE] kappa requires a numeric argument (relative-force uncertainty "
+                   "[GRACE] tau requires a numeric argument (relative-force uncertainty "
                    "bias coefficient; e.g. 0.1 = 10 % of ||F^phys||)");
-      parse_kappa(arg[iarg + 1], "pair_style grace kappa");
+      parse_tau(arg[iarg + 1], "pair_style grace tau");
       iarg += 2;
-    } else if (strcmp(arg[iarg], "bias_virial") == 0) {
-      // Accept a bare flag (-> on) or an explicit yes/no, so it matches the
-      // `pair_modify bias_virial yes|no` spelling instead of erroring on the value.
-      if (iarg + 1 < narg && is_logical_token(arg[iarg + 1])) {
-        parse_bias_virial(arg[iarg + 1]);
-        iarg += 2;
-      } else {
-        parse_bias_virial("on");
-        iarg += 1;
-      }
-    } else if (strcmp(arg[iarg], "kappa_norm") == 0) {
-      if (iarg + 1 >= narg)
-        error->all(FLERR, "[GRACE] kappa_norm requires 'max' or 'mean'");
-      parse_kappa_norm(arg[iarg + 1], "[GRACE] kappa_norm");
+    } else if (strcmp(arg[iarg], "tau_norm") == 0) {
+      if (iarg + 1 >= narg) error->all(FLERR, "[GRACE] tau_norm requires 'sum' or 'max'");
+      parse_tau_norm(arg[iarg + 1], "[GRACE] tau_norm");
       iarg += 2;
-    } else if (strcmp(arg[iarg], "kappa_group") == 0) {
+    } else if (strcmp(arg[iarg], "tau_group") == 0) {
+      if (iarg + 1 >= narg) error->all(FLERR, "[GRACE] tau_group requires a LAMMPS group name");
+      parse_tau_group(arg[iarg + 1], "[GRACE] tau_group");
+      iarg += 2;
+    } else if (strcmp(arg[iarg], "stress_tau") == 0) {
+      if (iarg + 1 >= narg) utils::missing_cmd_args(FLERR, "pair_style grace stress_tau", error);
+      parse_stress_tau(arg[iarg + 1], "pair_style grace stress_tau");
+      iarg += 2;
+    } else if (strcmp(arg[iarg], "bulk_modulus") == 0) {
       if (iarg + 1 >= narg)
-        error->all(FLERR, "[GRACE] kappa_group requires a LAMMPS group name");
-      parse_kappa_group(arg[iarg + 1], "[GRACE] kappa_group");
+        utils::missing_cmd_args(FLERR, "pair_style grace bulk_modulus", error);
+      parse_bulk_modulus(arg[iarg + 1], "pair_style grace bulk_modulus");
       iarg += 2;
     } else
       error->all(FLERR, "[GRACE] Unknown pair_style grace keyword: {}", arg[iarg]);
@@ -436,7 +422,7 @@ void PairGRACE::coeff(int narg, char **arg)
     graceimpl->compute_uq_inputs_sig = graceimpl->model->signatures.at(COMPUTE_UQ_KEY).inputs;
     if (comm->me == 0) utils::logmesg(lmp, "[GRACE] compute_uq signature is available\n");
   }
-  // gamma-only UQ head (no dsigma/dr backward pass; used when kappa==0 and
+  // gamma-only UQ head (no dsigma/dr backward pass; used when tau==0 and
   // uncertainty_force is not requested).
   if (graceimpl->model->has_signature(COMPUTE_UQ_GAMMA_ONLY_KEY)) {
     has_compute_uq_gamma_only = true;
@@ -455,7 +441,7 @@ void PairGRACE::coeff(int narg, char **arg)
   }
   // NB: UQ-head availability is no longer enforced here. Activation is implicit
   // (parity with grace/kk) -- whether UQ is actually requested is only known at
-  // run time (fix-pair flags / kappa), so the "model has no UQ head" error is
+  // run time (fix-pair flags / tau), so the "model has no UQ head" error is
   // raised lazily in compute() when a UQ output is first requested.
 
   if (has_compute_uq) {
@@ -533,18 +519,20 @@ void PairGRACE::init_style()
   if (atom->tag_enable == 0) error->all(FLERR, "Pair style grace requires atom IDs");
   if (force->newton_pair == 0) error->all(FLERR, "Pair style grace requires newton pair on");
 
-  if (kappa != 0.0 && comm->nprocs > 1)
-    error->all(
-        FLERR,
-        "[GRACE] HAL/kappa-mode (kappa != 0) is not supported with nprocs > 1: "
-        "the kappa-rescale uses per-atom force norms that are only complete after the "
-        "post-compute reverse_comm, so multi-rank runs would tally biased kappa on "
-        "subdomain-boundary atoms. Run single-rank for kappa-mode.");
-
-  if (kappa != 0.0 && !pair_forces)
+  if (tau != 0.0 && comm->nprocs > 1)
     error->all(FLERR,
-               "[GRACE] kappa != 0 needs per-bond sigma gradients, which require pair-force "
-               "mode. Remove 'no_pair_forces' from the pair_style grace command.");
+               "[GRACE] HAL bias (tau != 0) is not supported with nprocs > 1: the "
+               "tau-rescale needs complete per-atom force norms, which the model's total_f "
+               "provides only on a single rank. Run single-rank for the HAL bias.");
+
+  if (stress_tau != 0.0 && comm->nprocs > 1)
+    error->all(FLERR, "[GRACE] HAL stress bias (stress_tau != 0) requires a single MPI rank.");
+
+  if ((tau != 0.0 || stress_tau != 0.0) && !pair_forces)
+    error->all(FLERR,
+               "[GRACE] tau != 0 or stress_tau != 0 needs per-bond sigma gradients, which "
+               "require pair-force mode. Remove 'no_pair_forces' from the pair_style grace "
+               "command.");
 
   // request a full neighbor list
   neighbor->add_request(this, NeighConst::REQ_FULL);
@@ -581,7 +569,7 @@ void *PairGRACE::extract(const char *str, int &dim)
   if (strcmp(str, "gmm_cluster_flag") == 0) return (void *) &flag_compute_gmm_cluster;
   if (strcmp(str, "uncertainty_force_flag") == 0) return (void *) &flag_compute_uncertainty_force;
   if (strcmp(str, "atomic_sigma_flag") == 0) return (void *) &flag_compute_atomic_sigma;
-  if (strcmp(str, "kappa") == 0) return (void *) &kappa;
+  if (strcmp(str, "tau") == 0) return (void *) &tau;
 
   dim = 2;
   if (strcmp(str, "scale") == 0) return (void *) scale;
@@ -590,9 +578,9 @@ void *PairGRACE::extract(const char *str, int &dim)
 }
 
 /* ----------------------------------------------------------------------
-    runtime modification of UQ knobs via `pair_modify`. Filters out
-    `kappa` and `bias_virial`, forwards everything else to Pair::modify_params
-    so standard keywords (mix/shift/...) keep working.
+    runtime modification of UQ knobs via `pair_modify`. Filters out the
+    tau keywords, forwards everything else to Pair::modify_params so
+    standard keywords (mix/shift/...) keep working.
  ---------------------------------------------------------------------- */
 void PairGRACE::modify_params(int narg, char **arg)
 {
@@ -603,35 +591,9 @@ void PairGRACE::modify_params(int narg, char **arg)
 
   int iarg = 0;
   while (iarg < narg) {
-    if (strcmp(arg[iarg], "kappa") == 0) {
-      if (iarg + 1 >= narg) utils::missing_cmd_args(FLERR, "pair_modify kappa", error);
-      parse_kappa(arg[iarg + 1], "pair_modify kappa");
-      iarg += 2;
-    } else if (strcmp(arg[iarg], "bias_virial") == 0) {
-      if (iarg + 1 >= narg) utils::missing_cmd_args(FLERR, "pair_modify bias_virial", error);
-      parse_bias_virial(arg[iarg + 1]);
-      iarg += 2;
-    } else if (strcmp(arg[iarg], "kappa_norm") == 0) {
-      if (iarg + 1 >= narg) utils::missing_cmd_args(FLERR, "pair_modify kappa_norm", error);
-      parse_kappa_norm(arg[iarg + 1], "pair_modify kappa_norm");
-      if (comm->me == 0)
-        utils::logmesg(lmp, "[GRACE] kappa_norm = {}\n", kappa_norm_str());
-      iarg += 2;
-    } else if (strcmp(arg[iarg], "kappa_group") == 0) {
-      if (iarg + 1 >= narg) utils::missing_cmd_args(FLERR, "pair_modify kappa_group", error);
-      parse_kappa_group(arg[iarg + 1], "pair_modify kappa_group");
-      if (comm->me == 0) {
-        if (kappa_group_id)
-          utils::logmesg(lmp,
-                         "[GRACE] kappa_group = {} (HAL bias restricted to "
-                         "this group; gamma/gmm_cluster/uncertainty_force unaffected)\n",
-                         kappa_group_id);
-        else
-          utils::logmesg(lmp,
-                         "[GRACE] kappa_group = all (HAL bias applies to "
-                         "every atom; no restriction)\n");
-      }
-      iarg += 2;
+    const int n = modify_param(narg - iarg, &arg[iarg]);
+    if (n > 0) {
+      iarg += n;
     } else {
       forwarded.push_back(arg[iarg]);
       iarg += 1;
@@ -642,65 +604,113 @@ void PairGRACE::modify_params(int narg, char **arg)
 }
 
 /* ----------------------------------------------------------------------
-    Shared kappa setter used by both PairGRACE::settings and
-    PairGRACE::modify_params. Errors if kappa != 0 under nprocs > 1 (the
-    kappa-rescale uses per-atom force norms completed only after reverse_comm).
+    one UQ keyword of pair_modify at arg[0]: apply it, return the number of
+    args consumed (2), or 0 for any other keyword. Also called by pair hybrid,
+    so these keywords work in `pair_modify pair grace ...`.
  ---------------------------------------------------------------------- */
-void PairGRACE::parse_kappa(const char *val, const char *ctx)
+int PairGRACE::modify_param(int narg, char **arg)
 {
-  kappa = utils::numeric(FLERR, val, false, lmp);
-  if (kappa != 0.0 && comm->nprocs > 1)
+  if (strcmp(arg[0], "tau") == 0) {
+    if (narg < 2) utils::missing_cmd_args(FLERR, "pair_modify tau", error);
+    parse_tau(arg[1], "pair_modify tau");
+    return 2;
+  } else if (strcmp(arg[0], "tau_norm") == 0) {
+    if (narg < 2) utils::missing_cmd_args(FLERR, "pair_modify tau_norm", error);
+    parse_tau_norm(arg[1], "pair_modify tau_norm");
+    if (comm->me == 0) utils::logmesg(lmp, "[GRACE] tau_norm = {}\n", tau_norm_str());
+    return 2;
+  } else if (strcmp(arg[0], "tau_group") == 0) {
+    if (narg < 2) utils::missing_cmd_args(FLERR, "pair_modify tau_group", error);
+    parse_tau_group(arg[1], "pair_modify tau_group");
+    if (comm->me == 0) {
+      if (tau_group_id)
+        utils::logmesg(lmp,
+                       "[GRACE] tau_group = {} (HAL bias restricted to "
+                       "this group; gamma/gmm_cluster/uncertainty_force unaffected)\n",
+                       tau_group_id);
+      else
+        utils::logmesg(lmp,
+                       "[GRACE] tau_group = all (HAL bias applies to "
+                       "every atom; no restriction)\n");
+    }
+    return 2;
+  } else if (strcmp(arg[0], "stress_tau") == 0) {
+    if (narg < 2) utils::missing_cmd_args(FLERR, "pair_modify stress_tau", error);
+    parse_stress_tau(arg[1], "pair_modify stress_tau");
+    return 2;
+  } else if (strcmp(arg[0], "bulk_modulus") == 0) {
+    if (narg < 2) utils::missing_cmd_args(FLERR, "pair_modify bulk_modulus", error);
+    parse_bulk_modulus(arg[1], "pair_modify bulk_modulus");
+    return 2;
+  }
+  return 0;
+}
+
+/* ----------------------------------------------------------------------
+    Shared tau setter used by both PairGRACE::settings and
+    PairGRACE::modify_params. Errors if tau != 0 under nprocs > 1 (the
+    tau-rescale needs force norms that are complete only on a single rank).
+ ---------------------------------------------------------------------- */
+void PairGRACE::parse_tau(const char *val, const char *ctx)
+{
+  tau = utils::numeric(FLERR, val, false, lmp);
+  if (tau != 0.0 && comm->nprocs > 1)
     error->all(FLERR,
-               "[GRACE] {}: kappa != 0 requires a single MPI rank (the kappa-rescale uses "
-               "per-atom force norms completed only after reverse_comm).",
+               "[GRACE] {}: tau != 0 requires a single MPI rank (the tau-rescale needs "
+               "per-atom force norms that are complete only on a single rank).",
                ctx);
-  if (comm->me == 0)
-    utils::logmesg(lmp, "[GRACE] kappa = {} (relative-force HAL bias)\n", kappa);
+  if (comm->me == 0) utils::logmesg(lmp, "[GRACE] tau = {} (relative-force HAL bias)\n", tau);
 }
 
 /* ----------------------------------------------------------------------
-    Shared bias_virial setter used by both PairGRACE::settings and
-    PairGRACE::modify_params.
+    Shared stress_tau / bulk_modulus setters used by both PairGRACE::settings
+    and PairGRACE::modify_params. The stress bias is single-rank like tau.
  ---------------------------------------------------------------------- */
-void PairGRACE::parse_bias_virial(const char *val)
+void PairGRACE::parse_stress_tau(const char *val, const char *ctx)
 {
-  bias_virial = utils::logical(FLERR, val, false, lmp);
+  stress_tau = utils::numeric(FLERR, val, false, lmp);
+  if (stress_tau != 0.0 && comm->nprocs > 1)
+    error->all(FLERR, "[GRACE] {}: stress_tau != 0 requires a single MPI rank", ctx);
   if (comm->me == 0)
-    utils::logmesg(lmp,
-                   "[GRACE] bias_virial = {} (kappa contribution {} the global virial; "
-                   "per-atom stress unchanged)\n",
-                   bias_virial ? "yes" : "no", bias_virial ? "added to" : "excluded from");
+    utils::logmesg(lmp, "[GRACE] stress_tau = {} (HAL stress bias)\n", stress_tau);
+}
+
+void PairGRACE::parse_bulk_modulus(const char *val, const char *ctx)
+{
+  bulk_modulus = utils::numeric(FLERR, val, false, lmp);
+  if (bulk_modulus <= 0.0) error->all(FLERR, "[GRACE] {}: value must be > 0 (GPa)", ctx);
+  if (comm->me == 0) utils::logmesg(lmp, "[GRACE] bulk_modulus = {} GPa\n", bulk_modulus);
 }
 
 /* ----------------------------------------------------------------------
-    Shared kappa_norm keyword parser used by both PairGRACE::settings and
+    Shared tau_norm keyword parser used by both PairGRACE::settings and
     PairGRACE::modify_params. Errors (no return) on bad value.
  ---------------------------------------------------------------------- */
-void PairGRACE::parse_kappa_norm(const char *mode, const char *ctx)
+void PairGRACE::parse_tau_norm(const char *mode, const char *ctx)
 {
-  if (strcmp(mode, "max") == 0)
-    kappa_norm_mode = KAPPA_NORM_MAX;
-  else if (strcmp(mode, "mean") == 0)
-    kappa_norm_mode = KAPPA_NORM_MEAN;
+  if (strcmp(mode, "sum") == 0)
+    tau_norm_mode = TAU_NORM_SUM;
+  else if (strcmp(mode, "max") == 0)
+    tau_norm_mode = TAU_NORM_MAX;
   else
-    error->all(FLERR, "{} value must be 'max' or 'mean'", ctx);
+    error->all(FLERR, "{} value must be 'sum' or 'max'", ctx);
 }
 
 /* ----------------------------------------------------------------------
-    Shared kappa_group keyword parser. The literal name "all" restores the
-    default (no mask filter, kappa_groupbit = -1). Any other name is resolved
+    Shared tau_group keyword parser. The literal name "all" restores the
+    default (no mask filter, tau_groupbit = -1). Any other name is resolved
     to its bitmask via Group::get_bitmask_by_id, which errors out if missing.
  ---------------------------------------------------------------------- */
-void PairGRACE::parse_kappa_group(const char *name, const char *ctx)
+void PairGRACE::parse_tau_group(const char *name, const char *ctx)
 {
-  delete[] kappa_group_id;
-  kappa_group_id = nullptr;
+  delete[] tau_group_id;
+  tau_group_id = nullptr;
   if (strcmp(name, "all") == 0) {
-    kappa_groupbit = -1;
+    tau_groupbit = -1;
     return;
   }
-  kappa_groupbit = group->get_bitmask_by_id(FLERR, name, ctx);
-  kappa_group_id = utils::strdup(name);
+  tau_groupbit = group->get_bitmask_by_id(FLERR, name, ctx);
+  tau_group_id = utils::strdup(name);
 }
 
 /* ----------------------------------------------------------------------
@@ -858,18 +868,18 @@ void PairGRACE::compute(int eflag, int vflag)
   // the pointer to the list of neighbors of "i"
   firstneigh = list->firstneigh;
 
-  // Was any UQ output (or kappa) requested? Evaluate from the RAW flags, BEFORE the
+  // Was any UQ output (or tau) requested? Evaluate from the RAW flags, BEFORE the
   // per-head availability zeroing below, so the "model has no compute_uq head"
   // fail-fast fires consistently for every field -- a gamma request and an
   // atomic_sigma request both error on a non-UQ model, rather than one erroring and
   // the other silently degrading to a confusing downstream "cannot extract" later.
   const bool uq_requested =
       flag_compute_gamma || flag_compute_gmm_cluster || flag_compute_uncertainty_force ||
-      flag_compute_atomic_sigma || kappa != 0.0;
+      flag_compute_atomic_sigma || tau != 0.0 || stress_tau != 0.0;
   if (uq_requested && !has_compute_uq)
     error->all(FLERR,
-               "[GRACE] a UQ output (gamma/uncertainty_force/...) or kappa != 0 was "
-               "requested, but the saved model does not export the '{}' signature. Use a GRACE "
+               "[GRACE] a UQ output (gamma/uncertainty_force/...), tau != 0 or stress_tau != 0 "
+               "was requested, but the saved model does not export the '{}' signature. Use a GRACE "
                "model trained with a UQ head.",
                COMPUTE_UQ_KEY);
 
@@ -891,17 +901,22 @@ void PairGRACE::compute(int eflag, int vflag)
   // regular compute / compute_energy signature below at no extra per-step cost.
   bool do_uq = has_compute_uq &&
       (flag_compute_gamma || flag_compute_gmm_cluster || flag_compute_uncertainty_force ||
-       flag_compute_atomic_sigma || kappa != 0.0);
-  // dsigma/dr is only needed for the kappa-rescale and for fix-pair uncertainty_force.
+       flag_compute_atomic_sigma || tau != 0.0 || stress_tau != 0.0);
+  // dsigma/dr is only needed for the tau-rescale, the stress bias and for fix-pair
+  // uncertainty_force.
   // Otherwise prefer the faster gamma-only signature (skips the σ-grad backward pass)
   // when the model exports it; fall back to compute_uq when it doesn't.
-  const bool need_dsigma_dr = do_uq && (kappa != 0.0 || flag_compute_uncertainty_force);
-  // kappa-rescale and the per-atom uncertainty_force tally both need per-bond
+  const bool need_dsigma_dr =
+      do_uq && (tau != 0.0 || stress_tau != 0.0 || flag_compute_uncertainty_force);
+  // Virial of the uncertainty force, only accumulated for the stress bias.
+  const bool do_stress_bias = need_dsigma_dr && stress_tau != 0.0 && pair_forces;
+  double w_sigma[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+  // tau-rescale and the per-atom uncertainty_force tally both need per-bond
   // sigma-gradients, which only exist in pair-force mode (the old grace/extrapolation
   // subclass forced this). Plain gamma/sigma/gmm do NOT need forces.
   if (need_dsigma_dr && !pair_forces)
     error->all(FLERR,
-               "[GRACE] kappa != 0 or an uncertainty_force request needs per-bond sigma "
+               "[GRACE] tau != 0 or an uncertainty_force request needs per-bond sigma "
                "gradients, which require pair-force mode. Remove 'no_pair_forces' from the "
                "pair_style grace command.");
   const bool use_uq_gamma_only = do_uq && !need_dsigma_dr && has_compute_uq_gamma_only;
@@ -936,7 +951,7 @@ void PairGRACE::compute(int eflag, int vflag)
     // and ghosts are never consumed. uncertainty_force, however, is bond-loop
     // accumulated (locals +=, ghosts -= under newton-on) and only needs to be
     // zeroed when it will actually be populated -- i.e. when need_dsigma_dr is
-    // set (kappa-rescale or fix pair uncertainty_force).
+    // set (tau-rescale or fix pair uncertainty_force).
     if (need_dsigma_dr && uncertainty_force) {
       const int n_active = atom->nlocal + atom->nghost;
       std::memset(&uncertainty_force[0][0], 0, sizeof(double) * 3 * n_active);
@@ -1255,7 +1270,7 @@ void PairGRACE::compute(int eflag, int vflag)
     append("pair_f");           // [4]  (UQ analog of z_pair_f)
     uq_idx.gamma = append("gamma");
     // dsigma_dr_pair only exists in compute_uq (not in compute_uq_gamma_only)
-    // and is only consumed when kappa != 0 OR uncertainty_force is requested.
+    // and is only consumed when tau != 0 OR uncertainty_force is requested.
     if (need_dsigma_dr) uq_idx.dsigma = append("dsigma_dr_pair");
     // gmm_cluster is available in both UQ signatures; only fetch on request.
     if (flag_compute_gmm_cluster) uq_idx.gmm = append("gmm_cluster");
@@ -1291,21 +1306,32 @@ void PairGRACE::compute(int eflag, int vflag)
   auto e_tens = e_out.get_tensor();
   const double *e_data = static_cast<const double *>(TF_TensorData(e_tens.get()));
 
+  // Model per-atom force rows, kept alive for the post-loop tau-rescale (see there).
+  decltype(output[2].get_tensor()) total_f_tens;
+  const double *total_f_data = nullptr;
   if (!do_energy_only) {
     //    auto &te_out = output[1]; // total_energy
 
-    auto &total_f_out = output[2];    // total_f
-    auto total_f_tens = total_f_out.get_tensor();
-    const double *total_f_data = static_cast<const double *>(TF_TensorData(total_f_tens.get()));
+    total_f_tens = output[2].get_tensor();    // total_f
+    total_f_data = static_cast<const double *>(TF_TensorData(total_f_tens.get()));
 
     if (!pair_forces) {
+      // total_f is indexed by LOCAL ATOM INDEX, not by neighbor-list position:
+      // atomic_mu_i is filled over 0..nlocal-1 and the bonds are written with
+      // ind_i = i, so row k of the model's atom dimension is atom k.  Reading
+      // it at ii silently permutes the forces onto the wrong atoms whenever
+      // ilist is not the identity -- which is exactly what a skip list gives,
+      // i.e. this style inside pair_style hybrid with any type mapped NULL.
+      // The energy tally below already indexes e_data by i; the two could not
+      // both be right.  Identity ilist (the common single-style case) is
+      // unaffected either way.
       for (ii = 0; ii < inum; ii++) {
         i = ilist[ii];
 
         const int itype = type[i];
-        double fx = total_f_data[ii * 3 + 0];
-        double fy = total_f_data[ii * 3 + 1];
-        double fz = total_f_data[ii * 3 + 2];
+        double fx = total_f_data[i * 3 + 0];
+        double fy = total_f_data[i * 3 + 1];
+        double fz = total_f_data[i * 3 + 2];
 
         f[i][0] += scale[itype][itype] * fx;
         f[i][1] += scale[itype][itype] * fy;
@@ -1340,7 +1366,7 @@ void PairGRACE::compute(int eflag, int vflag)
       auto f_tens = f_out.get_tensor();
       const double *f_data = static_cast<const double *>(TF_TensorData(f_tens.get()));
 
-      // UQ: fetch per-bond dsigma/dr whenever kappa-mixing is on OR fix pair has
+      // UQ: fetch per-bond dsigma/dr whenever tau-mixing is on OR fix pair has
       // requested per-atom uncertainty_force (both fold into need_dsigma_dr).
       // The slot index is set by the output_names builder; -1 means absent.
       const double *dsigma_dr_pair_data = nullptr;
@@ -1374,7 +1400,7 @@ void PairGRACE::compute(int eflag, int vflag)
           const double rsq = delx * delx + dely * dely + delz * delz;
           if (rsq < cutoff_sq) {
             // z_pair_f is dE/dr (bond gradient); physical force on i is -dE/dr.
-            // The bond loop tallies pure physical forces only -- kappa-mixing is
+            // The bond loop tallies pure physical forces only -- tau-mixing is
             // applied per-atom AFTER the loop (it depends on per-atom force
             // norms, which are not bond-local). Virial follows fij.
             // Dense z_pair_f is in per-atom-uniform order (flat = i*width + slot);
@@ -1385,7 +1411,7 @@ void PairGRACE::compute(int eflag, int vflag)
             fij[1] = -s * f_data[base + 1];
             fij[2] = -s * f_data[base + 2];
             // Per-bond uncertainty force fij_unc = -s*dsigma/dr tallied per-atom
-            // (newton-on) for the post-loop kappa-rescale and for fix pair output.
+            // (newton-on) for the post-loop tau-rescale and for fix pair output.
             if (dsigma_dr_pair_data) {
               const double fij_unc_x = -s * dsigma_dr_pair_data[tot_ind];
               const double fij_unc_y = -s * dsigma_dr_pair_data[tot_ind + 1];
@@ -1396,6 +1422,14 @@ void PairGRACE::compute(int eflag, int vflag)
               uncertainty_force[j][0] -= fij_unc_x;
               uncertainty_force[j][1] -= fij_unc_y;
               uncertainty_force[j][2] -= fij_unc_z;
+              if (do_stress_bias) {    // same component layout as ev_tally_xyz
+                w_sigma[0] += delx * fij_unc_x;
+                w_sigma[1] += dely * fij_unc_y;
+                w_sigma[2] += delz * fij_unc_z;
+                w_sigma[3] += delx * fij_unc_y;
+                w_sigma[4] += delx * fij_unc_z;
+                w_sigma[5] += dely * fij_unc_z;
+              }
             }
             tot_ind += 3;
             ++slot_i;
@@ -1416,9 +1450,9 @@ void PairGRACE::compute(int eflag, int vflag)
             f[j][2] -= fij[2];
 
             // tally per-atom virial contribution, OpenMP critical !
-            // The bond loop's `fij` is the pure physical force in kappa-mode, so
+            // The bond loop's `fij` is the pure physical force in tau-mode, so
             // the virial and stress are pulled directly from fij with no
-            // post-loop fix-up. The kappa contribution affects f[i] only.
+            // post-loop fix-up. The tau contribution affects f[i] only.
             if (vflag_either) {
               ev_tally_xyz(i, j, nlocal, newton_pair, 0.0, 0.0, fij[0], fij[1], fij[2], delx, dely,
                            delz);
@@ -1517,61 +1551,70 @@ void PairGRACE::compute(int eflag, int vflag)
   // without this those contributions are stranded on ghost slots and the local
   // uncertainty_force is biased (observed Pearson ~0.87 vs the exact non-periodic
   // value). This mirrors how LAMMPS reverse-communicates the physical force f.
-  // Run before the kappa-rescale (which reads the per-atom F^sigma norm) and
+  // Run before the tau-rescale (which reads the per-atom F^sigma norm) and
   // before fix pair / dump read uncertainty_force post-compute.
   if (need_dsigma_dr && uncertainty_force) comm->reverse_comm(this);
 
-  // kappa-rescale (relative-force HAL bias). Per-atom, applied after the bond
-  // loop so we can use the assembled per-atom force norms:
-  //   F^kappa_i = kappa * (||F^phys_i|| + eps) / (||F^sigma_i|| + eps) * F^sigma_i
-  //   f[i] += F^kappa_i
-  // do_hal_forces: gate on the actual mutation of f[i].
-  // do_hal_virial: opt-in `bias_virial` -- tally sum F^kappa_i*r_i into the GLOBAL
-  //   virial via the same one-body F*r convention as
-  //   Pair::virial_fdotr_compute. Per-atom stress is intentionally untouched
-  //   (the per-atom rescale has no Newton-3 per-bond decomposition).
-  // kappa-mode is forbidden under nprocs > 1 (init_style errors out), so the
-  // per-atom force norms below are guaranteed complete.
-  const bool do_hal_forces = do_uq && kappa != 0.0 && pair_forces;
-  const bool do_hal_virial = do_hal_forces && bias_virial && vflag_global;
+  // tau-rescale (relative-force HAL bias). Applied after the bond loop so we
+  // can use the assembled per-atom force norms, reduced into ONE global scalar:
+  //   s = tau * (N_j||F^phys_j|| + eps) / (N_j||F^sigma_j|| + eps),  N = sum | max
+  //   f[i] += s * F^sigma_i
+  // The bias is not conservative and has no per-bond decomposition, so it adds
+  // nothing to the energy, the virial or the per-atom stress.
+  // ||F^phys_i|| is taken from the model's total_f row, NOT from f[i]: in the bond
+  // loop part of each local atom's force lands on its ghost images (f[j] -= fij),
+  // and LAMMPS folds those back only after compute() returns -- on a single rank
+  // too, whenever the cell is periodic. f[i] also holds the forces of any other
+  // hybrid/overlay sub-style computed earlier. total_f is complete because every
+  // bond's ind_j is atom->map(tag[j]), i.e. the local owner -- which holds only on
+  // a single rank, hence the HAL bias is forbidden under nprocs > 1 (init_style).
+  const bool do_hal_forces = do_uq && tau != 0.0 && pair_forces;
   if (do_hal_forces) {
     // Reduce per-atom F^phys, F^sigma magnitudes into a single global ratio
-    // (see KappaNormMode in pair_grace.h for the WHY of MAX vs MEAN).
+    // (see TauNormMode in pair_grace.h for the WHY of SUM vs MAX).
     const int *const mask = atom->mask;
-    const int kgbit = kappa_groupbit;
+    const int tgbit = tau_groupbit;
+    auto phys_norm = [&](int k) {
+      return scale[type[k]][type[k]] * MathExtra::len3(&total_f_data[3 * k]);
+    };
     double num = 0.0, den = 0.0;
-    if (kappa_norm_mode == KAPPA_NORM_MAX) {
+    if (tau_norm_mode == TAU_NORM_MAX) {
       for (i = 0; i < nlocal; ++i) {
-        if (kgbit >= 0 && !(mask[i] & kgbit)) continue;
-        num = std::max(num, MathExtra::len3(f[i]));
+        if (tgbit >= 0 && !(mask[i] & tgbit)) continue;
+        num = std::max(num, phys_norm(i));
         den = std::max(den, MathExtra::len3(uncertainty_force[i]));
       }
-    } else {    // KAPPA_NORM_MEAN: N's cancel, sum/sum suffices
+    } else {    // TAU_NORM_SUM
       for (i = 0; i < nlocal; ++i) {
-        if (kgbit >= 0 && !(mask[i] & kgbit)) continue;
-        num += MathExtra::len3(f[i]);
+        if (tgbit >= 0 && !(mask[i] & tgbit)) continue;
+        num += phys_norm(i);
         den += MathExtra::len3(uncertainty_force[i]);
       }
     }
-    const double s = kappa * (num + KAPPA_EPS) / (den + KAPPA_EPS);
+    const double s = tau * (num + TAU_EPS) / (den + TAU_EPS);
     for (i = 0; i < nlocal; ++i) {
-      if (kgbit >= 0 && !(mask[i] & kgbit)) continue;
-      const double fkx = s * uncertainty_force[i][0];
-      const double fky = s * uncertainty_force[i][1];
-      const double fkz = s * uncertainty_force[i][2];
-      f[i][0] += fkx;
-      f[i][1] += fky;
-      f[i][2] += fkz;
-      if (do_hal_virial) {
-        // F^kappa * r positional virial, mirroring virial_fdotr_compute layout:
-        //   xx, yy, zz, xy, xz, yz  <->  fy*x, fz*x, fz*y on the off-diagonals
-        virial[0] += fkx * x[i][0];
-        virial[1] += fky * x[i][1];
-        virial[2] += fkz * x[i][2];
-        virial[3] += fky * x[i][0];
-        virial[4] += fkz * x[i][0];
-        virial[5] += fkz * x[i][1];
-      }
+      if (tgbit >= 0 && !(mask[i] & tgbit)) continue;
+      f[i][0] += s * uncertainty_force[i][0];
+      f[i][1] += s * uncertainty_force[i][1];
+      f[i][2] += s * uncertainty_force[i][2];
+    }
+  }
+
+  // HAL stress bias: add a fixed-magnitude pressure stress_tau * bulk_modulus along
+  // the unit direction of W^sigma to the global virial. A positive W^sigma_aa means
+  // sum(gamma) grows under tensile strain eps_aa, so the added pressure expands the
+  // cell along a. Virial (eV) = P (pressure units) * V / nktv2p.
+  if (do_stress_bias && vflag_global) {
+    double wnorm = 0.0;
+    for (int k = 0; k < 6; ++k) wnorm += w_sigma[k] * w_sigma[k];
+    wnorm = sqrt(wnorm);
+    if (wnorm > 0.0) {
+      constexpr double GPA_TO_BAR = 1.0e4;    // metal units: pressure in bar
+      const double volume = (domain->dimension == 3)
+          ? domain->xprd * domain->yprd * domain->zprd
+          : domain->xprd * domain->yprd;
+      const double c = stress_tau * bulk_modulus * GPA_TO_BAR * volume / force->nktv2p / wnorm;
+      for (int k = 0; k < 6; ++k) virial[k] += c * w_sigma[k];
     }
   }
 

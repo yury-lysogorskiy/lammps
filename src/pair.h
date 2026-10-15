@@ -143,6 +143,10 @@ class Pair : protected Pointers {
   void write_file(int, char **);
   void init_bitmap(double, double, int, int &, int &, int &, int &);
   virtual void modify_params(int, char **);
+  // style-specific pair_modify keyword at arg[0]: apply it and return how many
+  // args it consumed (0: not a keyword of this style). Lets pair hybrid keep a
+  // sub-style's own keywords away from the generic Pair::modify_params.
+  virtual int modify_param(int, char **) { return 0; }
   void compute_dummy(int eflag, int vflag, int alloc = 1);
 
   // need to be public, so can be called by pair_style reaxc

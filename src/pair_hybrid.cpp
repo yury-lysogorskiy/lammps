@@ -29,6 +29,7 @@
 #include "update.h"
 
 #include <cstring>
+#include <vector>
 
 using namespace LAMMPS_NS;
 
@@ -1031,16 +1032,36 @@ again:
     // and their arguments. the former is important for some keywords
     // like "tail" or "compute"
 
-    if (narg-iarg > 0) {
-      Pair::modify_params(narg-iarg,&arg[iarg]);
-      styles[m]->modify_params(narg-iarg,&arg[iarg]);
+    // keywords of the sub-style itself (Pair::modify_param) are applied to it
+    // and kept away from the generic Pair::modify_params
+
+    std::vector<char *> rest;
+    while (iarg < narg) {
+      const int n = styles[m]->modify_param(narg-iarg,&arg[iarg]);
+      if (n > 0) iarg += n;
+      else rest.push_back(arg[iarg++]);
+    }
+    if (!rest.empty()) {
+      Pair::modify_params(rest.size(),rest.data());
+      styles[m]->modify_params(rest.size(),rest.data());
     }
 
   // apply all keywords to pair hybrid itself and every sub-style
 
   } else {
-    Pair::modify_params(narg,arg);
-    for (int m = 0; m < nstyles; m++) styles[m]->modify_params(narg,arg);
+    std::vector<char *> rest;
+    int iarg = 0;
+    while (iarg < narg) {
+      int n = 0;
+      for (int m = 0; m < nstyles; m++)
+        n = MAX(n,styles[m]->modify_param(narg-iarg,&arg[iarg]));
+      if (n > 0) iarg += n;
+      else rest.push_back(arg[iarg++]);
+    }
+    if (!rest.empty()) {
+      Pair::modify_params(rest.size(),rest.data());
+      for (int m = 0; m < nstyles; m++) styles[m]->modify_params(rest.size(),rest.data());
+    }
   }
 
   // reset global compute_flag since there may have been changes

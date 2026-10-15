@@ -58,9 +58,12 @@ class PairGRACE : public Pair {
   void unpack_reverse_comm(int, int *, double *) override;
 
   // Runtime modification of UQ knobs via `pair_modify`.
-  // Recognized: `kappa <val>`, `bias_virial yes|no`.
+  // Recognized: `tau <val>`, `tau_norm sum|max`, `tau_group <name>`,
+  // `stress_tau <val>`, `bulk_modulus <GPa>`.
   // Unknown keywords are forwarded to Pair::modify_params for the standard set.
   void modify_params(int narg, char **arg) override;
+  // One of the keywords above at arg[0]: applied, returns 2 (else 0).
+  int modify_param(int narg, char **arg) override;
 
  protected:
   struct GRACEImpl *graceimpl;
@@ -92,9 +95,9 @@ class PairGRACE : public Pair {
 
   // UQ / extrapolation scaffolding. Activation is implicit (parity with grace/kk):
   // UQ runs when the model exports a UQ head (has_compute_uq) AND a per-atom UQ
-  // output is requested via `fix pair grace <field>` or kappa != 0. See compute().
+  // output is requested via `fix pair grace <field>` or tau != 0. See compute().
   bool has_compute_uq = false;
-  // Faster gamma-only signature: skips the dsigma/dr backward pass. When kappa==0
+  // Faster gamma-only signature: skips the dsigma/dr backward pass. When tau==0
   // and uncertainty_force is not requested, the compute() path prefers this
   // signature over `compute_uq`. Falls back to `compute_uq` when not exported.
   bool has_compute_uq_gamma_only = false;
@@ -105,43 +108,44 @@ class PairGRACE : public Pair {
   int flag_compute_gmm_cluster = 0;       // toggle settable via extract("gmm_cluster_flag")
   int flag_compute_uncertainty_force = 0; // toggle settable via extract("uncertainty_force_flag")
   int flag_compute_atomic_sigma = 0;      // toggle settable via extract("atomic_sigma_flag")
-  // HAL: f[i] += kappa * (||F_phys_i||+eps) / (||F_sigma_i||+eps) * F_sigma_i (per-atom, post-loop).
-  double kappa = 0.0;                     // mutable via extract("kappa")
-  // If true, the kappa contribution is also tallied into the GLOBAL virial via a
-  // post-loop F^kappa*r positional-virial sum over local atoms; per-atom stress is
-  // not affected (the per-atom rescale has no per-bond Newton-3 decomposition).
-  bool bias_virial = false;
-  // HAL bias gated by (mask[i] & kappa_groupbit). -1 = all atoms, skip the mask
+  // HAL: f[i] += s * F_sigma_i, post-loop, with ONE global scalar
+  // s = tau * (N_j||F_phys_j||+eps) / (N_j||F_sigma_j||+eps); N = sum or max (tau_norm).
+  double tau = 0.0;                       // mutable via extract("tau")
+  // HAL bias gated by (mask[i] & tau_groupbit). -1 = all atoms, skip the mask
   // check; gamma / gmm_cluster / uncertainty_force are exposed unconditionally.
-  int kappa_groupbit = -1;
-  char *kappa_group_id = nullptr;
-  void parse_kappa_group(const char *name, const char *ctx);
-  // Shared setters for kappa / bias_virial, used by both settings() and
-  // modify_params() so the two keyword parsers cannot drift.
-  void parse_kappa(const char *val, const char *ctx);
-  void parse_bias_virial(const char *val);
-  const char *kappa_group_str() const {
-    return kappa_group_id ? kappa_group_id : "all";
+  int tau_groupbit = -1;
+  char *tau_group_id = nullptr;
+  void parse_tau_group(const char *name, const char *ctx);
+  // Shared setter for tau, used by both settings() and modify_params() so the
+  // two keyword parsers cannot drift.
+  void parse_tau(const char *val, const char *ctx);
+  const char *tau_group_str() const {
+    return tau_group_id ? tau_group_id : "all";
   }
-  // Normalization mode for the kappa-rescale denominator. Both forms preserve
-  // unit-free kappa; they differ in how the global ratio is computed:
-  //   MAX : s = kappa * (max_j||F^phys_j||+eps) / (max_j||F^sigma_j||+eps)
-  //   MEAN: s = kappa * (sum_j||F^phys_j||+eps) / (sum_j||F^sigma_j||+eps)
-  //         (N's cancel; equivalent to mean/mean).
+  // Aggregator N for the tau-rescale. Both keep tau unit-free:
+  //   SUM: s = tau * (sum_j||F^phys_j||+eps) / (sum_j||F^sigma_j||+eps)  (= mean/mean)
+  //   MAX: s = tau * (max_j||F^phys_j||+eps) / (max_j||F^sigma_j||+eps)
   // Both apply the resulting scalar uniformly to f[i] += s * F^sigma_i, so
-  // per-atom kappa-bias magnitudes stay proportional to ||F^sigma_i||. MEAN
-  // amplifies an isolated extrapolating atom more than MAX (because the mean
-  // stays small when most atoms are in-distribution), so MEAN is more
-  // responsive but also more sensitive to ratio swings.
-  enum KappaNormMode { KAPPA_NORM_MAX = 0, KAPPA_NORM_MEAN = 1 };
-  KappaNormMode kappa_norm_mode = KAPPA_NORM_MAX;
-  // Shared parser used by both PairGRACE::modify_params and the subclass
-  // settings(); errors out (no return) on an unknown mode string.
-  void parse_kappa_norm(const char *mode, const char *ctx);
-  const char *kappa_norm_str() const {
-    return kappa_norm_mode == KAPPA_NORM_MAX ? "max" : "mean";
-  }
-  static constexpr double KAPPA_EPS = 1.0e-8;
+  // per-atom bias magnitudes stay proportional to ||F^sigma_i||. SUM amplifies
+  // an isolated extrapolating atom more than MAX (the sum stays small when most
+  // atoms are in-distribution), so SUM is more responsive but also more
+  // sensitive to ratio swings.
+  enum TauNormMode { TAU_NORM_SUM = 0, TAU_NORM_MAX = 1 };
+  TauNormMode tau_norm_mode = TAU_NORM_SUM;
+  // Shared parser used by both settings() and modify_params(); errors out (no
+  // return) on an unknown mode string.
+  void parse_tau_norm(const char *mode, const char *ctx);
+  const char *tau_norm_str() const { return tau_norm_mode == TAU_NORM_SUM ? "sum" : "max"; }
+  static constexpr double TAU_EPS = 1.0e-8;
+  // HAL stress bias: P_ab += stress_tau * bulk_modulus * What_ab on the GLOBAL virial,
+  // What = W^sigma / ||W^sigma|| (Frobenius over the 6 Voigt components), where
+  // W^sigma = sum_bonds del (x) F^sigma_ij is the virial of the uncertainty force,
+  // i.e. W^sigma_aa = d(sum_j gamma_j)/d(eps_aa). Pushes the cell towards higher
+  // gamma with a fixed magnitude stress_tau * bulk_modulus. Per-atom stress unchanged.
+  double stress_tau = 0.0;
+  double bulk_modulus = 100.0;    // GPa
+  void parse_stress_tau(const char *val, const char *ctx);
+  void parse_bulk_modulus(const char *val, const char *ctx);
   double *gamma = nullptr;                // per-atom extrapolation grade
   double *gmm_cluster_arr = nullptr;      // per-atom GMM cluster index (int32 from TF cast to double for fix pair)
   double **uncertainty_force = nullptr;   // per-atom raw uncertainty force [nmax][3] = -dsigma/dr_i
