@@ -1335,6 +1335,7 @@ folder and then load this plugin at runtime with the :doc:`plugin command <plugi
          -D LOCAL_GRACE_RUNTIME=path      # grace-runtime checkout to use instead of the tested revision
          -D GRACE_RUNTIME_GIT_TAG=rev     # grace-runtime revision to fetch (default: the tested one)
          -D ENABLE_GRACE_TENSORFLOW=value # no (default) or yes: build the TensorFlow-based style grace
+         -D GRACE_BLAS=value              # AUTO (default), ON or OFF: BLAS for the GRACE-3L GEMMs of grace/runtime
 
       By default the grace-runtime revision tested with this LAMMPS
       version is fetched with git at configure time; an existing build
@@ -1345,6 +1346,23 @@ folder and then load this plugin at runtime with the :doc:`plugin command <plugi
       the tested one).  ``GRACE_RUNTIME=no``
       builds ML-PACE without the native GRACE styles (``pace``,
       ``grace/fs`` and, if enabled, the TensorFlow style ``grace`` only).
+
+      Use GCC 12 or newer for the CPU style ``grace/runtime``, with
+      ``-march=native`` (or the target CPU) in ``CMAKE_CXX_FLAGS``: older
+      GCC vectorizes its kernels poorly (GCC 11: GRACE-3L about 37 % slower;
+      GCC 9: GRACE-1L about 4.6x, GRACE-3L about 6.6x slower), and CMake
+      warns for GCC < 12.
+
+      The CPU style ``grace/runtime`` runs the GRACE-3L matrix products
+      with ``cblas_sgemm`` of a BLAS or with a built-in kernel.
+      ``GRACE_BLAS=AUTO`` uses a BLAS found by CMake only if it is MKL,
+      OpenBLAS, BLIS or Accelerate, otherwise the built-in kernel: other
+      BLAS libraries are slower than the built-in kernel (ATLAS: GRACE-3L
+      about 4x slower).  The configure step prints the choice (``CPU GRACE
+      styles: ...``).  ``GRACE_BLAS=ON`` uses any BLAS that exports
+      ``cblas_sgemm`` and stops if none is found; ``GRACE_BLAS=OFF`` always
+      uses the built-in kernel.  Recommended: sequential MKL
+      (``-D BLA_VENDOR=Intel10_64lp_seq``) or OpenBLAS built with OpenMP.
 
       The TensorFlow-based style ``grace`` is built only with
       ``ENABLE_GRACE_TENSORFLOW=yes``.  The TensorFlow library is then taken

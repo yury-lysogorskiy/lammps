@@ -331,7 +331,7 @@ endif()
 #   default: the grace-runtime revision tested with this LAMMPS (the pin below), fetched at configure time
 #   GRACE_RUNTIME_GIT_TAG / GRACE_RUNTIME_GIT_REPOSITORY: another revision / repository (default: the pin)
 #   LOCAL_GRACE_RUNTIME: a grace-runtime checkout to use instead (development, or another revision)
-set(_grace_runtime_pin "0.1.0")
+set(_grace_runtime_pin "0.1.1")
 set(_grace_runtime_pin_repository "https://github.com/ICAMS/grace-runtime.git")
 option(GRACE_RUNTIME "Build the native styles grace/runtime(/kk) and pace/runtime(/kk) (grace-runtime)" ON)
 # The cache entries GRACE_RUNTIME_GIT_REPOSITORY and GRACE_RUNTIME_GIT_TAG follow a change of the pin together while
@@ -435,31 +435,66 @@ else()
                         "set LOCAL_GRACE_RUNTIME to one, or GRACE_RUNTIME=OFF to build without the native GRACE styles")
   endif()
   include("${_grace_runtime_dir}/cmake/GraceRuntime.cmake")
-  # GEMM of the CPU GRACE styles (grace/runtime, GRACE-3L): cblas_sgemm (LP64 interface, no header needed) when a BLAS
-  # exporting it is found, otherwise a built-in kernel. Sequential MKL (BLA_VENDOR=Intel10_64lp_seq) or an OpenMP
-  # OpenBLAS recommended; a pthreads OpenBLAS is detected at run time and replaced by the built-in kernel.
+  # GCC before 12 vectorizes the CPU GRACE kernels poorly (grace/runtime, 2000-atom W, one thread, EPYC 7302): GCC 11
+  # GRACE-3L 37 % slower, GCC 9 GRACE-1L 4.6x and GRACE-3L 6.6x slower than GCC 12 to 16
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 12)
+    message(WARNING "ML-PACE: GCC ${CMAKE_CXX_COMPILER_VERSION} builds slow CPU GRACE styles (grace/runtime): with "
+                    "GCC 11 GRACE-3L runs 37 % slower, with GCC 9 GRACE-1L 4.6x and GRACE-3L 6.6x slower than with "
+                    "GCC >= 12. Use GCC 12 or newer (CMAKE_CXX_COMPILER) for production runs.")
+  endif()
+  # GEMM of the CPU GRACE styles (grace/runtime, GRACE-3L): cblas_sgemm (LP64 interface, no header needed) of a BLAS,
+  # otherwise a built-in kernel. AUTO takes only MKL, OpenBLAS, BLIS or Accelerate (by the names of the libraries
+  # found): with ATLAS, GRACE-3L ran about 4x slower than with the built-in kernel. ON takes any BLAS exporting
+  # cblas_sgemm. Sequential MKL (BLA_VENDOR=Intel10_64lp_seq) or an OpenMP OpenBLAS recommended; a pthreads OpenBLAS
+  # is detected at run time and replaced by the built-in kernel.
   set(GRACE_BLAS AUTO CACHE STRING "BLAS for the CPU GRACE styles: AUTO, ON or OFF")
   set_property(CACHE GRACE_BLAS PROPERTY STRINGS AUTO ON OFF)
   if(NOT GRACE_BLAS STREQUAL "OFF")
     find_package(BLAS)
     set(_grace_cblas OFF)
+    set(_grace_blas_skipped OFF)
     if(BLAS_FOUND)
       include(CheckFunctionExists)
       set(CMAKE_REQUIRED_LIBRARIES ${BLAS_LIBRARIES})
       check_function_exists(cblas_sgemm GRACE_HAVE_CBLAS_SGEMM)
       unset(CMAKE_REQUIRED_LIBRARIES)
       if(GRACE_HAVE_CBLAS_SGEMM)
-        set(_grace_cblas ON)
+        # the vendor from each library's file name and folder after resolving links (Debian alternatives:
+        # .../openblas-pthread/libblas.so.3); a BLAS that the compiler links by itself (Cray LibSci) has no entry
+        set(_grace_blas_names "")
+        foreach(_l ${BLAS_LIBRARIES})
+          if(IS_ABSOLUTE "${_l}")
+            get_filename_component(_l "${_l}" REALPATH)
+            get_filename_component(_d "${_l}" DIRECTORY)
+            get_filename_component(_d "${_d}" NAME)
+            get_filename_component(_l "${_l}" NAME)
+            list(APPEND _grace_blas_names "${_d}/${_l}")
+          else()
+            list(APPEND _grace_blas_names "${_l}")
+          endif()
+        endforeach()
+        list(JOIN _grace_blas_names ", " _grace_blas_names)
+        string(TOLOWER "${_grace_blas_names}" _grace_blas_lc)
+        if(NOT _grace_blas_names)
+          set(_grace_blas_names "a BLAS linked by the compiler")
+        endif()
+        if(GRACE_BLAS STREQUAL "ON" OR _grace_blas_lc MATCHES "mkl|openblas|blis|accelerate")
+          set(_grace_cblas ON)
+        else()
+          message(STATUS "CPU GRACE styles: built-in GEMM (GRACE_BLAS=AUTO uses MKL, OpenBLAS, BLIS or Accelerate, "
+                         "not ${_grace_blas_names}; GRACE_BLAS=ON would use it)")
+          set(_grace_blas_skipped ON)
+        endif()
       endif()
     endif()
     if(_grace_cblas)
-      message(STATUS "CPU GRACE styles: GEMM by cblas_sgemm (${BLAS_LIBRARIES})")
+      message(STATUS "CPU GRACE styles: GEMM by cblas_sgemm (${_grace_blas_names})")
       target_compile_definitions(lammps PRIVATE GRACE_BLAS)    # grace/cpu_gemm.h (libgrace)
       target_link_libraries(lammps PRIVATE ${BLAS_LIBRARIES})
     elseif(GRACE_BLAS STREQUAL "ON")
       message(FATAL_ERROR "GRACE_BLAS=ON, but no BLAS exporting cblas_sgemm was found "
                           "(set BLA_VENDOR, MKLROOT or CMAKE_PREFIX_PATH)")
-    else()
+    elseif(NOT _grace_blas_skipped)
       message(STATUS "CPU GRACE styles: built-in GEMM (no BLAS exporting cblas_sgemm found)")
     endif()
   else()

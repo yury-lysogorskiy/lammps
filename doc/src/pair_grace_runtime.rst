@@ -128,8 +128,10 @@ contractions as matrix products), with SIMD over channels.  The style
 vectorizes with the widest instruction set enabled at compile time, so LAMMPS
 should be compiled for the CPU it runs on, e.g. with ``-march=native`` in
 ``CMAKE_CXX_FLAGS``; on x86-64 the style prints a warning when the CPU
-supports AVX2 or AVX-512 but the binary was compiled without it.  GCC is the
-recommended compiler.
+supports AVX2 or AVX-512 but the binary was compiled without it.  GCC 12 or
+newer is the recommended compiler: older GCC vectorizes the kernels poorly
+(with GCC 11 GRACE-3L runs about 37 % slower, with GCC 9 GRACE-1L about 4.6x
+and GRACE-3L about 6.6x slower), and CMake warns for GCC < 12.
 
 For GRACE-3L, when LAMMPS is configured with CMake, ``-D GRACE_BLAS=AUTO``
 (the default) links a BLAS library that exports ``cblas_sgemm`` (LP64
@@ -156,11 +158,13 @@ backends (CUDA, HIP); with a host-only Kokkos build it stops with an error.
 It requires Newton's third law and a half neighbor list, e.g.
 ``-pk kokkos newton on neigh half``.  *chunksize* sets the number of local
 atoms per engine pass, ``0`` for all in one pass, or ``auto`` (the default):
-the style measures the work buffer memory per atom and takes all local atoms
-in one pass while that fits 70% of the free GPU memory (shared evenly by the
-MPI ranks on the same GPU), else the largest power of two that fits, at least
-1024; the choice is printed to the log and revised only when the number of
-atoms or neighbors grows by more than 10%.  Results depend on the chunk size
+the style measures the work buffer memory per atom and sizes the chunk for 10%
+more local atoms and neighbors per atom than the current step has: one pass
+while that fits 70% of the free GPU memory (shared evenly by the MPI ranks on
+the same GPU), else the largest power of two that fits, at least 512.  The log
+prints the choice (e.g. 1126 atoms per chunk for 1024 local atoms, one pass);
+it is made again only when the atoms or neighbors per atom exceed these
+counts.  Results depend on the chunk size
 only through floating-point rounding.  For GRACE-1L and 2L the style uses
 generated kernels for the CG products of the GRACE-2L-(SMAX-)OMAT medium and
 large and GRACE-1L large model shapes (other shapes, and *noshape*, use generic
@@ -271,8 +275,9 @@ With ``-sf kk`` the unsuffixed style name in ``fix pair`` refers to
 """"""""""""""""""""""""""""""""""""""""
 
 *grace/runtime* and *grace/runtime/kk* can decouple two groups of atoms from
-each other ("4D decoupling", P. Peña Cano), e.g. for solvation free energies
-by thermodynamic integration (TI) or the Bennett acceptance ratio (BAR):
+each other ("4D decoupling", P. Peña Cano;
+:ref:`(Picha25) <Picha2025>`), e.g. for solvation free energies by
+thermodynamic integration (TI) or the Bennett acceptance ratio (BAR):
 
 .. code-block:: LAMMPS
 
@@ -421,3 +426,8 @@ chunksize = auto, decouple/4d off
 .. _Lysogorskiy20252:
 
 **(Lysogorskiy25)** Lysogorskiy, Bochkarev, Drautz, arXiv:2508.17936 (2025).
+
+.. _Picha2025:
+
+**(Picha25)** Picha, Tkaczyk, Langer, Wieder, Boresch, J. Phys. Chem. Lett.,
+16, 12080-12086 (2025).
