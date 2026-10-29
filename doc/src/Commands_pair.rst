@@ -109,14 +109,8 @@ OPT.
    * :doc:`gauss/cut (o) <pair_gauss>`
    * :doc:`gayberne (gio) <pair_gayberne>`
    * :doc:`grace <pair_grace>`
-   * :doc:`grace/1l (k) <pair_grace>`
-   * :doc:`grace/1l/cpu (k) <pair_grace>`
-   * :doc:`grace/1layer/chunk <pair_grace>`
-   * :doc:`grace/2l (k) <pair_grace>`
-   * :doc:`grace/2l/cpu (k) <pair_grace>`
-   * :doc:`grace/2layer/chunk <pair_grace>`
-   * :doc:`grace/2layer/parallel <pair_grace>`
    * :doc:`grace/fs (k) <pair_grace>`
+   * :doc:`grace/runtime (k) <pair_grace_runtime>`
    * :doc:`gran/hertz/history (o) <pair_gran>`
    * :doc:`gran/hooke (o) <pair_gran>`
    * :doc:`gran/hooke/history (ko) <pair_gran>`
@@ -252,6 +246,7 @@ OPT.
    * :doc:`oxrna2/coaxstk <pair_oxrna2>`
    * :doc:`pace (k) <pair_pace>`
    * :doc:`pace/extrapolation (k) <pair_pace>`
+   * :doc:`pace/runtime (k) <pair_pace_runtime>`
    * :doc:`pace/apip <pair_pace_apip>`
    * :doc:`pace/fast/apip <pair_pace_apip>`
    * :doc:`pace/precise/apip <pair_pace_apip>`

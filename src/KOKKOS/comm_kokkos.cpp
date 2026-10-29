@@ -743,14 +743,17 @@ void CommKokkos::forward_comm_device(Pair *pair, int size)
     if (sendproc[iswap] != me) {
       double* buf_send_pair;
       double* buf_recv_pair;
-      if (lmp->kokkos->gpu_aware_flag) {
+      const bool staged = !lmp->kokkos->gpu_aware_flag;
+      if (!staged) {
         buf_send_pair = k_buf_send_pair.view<DeviceType>().data();
         buf_recv_pair = k_buf_recv_pair.view<DeviceType>().data();
       } else {
-        k_buf_send_pair.modify<DeviceType>();
-        k_buf_send_pair.sync_host();
-        buf_send_pair = k_buf_send_pair.view_host().data();
-        buf_recv_pair = k_buf_recv_pair.view_host().data();
+        // only the packed doubles, through pinned host buffers (a DualView sync copies the whole allocation)
+        grow_stage_pair(max_buf_pair);
+        buf_send_pair = h_stage_send_pair.data();
+        buf_recv_pair = h_stage_recv_pair.data();
+        Kokkos::deep_copy(Kokkos::subview(h_stage_send_pair, std::make_pair(0, n)),
+                          Kokkos::subview(k_buf_send_pair.view<DeviceType>(), std::make_pair(0, n)));
       }
 
       if (recvnum[iswap]) {
@@ -768,10 +771,9 @@ void CommKokkos::forward_comm_device(Pair *pair, int size)
         DeviceType().fence();
       }
 
-      if (!lmp->kokkos->gpu_aware_flag) {
-        k_buf_recv_pair.modify_host();
-        k_buf_recv_pair.sync<DeviceType>();
-      }
+      if (staged && recvnum[iswap])
+        Kokkos::deep_copy(Kokkos::subview(k_buf_recv_pair.view<DeviceType>(), std::make_pair(0, nsize*recvnum[iswap])),
+                          Kokkos::subview(h_stage_recv_pair, std::make_pair(0, nsize*recvnum[iswap])));
       k_buf_tmp = k_buf_recv_pair;
     } else k_buf_tmp = k_buf_send_pair;
 
@@ -779,6 +781,16 @@ void CommKokkos::forward_comm_device(Pair *pair, int size)
 
     pairKKBase->unpack_forward_comm_kokkos(recvnum[iswap],firstrecv[iswap],k_buf_tmp);
   }
+}
+
+/* ---------------------------------------------------------------------- */
+
+void CommKokkos::grow_stage_pair(int n) {
+  if ((int) h_stage_send_pair.extent(0) >= n) return;
+  h_stage_send_pair = Kokkos::View<double *, LMPPinnedHostType>(Kokkos::view_alloc("comm:stage_send_pair",
+                                                                Kokkos::WithoutInitializing), n);
+  h_stage_recv_pair = Kokkos::View<double *, LMPPinnedHostType>(Kokkos::view_alloc("comm:stage_recv_pair",
+                                                                Kokkos::WithoutInitializing), n);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -805,6 +817,20 @@ void CommKokkos::grow_buf_compute(int n) {
   k_buf_recv_compute.resize(max_buf_compute);
 }
 
+
+/* ---------------------------------------------------------------------- */
+
+void CommKokkos::forward_comm_pair_device(Pair *pair, int size)
+{
+  k_sendlist.sync_device();
+  forward_comm_device<LMPDeviceType>(pair, size);
+}
+
+void CommKokkos::reverse_comm_pair_device(Pair *pair, int size)
+{
+  k_sendlist.sync_device();
+  reverse_comm_device<LMPDeviceType>(pair, size);
+}
 
 /* ---------------------------------------------------------------------- */
 
@@ -850,19 +876,21 @@ void CommKokkos::reverse_comm_device(Pair *pair, int size)
     // exchange with another proc
     // if self, set recv buffer to send buffer
 
-    double* buf_send_pair;
-    double* buf_recv_pair;
-    if (lmp->kokkos->gpu_aware_flag) {
-      buf_send_pair = k_buf_send_pair.view<DeviceType>().data();
-      buf_recv_pair = k_buf_recv_pair.view<DeviceType>().data();
-    } else {
-      k_buf_send_pair.modify<DeviceType>();
-      k_buf_send_pair.sync_host();
-      buf_send_pair = k_buf_send_pair.view_host().data();
-      buf_recv_pair = k_buf_recv_pair.view_host().data();
-    }
-
     if (sendproc[iswap] != me) {
+      double* buf_send_pair;
+      double* buf_recv_pair;
+      const bool staged = !lmp->kokkos->gpu_aware_flag;
+      if (!staged) {
+        buf_send_pair = k_buf_send_pair.view<DeviceType>().data();
+        buf_recv_pair = k_buf_recv_pair.view<DeviceType>().data();
+      } else {
+        // only the packed doubles, through pinned host buffers (a DualView sync copies the whole allocation)
+        grow_stage_pair(max_buf_pair);
+        buf_send_pair = h_stage_send_pair.data();
+        buf_recv_pair = h_stage_recv_pair.data();
+        Kokkos::deep_copy(Kokkos::subview(h_stage_send_pair, std::make_pair(0, n)),
+                          Kokkos::subview(k_buf_send_pair.view<DeviceType>(), std::make_pair(0, n)));
+      }
       if (sendnum[iswap]) {
         DeviceType().fence();
         MPI_Irecv(buf_recv_pair,nsize*sendnum[iswap],MPI_DOUBLE,sendproc[iswap],0,world,&request);
@@ -876,10 +904,9 @@ void CommKokkos::reverse_comm_device(Pair *pair, int size)
         DeviceType().fence();
       }
 
-      if (!lmp->kokkos->gpu_aware_flag) {
-        k_buf_recv_pair.modify_host();
-        k_buf_recv_pair.sync<DeviceType>();
-      }
+      if (staged && sendnum[iswap])
+        Kokkos::deep_copy(Kokkos::subview(k_buf_recv_pair.view<DeviceType>(), std::make_pair(0, nsize*sendnum[iswap])),
+                          Kokkos::subview(h_stage_recv_pair, std::make_pair(0, nsize*sendnum[iswap])));
       k_buf_tmp = k_buf_recv_pair;
     } else k_buf_tmp = k_buf_send_pair;
 

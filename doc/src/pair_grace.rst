@@ -1,18 +1,6 @@
 .. index:: pair_style grace
-.. index:: pair_style grace/1layer/chunk
-.. index:: pair_style grace/2layer/chunk
-.. index:: pair_style grace/2layer/parallel
 .. index:: pair_style grace/fs
 .. index:: pair_style grace/fs/kk
-.. index:: pair_style grace/1l
-.. index:: pair_style grace/1l/kk
-.. index:: pair_style grace/1l/cpu
-.. index:: pair_style grace/1l/cpu/kk
-.. index:: pair_style grace/2l
-.. index:: pair_style grace/2l/kk
-.. index:: pair_style grace/2l/cpu
-.. index:: pair_style grace/2l/cpu/kk
-.. index:: pair_style grace/3l/kk
 
 pair_style grace command
 ========================
@@ -25,16 +13,8 @@ Syntax
 .. code-block:: LAMMPS
 
    pair_style grace keyword value ...
-   pair_style grace/1layer/chunk keyword value ...
-   pair_style grace/2layer/chunk keyword value ...
-   pair_style grace/2layer/parallel keyword value ...
    pair_style grace/fs keyword value ...
    pair_style grace/fs/kk keyword value ...
-   pair_style grace/1l/kk keyword value ...
-   pair_style grace/1l/cpu/kk keyword value ...
-   pair_style grace/2l/kk keyword value ...
-   pair_style grace/2l/cpu/kk keyword value ...
-   pair_style grace/3l/kk keyword value ...
 
 Zero or more keyword/value pairs may be appended to the ``pair_style``
 command.  The accepted keywords depend on the selected style.
@@ -53,30 +33,20 @@ command.  The accepted keywords depend on the selected style.
        ``tau_group``, ``stress_tau``, ``bulk_modulus``
      - TensorFlow saved-model evaluator; uncertainty quantification (UQ)
        activates automatically when the model exports a UQ head
-   * - ``grace/1layer/chunk``
-     - ``padding``, ``pad_verbose``, ``max_number_of_reduction``,
-       ``reduce_padding``, ``chunksize``, ``debug_no_energy_only_calc``
-     - Chunked single-layer TensorFlow evaluator
-   * - ``grace/2layer/chunk``
-     - ``padding``, ``pad_verbose``, ``max_number_of_reduction``,
-       ``reduce_padding``, ``chunksize``, ``debug_no_energy_only_calc``
-     - Chunked two-layer TensorFlow evaluator
-   * - ``grace/2layer/parallel``
-     - ``padding``, ``pad_verbose``, ``max_number_of_reduction``,
-       ``reduce_padding``, ``debug_no_energy_only_calc``
-     - Two-layer MPI TensorFlow evaluator without chunking
    * - ``grace/fs`` and ``grace/fs/kk``
      - ``extrapolation``, ``chunksize``, ``debug_no_energy_only_calc``
      - Native GRACE/FS evaluator
-   * - ``grace/{1,2}l/kk``, ``grace/{1,2}l/cpu/kk``, and ``grace/3l/kk``
-     - ``chunksize``, ``debug_no_energy_only_calc``
-     - Native Kokkos GRACE 1L/2L/3L evaluator (gracemaker ``.npz`` export)
 
-The common TensorFlow keywords are:
+The keywords of the TensorFlow ``grace`` style are
+(``debug_no_energy_only_calc`` also applies to ``grace/fs`` and
+``grace/fs/kk``):
 
 * ``padding`` value = fraction of neighbors to pad.  The default is 0.01.
 * ``pad_verbose`` = print messages when a new padding level triggers
   recompilation.
+* ``pair_forces`` or ``no_pair_forces`` = compute pairwise forces, or not.
+  They are needed for virials and stress, are on by default, and are always
+  on with more than one MPI rank.
 * ``max_number_of_reduction`` value = maximum number of recompilations
   during padding reduction.
 * ``reduce_padding`` value = fraction by which to reduce the padding buffer.
@@ -91,17 +61,6 @@ The common TensorFlow keywords are:
   :doc:`fix numdiff <fix_numdiff>`, and the DIELECTRIC polarize fixes.
   Setting ``debug_no_energy_only_calc`` forces the full force/virial kernel
   even when ``ENERGY_ONLY`` is set; it is intended for testing and debugging.
-
-The ``grace`` style additionally accepts:
-
-* ``pair_forces`` = compute pairwise forces.  This is required for virials
-  and stress with ``grace`` and is enabled automatically when running on more
-  than one MPI rank.
-
-The chunked TensorFlow styles additionally accept:
-
-* ``chunksize`` value = number of atoms processed in each TensorFlow block.
-  The default is 4096.
 
 For uncertainty quantification and biased dynamics, the ``grace`` style
 additionally accepts the following keywords.  They are only meaningful when the
@@ -135,7 +94,7 @@ Each style documented on this page uses a single ``pair_coeff`` command with
 ``* *`` followed by a model file or directory and one element name per LAMMPS
 atom type.
 
-For TensorFlow GRACE styles:
+For ``grace``:
 
 .. code-block:: LAMMPS
 
@@ -173,27 +132,6 @@ TensorFlow GRACE model with explicit padding and pairwise forces:
    pair_style grace padding 0.05 pad_verbose pair_forces
    pair_coeff * * /path/to/grace_cache/AlLi_model Al Li
 
-Chunked single-layer TensorFlow model:
-
-.. code-block:: LAMMPS
-
-   pair_style grace/1layer/chunk chunksize 2048 padding 0.05
-   pair_coeff * * /path/to/saved_model Al Li
-
-Chunked two-layer TensorFlow model:
-
-.. code-block:: LAMMPS
-
-   pair_style grace/2layer/chunk
-   pair_coeff * * /path/to/2layer_model Al Li
-
-Two-layer TensorFlow model with the non-chunked MPI-parallel implementation:
-
-.. code-block:: LAMMPS
-
-   pair_style grace/2layer/parallel
-   pair_coeff * * /path/to/2layer_model Al Li
-
 UQ-enabled TensorFlow model (UQ output activates via :doc:`fix pair <fix_pair>`):
 
 .. code-block:: LAMMPS
@@ -229,27 +167,6 @@ Kokkos-accelerated GRACE/FS model:
    pair_style grace/fs/kk
    pair_coeff * * FS_model.yaml Mo Nb Ta W
 
-Native Kokkos GRACE 2L model on GPU (FP32, lower memory and faster):
-
-.. code-block:: LAMMPS
-
-   pair_style grace/2l/kk/fp32
-   pair_coeff * * grace_2l_weights.npz Mo Nb Ta W
-
-Native Kokkos GRACE 3L model on GPU (Mixed precision, the default):
-
-.. code-block:: LAMMPS
-
-   pair_style grace/3l/kk
-   pair_coeff * * grace_3l_weights.npz Cu
-
-Native Kokkos GRACE 1L model on CPU with custom chunk size:
-
-.. code-block:: LAMMPS
-
-   pair_style grace/1l/cpu/kk chunksize 2048
-   pair_coeff * * grace_1l_weights.npz Cu
-
 Description
 """""""""""
 
@@ -260,14 +177,11 @@ Expansion (GRACE) framework :ref:`(Bochkarev24) <Bochkarev20241>`,
 This page documents the following related pair styles:
 
 * ``grace``
-* ``grace/1layer/chunk``
-* ``grace/2layer/chunk``
-* ``grace/2layer/parallel``
 * ``grace/fs``
 * ``grace/fs/kk``
-* ``grace/1l/kk`` and ``grace/1l/cpu/kk``
-* ``grace/2l/kk`` and ``grace/2l/cpu/kk``
-* ``grace/3l/kk``
+
+The native GRACE-1L, 2L and 3L ``.npz`` models (gracemaker export) are
+evaluated by :doc:`pair_style grace/runtime <pair_grace_runtime>`.
 
 Choosing a GRACE pair style
 """""""""""""""""""""""""""
@@ -286,25 +200,7 @@ Choosing a GRACE pair style
      - TensorFlow saved model
      - General model with simple setup; uncertainty quantification and biased
        dynamics when the model has a UQ head (biased dynamics: one rank only)
-     - Yes for 1L, no for 2L
-     - No
-     - Required
-   * - ``grace/1layer/chunk``
-     - TensorFlow saved model
-     - Single-layer model with lower peak memory use
-     - Yes
-     - Yes
-     - Required
-   * - ``grace/2layer/chunk``
-     - TensorFlow saved model
-     - Two-layer model with chunked evaluation
-     - Yes
-     - Yes
-     - Required
-   * - ``grace/2layer/parallel``
-     - TensorFlow saved model
-     - Two-layer model without chunking
-     - Yes
+     - 1L: yes; 2L: one rank only (see the warning below)
      - No
      - Required
    * - ``grace/fs``
@@ -319,80 +215,42 @@ Choosing a GRACE pair style
      - Yes
      - Yes
      - Not required
-   * - ``grace/1l/kk``
-     - Native GRACE 1L ``.npz`` (gracemaker export)
-     - Kokkos GPU evaluator for single-layer models
+   * - ``grace/runtime`` and ``grace/runtime/kk``
+     - Native GRACE 1L / 2L / 3L ``.npz`` (gracemaker export)
+     - CPU (OpenMP) and GPU (Kokkos) production runs, see
+       :doc:`pair_style grace/runtime <pair_grace_runtime>`
      - Yes
-     - Yes
-     - Not required
-   * - ``grace/1l/cpu/kk``
-     - Native GRACE 1L ``.npz`` (gracemaker export)
-     - Kokkos CPU evaluator for single-layer models
-     - Yes
-     - Yes
-     - Not required
-   * - ``grace/2l/kk``
-     - Native GRACE 2L ``.npz`` (gracemaker export)
-     - Kokkos GPU evaluator for two-layer models
-     - Yes
-     - Yes
-     - Not required
-   * - ``grace/2l/cpu/kk``
-     - Native GRACE 2L ``.npz`` (gracemaker export)
-     - Kokkos CPU evaluator for two-layer models
-     - Yes
-     - Yes
-     - Not required
-   * - ``grace/3l/kk``
-     - Native GRACE 3L ``.npz`` (gracemaker export)
-     - Kokkos GPU evaluator for three-layer models
-     - Yes
-     - Yes
+     - GPU
      - Not required
 
 TensorFlow GRACE models
 """""""""""""""""""""""
 
 The ``grace`` style uses ``libtensorflow`` to load and execute GRACE models
-stored in TensorFlow ``saved_model`` format.  
+stored in TensorFlow ``saved_model`` format.
 
+.. warning::
+
+   With a two-layer (GRACE-2L) saved model, ``pair_style grace`` gives
+   correct results only on a single MPI rank.  On several ranks the energies,
+   forces and stresses are wrong without any error or warning: for a
+   216-atom W-Mo cell, energies differed by about 8 to 20 meV/atom and forces by
+   up to 1.1 eV/Angstrom from the single-rank result on 2 and 4 ranks.  For
+   GRACE-2L models on several MPI ranks or GPUs, export the model to the
+   native ``kokkos.npz`` format and use
+   :doc:`pair_style grace/runtime <pair_grace_runtime>`.  Single-layer
+   (GRACE-1L) saved models are not affected.
 
 GRACE TensorFlow models are just-in-time (JIT) compiled.  The first evaluation
 is therefore slower than subsequent evaluations.  To maintain performance when
-the number of neighbors changes, the TensorFlow-based styles use padding.  A
+the number of neighbors changes, the ``grace`` style uses padding.  A
 larger ``padding`` value can reduce the frequency of recompilations, but
 increases memory use and the cost of each TensorFlow call.
 
-The plain ``grace`` style does not chunk atoms.  To control peak memory through
-chunked evaluation, use ``grace/1layer/chunk`` or ``grace/2layer/chunk``.
-Both styles accept the ``chunksize`` keyword.
-
-Chunking and MPI parallelization
-""""""""""""""""""""""""""""""""
-
-The ``grace/1layer/chunk`` style is a chunked variant of ``grace`` for
-single-layer TensorFlow models.  Instead of processing all atoms at once, atoms
-are processed in blocks of ``chunksize``.  This reduces peak memory use and is
-safe for MPI parallelization without the ``pair_forces`` keyword.  Virial and
-stress computation are always available.
-
-The ``grace/2layer/chunk`` style supports two-layer TensorFlow GRACE models
-using a chunked processing strategy.  Two-layer models split the computation
-into a forward pass, which evaluates descriptors, and a backward pass, which
-evaluates energies and forces.  Between the two passes, MPI forward and reverse
-communication exchange per-atom features between ranks.  The ``chunksize``
-keyword controls the block size used for each layer.
-
-The ``grace/2layer/parallel`` style is an alternative MPI-parallel
-implementation for two-layer TensorFlow GRACE models.  Each MPI rank performs
-the full forward and backward layer evaluation locally, with explicit forward
-and reverse communication of per-atom features between layers.  Unlike
-``grace/2layer/chunk``, this style does not chunk TensorFlow calls and does not
-accept the ``chunksize`` keyword.
-
-For ``grace/2layer/chunk`` and ``grace/2layer/parallel``, the saved-model
-directory must contain the TensorFlow signatures required by the two-layer
-model, including ``forward_layer_1`` and ``backward_layer_2``.
+The ``grace`` style does not chunk atoms.  The native model export with
+:doc:`pair_style grace/runtime <pair_grace_runtime>` needs less memory (it
+stores nothing per bond, and chunks atoms on the GPU) and runs two- and
+three-layer models on several MPI ranks.
 
 GRACE/FS models
 """""""""""""""
@@ -412,69 +270,6 @@ When the ``extrapolation`` keyword is used, ``grace/fs`` and ``grace/fs/kk``
 compute the MaxVol extrapolation grade :math:`\gamma` using the Active Set
 Inverted (ASI) file supplied in the ``pair_coeff`` command.  This requires a
 matrix-vector multiplication per atom and is slower than plain evaluation.
-
-Native Kokkos GRACE 1L/2L models
-""""""""""""""""""""""""""""""""
-
-The ``grace/1l/kk`` and ``grace/2l/kk`` styles (and their ``/cpu/kk``
-companions) are native Kokkos implementations of single-layer and two-layer
-GRACE models.  Unlike the TensorFlow-based ``grace`` family, these styles
-read weights from a LAMMPS-specific ``.npz`` archive produced by the
-gracemaker export utilities; arbitrary TensorFlow saved models are not
-accepted.  See `gracemaker.readthedocs.io <https://gracemaker.readthedocs.io>`_
-for the export commands.
-
-The base styles (``grace/1l/kk``, ``grace/2l/kk``) are optimized for GPU
-execution; the ``/cpu/kk`` variants (``grace/1l/cpu/kk``,
-``grace/2l/cpu/kk``) are optimized for multicore CPU execution.  All four
-share the same ``.npz`` model format.  Newton's third law must be enabled
-with ``newton on``.
-
-All ``grace/{1,2}l{,/cpu}/kk`` styles support both atom chunking via the
-``chunksize`` keyword (default 4096) and MPI spatial decomposition.  The
-``grace/3l/kk`` styles also support ``chunksize``, with a default cap selected
-from the CUDA device memory: 4096 atoms below 40 GiB, 8192 atoms from 40 GiB,
-and 16384 atoms from 70 GiB.  This lets larger devices use the single-chunk
-backward fast path while retaining the explicit override for
-memory-constrained workloads.
-Chunking caps the per-rank atom batch processed in a single kernel call to
-bound peak memory and limit register pressure on GPUs; it is independent of
-MPI decomposition and works with any rank count.
-
-For each base style, ``/device`` and ``/host`` suffixes pin execution to the
-GPU or CPU regardless of the build's default Kokkos device, and ``/mixed``
-and ``/fp32`` select the floating-point precision used inside the kernels:
-
-* (default) -- 64-bit forward + backward (full accuracy).
-* ``/mixed`` -- 64-bit forward geometrical features, 32-bit trainable features.
-* ``/fp32`` -- 32-bit forward + backward (lowest memory and fastest,
-  reduced accuracy; suitable for screening or preview runs).
-
-For example, ``grace/2l/kk/fp32/device`` runs the two-layer GPU evaluator in
-fp32, while ``grace/2l/cpu/kk/mixed/host`` runs the CPU evaluator in mixed
-precision.
-
-Native Kokkos GRACE 3L model
-""""""""""""""""""""""""""""
-
-The ``grace/3l/kk`` style is a native Kokkos implementation of three-layer
-GRACE models, following the same ``.npz`` model format and gracemaker export
-workflow as ``grace/{1,2}l/kk``.  Unlike the 1L/2L styles, ``grace/3l/kk`` has
-no ``/cpu`` or ``/host`` variant: it is a GPU-only evaluator.  It supports the
-``chunksize`` keyword and MPI spatial decomposition in the same way as
-``grace/{1,2}l/kk``.
-
-``grace/3l/kk`` (alias ``grace/3l/kk/device``) is Mixed precision by
-default and is the validated target precision: NN weights and activations
-are 32-bit, while geometry, spherical harmonics, and accumulation remain
-64-bit.  ``grace/3l/kk/fp32`` (alias ``grace/3l/kk/fp32/device``) runs
-fully in 32-bit for lower memory and faster, lower-accuracy screening runs.
-There is no separate full 64-bit or ``/mixed``-suffixed style for 3L.
-
-As with the other native Kokkos GRACE styles, ``grace/3l/kk`` requires
-Newton's third law and a half neighbor list, e.g. ``-pk kokkos newton on
-neigh half`` on the command line (or ``package kokkos newton on neigh
-half`` in the input script).
 
 .. _pair_grace_uq:
 
@@ -622,71 +417,6 @@ training distribution of its cluster.  This is the default; a model exported
 with ``grace_uq build --threshold-percentile Q`` uses the Q-th percentile of the
 training :math:`\sigma` instead, and its :math:`\gamma` values are not
 comparable with those of a default model.
-
-.. _pair_grace_uq_kokkos:
-
-Native Kokkos GRACE UQ
-""""""""""""""""""""""
-
-.. versionadded:: TBD
-
-The native Kokkos GRACE styles ``grace/1l/kk``, ``grace/2l/kk``,
-``grace/1l/cpu/kk``, and ``grace/2l/cpu/kk`` (including their ``/device``,
-``/host``, ``/mixed``, and ``/fp32`` precision variants) compute the same
-per-atom uncertainty quantities on the GPU, directly from a UQ-enabled Kokkos
-``.npz`` model file.  The pair style detects UQ artifacts automatically.
-
-These styles expose three per-atom fields through :doc:`fix pair <fix_pair>`,
-with the same names and semantics as the TensorFlow ``grace`` style above:
-
-* ``gamma`` = extrapolation grade :math:`\gamma_i`,
-* ``atomic_sigma`` = raw Mahalanobis uncertainty :math:`\sigma_i`,
-* ``gmm_cluster`` = GMM cluster index :math:`k^*` for the atom (an integer
-  stored as a double).
-
-The latent feature :math:`\mathbf{z}_i` feeding the GMM is built identically to
-the TensorFlow ``grace`` UQ head, so ``gamma`` matches it to floating-point
-precision.  It is the concatenation of two parts:
-
-* a **random projection** of the rotationally-invariant (:math:`l=0`)
-  energy-path B-basis :math:`\mathbf{B}_i`, after L2-normalization, through the
-  stored projection matrix :math:`R`:
-  :math:`\mathbf{p}_i = (\mathbf{B}_i / \|\mathbf{B}_i\|)\,R`; and
-* one or more **log-norm density channels**
-  :math:`\log(\|\cdot\| + 10^{-12})\cdot s_\rho`, one for the full basis and one
-  per invariant block, where :math:`s_\rho` is the stored ``density_scale``.
-
-For the two-layer styles the basis has two invariant blocks; the density
-channels are ordered ``[full, block0, block1, ...]`` following the block order
-baked into the artifacts (the projection-matrix row layout follows the same
-order).
-
-The Kokkos styles accept **only** UQ artifacts written with schema version 6
-(the L2-normalized projection + density-channel feature described above; the
-``.npz`` carries ``uq_schema_version = 6`` with ``uq_rp_normalize = 1``,
-``uq_rp_add_density_channel = 1``, ``uq_feature_transform = 0``).  Older
-artifacts are rejected at load time with a re-export message.  The artifacts
-must also provide GMM clusters for **every** model element; an incomplete export
-(an element with no clusters) is a hard load-time error rather than a silent
-fallback.
-
-Unlike the TensorFlow ``grace`` UQ path, the native Kokkos styles
-provide **no** ``uncertainty_force``,  ``tau``/HAL biasing, or
-:math:`\partial\gamma/\partial\mathbf{r}` gradient: only the forward per-atom
-scalars listed above are available.
-
-.. code-block:: LAMMPS
-
-   pair_style grace/1l/kk          # or grace/2l/kk, grace/1l/cpu/kk, grace/2l/cpu/kk
-   pair_coeff * * grace_kokkos_uq.npz Mo Nb Ta W
-
-   fix gp  all pair 1 grace/1l/kk gamma          1
-   fix as  all pair 1 grace/1l/kk atomic_sigma   1
-   fix gm  all pair 1 grace/1l/kk gmm_cluster    1
-
-   compute max_gamma all reduce max f_gp
-   thermo_style custom step pe c_max_gamma
-   dump uq all custom 100 uq.dump id type x y z f_gp f_as f_gm
 
 .. _pair_grace_bias_dynamics:
 
@@ -860,13 +590,15 @@ Restrictions
 * These styles are part of the ML-PACE package.  They are enabled only if
   LAMMPS is built with that package.
 * All styles require :doc:`units metal <units>`.
-* The TensorFlow-based styles require LAMMPS to be linked with
-  ``libtensorflow``: ``grace``, ``grace/1layer/chunk``,
-  ``grace/2layer/chunk``, and ``grace/2layer/parallel``.
+* The TensorFlow-based style ``grace`` is built only when LAMMPS is
+  configured with ``-D ENABLE_GRACE_TENSORFLOW=yes`` and is then linked with
+  ``libtensorflow`` (see :ref:`ML-PACE <ml-pace>`).
 * Uncertainty quantification output and biased dynamics in ``grace`` require a
   UQ-enabled saved model that exports the ``compute_uq`` signature.
 * Biased dynamics with ``tau != 0`` or ``stress_tau != 0`` in ``grace`` is
   supported only on a single MPI rank.
+* ``grace`` with a two-layer (GRACE-2L) saved model gives correct results only
+  on a single MPI rank; LAMMPS does not check this.
 * ``grace/fs`` does not require TensorFlow.
 * ``grace/*/kk`` requires ``newton on`` and supports only one CPU thread per
   MPI rank.
@@ -880,7 +612,8 @@ details.
 Related commands
 """"""""""""""""
 
-:doc:`pair_style pace <pair_pace>`, :doc:`fix pair <fix_pair>`
+:doc:`pair_style grace/runtime <pair_grace_runtime>`, :doc:`pair_style pace <pair_pace>`,
+:doc:`fix pair <fix_pair>`
 
 Default
 """""""
@@ -897,12 +630,6 @@ Default
        ``pad_verbose = off``, ``max_number_of_reduction = 10``,
        ``reduce_padding = 0.2``, ``tau = 0``, ``tau_norm = sum``,
        ``tau_group = all``, ``stress_tau = 0``, ``bulk_modulus = 100``
-   * - ``grace/1layer/chunk`` and ``grace/2layer/chunk``
-     - ``padding = 0.01``, ``chunksize = 4096``, ``pad_verbose = off``,
-       ``max_number_of_reduction = 10``, ``reduce_padding = 0.2``
-   * - ``grace/2layer/parallel``
-     - ``padding = 0.01``, ``pad_verbose = off``,
-       ``max_number_of_reduction = 10``, ``reduce_padding = 0.2``
    * - ``grace/fs`` and ``grace/fs/kk``
      - ``extrapolation = off``, ``chunksize = 4096``
 

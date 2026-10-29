@@ -228,10 +228,12 @@ void PairPACEExtrapolationKokkos<DeviceType>::copy_pertype()
   auto h_cut_in = Kokkos::create_mirror_view(d_cut_in);
   auto h_dcut_in = Kokkos::create_mirror_view(d_dcut_in);
 
+  // the radial functions' tables (all element pairs), as the CPU evaluator; map_bond_specifications holds only the
+  // pairs the potential file names
   for (int mu_i = 0; mu_i < nelements; ++mu_i) {
     for (int mu_j = 0; mu_j < nelements; ++mu_j) {
-      h_cut_in(mu_i,mu_j) = basis_set->map_bond_specifications.at({mu_i,mu_j}).rcut_in;
-      h_dcut_in(mu_i,mu_j) = basis_set->map_bond_specifications.at({mu_i,mu_j}).dcut_in;
+      h_cut_in(mu_i,mu_j) = basis_set->radial_functions->cut_in(mu_i,mu_j);
+      h_dcut_in(mu_i,mu_j) = basis_set->radial_functions->dcut_in(mu_i,mu_j);
     }
   }
   Kokkos::deep_copy(d_cut_in, h_cut_in);
@@ -474,8 +476,8 @@ void PairPACEExtrapolationKokkos<DeviceType>::init_style()
   MemKK::realloc_kokkos(dl, "pace:dl", lmax + 1);
 
   pre_compute_harmonics(lmax);
+  copy_splines();    // first: it refuses radial bases other than ACERadialFunctions
   copy_pertype();
-  copy_splines();
   copy_tilde();
 }
 

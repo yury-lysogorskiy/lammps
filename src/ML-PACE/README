@@ -28,9 +28,8 @@ When building LAMMPS with CMake, these dependencies are managed automatically:
 1. PACE Library: The source code is downloaded and built automatically (via PACELIB_URL or LOCAL_ML-PACE).
 
 2. TensorFlow (for pair_style grace):
-  - By default, CMake attempts to locate the TensorFlow C++ library via your Python installation or downloads it automatically.
-
-  - To disable TensorFlow support (and pair_style grace), add `-D NO_GRACE_TF=yes` to your cmake command.
+  - Off by default; add `-D ENABLE_GRACE_TENSORFLOW=yes` to build pair_style grace. CMake then locates the
+    TensorFlow C++ library via your Python installation or downloads it automatically.
 
   - To manually specify a TensorFlow library, use -D TF_LIB_FILE=/path/to/libtensorflow_cc.so.
 

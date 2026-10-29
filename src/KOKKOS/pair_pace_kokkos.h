@@ -103,6 +103,15 @@ class PairPACEKokkos : public PairPACE {
 
  protected:
   int inum, maxneigh, chunk_size, chunk_offset, idx_ms_combs_max, idx_sph_max;
+  // B products and their partial derivatives are recomputed from A in registers (ComputeRho, ComputeWeights)
+  // instead of being stored per (atom, ms-combination) in A_list / A_forward_prod / dB_flatten, unless a
+  // basis function has more than RANK_REG factors
+  static constexpr int RANK_REG = 8;
+  bool store_prods = false;
+  // weights of one rank-R ms-combination from dB_t recomputed with compile-time R (registers, no local arrays)
+  template<int R>
+  KOKKOS_INLINE_FUNCTION
+  void weights_comb(const int ii, const int mu_i, const int idx_func, const int idx_ms_combs, const KK_FLOAT theta) const;
   int host_flag;
 
   int eflag, vflag;
@@ -113,6 +122,8 @@ class PairPACEKokkos : public PairPACE {
 
   typename AT::t_neighbors_2d d_neighbors;
   typename AT::t_int_1d_randomread d_ilist;
+  typename AT::t_int_1d d_ilist_sorted;      // d_ilist ordered by atom type (multi-element)
+  Kokkos::View<long long *, DeviceType> d_type_key;
   typename AT::t_int_1d_randomread d_numneigh;
 
   DAT::ttransform_kkacc_1d k_eatom;

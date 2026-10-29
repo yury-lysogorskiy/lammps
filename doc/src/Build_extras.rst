@@ -1324,6 +1324,35 @@ folder and then load this plugin at runtime with the :doc:`plugin command <plugi
       (e.g. computed with ``sha256sum``) if you provide a different
       library version than what is downloaded automatically.
 
+      The native styles ``grace/runtime``, ``grace/runtime/kk``,
+      ``pace/runtime`` and ``pace/runtime/kk`` are built from the grace-runtime
+      sources (libgrace), compiled into LAMMPS with the LAMMPS compiler
+      and flags:
+
+      .. code-block:: bash
+
+         -D GRACE_RUNTIME=value           # yes (default) or no: build the native styles
+         -D LOCAL_GRACE_RUNTIME=path      # grace-runtime checkout to use instead of the tested revision
+         -D GRACE_RUNTIME_GIT_TAG=rev     # grace-runtime revision to fetch (default: the tested one)
+         -D ENABLE_GRACE_TENSORFLOW=value # no (default) or yes: build the TensorFlow-based style grace
+
+      By default the grace-runtime revision tested with this LAMMPS
+      version is fetched with git at configure time; an existing build
+      directory follows it when it changes (``FETCHCONTENT_FULLY_DISCONNECTED``,
+      and ``FETCHCONTENT_UPDATES_DISCONNECTED`` before CMake 3.27, keep the
+      old checkout: a warning says so).  A revision or repository given
+      with ``-D`` is kept (``cmake -U "GRACE_RUNTIME_GIT_*" .`` returns to
+      the tested one).  ``GRACE_RUNTIME=no``
+      builds ML-PACE without the native GRACE styles (``pace``,
+      ``grace/fs`` and, if enabled, the TensorFlow style ``grace`` only).
+
+      The TensorFlow-based style ``grace`` is built only with
+      ``ENABLE_GRACE_TENSORFLOW=yes``.  The TensorFlow library is then taken
+      from ``TF_LIB_FILE``, from the ``tensorflow`` Python package, or
+      downloaded.  The former switch ``NO_GRACE_TF`` is still accepted
+      (deprecated): ``NO_GRACE_TF=yes`` corresponds to
+      ``ENABLE_GRACE_TENSORFLOW=no``.
+
    .. tab:: Traditional make
 
       .. versionchanged:: 10Sep2025
