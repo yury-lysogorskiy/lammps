@@ -25,13 +25,11 @@ namespace GRACE {
 #ifndef NO_GRACE_TF
 
 #include <set>
-#include <map>
 #include <string>
-#include <cstring>
+#include <tuple>
 #include <cmath>
 #include <algorithm>
 #include <cppflow/tensor.h>
-#include <tensorflow/c/c_api.h>
 
 namespace GRACE {
     using namespace LAMMPS_NS;
@@ -123,124 +121,6 @@ namespace GRACE {
     void print_f_data(const double *f_data, int me, LAMMPS_NS::LAMMPS *lmp,
       const std::vector<int>& ind_i_vector, const std::vector<int>& ind_j_vector,
       int * tag);
-
-    /**
-     * @brief Get a tensor from a pool or create it if it doesn't exist or size mismatch.
-     *
-     * If the tensor exists and has the correct byte size, it memcpys the data into the existing buffer.
-     * This avoids heap allocations in the hot loop of chunked model calls.
-     *
-     * IMPORTANT: This function uses direct memcpy into TensorFlow tensor buffers for performance.
-     * This is safe ONLY for CPU-resident input tensors. The TensorFlow C API guarantees that
-     * TF_TensorData() returns valid writable memory for CPU tensors. Do NOT use this function
-     * for GPU tensors or tensors that may be relocated to GPU memory - in such cases, the
-     * memcpy would write to invalid memory causing silent corruption or crashes.
-     */
-    template<typename T>
-    cppflow::tensor& get_or_create_tensor(
-        std::map<std::string, cppflow::tensor>& pool,
-        const std::string& key,
-        const std::vector<T>& values,
-        const std::vector<int64_t>& shape,
-        bool force_recreate = false) 
-    {
-        size_t byte_size = values.size() * sizeof(T);
-        auto it = pool.find(key);
-
-        bool needs_create = force_recreate || (it == pool.end());
-
-        if (!needs_create) {
-            // Check byte size of existing tensor
-            auto existing_tensor = it->second.get_tensor();
-            if (TF_TensorByteSize(existing_tensor.get()) != byte_size) {
-                needs_create = true;
-            }
-        }
-
-        if (needs_create) {
-            pool[key] = cppflow::tensor(values, shape);
-            return pool[key];
-        } else {
-            // Safe to memcpy into CPU-resident input tensors
-            std::memcpy(TF_TensorData(it->second.get_tensor().get()), values.data(), byte_size);
-            return it->second;
-        }
-    }
-
-    /**
-     * @brief Create a tensor with specific dtype from a double vector.
-     *
-     * This is a simpler version of get_or_create_tensor_dtype that doesn't
-     * use a pool. It creates a new tensor each time.
-     */
-    inline cppflow::tensor create_tensor_dtype(
-        const std::vector<double>& values,
-        const std::vector<int64_t>& shape,
-        cppflow::datatype target_dtype)
-    {
-        if (target_dtype == TF_DOUBLE) {
-            return cppflow::tensor(values, shape);
-        }
-        // Convert to float
-        std::vector<float> f_values(values.begin(), values.end());
-        return cppflow::tensor(f_values, shape);
-    }
-
-    /**
-     * @brief Get a tensor from a pool or create it with specific dtype.
-     * 
-     * Handles conversion from double to float if target_dtype is TF_FLOAT.
-     */
-    inline cppflow::tensor& get_or_create_tensor_dtype(
-        std::map<std::string, cppflow::tensor>& pool,
-        const std::string& key,
-        const std::vector<double>& values,
-        const std::vector<int64_t>& shape,
-        cppflow::datatype target_dtype,
-        bool force_recreate = false) 
-    {
-        if (target_dtype == TF_DOUBLE) {
-            return get_or_create_tensor(pool, key, values, shape, force_recreate);
-        }
-        
-        // Convert to float
-        std::vector<float> f_values(values.begin(), values.end());
-        size_t byte_size = f_values.size() * sizeof(float);
-        auto it = pool.find(key);
-        bool needs_create = force_recreate || (it == pool.end());
-
-        if (!needs_create) {
-            auto existing_tensor = it->second.get_tensor();
-            if (TF_TensorByteSize(existing_tensor.get()) != byte_size ||
-                TF_TensorType(existing_tensor.get()) != TF_FLOAT) {
-                needs_create = true;
-            }
-        }
-
-        if (needs_create) {
-            pool[key] = cppflow::tensor(f_values, shape);
-            return pool[key];
-        } else {
-            std::memcpy(TF_TensorData(it->second.get_tensor().get()), f_values.data(), byte_size);
-            return it->second;
-        }
-    }
-
-    /**
-     * @brief Copy TF tensor data into a double vector with widening if necessary.
-     */
-    inline void copy_tensor_to_vector(const cppflow::tensor& t, std::vector<double>& dest, size_t src_offset, size_t dest_offset, size_t elements) {
-        auto tens = t.get_tensor();
-        auto dtype = TF_TensorType(tens.get());
-        
-        if (dtype == TF_DOUBLE) {
-            const double *data = static_cast<const double *>(TF_TensorData(tens.get()));
-            std::copy_n(data + src_offset, elements, &dest[dest_offset]);
-        } else if (dtype == TF_FLOAT) {
-            const float *data = static_cast<const float *>(TF_TensorData(tens.get()));
-            for (size_t i = 0; i < elements; ++i) dest[dest_offset + i] = static_cast<double>(data[src_offset + i]);
-        }
-    }
 }
 #endif
 #endif

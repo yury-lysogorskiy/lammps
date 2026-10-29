@@ -302,13 +302,7 @@ print("Total number of style index entries:", total_index)
 
 skip_angle = ('sdk')
 skip_fix = ('python', 'NEIGH_HISTORY/omp', 'acks2/reax', 'qeq/reax', 'reax/c/bonds', 'reax/c/species', 'pimd', 'colvars/kk', 'wall/harmonic/returned', 'addtorque')
-skip_pair = ('meam/c','lj/sf','reax/c','lj/sdk','lj/sdk/coul/long','lj/sdk/coul/msm') + tuple(
-    f"grace/{layer}{cpu}/kk/{prec}{tail}"
-    for layer in ("1l", "2l")
-    for cpu in ("", "/cpu")
-    for prec in ("mixed", "fp32")
-    for tail in ("", "/device", "/host")
-)
+skip_pair = ('meam/c','lj/sf','reax/c','lj/sdk','lj/sdk/coul/long','lj/sdk/coul/msm')
 skip_compute = ('pressure/cylinder')
 
 counter = 0

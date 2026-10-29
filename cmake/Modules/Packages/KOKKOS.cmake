@@ -146,13 +146,12 @@ else()
 endif()
 target_compile_definitions(lammps PUBLIC $<BUILD_INTERFACE:LMP_KOKKOS>)
 
-# The GRACE (ML-PACE) Kokkos pair styles use cuBLAS SGEMM (forced true fp32) on
-# the CUDA backend -- they are the only cuBLAS users here. cuBLAS ships with the
-# CUDA toolkit, so link it when BOTH the CUDA Kokkos backend AND the ML-PACE
-# (GRACE) package are enabled. A CUDA Kokkos build without ML-PACE has no cuBLAS
-# user, so it neither requires the toolkit lookup nor links cuBLAS. Independent
-# of PKG_KSPACE (the KSPACE cufft link stays in the FFT block below).
-if(Kokkos_ENABLE_CUDA AND PKG_ML-PACE)
+# The native GRACE Kokkos pair styles (grace/runtime/kk, ML-PACE with
+# GRACE_RUNTIME, set in ML-PACE.cmake, included before this file) use cuBLAS SGEMM
+# (forced true fp32) on the CUDA backend -- they are the only cuBLAS users here.
+# cuBLAS ships with the CUDA toolkit, so link it only when those styles are built.
+# Independent of PKG_KSPACE (the KSPACE cufft link stays in the FFT block below).
+if(Kokkos_ENABLE_CUDA AND PKG_ML-PACE AND GRACE_RUNTIME)
   find_package(CUDAToolkit REQUIRED)
   target_link_libraries(lammps PRIVATE CUDA::cublas)
 endif()
@@ -176,6 +175,14 @@ set(KOKKOS_PKG_SOURCES ${KOKKOS_PKG_SOURCES_DIR}/kokkos.cpp
                        ${KOKKOS_PKG_SOURCES_DIR}/domain_kokkos.cpp
                        ${KOKKOS_PKG_SOURCES_DIR}/modify_kokkos.cpp
                        ${KOKKOS_PKG_SOURCES_DIR}/rand_pool_wrap_kokkos.cpp)
+
+# grace/runtime/kk (ML-PACE with GRACE_RUNTIME): the GRACE-1L / 2L / 3L engines in translation units of their own,
+# compiled in parallel with the style (pair_grace_runtime_kokkos.cpp)
+if(PKG_ML-PACE AND GRACE_RUNTIME)
+  list(APPEND KOKKOS_PKG_SOURCES ${KOKKOS_PKG_SOURCES_DIR}/grace_runtime_kokkos_1l.cpp
+                                 ${KOKKOS_PKG_SOURCES_DIR}/grace_runtime_kokkos_2l.cpp
+                                 ${KOKKOS_PKG_SOURCES_DIR}/grace_runtime_kokkos_3l.cpp)
+endif()
 
 # fix wall/gran has been refactored in an incompatible way. Use old version of base class for now
 if(PKG_GRANULAR)

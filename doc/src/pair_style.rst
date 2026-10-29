@@ -201,14 +201,8 @@ accelerated styles exist.
 * :doc:`gauss/cut <pair_gauss>` - generalized Gaussian potential
 * :doc:`gayberne <pair_gayberne>` - Gay-Berne ellipsoidal potential
 * :doc:`grace <pair_grace>` - Graph Atomic Cluster Expansion (GRACE) machine-learning potential
-* :doc:`grace/1l <pair_grace>` - GRACE single-layer Kokkos evaluator
-* :doc:`grace/1l/cpu <pair_grace>` - GRACE single-layer Kokkos evaluator (CPU build)
-* :doc:`grace/1layer/chunk <pair_grace>` - chunked single-layer GRACE TensorFlow evaluator
-* :doc:`grace/2l <pair_grace>` - GRACE two-layer Kokkos evaluator
-* :doc:`grace/2l/cpu <pair_grace>` - GRACE two-layer Kokkos evaluator (CPU build)
-* :doc:`grace/2layer/chunk <pair_grace>` - chunked two-layer GRACE TensorFlow evaluator
-* :doc:`grace/2layer/parallel <pair_grace>` - two-layer GRACE MPI TensorFlow evaluator without chunking
 * :doc:`grace/fs <pair_grace>` - native GRACE/FS evaluator
+* :doc:`grace/runtime <pair_grace_runtime>` - GRACE-1L / 2L / 3L models on the grace-runtime kernels (OpenMP CPU; Kokkos GPU variant)
 * :doc:`granular <pair_granular>` - Generalized granular potential
 * :doc:`granular/superellipsoid <pair_granular_superellipsoid>` - Generalized granular potential for superellipsoids
 * :doc:`gran/hertz/history <pair_gran>` - granular potential with Hertzian interactions
@@ -345,6 +339,7 @@ accelerated styles exist.
 * :doc:`oxrna2/xstk <pair_oxrna2>` -
 * :doc:`pace <pair_pace>` - Atomic Cluster Expansion (ACE) machine-learning potential
 * :doc:`pace/extrapolation <pair_pace>` - Atomic Cluster Expansion (ACE) machine-learning potential with extrapolation grades
+* :doc:`pace/runtime <pair_pace_runtime>` - Atomic Cluster Expansion (ACE) models on the grace-runtime kernels (OpenMP CPU; Kokkos GPU variant)
 * :doc:`pace/apip <pair_pace_apip>` - :doc:`adaptive-precision <Howto_apip>` version of ACE, used as precise potential
 * :doc:`pace/fast/apip <pair_pace_apip>` - :doc:`adaptive-precision <Howto_apip>` version of ACE, used as fast potential
 * :doc:`pace/precise/apip <pair_pace_apip>` - :doc:`adaptive-precision <Howto_apip>` version of ACE, used as precise potential

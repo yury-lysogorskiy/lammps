@@ -511,6 +511,7 @@ cflag
 cgdna
 CGDNA
 cgmap
+cgroup
 cgs
 cgsdk
 CGSDK
@@ -664,6 +665,7 @@ cpp
 cpu
 cradius
 Cramer
+Cray
 createatoms
 createAtoms
 CreateIDs
@@ -1609,6 +1611,7 @@ Howto
 Hoy
 Hoyt
 hplanck
+HPE
 Hs
 hstyle
 html

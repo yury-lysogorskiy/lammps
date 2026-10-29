@@ -69,7 +69,20 @@ endif()
 add_subdirectory(${lib-pace} build-pace)
 set_target_properties(pace PROPERTIES CXX_EXTENSIONS ON OUTPUT_NAME lammps_pace${LAMMPS_MACHINE})
 
-if(NOT DEFINED NO_GRACE_TF)
+# TensorFlow-based GRACE style (grace): opt-in, libtensorflow is found through Python or TF_LIB_FILE, otherwise
+# downloaded. NO_GRACE_TF (former switch, any value disabled it) is still honoured: NO_GRACE_TF=ON -> OFF,
+# NO_GRACE_TF=OFF -> ON.
+option(ENABLE_GRACE_TENSORFLOW "Build the TensorFlow-based GRACE style grace (needs libtensorflow)" OFF)
+if(DEFINED NO_GRACE_TF)
+  message(DEPRECATION "NO_GRACE_TF is deprecated, use ENABLE_GRACE_TENSORFLOW")
+  if(NO_GRACE_TF)
+    set(ENABLE_GRACE_TENSORFLOW OFF)
+  else()
+    set(ENABLE_GRACE_TENSORFLOW ON)
+  endif()
+endif()
+
+if(ENABLE_GRACE_TENSORFLOW)
 
   # --- Locate TensorFlow ---
   if(TF_LIB_FILE)
@@ -272,11 +285,12 @@ if(NOT DEFINED NO_GRACE_TF)
     set(PACE_TP ON)
     find_package(OpenMP)
   else()
-    message(STATUS "TensorFlow not found; GRACE/TF pair styles will not be available")
+    message(FATAL_ERROR "ENABLE_GRACE_TENSORFLOW=ON, but no TensorFlow library at ${TF_LIB_FILE} "
+                        "(set TF_LIB_FILE, or ENABLE_GRACE_TENSORFLOW=OFF)")
   endif()
 
 else()
-  message(STATUS "NO_GRACE_TF set: skipping TensorFlow/GRACE compilation")
+  message(STATUS "ENABLE_GRACE_TENSORFLOW=OFF: TensorFlow-based GRACE style grace not built")
 endif()
 
 if(CMAKE_PROJECT_NAME STREQUAL "lammps")
@@ -294,8 +308,8 @@ if(CMAKE_PROJECT_NAME STREQUAL "lammps")
     endif()
   endif()
 
-  if(DEFINED NO_GRACE_TF)
-    target_compile_definitions(lammps PRIVATE NO_GRACE_TF=1)
+  if(NOT ENABLE_GRACE_TENSORFLOW)
+    target_compile_definitions(lammps PRIVATE NO_GRACE_TF=1)    # guards the TensorFlow style sources
   endif()
 
   if(MLPACE_DO_NOT_DISABLE_TFLOAT32)
@@ -309,4 +323,150 @@ if(CMAKE_PROJECT_NAME STREQUAL "lammps")
       target_compile_definitions(lammps PRIVATE YAML_CPP_STATIC_DEFINE)
     endif()
   endif()
+endif()
+
+# grace-runtime (libgrace): kernels and drivers of the native styles grace/runtime(/kk) (GRACE-1L / 2L / 3L) and
+# pace/runtime(/kk) (PACE), compiled into LAMMPS with the LAMMPS compiler and flags.
+#   GRACE_RUNTIME=OFF: ML-PACE without the native GRACE styles (pace, grace/fs and the TensorFlow style grace only)
+#   default: the grace-runtime revision tested with this LAMMPS (the pin below), fetched at configure time
+#   GRACE_RUNTIME_GIT_TAG / GRACE_RUNTIME_GIT_REPOSITORY: another revision / repository (default: the pin)
+#   LOCAL_GRACE_RUNTIME: a grace-runtime checkout to use instead (development, or another revision)
+set(_grace_runtime_pin "0.1.0")
+set(_grace_runtime_pin_repository "https://github.com/ICAMS/grace-runtime.git")
+option(GRACE_RUNTIME "Build the native styles grace/runtime(/kk) and pace/runtime(/kk) (grace-runtime)" ON)
+# The cache entries GRACE_RUNTIME_GIT_REPOSITORY and GRACE_RUNTIME_GIT_TAG follow a change of the pin together while
+# both hold the default applied last (recorded in _<entry>_DEFAULT); a value given with -D keeps both. Entries
+# written before the record existed are recognised by the help string they had then: they hold the default of then.
+set(_grace_runtime_entries GRACE_RUNTIME_GIT_REPOSITORY GRACE_RUNTIME_GIT_TAG)
+set(_grace_runtime_GRACE_RUNTIME_GIT_REPOSITORY "${_grace_runtime_pin_repository}" "grace-runtime repository"
+    "grace-runtime repository")
+set(_grace_runtime_GRACE_RUNTIME_GIT_TAG "${_grace_runtime_pin}" "grace-runtime revision (default: the tested one)"
+    "grace-runtime revision tested with this LAMMPS")
+set(_grace_runtime_follow TRUE)
+foreach(_v IN LISTS _grace_runtime_entries)
+  list(GET _grace_runtime_${_v} 2 _old_help)
+  get_property(_h CACHE ${_v} PROPERTY HELPSTRING)
+  if(NOT DEFINED CACHE{_${_v}_DEFAULT} AND DEFINED CACHE{${_v}} AND _h STREQUAL _old_help)
+    set(_${_v}_DEFAULT "${${_v}}" CACHE INTERNAL "")
+  endif()
+  if(DEFINED CACHE{${_v}} AND NOT (DEFINED CACHE{_${_v}_DEFAULT} AND "${${_v}}" STREQUAL "${_${_v}_DEFAULT}"))
+    set(_grace_runtime_follow FALSE)
+  endif()
+endforeach()
+foreach(_v IN LISTS _grace_runtime_entries)
+  list(GET _grace_runtime_${_v} 0 _pin)
+  list(GET _grace_runtime_${_v} 1 _help)
+  if(_grace_runtime_follow OR NOT DEFINED CACHE{${_v}})
+    set(${_v} "${_pin}" CACHE STRING "${_help}" FORCE)
+    set(_${_v}_DEFAULT "${_pin}" CACHE INTERNAL "")
+  endif()
+endforeach()
+mark_as_advanced(GRACE_RUNTIME_GIT_REPOSITORY GRACE_RUNTIME_GIT_TAG)
+set(LOCAL_GRACE_RUNTIME "" CACHE PATH "Path to a grace-runtime checkout (instead of fetching one)")
+if(NOT GRACE_RUNTIME)
+  message(STATUS "GRACE_RUNTIME=OFF: native styles grace/runtime(/kk) and pace/runtime(/kk) not built")
+  target_compile_definitions(lammps PRIVATE NO_GRACE_RUNTIME=1)
+else()
+  if(LOCAL_GRACE_RUNTIME)
+    message(STATUS "Using local grace-runtime ${LOCAL_GRACE_RUNTIME}")
+    set(_grace_runtime_dir "${LOCAL_GRACE_RUNTIME}")
+  else()
+    if(FETCHCONTENT_SOURCE_DIR_GRACE_RUNTIME)
+      message(STATUS "grace-runtime from FETCHCONTENT_SOURCE_DIR_GRACE_RUNTIME "
+                     "${FETCHCONTENT_SOURCE_DIR_GRACE_RUNTIME}")
+    else()
+      if(NOT GRACE_RUNTIME_GIT_TAG STREQUAL _grace_runtime_pin)
+        message(WARNING "grace-runtime ${GRACE_RUNTIME_GIT_TAG} (GRACE_RUNTIME_GIT_TAG, set with -D) instead of the "
+                        "revision tested with this LAMMPS, ${_grace_runtime_pin}; cmake -U \"GRACE_RUNTIME_GIT_*\" . "
+                        "returns to it")
+      endif()
+      if(NOT GRACE_RUNTIME_GIT_REPOSITORY STREQUAL _grace_runtime_pin_repository)
+        message(STATUS "grace-runtime repository ${GRACE_RUNTIME_GIT_REPOSITORY} (GRACE_RUNTIME_GIT_REPOSITORY) "
+                       "instead of ${_grace_runtime_pin_repository}")
+      endif()
+      message(STATUS "Fetching grace-runtime ${GRACE_RUNTIME_GIT_TAG} from ${GRACE_RUNTIME_GIT_REPOSITORY}")
+    endif()
+    include(FetchContent)
+    # sources only: SOURCE_SUBDIR has no CMakeLists.txt, so MakeAvailable does not add grace-runtime as a subproject
+    FetchContent_Declare(grace_runtime
+      GIT_REPOSITORY "${GRACE_RUNTIME_GIT_REPOSITORY}"
+      GIT_TAG "${GRACE_RUNTIME_GIT_TAG}"
+      SOURCE_SUBDIR "no-cmake-project")
+    FetchContent_MakeAvailable(grace_runtime)
+    if(NOT grace_runtime_SOURCE_DIR)
+      message(FATAL_ERROR "ML-PACE: grace_runtime came from find_package or a dependency provider, not as sources; "
+                          "set LOCAL_GRACE_RUNTIME to a grace-runtime checkout")
+    endif()
+    set(_grace_runtime_dir "${grace_runtime_SOURCE_DIR}")
+    # the checkout must be the requested tag or commit (a branch is not checked: its local ref can lag the fetched
+    # one); git: found by the top-level CMakeLists.txt
+    if(GIT_FOUND AND NOT FETCHCONTENT_SOURCE_DIR_GRACE_RUNTIME)
+      macro(_grace_runtime_git out)
+        execute_process(COMMAND "${GIT_EXECUTABLE}" ${ARGN} WORKING_DIRECTORY "${_grace_runtime_dir}"
+                        OUTPUT_VARIABLE ${out} OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+      endmacro()
+      _grace_runtime_git(_grace_runtime_top rev-parse --show-toplevel)
+      file(REAL_PATH "${_grace_runtime_dir}" _grace_runtime_real)
+      if(_grace_runtime_top)
+        file(REAL_PATH "${_grace_runtime_top}" _grace_runtime_top)
+      endif()
+      _grace_runtime_git(_grace_runtime_branch rev-parse --verify --quiet
+                         "refs/remotes/origin/${GRACE_RUNTIME_GIT_TAG}")
+      if(_grace_runtime_top STREQUAL _grace_runtime_real AND _grace_runtime_branch STREQUAL "")
+        _grace_runtime_git(_grace_runtime_head rev-parse --verify --quiet HEAD)
+        _grace_runtime_git(_grace_runtime_want rev-parse --verify --quiet
+                           "refs/tags/${GRACE_RUNTIME_GIT_TAG}^{commit}")
+        string(TOLOWER "${GRACE_RUNTIME_GIT_TAG}" _grace_runtime_tag_lc)
+        if(_grace_runtime_want STREQUAL "" AND _grace_runtime_tag_lc MATCHES "^[0-9a-f]+$")
+          _grace_runtime_git(_grace_runtime_want rev-parse --verify --quiet "${_grace_runtime_tag_lc}^{commit}")
+        endif()
+        if(_grace_runtime_want STREQUAL "" OR NOT _grace_runtime_head STREQUAL _grace_runtime_want)
+          message(WARNING "grace-runtime checkout ${_grace_runtime_dir} is not at ${GRACE_RUNTIME_GIT_TAG}: "
+                          "FetchContent kept an existing checkout (FETCHCONTENT_FULLY_DISCONNECTED, "
+                          "FETCHCONTENT_UPDATES_DISCONNECTED"
+                          "[_GRACE_RUNTIME] before CMake 3.27) or grace_runtime was declared before; remove the "
+                          "checkout and configure again without those settings")
+        endif()
+      endif()
+    endif()
+  endif()
+  if(NOT EXISTS "${_grace_runtime_dir}/cmake/GraceRuntime.cmake")
+    message(FATAL_ERROR "ML-PACE: ${_grace_runtime_dir} is not a grace-runtime checkout (no cmake/GraceRuntime.cmake); "
+                        "set LOCAL_GRACE_RUNTIME to one, or GRACE_RUNTIME=OFF to build without the native GRACE styles")
+  endif()
+  include("${_grace_runtime_dir}/cmake/GraceRuntime.cmake")
+  # GEMM of the CPU GRACE styles (grace/runtime, GRACE-3L): cblas_sgemm (LP64 interface, no header needed) when a BLAS
+  # exporting it is found, otherwise a built-in kernel. Sequential MKL (BLA_VENDOR=Intel10_64lp_seq) or an OpenMP
+  # OpenBLAS recommended; a pthreads OpenBLAS is detected at run time and replaced by the built-in kernel.
+  set(GRACE_BLAS AUTO CACHE STRING "BLAS for the CPU GRACE styles: AUTO, ON or OFF")
+  set_property(CACHE GRACE_BLAS PROPERTY STRINGS AUTO ON OFF)
+  if(NOT GRACE_BLAS STREQUAL "OFF")
+    find_package(BLAS)
+    set(_grace_cblas OFF)
+    if(BLAS_FOUND)
+      include(CheckFunctionExists)
+      set(CMAKE_REQUIRED_LIBRARIES ${BLAS_LIBRARIES})
+      check_function_exists(cblas_sgemm GRACE_HAVE_CBLAS_SGEMM)
+      unset(CMAKE_REQUIRED_LIBRARIES)
+      if(GRACE_HAVE_CBLAS_SGEMM)
+        set(_grace_cblas ON)
+      endif()
+    endif()
+    if(_grace_cblas)
+      message(STATUS "CPU GRACE styles: GEMM by cblas_sgemm (${BLAS_LIBRARIES})")
+      target_compile_definitions(lammps PRIVATE GRACE_BLAS)    # grace/cpu_gemm.h (libgrace)
+      target_link_libraries(lammps PRIVATE ${BLAS_LIBRARIES})
+    elseif(GRACE_BLAS STREQUAL "ON")
+      message(FATAL_ERROR "GRACE_BLAS=ON, but no BLAS exporting cblas_sgemm was found "
+                          "(set BLA_VENDOR, MKLROOT or CMAKE_PREFIX_PATH)")
+    else()
+      message(STATUS "CPU GRACE styles: built-in GEMM (no BLAS exporting cblas_sgemm found)")
+    endif()
+  else()
+    message(STATUS "CPU GRACE styles: built-in GEMM (GRACE_BLAS=OFF)")
+  endif()
+  # the sources go into the lammps target itself, so they get exactly the LAMMPS flags (incl. the target-specific
+  # -march/-mtune that Kokkos adds); a separate static library would miss those
+  target_sources(lammps PRIVATE ${GRACE_RUNTIME_SOURCES})
+  target_include_directories(lammps PRIVATE ${GRACE_RUNTIME_INCLUDE_DIRS} ${GRACE_RUNTIME_PRIVATE_INCLUDE_DIRS})
 endif()

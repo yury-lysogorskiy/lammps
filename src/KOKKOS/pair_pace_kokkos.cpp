@@ -18,6 +18,9 @@
 
 #include "pair_pace_kokkos.h"
 
+#include <Kokkos_Sort.hpp>
+#include <cstdlib>
+
 #include "atom_kokkos.h"
 #include "atom_masks.h"
 #include "comm.h"
@@ -114,9 +117,11 @@ void PairPACEKokkos<DeviceType>::grow(int natom, int maxneigh)
     MemKK::realloc_kokkos(A, "pace:A", natom, nelements, (lmax + 1) * (lmax + 1), nradmax + 1);
     MemKK::realloc_kokkos(A_rank1, "pace:A_rank1", natom, nelements, nradbase);
 
-    MemKK::realloc_kokkos(A_list, "pace:A_list", natom, idx_ms_combs_max, basis_set->rankmax);
+    store_prods = basis_set->rankmax > RANK_REG;
+    const int nps = store_prods ? natom : 1, ncs = store_prods ? idx_ms_combs_max : 1;
+    MemKK::realloc_kokkos(A_list, "pace:A_list", nps, ncs, basis_set->rankmax);
     //size is +1 of max to avoid out-of-boundary array access in double-triangular scheme
-    MemKK::realloc_kokkos(A_forward_prod, "pace:A_forward_prod", natom, idx_ms_combs_max, basis_set->rankmax + 1);
+    MemKK::realloc_kokkos(A_forward_prod, "pace:A_forward_prod", nps, ncs, basis_set->rankmax + 1);
 
     MemKK::realloc_kokkos(e_atom, "pace:e_atom", natom);
     MemKK::realloc_kokkos(rhos, "pace:rhos", natom, basis_set->ndensitymax + 1); // +1 density for core repulsion
@@ -133,7 +138,7 @@ void PairPACEKokkos<DeviceType>::grow(int natom, int maxneigh)
     MemKK::realloc_kokkos(d_jj_min, "pace:j_min_pair", natom);
     MemKK::realloc_kokkos(d_corerep, "pace:corerep", natom); // per-atom corerep
 
-    MemKK::realloc_kokkos(dB_flatten, "pace:dB_flatten", natom, idx_ms_combs_max, basis_set->rankmax);
+    MemKK::realloc_kokkos(dB_flatten, "pace:dB_flatten", nps, ncs, basis_set->rankmax);
   }
 
   if (((int)fr.extent(0) < natom) || ((int)fr.extent(1) < maxneigh)) {
@@ -225,10 +230,12 @@ void PairPACEKokkos<DeviceType>::copy_pertype()
   auto h_cut_in = Kokkos::create_mirror_view(d_cut_in);
   auto h_dcut_in = Kokkos::create_mirror_view(d_dcut_in);
 
+  // the radial functions' tables (all element pairs), as the CPU evaluator; map_bond_specifications holds only the
+  // pairs the potential file names
   for (int mu_i = 0; mu_i < nelements; ++mu_i) {
     for (int mu_j = 0; mu_j < nelements; ++mu_j) {
-      h_cut_in(mu_i,mu_j) = basis_set->map_bond_specifications.at({mu_i,mu_j}).rcut_in;
-      h_dcut_in(mu_i,mu_j) = basis_set->map_bond_specifications.at({mu_i,mu_j}).dcut_in;
+      h_cut_in(mu_i,mu_j) = basis_set->radial_functions->cut_in(mu_i,mu_j);
+      h_dcut_in(mu_i,mu_j) = basis_set->radial_functions->dcut_in(mu_i,mu_j);
     }
   }
   Kokkos::deep_copy(d_cut_in, h_cut_in);
@@ -446,8 +453,8 @@ void PairPACEKokkos<DeviceType>::init_style()
   MemKK::realloc_kokkos(dl, "pace:dl", lmax + 1);
 
   pre_compute_harmonics(lmax);
+  copy_splines();    // first: it refuses radial bases other than ACERadialFunctions
   copy_pertype();
-  copy_splines();
   copy_tilde();
 }
 
@@ -588,6 +595,23 @@ void PairPACEKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
   d_neighbors = k_list->d_neighbors;
   d_ilist = k_list->d_ilist;
   inum = list->inum;
+  // per-element basis: order the atoms by type so a warp works on one element's ms-combinations.
+  // Stable (key = type * inum + ii).
+  static const bool sort_by_type = !getenv("PACE_NO_TYPE_SORT");
+  if (!host_flag && sort_by_type && atom->ntypes > 1 && inum > 0) {
+    if ((int) d_ilist_sorted.extent(0) < inum) {
+      d_ilist_sorted = typename AT::t_int_1d("pace:ilist_sorted", inum);
+      d_type_key = Kokkos::View<long long *, DeviceType>("pace:type_key", inum);
+    }
+    auto src = k_list->d_ilist; auto ty = type; auto key = d_type_key; auto dst = d_ilist_sorted;
+    const long long n = inum;
+    Kokkos::parallel_for("pace::type_key", Kokkos::RangePolicy<DeviceType>(0, inum),
+        KOKKOS_LAMBDA(const int ii) { key(ii) = (long long) ty(src(ii)) * n + ii; });
+    Kokkos::sort(Kokkos::subview(key, std::make_pair(0, inum)));
+    Kokkos::parallel_for("pace::type_sort", Kokkos::RangePolicy<DeviceType>(0, inum),
+        KOKKOS_LAMBDA(const int ii) { dst(ii) = src((int) (key(ii) % n)); });
+    d_ilist = d_ilist_sorted;
+  }
 
   need_dup = lmp->kokkos->need_dup<DeviceType>();
   if (need_dup) {
@@ -725,7 +749,7 @@ void PairPACEKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
     if (flag_corerep_factor) {
       h_corerep = Kokkos::create_mirror_view(d_corerep);
       Kokkos::deep_copy(h_corerep,d_corerep);
-      memcpy(corerep_factor+chunk_offset, (void *) h_corerep.data(), sizeof(double)*chunk_size);
+      for (int k = 0; k < chunk_size; k++) corerep_factor[chunk_offset + k] = h_corerep(k);    // KK_FLOAT -> double
     }
 
     chunk_offset += chunk_size;
@@ -1131,6 +1155,17 @@ void PairPACEKokkos<DeviceType>::operator() (TagPairPACEComputeRho, const int& i
       //for rank=1 (r=0) only 1 ms-combination exists (ms_ind=0), so index of func.ctildes is 0..ndensity-1
       Kokkos::atomic_add(&rhos(ii, p), d_ctildes(mu_i, idx_ms_combs, p) * A_cur);
     }
+  } else if (!store_prods) { // rank > 1, B = product of the A's of this ms-combination, in registers
+    complex B = complex::one();
+    for (int t = 0; t < rank; t++) {
+      const int mu = d_mus(mu_i, idx_func, t);
+      const int n = d_ns(mu_i, idx_func, t);
+      const int l = d_ls(mu_i, idx_func, t);
+      const int m = d_ms_combs(mu_i, idx_ms_combs, t);
+      B = B * A(ii, mu, l * (l + 1) + m, n - 1);
+    }
+    for (int p = 0; p < ndensity; ++p)    // real part of B times the real ctilde
+      Kokkos::atomic_add(&rhos(ii, p), B.re * d_ctildes(mu_i, idx_ms_combs, p));
   } else { // rank > 1
     // loop over {ms} combinations in sum
 
@@ -1260,6 +1295,18 @@ void PairPACEKokkos<DeviceType>::operator() (TagPairPACEComputeWeights, const in
       theta += dF_drho(ii, p) * d_ctildes(mu_i, idx_ms_combs, p);
 
     theta *= 0.5; // 0.5 factor due to possible KK_FLOAT counting ???
+    if (!store_prods) {    // dB_t recomputed from A with compile-time rank
+      switch (rank) {
+        case 2: weights_comb<2>(ii, mu_i, idx_func, idx_ms_combs, theta); return;
+        case 3: weights_comb<3>(ii, mu_i, idx_func, idx_ms_combs, theta); return;
+        case 4: weights_comb<4>(ii, mu_i, idx_func, idx_ms_combs, theta); return;
+        case 5: weights_comb<5>(ii, mu_i, idx_func, idx_ms_combs, theta); return;
+        case 6: weights_comb<6>(ii, mu_i, idx_func, idx_ms_combs, theta); return;
+        case 7: weights_comb<7>(ii, mu_i, idx_func, idx_ms_combs, theta); return;
+        case 8: weights_comb<8>(ii, mu_i, idx_func, idx_ms_combs, theta); return;
+        default: return;
+      }
+    }
     for (int t = 0; t < rank; ++t) {
       const int m_t = d_ms_combs(mu_i, idx_ms_combs, t);
       const int factor = (m_t % 2 == 0 ? 1 : -1);
@@ -1282,6 +1329,51 @@ void PairPACEKokkos<DeviceType>::operator() (TagPairPACEComputeWeights, const in
         Kokkos::atomic_add(&(weights(ii, mu_t, idxm_sph, n_t - 1).re), valuem.re);
         Kokkos::atomic_add(&(weights(ii, mu_t, idxm_sph, n_t - 1).im), valuem.im);
       }
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+
+template<class DeviceType>
+template<int R>
+KOKKOS_INLINE_FUNCTION
+void PairPACEKokkos<DeviceType>::weights_comb(const int ii, const int mu_i, const int idx_func, const int idx_ms_combs,
+                                              const KK_FLOAT theta) const
+{
+  complex a[R], fwd[R], bwd[R];
+#pragma unroll
+  for (int t = 0; t < R; t++) {
+    const int l = d_ls(mu_i, idx_func, t), m = d_ms_combs(mu_i, idx_ms_combs, t);
+    a[t] = A(ii, d_mus(mu_i, idx_func, t), l * (l + 1) + m, d_ns(mu_i, idx_func, t) - 1);
+  }
+  // same operation order as the stored forward / backward triangles: dB_t = (a_0 ... a_{t-1}) (a_R-1 ... a_{t+1})
+  fwd[0] = complex::one();
+#pragma unroll
+  for (int t = 1; t < R; t++) fwd[t] = fwd[t - 1] * a[t - 1];
+  bwd[R - 1] = complex::one();
+#pragma unroll
+  for (int t = R - 1; t >= 1; t--) bwd[t - 1] = bwd[t] * a[t];
+#pragma unroll
+  for (int t = 0; t < R; ++t) {
+    const int m_t = d_ms_combs(mu_i, idx_ms_combs, t);
+    const int factor = (m_t % 2 == 0 ? 1 : -1);
+    const complex dB = fwd[t] * bwd[t];
+    const int mu_t = d_mus(mu_i, idx_func, t);
+    const int n_t = d_ns(mu_i, idx_func, t);
+    const int l_t = d_ls(mu_i, idx_func, t);
+    const int idx_sph = d_idx_sph(l_t * (l_t + 1) + m_t);
+    if (idx_sph >= 0) {
+      const complex value = theta * dB;
+      Kokkos::atomic_add(&(weights(ii, mu_t, idx_sph, n_t - 1).re), value.re);
+      Kokkos::atomic_add(&(weights(ii, mu_t, idx_sph, n_t - 1).im), value.im);
+    }
+    // update -m_t (that could also be positive), because the basis is half_basis
+    const int idxm_sph = d_idx_sph(l_t * (l_t + 1) - m_t);
+    if (idxm_sph >= 0) {
+      const complex valuem = theta * dB.conj() * (KK_FLOAT) factor;
+      Kokkos::atomic_add(&(weights(ii, mu_t, idxm_sph, n_t - 1).re), valuem.re);
+      Kokkos::atomic_add(&(weights(ii, mu_t, idxm_sph, n_t - 1).im), valuem.im);
     }
   }
 }

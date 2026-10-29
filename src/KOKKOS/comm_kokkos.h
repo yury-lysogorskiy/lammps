@@ -61,6 +61,10 @@ class CommKokkos : public CommBrick {
 
   void forward_comm_array(int, double **) override;            // forward comm of array
 
+  // pair communication packed and unpacked on the device whatever the legacy settings: without GPU-aware MPI only
+  // the packed buffers go through the host (the legacy path moves the pair's whole per-atom arrays)
+  void forward_comm_pair_device(Pair *pair, int size = 0);
+  void reverse_comm_pair_device(Pair *pair, int size = 0);
   template<class DeviceType> void forward_comm_device();
   template<class DeviceType> void reverse_comm_device();
   template<class DeviceType> void forward_comm_device(Pair *pair, int size=0);
@@ -91,6 +95,9 @@ class CommKokkos : public CommBrick {
   int max_buf_pair,max_buf_fix,max_buf_compute;
   DAT::tdual_double_1d k_buf_send_pair, k_buf_send_fix, k_buf_send_compute;
   DAT::tdual_double_1d k_buf_recv_pair, k_buf_recv_fix, k_buf_recv_compute;
+  // pinned host staging of the pair buffers without GPU-aware MPI
+  Kokkos::View<double *, LMPPinnedHostType> h_stage_send_pair, h_stage_recv_pair;
+  void grow_stage_pair(int);
   void grow_buf_pair(int);
   void grow_buf_fix(int);
   void grow_buf_compute(int);

@@ -645,6 +645,15 @@ void PairHybrid::init_style()
 
   for (istyle = 0; istyle < nstyles; istyle++) styles[istyle]->init_style();
 
+  // sub-styles may set their comm sizes only in coeff() or init_style(), after settings() called flags();
+  // Comm::init() sizes its buffers from these values later, so take the max of the sub-styles again
+
+  for (istyle = 0; istyle < nstyles; istyle++) {
+    comm_forward = MAX(comm_forward, styles[istyle]->comm_forward);
+    comm_reverse = MAX(comm_reverse, styles[istyle]->comm_reverse);
+    comm_reverse_off = MAX(comm_reverse_off, styles[istyle]->comm_reverse_off);
+  }
+
   // create skip lists inside each pair neigh request
   // any kind of list can have its skip flag set in this loop
 
