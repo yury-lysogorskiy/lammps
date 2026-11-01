@@ -331,7 +331,7 @@ endif()
 #   default: the grace-runtime revision tested with this LAMMPS (the pin below), fetched at configure time
 #   GRACE_RUNTIME_GIT_TAG / GRACE_RUNTIME_GIT_REPOSITORY: another revision / repository (default: the pin)
 #   LOCAL_GRACE_RUNTIME: a grace-runtime checkout to use instead (development, or another revision)
-set(_grace_runtime_pin "0.1.1")
+set(_grace_runtime_pin "0.1.2")
 set(_grace_runtime_pin_repository "https://github.com/ICAMS/grace-runtime.git")
 option(GRACE_RUNTIME "Build the native styles grace/runtime(/kk) and pace/runtime(/kk) (grace-runtime)" ON)
 # The cache entries GRACE_RUNTIME_GIT_REPOSITORY and GRACE_RUNTIME_GIT_TAG follow a change of the pin together while

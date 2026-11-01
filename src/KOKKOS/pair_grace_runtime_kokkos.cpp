@@ -54,6 +54,12 @@ template<class DeviceType> template<class F> void PairGRACERuntimeKokkos<DeviceT
       eng);
 }
 
+template<class DeviceType> typename PairGRACERuntimeKokkos<DeviceType>::E2G *PairGRACERuntimeKokkos<DeviceType>::eng2()
+{
+  if (auto *e = std::get_if<E2>(&eng)) return e;
+  return std::get_if<E2G>(&eng);
+}
+
 template<class DeviceType>
 PairGRACERuntimeKokkos<DeviceType>::PairGRACERuntimeKokkos(LAMMPS *lmp, bool pace_) :
     Pair(lmp), pace(pace_), name(pace_ ? "pace/runtime/kk" : "grace/runtime/kk")
@@ -131,7 +137,8 @@ template<class DeviceType> void *PairGRACERuntimeKokkos<DeviceType>::extract_per
   return has_uq ? uq.peratom(str) : nullptr;
 }
 
-// the engine of kind E: model loaded, engine settings, LAMMPS type -> model element
+// the engine of kind E: model loaded, engine settings, LAMMPS type -> model element; GRACE-2L outside the fused
+// kernels: the generic engine E2G (GRACE_GENERIC_KERNELS=1, with a warning; an error otherwise)
 template<class DeviceType>
 template<class E>
 void PairGRACERuntimeKokkos<DeviceType>::load(const std::string &path, const std::string &asi)
@@ -146,12 +153,34 @@ void PairGRACERuntimeKokkos<DeviceType>::load(const std::string &path, const std
   } catch (const std::exception &e) {
     error->all(FLERR, "pair_style {}: cannot load {}: {}", name, path, e.what());
   }
+#ifdef GRACE_KK_2L_GENERIC_ENGINE
+  if constexpr (std::is_same_v<E, E2>) {
+    bool generic = false;
+    try {
+      generic = E2::use_generic(*model);
+    } catch (const grace::Error &err) {
+      error->all(FLERR, "pair_style {}: {}", name, err.what());
+    }
+    if (generic) {
+      if (comm->me == 0) error->warning(FLERR, "pair_style {}: GRACE-2L/KK: {}", name, E2::slow_notice(*model));
+      install<E2G>(model);
+      return;
+    }
+  }
+#endif
+  install<E>(model);
+}
+
+template<class DeviceType>
+template<class E>
+void PairGRACERuntimeKokkos<DeviceType>::install(const std::shared_ptr<typename E::model_type> &model)
+{
   type2mu = GraceRuntime::type2mu(lmp, name, map, elements, model->element_names);
   E &e = eng.template emplace<E>();
   e.log = grace::Logger{GraceRuntime::log, lmp};
   e.chunksize = set.chunksize;
   e.debug_no_energy_only_calc = set.debug_no_energy_only_calc;
-  e.spline_n = set.spline;
+  if constexpr (!std::is_same_v<E, E2G>) e.spline_n = set.spline;
   if constexpr (std::is_same_v<E, E1> || std::is_same_v<E, E2>) e.no_shape = set.noshape;
   if constexpr (std::is_same_v<E, E2>) e.store_l1 = set.store_l1;
   if constexpr (std::is_same_v<E, E3>) {
@@ -248,7 +277,7 @@ template<class DeviceType> void PairGRACERuntimeKokkos<DeviceType>::init_style()
   // MPI communication sizes (known after setup): one message row per atom (2L), a row of either layer (3L: eq1_norm /
   // eq2_norm, parity-doubled) or its adjoint; 1L, PACE: no layer messages
   comm_forward = comm_reverse = 0;
-  if (auto *e = std::get_if<E2>(&eng)) comm_forward = comm_reverse = e->comm_width();
+  if (auto *e = eng2()) comm_forward = comm_reverse = e->comm_width();
   if (auto *e = std::get_if<E3>(&eng)) comm_forward = comm_reverse = std::max(e->comm_width(0), e->comm_width(1));
 }
 
@@ -353,7 +382,7 @@ template<class DeviceType> template<class E> void PairGRACERuntimeKokkos<DeviceT
   const bool any_uq = uq.any(has_uq);
   in.uq = any_uq;
   if (any_uq) uq.grow(atom->nlocal);
-  if constexpr (std::is_same_v<E, E2>) {    // the layer messages of the ghost atoms
+  if constexpr (std::is_base_of_v<E2G, E>) {    // the layer messages of the ghost atoms (E2, E2G)
     in.nall = atom->nlocal + atom->nghost;
     in.exchange = &exchange2;
   } else if constexpr (std::is_same_v<E, E3>) {
@@ -414,13 +443,13 @@ void PairGRACERuntimeKokkos<DeviceType>::pair_exchange(bool reverse, ToHost &&to
 
 template<class DeviceType> void PairGRACERuntimeKokkos<DeviceType>::Exchange2::forward()
 {
-  auto &e = std::get<E2>(p->eng);
+  auto &e = *p->eng2();
   p->pair_exchange(false, [&] { e.copy_rows_to_host(false); }, [&] { e.copy_rows_from_host(false); });
 }
 
 template<class DeviceType> void PairGRACERuntimeKokkos<DeviceType>::Exchange2::reverse()
 {
-  auto &e = std::get<E2>(p->eng);
+  auto &e = *p->eng2();
   p->pair_exchange(true, [&] { e.copy_rows_to_host(true); }, [&] { e.copy_rows_from_host(true); });
 }
 
@@ -443,25 +472,25 @@ template<class DeviceType>
 int PairGRACERuntimeKokkos<DeviceType>::pack_forward_comm(int n, int *list, double *buf, int /*pbc_flag*/,
                                                           int * /*pbc*/)
 {
-  if (auto *e = std::get_if<E2>(&eng)) return e->pack_forward_host(n, list, buf);
+  if (auto *e = eng2()) return e->pack_forward_host(n, list, buf);
   return std::get<E3>(eng).pack_forward_host(comm_layer, n, list, buf);
 }
 
 template<class DeviceType> void PairGRACERuntimeKokkos<DeviceType>::unpack_forward_comm(int n, int first, double *buf)
 {
-  if (auto *e = std::get_if<E2>(&eng)) e->unpack_forward_host(n, first, buf);
+  if (auto *e = eng2()) e->unpack_forward_host(n, first, buf);
   else std::get<E3>(eng).unpack_forward_host(comm_layer, n, first, buf);
 }
 
 template<class DeviceType> int PairGRACERuntimeKokkos<DeviceType>::pack_reverse_comm(int n, int first, double *buf)
 {
-  if (auto *e = std::get_if<E2>(&eng)) return e->pack_reverse_host(n, first, buf);
+  if (auto *e = eng2()) return e->pack_reverse_host(n, first, buf);
   return std::get<E3>(eng).pack_reverse_host(comm_layer, n, first, buf);
 }
 
 template<class DeviceType> void PairGRACERuntimeKokkos<DeviceType>::unpack_reverse_comm(int n, int *list, double *buf)
 {
-  if (auto *e = std::get_if<E2>(&eng)) e->unpack_reverse_host(n, list, buf);
+  if (auto *e = eng2()) e->unpack_reverse_host(n, list, buf);
   else std::get<E3>(eng).unpack_reverse_host(comm_layer, n, list, buf);
 }
 
@@ -472,7 +501,7 @@ int PairGRACERuntimeKokkos<DeviceType>::pack_forward_comm_kokkos(int n, DAT::tdu
 {
   const auto list = k_sendlist.view<DeviceType>();
   const auto b = buf.view<DeviceType>();
-  if (auto *e = std::get_if<E2>(&eng)) return e->pack_forward(n, list, b);
+  if (auto *e = eng2()) return e->pack_forward(n, list, b);
   return std::get<E3>(eng).pack_forward(comm_layer, n, list, b);
 }
 
@@ -480,7 +509,7 @@ template<class DeviceType>
 void PairGRACERuntimeKokkos<DeviceType>::unpack_forward_comm_kokkos(int n, int first, DAT::tdual_double_1d &buf)
 {
   const auto b = buf.view<DeviceType>();
-  if (auto *e = std::get_if<E2>(&eng)) e->unpack_forward(n, first, b);
+  if (auto *e = eng2()) e->unpack_forward(n, first, b);
   else std::get<E3>(eng).unpack_forward(comm_layer, n, first, b);
 }
 
@@ -488,7 +517,7 @@ template<class DeviceType>
 int PairGRACERuntimeKokkos<DeviceType>::pack_reverse_comm_kokkos(int n, int first, DAT::tdual_double_1d &buf)
 {
   const auto b = buf.view<DeviceType>();
-  if (auto *e = std::get_if<E2>(&eng)) return e->pack_reverse(n, first, b);
+  if (auto *e = eng2()) return e->pack_reverse(n, first, b);
   return std::get<E3>(eng).pack_reverse(comm_layer, n, first, b);
 }
 
@@ -498,7 +527,7 @@ void PairGRACERuntimeKokkos<DeviceType>::unpack_reverse_comm_kokkos(int n, DAT::
 {
   const auto list = k_sendlist.view<DeviceType>();
   const auto b = buf.view<DeviceType>();
-  if (auto *e = std::get_if<E2>(&eng)) e->unpack_reverse(n, list, b);
+  if (auto *e = eng2()) e->unpack_reverse(n, list, b);
   else std::get<E3>(eng).unpack_reverse(comm_layer, n, list, b);
 }
 

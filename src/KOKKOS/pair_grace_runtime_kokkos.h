@@ -81,6 +81,7 @@ template<class DeviceType> class PairGRACERuntimeKokkos : public Pair, public Ko
   using Traits = GraceLammpsTraits<DeviceType>;
   using E1 = grace::kk::Grace1LFusedKK<DeviceType, Traits>;
   using E2 = grace::kk::Grace2LFusedKK<DeviceType, Traits>;
+  using E2G = grace::kk::Grace2LKK<DeviceType, float, float, Traits>;    // GRACE-2L outside E2's kernels (generic)
   using E3 = grace::kk::Grace3LFusedKK<DeviceType, Traits>;
   using EP = grace::kk::PaceKK<DeviceType, Traits>;
 
@@ -110,7 +111,7 @@ template<class DeviceType> class PairGRACERuntimeKokkos : public Pair, public Ko
  protected:
   const bool pace;           // pace/runtime/kk: PACE models only; grace/runtime/kk: GRACE-1L / 2L / 3L only
   const std::string name;    // style name for messages
-  std::variant<std::monostate, E1, E2, E3, EP> eng;
+  std::variant<std::monostate, E1, E2, E2G, E3, EP> eng;
   GraceRuntimeSettings set;
   GraceRuntime::ModelFile mf;              // the model of the last pair_coeff
   std::vector<std::string> coeff_args;    // its arguments (a new pair_style replays them; empty before pair_coeff)
@@ -124,7 +125,7 @@ template<class DeviceType> class PairGRACERuntimeKokkos : public Pair, public Ko
   DAT::ttransform_kkacc_1d_6 k_vatom;
   DAT::ttransform_kkacc_1d_9 k_cvatom;
 
-  struct Exchange2 : E2::Exchange {
+  struct Exchange2 : E2G::Exchange {
     PairGRACERuntimeKokkos *p = nullptr;
     void forward() override;
     void reverse() override;
@@ -139,6 +140,8 @@ template<class DeviceType> class PairGRACERuntimeKokkos : public Pair, public Ko
   void build();
   template<class F> void with_engine(F &&);    // f(engine) for the engine of the model; nothing before pair_coeff
   template<class E> void load(const std::string &path, const std::string &asi);
+  template<class E> void install(const std::shared_ptr<typename E::model_type> &model);
+  E2G *eng2();    // the GRACE-2L engine, fused or generic; nullptr for another model kind
   template<class E> void run(E &);
   void prepare_peratom();
   void finish_peratom();
