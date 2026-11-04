@@ -1,4 +1,10 @@
 
+# set policy to use the time of extraction as timestamps of files unpacked from downloaded
+# archives, so that updating an archive version triggers rebuilding all dependent objects
+ if(POLICY CMP0135)
+  cmake_policy(SET CMP0135 NEW)
+endif()
+
 # Silence CMake warnings about FindCUDA being obsolete.
 # We may need to eventually rewrite this section to use enable_language(CUDA)
 if(POLICY CMP0146)
@@ -74,7 +80,8 @@ if(GPU_API STREQUAL "CUDA")
   option(CUDA_BUILD_MULTIARCH "Enable building CUDA kernels for all supported GPU architectures" ON)
   mark_as_advanced(GPU_BUILD_MULTIARCH)
 
-  set(GPU_ARCH "sm_75" CACHE STRING "LAMMPS GPU CUDA SM primary architecture (e.g. sm_80)")
+  # GPU_ARCH is the canonical architecture setting for all GPU_API backends.
+  set(GPU_ARCH "sm_75" CACHE STRING "LAMMPS GPU architecture (e.g. sm_80 for CUDA)")
 
   # ensure that no *cubin.h files exist from a compile in the lib/gpu folder
   file(GLOB GPU_LIB_OLD_CUBIN_HEADERS CONFIGURE_DEPENDS ${LAMMPS_LIB_SOURCE_DIR}/gpu/*_cubin.h)
@@ -288,16 +295,37 @@ elseif(GPU_API STREQUAL "HIP")
 
   set(ENV{HIP_PLATFORM} ${HIP_PLATFORM})
 
-  if(HIP_PLATFORM STREQUAL "amd")
-    set(HIP_ARCH "gfx906" CACHE STRING "HIP target architecture")
-  elseif(HIP_PLATFORM STREQUAL "spirv")
-    set(HIP_ARCH "spirv" CACHE STRING "HIP target architecture")
-  elseif(HIP_PLATFORM STREQUAL "nvcc")
-    find_package(CUDA REQUIRED)
-    set(HIP_ARCH "sm_75" CACHE STRING "HIP primary CUDA architecture (e.g. sm_75)")
+  # GPU_ARCH is the canonical architecture setting for all GPU_API backends.
+  # HIP_ARCH is still accepted for backward compatibility but is deprecated.
+  if(DEFINED HIP_ARCH)
+    message(DEPRECATION "The HIP_ARCH variable is deprecated. Please use GPU_ARCH instead.")
+    if(NOT DEFINED GPU_ARCH)
+      set(GPU_ARCH "${HIP_ARCH}" CACHE STRING "LAMMPS GPU architecture" FORCE)
+    endif()
+    unset(HIP_ARCH CACHE)
+  endif()
 
-    if(CUDA_VERSION VERSION_LESS 8.0)
-      message(FATAL_ERROR "CUDA Toolkit version 8.0 or later is required")
+  if(HIP_PLATFORM STREQUAL "amd")
+    set(GPU_ARCH "gfx906" CACHE STRING "LAMMPS GPU architecture (e.g. gfx90a for HIP/AMD)")
+    set(HIP_ARCH "${GPU_ARCH}")
+  elseif(HIP_PLATFORM STREQUAL "spirv")
+    set(GPU_ARCH "spirv" CACHE STRING "LAMMPS GPU architecture")
+    set(HIP_ARCH "${GPU_ARCH}")
+  elseif(HIP_PLATFORM STREQUAL "nvidia")
+    # GPU sorting with hipCUB requires the host code of the GPU library to be
+    # compiled with nvcc, but for NVIDIA GPUs it is compiled with the C++ compiler
+    if(HIP_USE_DEVICE_SORT)
+      message(STATUS "GPU sorting is not available with HIP_PLATFORM=nvidia. Disabling it.")
+      set(HIP_USE_DEVICE_SORT OFF CACHE BOOL "Use GPU sorting" FORCE)
+    endif()
+    find_package(CUDA REQUIRED)
+    set(GPU_ARCH "sm_75" CACHE STRING "LAMMPS GPU architecture (e.g. sm_75 for HIP/NVCC)")
+    set(HIP_ARCH "${GPU_ARCH}")
+
+    # kernels compiled with CUDA 10 or older use texture references, which the
+    # HIP back end does not bind
+    if(CUDA_VERSION VERSION_LESS 11.0)
+      message(FATAL_ERROR "CUDA Toolkit version 11.0 or later is required for HIP_PLATFORM=nvidia")
     elseif(CUDA_VERSION VERSION_GREATER_EQUAL "12.0")
       message(WARNING "Untested CUDA Toolkit version ${CUDA_VERSION}. Use at your own risk")
       set(HIP_CUDA_GENCODE "-arch=all")
@@ -353,6 +381,17 @@ elseif(GPU_API STREQUAL "HIP")
     endif()
   endif()
 
+  # The HIP CMake package of some distributions (e.g. Ubuntu 26.04) does not
+  # set HIP_HIPCC_EXECUTABLE, so look for hipcc if the package did not provide it
+  if(NOT HIP_HIPCC_EXECUTABLE)
+    unset(HIP_HIPCC_EXECUTABLE)
+    unset(HIP_HIPCC_EXECUTABLE CACHE)
+    find_program(HIP_HIPCC_EXECUTABLE NAMES hipcc HINTS ${hip_BIN_INSTALL_DIR} ${ROCM_PATH}/bin ENV HIP_PATH PATH_SUFFIXES bin)
+  endif()
+  if(NOT HIP_HIPCC_EXECUTABLE)
+    message(FATAL_ERROR "Could not find hipcc, use -DHIP_HIPCC_EXECUTABLE=/path/to/hipcc to help cmake finding it.")
+  endif()
+
   file(GLOB GPU_LIB_CU CONFIGURE_DEPENDS ${LAMMPS_LIB_SOURCE_DIR}/gpu/[^.]*.cu ${CMAKE_CURRENT_SOURCE_DIR}/gpu/[^.]*.cu)
   list(REMOVE_ITEM GPU_LIB_CU ${LAMMPS_LIB_SOURCE_DIR}/gpu/lal_pppm.cu)
 
@@ -379,7 +418,7 @@ elseif(GPU_API STREQUAL "HIP")
             DEPENDS ${CU_CPP_FILE}
             COMMENT "Generating ${CU_NAME}.cubin")
         endif()
-    elseif(HIP_PLATFORM STREQUAL "nvcc")
+    elseif(HIP_PLATFORM STREQUAL "nvidia")
         add_custom_command(OUTPUT ${CUBIN_FILE}
           VERBATIM COMMAND ${HIP_HIPCC_EXECUTABLE} --fatbin --use_fast_math -DUSE_HIP -D_${GPU_PREC_SETTING} -DLAMMPS_${LAMMPS_SIZES} ${HIP_CUDA_GENCODE} -I${LAMMPS_LIB_SOURCE_DIR}/gpu -o ${CUBIN_FILE} ${CU_FILE}
           DEPENDS ${CU_FILE}
@@ -406,6 +445,11 @@ elseif(GPU_API STREQUAL "HIP")
   add_library(gpu STATIC ${GPU_LIB_SOURCES})
   target_include_directories(gpu PRIVATE ${LAMMPS_LIB_BINARY_DIR}/gpu)
   target_compile_definitions(gpu PRIVATE -DUSE_HIP -D_${GPU_PREC_SETTING})
+  # SPIR-V (chipStar) gives no warp-synchronous guarantee, so the device-side
+  # block-wide energy/virial reduction yields NaN; accumulate it on the host.
+  if(HIP_ARCH STREQUAL "spirv")
+    target_compile_definitions(gpu PRIVATE -DLAL_NO_BLOCK_REDUCE)
+  endif()
   if(GPU_DEBUG)
     target_compile_definitions(gpu PRIVATE -DUCL_DEBUG -DGERYON_KERNEL_DUMP)
   else()
@@ -415,15 +459,15 @@ elseif(GPU_API STREQUAL "HIP")
 
   if(HIP_USE_DEVICE_SORT)
     if(HIP_PLATFORM STREQUAL "amd")
-      # newer version of ROCm (5.1+) require c++14 for rocprim
-      set_property(TARGET gpu PROPERTY CXX_STANDARD 14)
+      # ROCm 5.1+ requires c++14 for rocprim; ROCm 6+/7+ rocprim requires c++17
+      set_property(TARGET gpu PROPERTY CXX_STANDARD 17)
     endif()
     # add hipCUB
     find_package(hipcub REQUIRED)
     target_link_libraries(gpu PRIVATE hip::hipcub)
     target_compile_definitions(gpu PRIVATE -DUSE_HIP_DEVICE_SORT)
 
-    if(HIP_PLATFORM STREQUAL "nvcc")
+    if(HIP_PLATFORM STREQUAL "nvidia")
       find_package(CUB)
 
       if(CUB_FOUND)
@@ -437,10 +481,9 @@ elseif(GPU_API STREQUAL "HIP")
       if(DOWNLOAD_CUB)
         message(STATUS "CUB download requested")
         # TODO: test update to current version 1.17.2
-        set(CUB_URL "https://github.com/nvidia/cub/archive/1.12.0.tar.gz" CACHE STRING "URL for CUB tarball")
-        set(CUB_SHA256 "3b03d0cbc9549606fbeda69a920562eb563836346b39014c79dfd024165ee549" CACHE STRING "SHA256 checksum of CUB tarball")
-        mark_as_advanced(CUB_URL)
-        mark_as_advanced(CUB_SHA256)
+        SetDownloadSettings(CUB "CUB"
+          "https://github.com/nvidia/cub/archive/1.12.0.tar.gz"
+          "3b03d0cbc9549606fbeda69a920562eb563836346b39014c79dfd024165ee549")
         GetFallbackURL(CUB_URL CUB_FALLBACK)
 
         include(ExternalProject)
@@ -471,12 +514,14 @@ elseif(GPU_API STREQUAL "HIP")
   target_compile_definitions(hip_get_devices PRIVATE -DUCL_HIP)
   target_link_libraries(hip_get_devices PRIVATE hip::host)
 
-  if(HIP_PLATFORM STREQUAL "nvcc")
-    target_compile_definitions(gpu PRIVATE -D__HIP_PLATFORM_NVCC__)
+  if(HIP_PLATFORM STREQUAL "nvidia")
+    # the hip::host target of the HIP package does not set the platform macro for
+    # NVIDIA GPUs; current HIP headers require __HIP_PLATFORM_NVIDIA__
+    target_compile_definitions(gpu PRIVATE -D__HIP_PLATFORM_NVIDIA__ -D__HIP_PLATFORM_NVCC__)
     target_include_directories(gpu PRIVATE ${CUDA_INCLUDE_DIRS})
     target_link_libraries(gpu PRIVATE ${CUDA_LIBRARIES} ${CUDA_CUDA_LIBRARY})
 
-    target_compile_definitions(hip_get_devices PRIVATE -D__HIP_PLATFORM_NVCC__)
+    target_compile_definitions(hip_get_devices PRIVATE -D__HIP_PLATFORM_NVIDIA__ -D__HIP_PLATFORM_NVCC__)
     target_include_directories(hip_get_devices PRIVATE ${CUDA_INCLUDE_DIRS})
     target_link_libraries(hip_get_devices PRIVATE ${CUDA_LIBRARIES} ${CUDA_CUDA_LIBRARY})
   endif()
@@ -502,5 +547,6 @@ endif()
 
 set_target_properties(gpu PROPERTIES OUTPUT_NAME lammps_gpu${LAMMPS_MACHINE})
 target_compile_definitions(gpu PRIVATE -DLAMMPS_${LAMMPS_SIZES})
+target_include_directories(gpu PRIVATE ${GPU_SOURCES_DIR} ${LAMMPS_LIB_SOURCE_DIR}/gpu/include)
 target_sources(lammps PRIVATE ${GPU_SOURCES})
-target_include_directories(lammps PRIVATE ${GPU_SOURCES_DIR})
+target_include_directories(lammps PRIVATE ${GPU_SOURCES_DIR} ${LAMMPS_LIB_SOURCE_DIR}/gpu/include)

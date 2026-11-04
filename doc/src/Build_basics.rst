@@ -120,6 +120,18 @@ installed a version of MPI, which is likely to be faster than a
 self-installed MPICH or OpenMPI, so you should study the provided
 documentation to find out how to build and link with it.
 
+.. note::
+
+   Some Linux distributions (for example Ubuntu) build their MPI
+   packages so that the MPI compiler wrappers add link-time
+   optimization flags (``-flto``).  When building with CMake, these
+   flags are then also used to compile LAMMPS, which can make the build
+   fail at the link step, for example with the KOKKOS package and CUDA
+   (errors mentioning ``fatbinData`` or ``lto-wrapper``).  To remove
+   these flags, run CMake a second time in the same build folder with
+   ``-D MPI_CXX_COMPILE_OPTIONS=""`` and then build again.  This
+   setting has no effect in the first CMake run in a new build folder.
+
 The majority of OpenMP (threading) support in LAMMPS is provided by the
 ``OPENMP`` package; see the :doc:`Speed_omp`
 page for details. The ``INTEL`` package also includes OpenMP
@@ -250,7 +262,7 @@ LAMMPS.
       provided that can be loaded with
       ``-C ../cmake/presets/clang.cmake``.  Similarly,
       ``-C ../cmake/presets/intel.cmake`` should switch the compiler
-      toolchain to the legacy Intel compilers, ``-C ../cmake/presets/oneapi.cmake``
+      tool chain to the legacy Intel compilers, ``-C ../cmake/presets/oneapi.cmake``
       will switch to the LLVM based oneAPI Intel compilers,
       ``-C ../cmake/presets/pgi.cmake`` will switch the compiler to the PGI compilers,
       and ``-C ../cmake/presets/nvhpc.cmake`` will switch to the NVHPC compilers.
@@ -327,7 +339,6 @@ LAMMPS.
             Makefile.opt                   # OPT package
             Makefile.omp                   # OPENMP package
             Makefile.intel_cpu             # INTEL package for CPUs
-            Makefile.intel_coprocessor     # INTEL package for KNLs
             Makefile.gpu                   # GPU package
 
 ----------

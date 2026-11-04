@@ -113,7 +113,7 @@ ComputeBondLocal::ComputeBondLocal(LAMMPS *lmp, int narg, char **arg) :
       vstr[nvar] = utils::strdup(&arg[iarg][2]);
       nvar++;
     } else if (utils::strmatch(arg[iarg], R"(^b\d+$)")) {    // b1, b2, b3, ... bN
-      int n = std::stoi(&arg[iarg][1]);
+      int n = utils::inumeric(FLERR, &arg[iarg][1], false, lmp);
       if (n <= 0)
         error->all(FLERR, iarg, "Invalid keyword {} in compute bond/local command", arg[iarg]);
       bstyle[nvalues] = BN;
@@ -372,7 +372,7 @@ int ComputeBondLocal::compute_bonds(int flag)
             mass2 = mass[type[atom2]];
           }
           masstotal = mass1 + mass2;
-          invmasstotal = 1.0 / (masstotal);
+          invmasstotal = 1.0 / masstotal;
           xcm[0] = (mass1 * x[atom1][0] + mass2 * x[atom2][0]) * invmasstotal;
           xcm[1] = (mass1 * x[atom1][1] + mass2 * x[atom2][1]) * invmasstotal;
           xcm[2] = (mass1 * x[atom1][2] + mass2 * x[atom2][2]) * invmasstotal;

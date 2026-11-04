@@ -36,6 +36,7 @@
 #include "neighbor.h"
 #include "pair.h"
 #include "text_file_reader.h"
+#include "update.h"
 #include "variable.h"
 
 #include <algorithm>
@@ -76,8 +77,8 @@ static const char cite_fix_electrode[] =
 FixElectrodeConp::FixElectrodeConp(LAMMPS *lmp, int narg, char **arg) :
     Fix(lmp, narg, arg), elyt_vector(nullptr), elec_vector(nullptr), capacitance(nullptr),
     elastance(nullptr), pair(nullptr), mat_neighlist(nullptr), vec_neighlist(nullptr),
-    recvcounts(nullptr), displs(nullptr), iele_gathered(nullptr), buf_gathered(nullptr),
-    potential_i(nullptr), potential_iele(nullptr)
+    force_neighlist(nullptr), recvcounts(nullptr), displs(nullptr), iele_gathered(nullptr),
+    buf_gathered(nullptr), potential_i(nullptr), potential_iele(nullptr)
 {
   if (lmp->citeme) lmp->citeme->add(cite_fix_electrode);
   if (atom->map_style == Atom::MAP_NONE)
@@ -405,6 +406,11 @@ int FixElectrodeConp::groupnum_from_name(char *groupname)
 
 void FixElectrodeConp::init()
 {
+  // the electrode charges are updated from pre_force() and pre_reverse(), for which
+  // run style respa provides no hooks -> the charges would silently never be updated
+  if (utils::strmatch(update->integrate_style, "^respa"))
+    error->all(FLERR, Error::NOLASTLINE, "Fix {} is not compatible with run_style respa", style);
+
   pair = nullptr;    // not sure if needed -- remove if unnecessary
   pair = (Pair *) force->pair_match("coul", 0);
   if (pair == nullptr) {    // couldn't find a pair with name coul -- maybe hybrid
@@ -458,8 +464,10 @@ void FixElectrodeConp::init_list(int id, NeighList *ptr)
       mat_neighlist = ptr;
     else if (id == 2)
       vec_neighlist = ptr;
+    else if (id == 3)
+      force_neighlist = ptr;
   } else
-    mat_neighlist = vec_neighlist = ptr;
+    mat_neighlist = vec_neighlist = force_neighlist = ptr;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -483,7 +491,7 @@ void FixElectrodeConp::post_constructor()
   input->variable->set(fmt::format("{} equal f_{}[{}]", var_vtop, fixname, 1 + top_group));
   input->variable->set(fmt::format("{} equal (v_{}-v_{})/lz", var_efield, var_vbot, var_vtop));
   // check for other efields and warn if found
-  if ((modify->get_fix_by_style("^efield").size() > 0) && (comm->me == 0))
+  if ((!modify->get_fix_by_style("^efield").empty()) && (comm->me == 0))
     error->warning(FLERR, "Other efield fixes found -- please make sure this is intended!");
   // call fix command:
   // fix [varstem]_efield all efield 0.0 0.0 [var_vdiff]/lz
@@ -548,7 +556,7 @@ void FixElectrodeConp::setup_post_neighbor()
     std::vector<std::vector<double>> ordered_mat(n, std::vector<double>(n));
     for (size_t i = 0; i < n; i++) {
       const bigint gi = order[i];
-      for (size_t j = 0; j < n; j++) { ordered_mat[gi][order[j]] = mat[i][j]; }
+      for (size_t j = 0; j < n; j++) { ordered_mat[i][j] = mat[gi][order[j]]; }
     }
     return ordered_mat;
   };
@@ -623,7 +631,7 @@ void FixElectrodeConp::setup_post_neighbor()
       if (f_vec == nullptr)
         error->one(FLERR, "Cannot open vector file {}: {}", output_file_vec, utils::getsyserror());
       std::vector<std::vector<double>> vec(ngroup, std::vector<double>(1));
-      for (int i = 0; i < ngroup; i++) vec[group_idx[i]][0] = potential_iele[i];
+      for (int i = 0; i < ngroup; i++) vec[i][0] = potential_iele[group_idx[i]];
       write_to_file(f_vec, taglist_bygroup, vec);
       fclose(f_vec);
     }
@@ -1243,10 +1251,10 @@ double FixElectrodeConp::gausscorr(int eflag, int vflag, bool fflag)
   double **f = atom->f;
   int *type = atom->type;
   int newton_pair = force->newton_pair;
-  int inum = vec_neighlist->inum;
-  int *ilist = vec_neighlist->ilist;
-  int *numneigh = vec_neighlist->numneigh;
-  int **firstneigh = vec_neighlist->firstneigh;
+  int inum = force_neighlist->inum;
+  int *ilist = force_neighlist->ilist;
+  int *numneigh = force_neighlist->numneigh;
+  int **firstneigh = force_neighlist->firstneigh;
   double energy_sr = 0.;
   for (int ii = 0; ii < inum; ii++) {
     int i = ilist[ii];
@@ -1410,7 +1418,7 @@ void FixElectrodeConp::read_from_file(const std::string &input_file, double **ar
       }
     }
     if ((bigint) idx.size() != ngroup)
-      error->all(FLERR, "Read tags do not match taglist of fix {}", style);
+      error->one(FLERR, "Read tags do not match taglist of fix {}", style);
     for (bigint i = 0; i < ngroup; i++) {
       const bigint ii = idx[i];
       for (bigint j = 0; j < ngroup; j++) array[i][j] = matrix[ii][idx[j]];
@@ -1445,26 +1453,32 @@ void FixElectrodeConp::request_etypes_neighlists()
   // construct skip arrays
   int *iskip_mat = new int[ntypes + 1];
   int *iskip_vec = new int[ntypes + 1];
+  int *iskip_force = new int[ntypes + 1];
   int **ijskip_mat;
   memory->create(ijskip_mat, ntypes + 1, ntypes + 1, "fixelectrode:ijskip_mat");
   int **ijskip_vec;
   memory->create(ijskip_vec, ntypes + 1, ntypes + 1, "fixelectrode:ijskip_vec");
+  int **ijskip_force;
+  memory->create(ijskip_force, ntypes + 1, ntypes + 1, "fixelectrode:ijskip_force");
   for (int itype = 1; itype <= ntypes; ++itype) {
     // itype is 1-indexed -- follow LAMMPS convention
     iskip_mat[itype] = 1;    // alist skips all except etypes by default
     iskip_vec[itype] = 0;
+    iskip_force[itype] = 0;
     for (int jtype = 1; jtype <= ntypes; ++jtype) { ijskip_mat[itype][jtype] = 1; }
   }
   for (int etype : etypes) {
     iskip_mat[etype] = 0;
-    ijskip_mat[etype][etype] = 0;
+    for (int jtype : etypes) ijskip_mat[etype][jtype] = 0;
   }
   // now, iskip_mat[itype] == 0 iff etype
   // set ijskip_vec[itype][jtype] == 0 if (i is etype XOR j is etype)
   for (int itype = 1; itype <= ntypes; ++itype) {
     for (int jtype = 1; jtype <= ntypes; ++jtype) {
       bool ele_and_sol = (iskip_mat[itype] != iskip_mat[jtype]);
-      ijskip_vec[itype][jtype] = (ele_and_sol) ? 0 : 1;
+      ijskip_vec[itype][jtype] = ele_and_sol ? 0 : 1;
+      bool ele = !iskip_mat[itype] || !iskip_mat[jtype];    // skip only electrolyte-electrolyte
+      ijskip_force[itype][jtype] = ele ? 0 : 1;
     }
   }
 
@@ -1487,6 +1501,10 @@ void FixElectrodeConp::request_etypes_neighlists()
   vecReq->set_skip(iskip_vec, ijskip_vec);
   vecReq->set_id(2);
   if (intelflag) vecReq->enable_intel();
+
+  auto *forceReq = neighbor->add_request(this);
+  forceReq->set_skip(iskip_force, ijskip_force);
+  forceReq->set_id(3);
 }
 
 int FixElectrodeConp::pack_exchange(int i, double * /* buf */)

@@ -392,23 +392,6 @@ void FixAtomSwap::init()
       for (int ktype = 1; ktype <= atom->ntypes; ktype++)
         if (cutsq[type_list[iswaptype]][ktype] != cutsq[type_list[jswaptype]][ktype])
           unequal_cutoffs = true;
-
-  // check that no swappable atoms are in atom->firstgroup
-  // swapping such an atom might not leave firstgroup atoms first
-
-  if (atom->firstgroup >= 0) {
-    int *mask = atom->mask;
-    int firstgroupbit = group->bitmask[atom->firstgroup];
-
-    int flag = 0;
-    for (int i = 0; i < atom->nlocal; i++)
-      if ((mask[i] == groupbit) && (mask[i] && firstgroupbit)) flag = 1;
-
-    int flagall;
-    MPI_Allreduce(&flag, &flagall, 1, MPI_INT, MPI_SUM, world);
-
-    if (flagall) error->all(FLERR, "Cannot do atom/swap on atoms in atom_modify first group");
-  }
 }
 
 /* ----------------------------------------------------------------------
@@ -536,16 +519,14 @@ int FixAtomSwap::attempt_semi_grand()
   if (success_all) {
     update_semi_grand_atoms_list();
     energy_stored = energy_after;
-    if (ke_flag) {
-      if (i >= 0) {
+    if (i >= 0) {
+      if (ke_flag) {
         atom->v[i][0] *= sqrt_mass_ratio[itype][jtype];
         atom->v[i][1] *= sqrt_mass_ratio[itype][jtype];
         atom->v[i][2] *= sqrt_mass_ratio[itype][jtype];
-        // record atom for which the type was swapped and store the old type
-        if (vizsteps > 0) {
-          vizatoms[atom->tag[i]] = std::make_pair(vizsteps,itype);
-        }
       }
+      // record atom for which the type was swapped and store the old type
+      if (vizsteps > 0) vizatoms[atom->tag[i]] = std::make_pair(vizsteps, itype);
     }
     return 1;
   }
@@ -629,11 +610,11 @@ int FixAtomSwap::attempt_swap()
         atom->v[j][1] *= sqrt_mass_ratio[jtype][itype];
         atom->v[j][2] *= sqrt_mass_ratio[jtype][itype];
       }
-      // record atoms for which the type was swapped and store the old types
-      if (vizsteps > 0) {
-        vizatoms[atom->tag[i]] = std::make_pair(vizsteps, jtype);
-        vizatoms[atom->tag[j]] = std::make_pair(vizsteps, itype);
-      }
+    }
+    // record atoms for which the type was swapped and store the old types
+    if (vizsteps > 0) {
+      if (i >= 0) vizatoms[atom->tag[i]] = std::make_pair(vizsteps, itype);
+      if (j >= 0) vizatoms[atom->tag[j]] = std::make_pair(vizsteps, jtype);
     }
     energy_stored = energy_after;
     return 1;
@@ -919,25 +900,19 @@ double FixAtomSwap::memory_usage()
 
 void FixAtomSwap::write_restart(FILE *fp)
 {
-  int nglobalvals = 6;
-  int nlocalvals = comm->nprocs;
-  int ntotalvals = nglobalvals + nlocalvals;
-  std::vector<double> list(ntotalvals);
   int n = 0;
+  double list[6];
   list[n++] = random_equal->state();
+  list[n++] = random_unequal->state();
   list[n++] = ubuf(next_reneighbor).d;
   list[n++] = nswap_attempts;
   list[n++] = nswap_successes;
   list[n++] = ubuf(update->ntimestep).d;
-  list[n++] = nlocalvals;
-
-  double state = random_unequal->state();
-  MPI_Gather(&state, 1, MPI_DOUBLE, &list[n], 1, MPI_DOUBLE, 0, world);
 
   if (comm->me == 0) {
-    int size = ntotalvals * sizeof(double);
+    int size = n * sizeof(double);
     fwrite(&size, sizeof(int), 1, fp);
-    fwrite(list.data(), sizeof(double), ntotalvals, fp);
+    fwrite(list, sizeof(double), n, fp);
   }
 }
 
@@ -953,6 +928,11 @@ void FixAtomSwap::restart(char *buf)
   seed = static_cast<int>(list[n++]);
   random_equal->reset(seed);
 
+  // only the state of proc 0 is stored, derive a unique state for each proc from it
+
+  seed = static_cast<int>(list[n++]);
+  random_unequal->reset_rank(seed, comm->me);
+
   next_reneighbor = (bigint) ubuf(list[n++]).i;
 
   nswap_attempts = static_cast<int>(list[n++]);
@@ -961,18 +941,6 @@ void FixAtomSwap::restart(char *buf)
   bigint ntimestep_restart = (bigint) ubuf(list[n++]).i;
   if (ntimestep_restart != update->ntimestep)
     error->all(FLERR, "Must not reset timestep when restarting fix atom/swap");
-
-  // read stored state of RNG unique to this process
-  // if nprocs changed, derive a unique state from the state of proc 0
-
-  auto nlocalvals = (int) list[n++];
-  if (nlocalvals == comm->nprocs) {
-    seed = static_cast<int>(list[n + comm->me]);
-    random_unequal->reset(seed);
-  } else {
-    seed = static_cast<int>(list[n]);
-    random_unequal->reset_rank(seed, comm->me);
-  }
 }
 
 /* ----------------------------------------------------------------------

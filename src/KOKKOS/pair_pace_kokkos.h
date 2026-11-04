@@ -114,6 +114,12 @@ class PairPACEKokkos : public PairPACE {
   void weights_comb(const int ii, const int mu_i, const int idx_func, const int idx_ms_combs, const KK_FLOAT theta) const;
   int host_flag;
 
+  // team scratch memory level of the ComputeNeigh short neighbor list (0: on-chip shared memory, 1: global memory),
+  // chosen from the pair_style keyword neigh and what the device provides
+  int neigh_scratch_level;
+  int neigh_scratch_warned;
+  int neigh_scratch_level_select(int scratch_size, int max_level0);
+
   int eflag, vflag;
   bool do_energy_only_calc = false;
 

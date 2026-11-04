@@ -130,7 +130,13 @@ void RemapKokkos<DeviceType>::remap_3d_kokkos(typename FFT_AT::t_FFT_SCALAR_1d d
   // use point-to-point communication
 
   if (!plan->usecollective) {
-    int i,isend,irecv;
+    int isend,irecv;
+
+    // with GPU-aware MPI the receives land in device memory directly, so the
+    // kernels of the previous call that read that buffer have to be finished
+    // before MPI is allowed to write into it
+
+    if (plan->usegpu_aware && plan->nrecv) Kokkos::fence();
 
     for (irecv = 0; irecv < plan->nrecv; irecv++) {
       FFT_SCALAR* scratch = v_scratch + plan->recv_bufloc[irecv];
@@ -153,8 +159,17 @@ void RemapKokkos<DeviceType>::remap_3d_kokkos(typename FFT_AT::t_FFT_SCALAR_1d d
                   &plan->packplan[isend]);
       }
 
-      if (!plan->usegpu_aware)
-        Kokkos::deep_copy(plan->h_sendbuf,plan->d_sendbuf);
+      if (!plan->usegpu_aware) {
+        // copy only this message's stretch to the host: with non-blocking
+        // sends the earlier stretches may still be read by their MPI_Isend
+        const int lo = plan->usenonblocking ? plan->send_bufloc[isend] : 0;
+        const auto range = std::make_pair(lo,lo + plan->send_size[isend]);
+        Kokkos::deep_copy(Kokkos::subview(plan->h_sendbuf,range),
+                          Kokkos::subview(plan->d_sendbuf,range));
+      } else {
+        // the pack kernel has to be finished before MPI reads the device buffer
+        Kokkos::fence();
+      }
 
       if (plan->usenonblocking) {
         MPI_Isend(v_sendbuf + plan->send_bufloc[isend],plan->send_size[isend],MPI_FFT_SCALAR,
@@ -183,23 +198,30 @@ void RemapKokkos<DeviceType>::remap_3d_kokkos(typename FFT_AT::t_FFT_SCALAR_1d d
     }
 
     // unpack all messages from scratch -> out
+    // all receives share one scratch buffer, so every one of them has to
+    // have landed before that buffer is copied to the device and unpacked;
+    // copying inside a MPI_Waitany loop would copy stretches other receives
+    // are still writing into.  skip both when there are no receives, e.g. on a
+    // single MPI rank, where the copy would only transfer stale host data
 
-    for (i = 0; i < plan->nrecv; i++) {
-      MPI_Waitany(plan->nrecv,plan->request,&irecv,MPI_STATUS_IGNORE);
-
-      int scratch_offset = plan->recv_bufloc[irecv];
-      int out_offset = plan->recv_offset[irecv];
+    if (plan->nrecv) {
+      MPI_Waitall(plan->nrecv,plan->request,MPI_STATUSES_IGNORE);
 
       if (!plan->usegpu_aware)
         Kokkos::deep_copy(d_scratch,plan->h_scratch);
+    }
+
+    for (irecv = 0; irecv < plan->nrecv; irecv++) {
+      int scratch_offset = plan->recv_bufloc[irecv];
+      int out_offset = plan->recv_offset[irecv];
 
       plan->unpack(d_scratch,scratch_offset,
                    d_out,out_offset,&plan->unpackplan[irecv]);
     }
 
-    if (plan->usenonblocking) {
+    if (plan->usenonblocking && plan->nsend) {
       // finally, wait for all Isends to be done
-      MPI_Waitall(plan->nsend,plan->isend_reqs,MPI_STATUS_IGNORE);
+      MPI_Waitall(plan->nsend,plan->isend_reqs,MPI_STATUSES_IGNORE);
     }
   } else {
     if (plan->commringlen > 0) {
@@ -211,7 +233,9 @@ void RemapKokkos<DeviceType>::remap_3d_kokkos(typename FFT_AT::t_FFT_SCALAR_1d d
 
       int numpacked = 0;
       for (isend = 0; isend < plan->commringlen; isend++) {
-        if (plan->sendcnts[isend]) {
+        if (isend == plan->selfcommringloc && plan->self) {
+          numpacked++;
+        } else if (plan->sendcnts[isend]) {
           plan->pack(d_in,plan->send_offset[numpacked],
                       plan->d_sendbuf,plan->sdispls[isend],
                       &plan->packplan[numpacked]);
@@ -226,6 +250,15 @@ void RemapKokkos<DeviceType>::remap_3d_kokkos(typename FFT_AT::t_FFT_SCALAR_1d d
                     MPI_FFT_SCALAR, v_scratch, plan->rcvcnts,
                     plan->rdispls, MPI_FFT_SCALAR, plan->comm);
 
+      if (plan->self) {
+        plan->pack(d_in,plan->send_offset[plan->selfnsendloc],
+                   plan->d_sendbuf,plan->sdispls[plan->selfcommringloc],
+                   &plan->packplan[plan->selfnsendloc]);
+        plan->unpack(plan->d_sendbuf,plan->sdispls[plan->selfcommringloc],
+                     d_out,plan->recv_offset[plan->selfnrecvloc],
+                     &plan->unpackplan[plan->selfnrecvloc]);
+      }
+
       // unpack the data from the recv buffer into out
 
       if (!plan->usegpu_aware)
@@ -233,7 +266,9 @@ void RemapKokkos<DeviceType>::remap_3d_kokkos(typename FFT_AT::t_FFT_SCALAR_1d d
 
       numpacked = 0;
       for (irecv = 0; irecv < plan->commringlen; irecv++) {
-        if (plan->rcvcnts[irecv]) {
+        if (irecv == plan->selfcommringloc && plan->self) {
+          numpacked++;
+        } else if (plan->rcvcnts[irecv]) {
           plan->unpack(d_scratch,plan->rdispls[irecv],
                        d_out,plan->recv_offset[numpacked],
                        &plan->unpackplan[numpacked]);
@@ -283,7 +318,7 @@ struct remap_plan_3d_kokkos<DeviceType>* RemapKokkos<DeviceType>::remap_3d_creat
 {
 
   struct remap_plan_3d_kokkos<DeviceType> *plan;
-  struct extent_3d *inarray, *outarray;
+  struct extent_3d *inarray = nullptr, *outarray = nullptr;
   struct extent_3d in,out,overlap;
   int i,iproc,nsend,nrecv,ibuf,size,me,nprocs;
 
@@ -295,26 +330,6 @@ struct remap_plan_3d_kokkos<DeviceType>* RemapKokkos<DeviceType>::remap_3d_creat
   // allocate memory for plan data struct
 
   plan = new struct remap_plan_3d_kokkos<DeviceType>;
-  if (plan == nullptr) return nullptr;
-
-  // nullify all pointers managed with malloc()/free()
-  plan->commringlist = nullptr;
-  plan->isend_reqs = nullptr;
-  plan->packplan = nullptr;
-  plan->rcvcnts = nullptr;
-  plan->rdispls = nullptr;
-  plan->recv_bufloc = nullptr;
-  plan->recv_offset = nullptr;
-  plan->recv_proc = nullptr;
-  plan->recv_size = nullptr;
-  plan->request = nullptr;
-  plan->sdispls = nullptr;
-  plan->send_bufloc = nullptr;
-  plan->send_offset = nullptr;
-  plan->send_proc = nullptr;
-  plan->send_size = nullptr;
-  plan->sendcnts = nullptr;
-  plan->unpackplan = nullptr;
 
   plan->usecollective = usecollective;
   plan->usenonblocking = usenonblocking;
@@ -347,10 +362,17 @@ struct remap_plan_3d_kokkos<DeviceType>* RemapKokkos<DeviceType>::remap_3d_creat
   out.ksize = out.khi - out.klo + 1;
 
   inarray = (struct extent_3d *) malloc(nprocs*sizeof(struct extent_3d));
-  if (inarray == nullptr) return nullptr;
+  if (inarray == nullptr) {
+    delete plan;
+    return nullptr;
+  }
 
   outarray = (struct extent_3d *) malloc(nprocs*sizeof(struct extent_3d));
-  if (outarray == nullptr) return nullptr;
+  if (outarray == nullptr) {
+    free(inarray);
+    delete plan;
+    return nullptr;
+  }
 
   // combine input & output extents across all procs
 
@@ -382,13 +404,20 @@ struct remap_plan_3d_kokkos<DeviceType>* RemapKokkos<DeviceType>::remap_3d_creat
       plan->packplan = (struct pack_plan_3d *)
         malloc(nsend*sizeof(struct pack_plan_3d));
 
-      if (plan->usenonblocking)
+      if (plan->usenonblocking) {
         plan->isend_reqs = (MPI_Request *) malloc(nsend*sizeof(MPI_Request));
-        plan->send_bufloc = (int *) malloc(nsend*sizeof(int));
-        if (plan->send_bufloc == nullptr) return nullptr;
+      }
+      plan->send_bufloc = (int *) malloc(nsend*sizeof(int));
 
       if (plan->send_offset == nullptr || plan->send_size == nullptr ||
-          plan->send_proc == nullptr || plan->packplan == nullptr) return nullptr;
+          plan->send_proc == nullptr || plan->packplan == nullptr ||
+          (plan->usenonblocking && (plan->isend_reqs == nullptr)) ||
+          (plan->send_bufloc == nullptr)) {
+        free(inarray);
+        free(outarray);
+        delete plan;
+        return nullptr;
+      }
     }
 
     if (nrecv) {
@@ -421,7 +450,12 @@ struct remap_plan_3d_kokkos<DeviceType>* RemapKokkos<DeviceType>::remap_3d_creat
 
       if (plan->recv_offset == nullptr || plan->recv_size == nullptr ||
           plan->recv_proc == nullptr || plan->recv_bufloc == nullptr ||
-          plan->request == nullptr || plan->unpackplan == nullptr) return nullptr;
+          plan->request == nullptr || plan->unpackplan == nullptr) {
+        free(inarray);
+        free(outarray);
+        delete plan;
+        return nullptr;
+      }
     }
 
     // store send info, with self as last entry
@@ -538,7 +572,12 @@ struct remap_plan_3d_kokkos<DeviceType>* RemapKokkos<DeviceType>::remap_3d_creat
 
     if (size) {
       plan->d_sendbuf = typename FFT_AT::t_FFT_SCALAR_1d("remap3d:sendbuf",size);
-      if (!plan->d_sendbuf.data()) return nullptr;
+      if (!plan->d_sendbuf.data()) {
+        free(inarray);
+        free(outarray);
+        delete plan;
+        return nullptr;
+      }
     }
 
     // if requested, allocate internal scratch space for recvs,
@@ -548,7 +587,12 @@ struct remap_plan_3d_kokkos<DeviceType>* RemapKokkos<DeviceType>::remap_3d_creat
       if (nrecv > 0) {
         plan->d_scratch =
           typename FFT_AT::t_FFT_SCALAR_1d("remap3d:scratch",nqty*out.isize*out.jsize*out.ksize);
-        if (!plan->d_scratch.data()) return nullptr;
+        if (!plan->d_scratch.data()) {
+          free(inarray);
+          free(outarray);
+          delete plan;
+          return nullptr;
+        }
       }
     }
 
@@ -625,7 +669,13 @@ struct remap_plan_3d_kokkos<DeviceType>* RemapKokkos<DeviceType>::remap_3d_creat
       plan->nsend = nsend;
       plan->pack = PackKokkos<DeviceType>::pack_3d;
 
-      plan->send_offset = (int *) malloc(nsend*sizeof(int));
+      // nsend/nrecv can be zero here: the enclosing test admits a rank that
+      // only sends or only receives, and both halves must be initialized for
+      // the Alltoallv.  malloc(0) may legally return a null pointer, which the
+      // check below would mistake for an allocation failure, so ask for one
+      // extra byte.
+
+      plan->send_offset = (int *) malloc(nsend*sizeof(int) + 1);
       plan->send_size = (int *) malloc(plan->commringlen*sizeof(int));
 
       plan->sendcnts = (int *) malloc(plan->commringlen*sizeof(int));
@@ -634,11 +684,16 @@ struct remap_plan_3d_kokkos<DeviceType>* RemapKokkos<DeviceType>::remap_3d_creat
       // only used when sendcnt > 0
 
       plan->packplan = (struct pack_plan_3d *)
-        malloc(nsend*sizeof(struct pack_plan_3d));
+        malloc(nsend*sizeof(struct pack_plan_3d) + 1);
 
       if (plan->send_offset == nullptr || plan->send_size == nullptr ||
           plan->sendcnts == nullptr || plan->sdispls == nullptr ||
-          plan->packplan == nullptr) return nullptr;
+          plan->packplan == nullptr) {
+        free(inarray);
+        free(outarray);
+        delete plan;
+        return nullptr;
+      }
 
       // recv space
 
@@ -663,7 +718,7 @@ struct remap_plan_3d_kokkos<DeviceType>* RemapKokkos<DeviceType>::remap_3d_creat
           plan->unpack = PackKokkos<DeviceType>::unpack_3d_permute2_n;
       }
 
-      plan->recv_offset = (int *) malloc(nrecv*sizeof(int));
+      plan->recv_offset = (int *) malloc(nrecv*sizeof(int) + 1);
       plan->recv_size = (int *) malloc(plan->commringlen*sizeof(int));
 
       plan->rcvcnts = (int *) malloc(plan->commringlen*sizeof(int));
@@ -672,20 +727,33 @@ struct remap_plan_3d_kokkos<DeviceType>* RemapKokkos<DeviceType>::remap_3d_creat
       // only used when recvcnt > 0
 
       plan->unpackplan = (struct pack_plan_3d *)
-        malloc(nrecv*sizeof(struct pack_plan_3d));
+        malloc(nrecv*sizeof(struct pack_plan_3d) + 1);
 
       if (plan->recv_offset == nullptr || plan->recv_size == nullptr ||
           plan->rcvcnts == nullptr || plan->rdispls == nullptr ||
-          plan->unpackplan == nullptr) return nullptr;
+          plan->unpackplan == nullptr) {
+        free(inarray);
+        free(outarray);
+        delete plan;
+        return nullptr;
+      }
     }
 
     // store send info, with self as last entry
+
+    plan->selfcommringloc = -1;
+    plan->selfnsendloc = -1;
+    plan->selfnrecvloc = -1;
 
     nsend = 0;
     ibuf = 0;
     int total_send_size = 0;
     for (i = 0; i < plan->commringlen; i++) {
       iproc = plan->commringlist[i];
+      if (iproc == me) {
+        plan->selfcommringloc = i;
+        plan->selfnsendloc = nsend;
+      }
       if (remap_3d_collide(&in,&outarray[iproc],&overlap)) {
         //plan->send_proc[nsend] = i;
         // number of entries required for this pack's 3-d coords
@@ -714,7 +782,12 @@ struct remap_plan_3d_kokkos<DeviceType>* RemapKokkos<DeviceType>::remap_3d_creat
 
     if (total_send_size) {
       plan->d_sendbuf = typename FFT_AT::t_FFT_SCALAR_1d("remap3d:sendbuf",total_send_size);
-      if (!plan->d_sendbuf.data()) return nullptr;
+      if (!plan->d_sendbuf.data()) {
+        free(inarray);
+        free(outarray);
+        delete plan;
+        return nullptr;
+      }
     }
 
     // store recv info, with self as last entry
@@ -724,6 +797,9 @@ struct remap_plan_3d_kokkos<DeviceType>* RemapKokkos<DeviceType>::remap_3d_creat
 
     for (i = 0; i < plan->commringlen; i++) {
       iproc = plan->commringlist[i];
+      if (iproc == me) {
+        plan->selfnrecvloc = nrecv;
+      }
       if (remap_3d_collide(&out,&inarray[iproc],&overlap)) {
         if (permute == 0) {
           plan->recv_offset[nrecv] = nqty *
@@ -774,7 +850,26 @@ struct remap_plan_3d_kokkos<DeviceType>* RemapKokkos<DeviceType>::remap_3d_creat
     // init remaining fields in remap plan
 
     plan->memory = memory;
-    plan->self = 0;
+
+    {
+      int use_selfcopy = 0;
+      if (plan->usecollective == 2) {
+        use_selfcopy = 1;
+      } else if (plan->usecollective == 3) {
+        int nprocs;
+        MPI_Comm_size(comm, &nprocs);
+        use_selfcopy = (nprocs == 1);
+      }
+
+      if (use_selfcopy && plan->selfcommringloc >= 0 &&
+          plan->sendcnts[plan->selfcommringloc]) {
+        plan->self = 1;
+        plan->sendcnts[plan->selfcommringloc] = 0;
+        plan->rcvcnts[plan->selfcommringloc] = 0;
+      } else {
+        plan->self = 0;
+      }
+    }
 
     // if requested, allocate internal scratch space for recvs,
     // only need it if I will receive any data (including self)
@@ -783,7 +878,12 @@ struct remap_plan_3d_kokkos<DeviceType>* RemapKokkos<DeviceType>::remap_3d_creat
       if (nrecv > 0) {
         plan->d_scratch =
           typename FFT_AT::t_FFT_SCALAR_1d("remap3d:scratch",nqty*out.isize*out.jsize*out.ksize);
-        if (!plan->d_scratch.data()) return nullptr;
+        if (!plan->d_scratch.data()) {
+          free(inarray);
+          free(outarray);
+          delete plan;
+          return nullptr;
+        }
       }
     }
 
@@ -830,29 +930,7 @@ void RemapKokkos<DeviceType>::remap_3d_destroy_plan_kokkos(struct remap_plan_3d_
   if (!((plan->usecollective) && (plan->commringlen == 0)))
     MPI_Comm_free(&plan->comm);
 
-#define SAFE_FREE(ptr) if (ptr) free(ptr)
-
-  SAFE_FREE(plan->commringlist);
-  SAFE_FREE(plan->isend_reqs);
-  SAFE_FREE(plan->packplan);
-  SAFE_FREE(plan->rcvcnts);
-  SAFE_FREE(plan->rdispls);
-  SAFE_FREE(plan->recv_bufloc);
-  SAFE_FREE(plan->recv_offset);
-  SAFE_FREE(plan->recv_proc);
-  SAFE_FREE(plan->recv_size);
-  SAFE_FREE(plan->request);
-  SAFE_FREE(plan->sdispls);
-  SAFE_FREE(plan->send_bufloc);
-  SAFE_FREE(plan->send_offset);
-  SAFE_FREE(plan->send_proc);
-  SAFE_FREE(plan->send_size);
-  SAFE_FREE(plan->sendcnts);
-  SAFE_FREE(plan->unpackplan);
-
-#undef SAFE_FREE
-
-  // free plan itself
+  // free plan itself; its destructor releases the malloc()ed buffers
 
   delete plan;
 }

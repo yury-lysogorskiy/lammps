@@ -35,8 +35,9 @@ class FixReaxFFSpeciesKokkos : public FixReaxFFSpecies {
 
   void init() override;
 
- private:
+ protected:
   void FindMolecule() override;
+  void DeleteSpecies(int, int) override;
 };
 }
 

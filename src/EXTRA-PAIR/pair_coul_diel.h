@@ -45,10 +45,10 @@ class PairCoulDiel : public Pair {
  protected:
   double cut_global;
   double **cut;
-  double **sigmae, **rme, **offset;
+  double **sigmae, **rme;
   double a_eps, b_eps, eps_s;
 
-  void allocate();
+  virtual void allocate();
 };
 
 }    // namespace LAMMPS_NS

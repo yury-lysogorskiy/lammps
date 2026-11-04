@@ -145,7 +145,7 @@ steps to follow:
 Install prerequisite packages
 -----------------------------
 
-Before we can begin, we need to download the necessary compiler toolchain and
+Before we can begin, we need to download the necessary compiler tool chain and
 libraries to compile LAMMPS. In our Ubuntu-based Linux installation, we will
 use the :code:`apt` package manager to install additional packages.
 
@@ -176,9 +176,9 @@ Option 1: Download a LAMMPS tarball using wget
 
 .. code-block:: bash
 
-   wget https://github.com/lammps/lammps/archive/stable_3Mar2020.tar.gz
-   tar xvzf stable_3Mar2020.tar.gz
-   cd lammps
+   wget https://github.com/lammps/lammps/archive/refs/heads/stable.tar.gz
+   tar xvzf stable.tar.gz
+   cd lammps-stable
 
 Option 2: Download a LAMMPS development version from GitHub
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -210,7 +210,7 @@ Presets are a way to specify a collection of CMake options using a file.
 
 .. code-block:: bash
 
-   cmake ../cmake/presets/basic.cmake ../cmake
+   cmake -C ../cmake/presets/basic.cmake ../cmake
 
 This command configures the build and generates the necessary Makefiles. To compile the binary, run the make command.
 

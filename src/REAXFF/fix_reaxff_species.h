@@ -40,6 +40,11 @@ class FixReaxFFSpecies : public Fix {
   void init_list(int, class NeighList *) override;
   void setup(int) override;
   void post_integrate() override;
+
+  int pack_forward_comm(int, int *, double *, int, int *) override;
+  void unpack_forward_comm(int, int, double *) override;
+
+  double memory_usage() override;
   double compute_vector(int) override;
 
  protected:
@@ -77,17 +82,15 @@ class FixReaxFFSpecies : public Fix {
   void SortMolecule(int &);
   void FindSpecies(int, int &);
   void WriteFormulas(int, int);
-  void DeleteSpecies(int, int);
+  virtual void DeleteSpecies(int, int);
   int CheckExistence(int, int);
   void GetUniqueElements();
 
-  int pack_forward_comm(int, int *, double *, int, int *) override;
-  void unpack_forward_comm(int, int, double *) override;
   void OpenPos();
   void WritePos(int, int);
-  double memory_usage() override;
 
-  bigint nvalid;
+  bigint lastanalysis;    // timestep of the last species analysis
+  int insetup;            // 1 while called from setup()
 
   class NeighList *list;
   class FixAveAtom *f_SPECBOND;
