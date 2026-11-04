@@ -67,7 +67,8 @@ using namespace LAMMPS_NS;
 using namespace MathConst;
 
 /* ---------------------------------------------------------------------- */
-PairPACE::PairPACE(LAMMPS *lmp) : Pair(lmp)
+PairPACE::PairPACE(LAMMPS *lmp) :
+    Pair(lmp), aceimpl(nullptr), corerep_factor(nullptr), scale(nullptr)
 {
   single_enable = 0;
   restartinfo = 0;
@@ -77,14 +78,12 @@ PairPACE::PairPACE(LAMMPS *lmp) : Pair(lmp)
   nmax_corerep = 0;
   flag_corerep_factor = 0;
   debug_no_energy_only_calc = false;
-  corerep_factor = nullptr;
 
   aceimpl = new ACEImpl;
   recursive = false;
 
-  scale = nullptr;
-
   chunksize = 4096;
+  neigh_scratch_request = NEIGH_SCRATCH_AUTO;
 
   centroidstressflag = CENTROID_AVAIL;
 }
@@ -280,13 +279,14 @@ void PairPACE::allocate()
 
 void PairPACE::settings(int narg, char **arg)
 {
-  if (narg > 3) utils::missing_cmd_args(FLERR, "pair_style pace", error);
+  if (narg > 5) utils::missing_cmd_args(FLERR, "pair_style pace", error);
 
   // ACE potentials are parameterized in metal units
   if (strcmp("metal", update->unit_style) != 0)
     error->all(FLERR, "ACE potentials require 'metal' units");
 
   recursive = true;    // default evaluator style: RECURSIVE
+  neigh_scratch_request = NEIGH_SCRATCH_AUTO;
 
   int iarg = 0;
   while (iarg < narg) {
@@ -302,6 +302,20 @@ void PairPACE::settings(int narg, char **arg)
     } else if (strcmp(arg[iarg], "debug_no_energy_only_calc") == 0) {
       debug_no_energy_only_calc = true;
       iarg += 1;
+    } else if (strcmp(arg[iarg], "neigh") == 0) {
+      // KOKKOS-only: selects the team scratch memory level used to build the
+      // short neighbor list.  Parsed but ignored by this style, so that an
+      // input written for pace/kk also runs without the KOKKOS package.
+      if (iarg + 2 > narg) utils::missing_cmd_args(FLERR, "pair_style pace neigh", error);
+      if (strcmp(arg[iarg + 1], "auto") == 0)
+        neigh_scratch_request = NEIGH_SCRATCH_AUTO;
+      else if (strcmp(arg[iarg + 1], "shared") == 0)
+        neigh_scratch_request = NEIGH_SCRATCH_SHARED;
+      else if (strcmp(arg[iarg + 1], "global") == 0)
+        neigh_scratch_request = NEIGH_SCRATCH_GLOBAL;
+      else
+        error->all(FLERR, "Unknown pair_style pace neigh keyword: {}", arg[iarg + 1]);
+      iarg += 2;
     } else
       error->all(FLERR, "Unknown pair_style pace keyword: {}", arg[iarg]);
   }
@@ -451,4 +465,14 @@ void *PairPACE::extract_peratom(const char *str, int &ncol)
   }
 
   return nullptr;
+}
+
+/* ---------------------------------------------------------------------- */
+
+double PairPACE::memory_usage()
+{
+  double bytes = Pair::memory_usage();
+  if (flag_corerep_factor)
+    bytes += (double) nmax_corerep * sizeof(double);    // corerep_factor[nmax_corerep]
+  return bytes;
 }

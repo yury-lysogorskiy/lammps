@@ -26,7 +26,7 @@ using namespace user_manifold;
 // it needs a taper function that is sufficiently smooth
 // so we use a cubic Hermite interpolation and then for
 // efficiency we construct a lookup table for that....
-
+namespace {
 class cubic_hermite
 {
 public:
@@ -142,8 +142,8 @@ public:
   {
     return 6*a*t + 2*b;
   }
-
 };
+}
 
 // Manifold itself:
 manifold_gaussian_bump::manifold_gaussian_bump(class LAMMPS* lmp,
@@ -153,8 +153,8 @@ manifold_gaussian_bump::manifold_gaussian_bump(class LAMMPS* lmp,
 
 manifold_gaussian_bump::~manifold_gaussian_bump()
 {
-  if (lut_z ) delete lut_z;
-  if (lut_zp) delete lut_zp;
+  delete lut_z;
+  delete lut_zp;
 }
 
 

@@ -134,11 +134,19 @@ FixQEq::FixQEq(LAMMPS *lmp, int narg, char **arg) :
     for (int j = 0; j < nprev; ++j)
       s_hist[i][j] = t_hist[i][j] = atom->q[i];
 
+  // QEq parameters from a pair style are only supported by the matching fix styles
+
   if (strcmp(arg[7],"coul/streitz") == 0) {
+    if (!utils::strmatch(style,"^qeq/slater"))
+      error->all(FLERR, 7, "Fix {} cannot use QEq parameters from pair style coul/streitz", style);
     streitz_flag = 1;
   } else if (utils::strmatch(arg[7],"^reax..")) {
+    if (!utils::strmatch(style,"^qeq/shielded"))
+      error->all(FLERR, 7, "Fix {} cannot use QEq parameters from pair style reaxff", style);
     reax_flag = 1;
   } else if (strcmp(arg[7],"coul/ctip") == 0) {
+    if (!utils::strmatch(style,"^qeq/ctip"))
+      error->all(FLERR, 7, "Fix {} cannot use QEq parameters from pair style coul/ctip", style);
     ctip_flag = 1;
   } else {
     read_file(arg[7]);
@@ -318,7 +326,7 @@ void FixQEq::init()
   ngroup = group->count(igroup);
   if (ngroup == 0) error->all(FLERR,"Fix {} group has no atoms", style);
 
-  if ((comm->me == 0) && (modify->get_fix_by_style("^efield").size() > 0))
+  if ((comm->me == 0) && (!modify->get_fix_by_style("^efield").empty()))
     error->warning(FLERR,"Fix efield is ignored during charge equilibration");
 
   if (utils::strmatch(update->integrate_style,"^respa"))
@@ -378,11 +386,20 @@ void FixQEq::init_storage()
   nlocal = atom->nlocal;
   nall = atom->nlocal + atom->nghost;
 
+  int *mask = atom->mask;
   for (int i = 0; i < nall; i++) {
     Hdia_inv[i] = 1. / eta[atom->type[i]];
     b_s[i] = -chi[atom->type[i]];
     b_t[i] = -1.0;
-    s[i] = t[i] = atom->q[i];
+    // s is initialized to the current charge so that atoms outside the fix
+    // group contribute their (fixed) charge to the electric field felt by the
+    // group atoms through the sparse matrix-vector product. The t vector,
+    // however, only encodes the charge-neutrality response of the group, so
+    // atoms outside the group must contribute 0 to it -- otherwise their fixed
+    // charge pollutes the neutralization and the equilibrated charges come out
+    // with the wrong sign (see GitHub issue #3543).
+    s[i] = atom->q[i];
+    t[i] = (mask[i] & groupbit) ? atom->q[i] : 0.0;
 
     chizj[i] = 0.0;
     qf[i] = 0.0;
@@ -432,6 +449,9 @@ int FixQEq::CG(double *b, double *x)
   }
 
   b_norm = parallel_norm(b, inum);
+
+  // use the absolute residual when the right-hand side vanishes
+  if (b_norm == 0.0) b_norm = 1.0;
   sig_new = parallel_dot(r, d, inum);
 
   for (loop = 1; loop < maxiter && sqrt(sig_new)/b_norm > tolerance; ++loop) {
@@ -478,20 +498,20 @@ void FixQEq::sparse_matvec(sparse_matrix *A, double *x, double *b)
   for (i = 0; i < nlocal; ++i) {
     if (atom->mask[i] & groupbit)
       b[i] = eta[atom->type[i]] * x[i];
+    else
+      b[i] = 0.0;
   }
 
   for (i = nlocal; i < nall; ++i) {
-    if (atom->mask[i] & groupbit)
-      b[i] = 0;
+    b[i] = 0.0;
   }
 
   for (i = 0; i < nlocal; ++i) {
-    if (atom->mask[i] & groupbit) {
-      for (itr_j=A->firstnbr[i]; itr_j<A->firstnbr[i]+A->numnbrs[i]; itr_j++) {
-        j = A->jlist[itr_j];
-        b[i] += A->val[itr_j] * x[j];
-        b[j] += A->val[itr_j] * x[i];
-      }
+    // include the rows of atoms outside the group for their fixed charges
+    for (itr_j=A->firstnbr[i]; itr_j<A->firstnbr[i]+A->numnbrs[i]; itr_j++) {
+      j = A->jlist[itr_j];
+      b[i] += A->val[itr_j] * x[j];
+      b[j] += A->val[itr_j] * x[i];
     }
   }
 
@@ -758,6 +778,9 @@ void FixQEq::vector_add(double* dest, double c, double* v, int k)
 
 void FixQEq::read_file(char *file)
 {
+  // fix qeq/ctip reads three more columns per atom type
+  const bool ctip_format = utils::strmatch(style, "^qeq/ctip");
+
   const int ntypes = atom->ntypes;
 
   memory->create(chi,ntypes+1,"qeq:chi");
@@ -794,7 +817,7 @@ void FixQEq::read_file(char *file)
         auto values = reader.next_values(0);
 
         if (values.count() == 0) continue;
-        if (ctip_flag) {
+        if (ctip_format) {
           if (values.count() < 9)
             throw qeq_parser_error(fmt::format("Invalid qeq parameter file for {}", style));
         } else {
@@ -817,7 +840,7 @@ void FixQEq::read_file(char *file)
         for (int n=nlo; n <= nhi; ++n) zeta[n] = val;
         val = values.next_double();
         for (int n=nlo; n <= nhi; ++n) zcore[n] = val;
-        if (ctip_flag) {
+        if (ctip_format) {
           val = values.next_double();
           for (int n=nlo; n <= nhi; ++n) qmin[n] = val;
           val = values.next_double();

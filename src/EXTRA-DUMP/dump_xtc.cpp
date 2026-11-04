@@ -531,7 +531,7 @@ static void sendbits(int buf[], int num_of_bits, int num)
   lastbits = buf[1];
   lastbyte =(unsigned int) buf[2];
   while (num_of_bits >= 8) {
-    lastbyte = (lastbyte << 8) | ((num >> (num_of_bits -8)) /* & 0xff*/);
+    lastbyte = (lastbyte << 8) | (num >> (num_of_bits -8));
     cbuf[cnt++] = lastbyte >> lastbits;
     num_of_bits -= 8;
   }
@@ -866,7 +866,7 @@ int xdr3dfcoord(XDR *xdrs, float *fp, int *size, float *precision)
         lf = *lfp * *precision + 0.5;
       else
         lf = *lfp * *precision - 0.5;
-      if (fabs(lf) > MAXABS) {
+      if (fabsf(lf) > MAXABS) {
         /* scaling would cause overflow */
         errval = 0;
       }
@@ -879,7 +879,7 @@ int xdr3dfcoord(XDR *xdrs, float *fp, int *size, float *precision)
         lf = *lfp * *precision + 0.5;
       else
         lf = *lfp * *precision - 0.5;
-      if (fabs(lf) > MAXABS) {
+      if (fabsf(lf) > MAXABS) {
         /* scaling would cause overflow */
         errval = 0;
       }
@@ -892,7 +892,7 @@ int xdr3dfcoord(XDR *xdrs, float *fp, int *size, float *precision)
         lf = *lfp * *precision + 0.5;
       else
         lf = *lfp * *precision - 0.5;
-      if (fabs(lf) > MAXABS) {
+      if (fabsf(lf) > MAXABS) {
         /* scaling would cause overflow */
         errval = 0;
       }
@@ -953,7 +953,7 @@ int xdr3dfcoord(XDR *xdrs, float *fp, int *size, float *precision)
     i = 0;
     while (i < *size) {
       is_small = 0;
-      thiscoord = (int *)(luip) + i * 3;
+      thiscoord = (int *)luip + i * 3;
       if (smallidx < maxidx && i >= 1 &&
           abs(thiscoord[0] - prevcoord[0]) < larger &&
           abs(thiscoord[1] - prevcoord[1]) < larger &&
@@ -1141,7 +1141,7 @@ int xdr3dfcoord(XDR *xdrs, float *fp, int *size, float *precision)
     i = 0;
     lip = ip;
     while (i < lsize) {
-      thiscoord = (int *)(lip) + i * 3;
+      thiscoord = (int *)lip + i * 3;
 
       if (bitsize == 0) {
         thiscoord[0] = receivebits(buf, bitsizeint[0]);

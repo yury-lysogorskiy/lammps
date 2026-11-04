@@ -68,6 +68,8 @@ PairPACEKokkos<DeviceType>::PairPACEKokkos(LAMMPS *lmp) : PairPACE(lmp)
   datamask_modify = EMPTY_MASK;
 
   host_flag = (execution_space == HostKK);
+  neigh_scratch_level = 0;
+  neigh_scratch_warned = 0;
 }
 
 /* ----------------------------------------------------------------------
@@ -79,9 +81,13 @@ PairPACEKokkos<DeviceType>::~PairPACEKokkos()
 {
   if (copymode) return;
 
-  memoryKK->destroy_kokkos(k_eatom,eatom);
-  memoryKK->destroy_kokkos(k_vatom,vatom);
-  memoryKK->destroy_kokkos(k_cvatom,cvatom);
+  // on a host backend compute() is the base class one: eatom / vatom / cvatom are plain arrays of Pair::ev_setup(),
+  // freed in ~Pair(); destroy_kokkos() would only clear (eatom) or partly free (vatom, cvatom) them
+  if (!host_flag) {
+    memoryKK->destroy_kokkos(k_eatom,eatom);
+    memoryKK->destroy_kokkos(k_vatom,vatom);
+    memoryKK->destroy_kokkos(k_cvatom,cvatom);
+  }
 
   deallocate_views_of_views();
 }
@@ -663,7 +669,10 @@ void PairPACEKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
       check_team_size_for<TagPairPACEComputeNeigh>(chunk_size,team_size,vector_length);
       int scratch_size = scratch_size_helper<int>(team_size * maxneigh);
       typename Kokkos::TeamPolicy<DeviceType, TagPairPACEComputeNeigh> policy_neigh(chunk_size,team_size,vector_length);
-      policy_neigh = policy_neigh.set_scratch_size(0, Kokkos::PerTeam(scratch_size));
+      // the short neighbor list sits in team scratch memory: on-chip shared memory (level 0) when it fits, else
+      // global memory (level 1), so that many neighbors or elements do not abort the run (lammps/lammps#5063)
+      neigh_scratch_level = neigh_scratch_level_select(scratch_size, policy_neigh.scratch_size_max(0));
+      policy_neigh = policy_neigh.set_scratch_size(neigh_scratch_level, Kokkos::PerTeam(scratch_size));
       Kokkos::parallel_for("ComputeNeigh",policy_neigh,*this);
     }
 
@@ -822,7 +831,7 @@ void PairPACEKokkos<DeviceType>::operator() (TagPairPACEComputeNeigh,const typen
   // If it is, inside is assigned to 1, otherwise -1
   const int team_rank = team.team_rank();
   const int scratch_shift = team_rank * maxneigh; // offset into pointer for entire team
-  int* inside = (int*)team.team_shmem().get_shmem(team.team_size() * maxneigh * sizeof(int), 0) + scratch_shift;
+  int* inside = (int*)team.team_shmem().get_shmem(team.team_size() * maxneigh * sizeof(int), neigh_scratch_level) + scratch_shift;
 
   // loop over list of all neighbors within force cutoff
   // distsq[] = distance sq to each
@@ -2097,6 +2106,26 @@ void PairPACEKokkos<DeviceType>::check_team_size_reduce(int inum, int &team_size
 
   if (team_size*vector_length > team_size_max)
     team_size = team_size_max/vector_length;
+}
+
+/* ----------------------------------------------------------------------
+   team scratch level of the ComputeNeigh short neighbor list: the one the user asked for (pair_style keyword neigh),
+   else level 0 when the request fits the device's level-0 limit, otherwise level 1 with a warning (once)
+------------------------------------------------------------------------- */
+
+template<class DeviceType>
+int PairPACEKokkos<DeviceType>::neigh_scratch_level_select(int scratch_size, int max_level0)
+{
+  if (neigh_scratch_request == NEIGH_SCRATCH_SHARED) return 0;
+  if (neigh_scratch_request == NEIGH_SCRATCH_GLOBAL) return 1;
+  if (scratch_size <= max_level0) return 0;
+  if (!neigh_scratch_warned && comm->me == 0)
+    error->warning(FLERR, "Pair pace/kk short neighbor list needs {} bytes of team scratch memory but only {} bytes "
+                   "of on-chip (level-0) shared memory are available; falling back to slower global (level-1) "
+                   "memory. Use the pair_style keyword 'neigh global' to silence this warning",
+                   scratch_size, max_level0);
+  neigh_scratch_warned = 1;
+  return 1;
 }
 
 template<class DeviceType>

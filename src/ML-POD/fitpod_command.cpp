@@ -132,7 +132,7 @@ void FitPOD::command(int narg, char **arg)
   estimate_memory_fastpod(testdata);
   allocate_memory_descriptorstruct(fastpodptr->nCoeffAll);
 
-  if (coeff_file != "") podArrayCopy(desc.c, fastpodptr->coeff, fastpodptr->nCoeffAll);
+  if (!coeff_file.empty()) podArrayCopy(desc.c, fastpodptr->coeff, fastpodptr->nCoeffAll);
 
   if (((int) envdata.data_path.size() > 1) && (desc.nClusters > 1)) {
     environment_cluster_calculation(envdata);
@@ -149,7 +149,7 @@ void FitPOD::command(int narg, char **arg)
   if (compute_descriptors == 0) {
 
     // compute POD coefficients using least-squares method
-    if (coeff_file == "") {
+    if (coeff_file.empty()) {
       least_squares_fit(traindata);
 
       if (comm->me == 0) {    // save coefficients into a text file
@@ -313,7 +313,7 @@ int FitPOD::read_data_file(double *fitting_weights, std::string &file_format,
       // ignore
     }
 
-    if (words.size() == 0) continue;
+    if (words.empty()) continue;
 
     auto keywd = words[0];
 
@@ -487,7 +487,7 @@ int FitPOD::get_number_atom_exyz(std::vector<int> &num_atom, int &num_atom_sum, 
       // ignore
     }
 
-    if (words.size() == 0) continue;
+    if (words.empty()) continue;
 
     int natom;
     if (words.size() == 1) {
@@ -560,7 +560,7 @@ void FitPOD::read_exyz_file(double *lattice, double *stress, double *energy, dou
       // ignore
     }
 
-    if (words.size() == 0) continue;
+    if (words.empty()) continue;
 
     ValueTokenizer text(utils::trim_comment(line), "\"' \t\n\r\f");
     if (text.contains("attice")) {
@@ -704,7 +704,7 @@ void FitPOD::get_data(datastruct &data, const std::vector<std::string> &species)
     utils::logmesg(lmp, "number of atoms in all files: {}\n", data.num_atom_sum);
   }
 
-  if (data.data_files.size() < 1)
+  if (data.data_files.empty())
     error->all(FLERR,
                "Cannot fit potential without data files. The data paths may not be valid. Please "
                "check the data paths in the POD data file.");
@@ -1101,7 +1101,7 @@ int FitPOD::latticecoords(double *y, int *alist, double *x, double *a1, double *
 
   // index for the center lattice
 
-  int ind = m + (2 * m + 1) * (n) + (2 * m + 1) * (2 * n + 1) * (p);
+  int ind = m + (2 * m + 1) * n + (2 * m + 1) * (2 * n + 1) * p;
 
   // number of lattices
 
@@ -1143,7 +1143,7 @@ int FitPOD::podneighborlist(int *neighlist, int *numneigh, double *r, double rcu
     for (int j = 0; j < N; j++) {
       double *rj = &r[dim * j];
       double rijsq = (ri[0] - rj[0]) * (ri[0] - rj[0]) + (ri[1] - rj[1]) * (ri[1] - rj[1]) +
-          (ri[2] - rj[2]) * ((ri[2] - rj[2]));
+          (ri[2] - rj[2]) * (ri[2] - rj[2]);
       if ((rijsq > SMALL) && (rijsq <= rcutsq)) {
         inc += 1;
         neighlist[k] = j;
@@ -1340,7 +1340,7 @@ void FitPOD::descriptors_calculation(const datastruct &data)
       SafeFilePtr fp0 = fopen(filename0.c_str(), "wb");
       sz[0] = (double) data.num_atom[ci];
       sz[1] = (double) fastpodptr->Mdesc;
-      fwrite(reinterpret_cast<char *>(sz), sizeof(double) * (2), 1, fp0);
+      fwrite(reinterpret_cast<char *>(sz), sizeof(double) * 2, 1, fp0);
       fwrite(reinterpret_cast<char *>(desc.bd),
              sizeof(double) * (data.num_atom[ci] * fastpodptr->Mdesc), 1, fp0);
 
@@ -1350,7 +1350,7 @@ void FitPOD::descriptors_calculation(const datastruct &data)
         SafeFilePtr fp1 = fopen(filename1.c_str(), "wb");
         sz[0] = (double) data.num_atom[ci];
         sz[1] = (double) fastpodptr->nClusters;
-        fwrite(reinterpret_cast<char *>(sz), sizeof(double) * (2), 1, fp1);
+        fwrite(reinterpret_cast<char *>(sz), sizeof(double) * 2, 1, fp1);
         fwrite(reinterpret_cast<char *>(desc.pd),
                sizeof(double) * (data.num_atom[ci] * fastpodptr->nClusters), 1, fp1);
       }
@@ -1361,7 +1361,7 @@ void FitPOD::descriptors_calculation(const datastruct &data)
 
       sz[0] = (double) data.num_atom[ci];
       sz[1] = (double) desc.nCoeffAll;
-      fwrite(reinterpret_cast<char *>(sz), sizeof(double) * (2), 1, fp);
+      fwrite(reinterpret_cast<char *>(sz), sizeof(double) * 2, 1, fp);
       fwrite(reinterpret_cast<char *>(desc.gd), sizeof(double) * (desc.nCoeffAll), 1, fp);
       if (compute_descriptors == 2) {
         fwrite(reinterpret_cast<char *>(desc.gdd),
@@ -1459,7 +1459,7 @@ void FitPOD::environment_cluster_calculation(const datastruct &data)
         int elem = atomtype[n] - 1;    // offset by 1 to match the element index in the C++ code
         nElemAtomsCount[elem] += 1;
         int k = nElemAtomsCumSum[elem] + nElemAtomsCount[elem] - 1;
-        for (int m = 0; m < Mdesc; m++) basedescmatrix[m + Mdesc * k] = desc.bd[n + natom * (m)];
+        for (int m = 0; m < Mdesc; m++) basedescmatrix[m + Mdesc * k] = desc.bd[n + natom * m];
       }
     }
   }
@@ -2211,7 +2211,7 @@ void FitPOD::savematrix2binfile(const std::string &filename, double *A, int nrow
   double sz[2];
   sz[0] = (double) nrows;
   sz[1] = (double) ncols;
-  fwrite(reinterpret_cast<char *>(sz), sizeof(double) * (2), 1, fp);
+  fwrite(reinterpret_cast<char *>(sz), sizeof(double) * 2, 1, fp);
   fwrite(reinterpret_cast<char *>(A), sizeof(double) * (nrows * ncols), 1, fp);
 }
 
@@ -2221,7 +2221,7 @@ void FitPOD::saveintmatrix2binfile(const std::string &filename, int *A, int nrow
   int sz[2];
   sz[0] = nrows;
   sz[1] = ncols;
-  fwrite(reinterpret_cast<char *>(sz), sizeof(int) * (2), 1, fp);
+  fwrite(reinterpret_cast<char *>(sz), sizeof(int) * 2, 1, fp);
   fwrite(reinterpret_cast<char *>(A), sizeof(int) * (nrows * ncols), 1, fp);
 }
 

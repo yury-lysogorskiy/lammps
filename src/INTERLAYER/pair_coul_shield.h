@@ -45,10 +45,10 @@ class PairCoulShield : public Pair {
  protected:
   double cut_global;
   double **cut;
-  double **sigmae, **offset;
+  double **sigmae;
   int tap_flag;
 
-  void allocate();
+  virtual void allocate();
 };
 
 }    // namespace LAMMPS_NS

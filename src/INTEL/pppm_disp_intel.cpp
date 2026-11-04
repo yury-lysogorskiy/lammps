@@ -36,6 +36,7 @@
 #include "omp_compat.h"
 
 using namespace LAMMPS_NS;
+using namespace EwaldConst;
 using namespace MathConst;
 using namespace MathSpecial;
 
@@ -95,13 +96,6 @@ void PPPMDispIntel::init()
   fix = static_cast<FixIntel *>(modify->get_fix_by_id("package_intel"));
   if (!fix) error->all(FLERR, "The 'package intel' command is required for /intel styles");
 
-  #ifdef _LMP_INTEL_OFFLOAD
-  _use_base = 0;
-  if (fix->offload_balance() != 0.0) {
-    _use_base = 1;
-    return;
-  }
-  #endif
 
   fix->kspace_init_check();
 
@@ -114,6 +108,7 @@ void PPPMDispIntel::init()
   // The first thread computes on the global density
   if ((comm->nthreads > 1) && !_use_lrt) {
     int mygrid = MAX(ngrid,ngrid_6);
+    if (termflag[TERM_DISP_NONE]) mygrid = MAX(ngrid,ngrid_6*nsplit_alloc);
     memory->destroy(perthread_density);
     memory->create(perthread_density, comm->nthreads-1,
                    mygrid + INTEL_P3M_ALIGNED_MAXORDER,
@@ -146,12 +141,6 @@ void PPPMDispIntel::init()
 
 void PPPMDispIntel::compute(int eflag, int vflag)
 {
-  #ifdef _LMP_INTEL_OFFLOAD
-  if (_use_base) {
-    PPPMDisp::compute(eflag, vflag);
-    return;
-  }
-  #endif
 
   int i;
 
@@ -170,13 +159,13 @@ void PPPMDispIntel::compute(int eflag, int vflag)
 
   if (atom->nmax > nmax) {
 
-    if (function[0]) memory->destroy(part2grid);
-    if (function[1] + function[2] + function[3]) memory->destroy(part2grid_6);
+    if (termflag[TERM_COUL]) memory->destroy(part2grid);
+    if (termflag[TERM_DISP_GEOM] + termflag[TERM_DISP_ARITH] + termflag[TERM_DISP_NONE]) memory->destroy(part2grid_6);
     if (differentiation_flag == 1) {
       memory->destroy(particle_ekx);
       memory->destroy(particle_eky);
       memory->destroy(particle_ekz);
-      if (function[2] == 1) {
+      if (termflag[TERM_DISP_ARITH] == 1) {
         memory->destroy(particle_ekx0);
         memory->destroy(particle_eky0);
         memory->destroy(particle_ekz0);
@@ -202,14 +191,14 @@ void PPPMDispIntel::compute(int eflag, int vflag)
 
     }
     nmax = atom->nmax;
-    if (function[0]) memory->create(part2grid,nmax,3,"pppm/disp:part2grid");
-    if (function[1] + function[2] + function[3])
+    if (termflag[TERM_COUL]) memory->create(part2grid,nmax,3,"pppm/disp:part2grid");
+    if (termflag[TERM_DISP_GEOM] + termflag[TERM_DISP_ARITH] + termflag[TERM_DISP_NONE])
       memory->create(part2grid_6,nmax,3,"pppm/disp:part2grid_6");
     if (differentiation_flag == 1) {
       memory->create(particle_ekx, nmax, "pppmdispintel:pekx");
       memory->create(particle_eky, nmax, "pppmdispintel:peky");
       memory->create(particle_ekz, nmax, "pppmdispintel:pekz");
-      if (function[2] == 1) {
+      if (termflag[TERM_DISP_ARITH] == 1) {
         memory->create(particle_ekx0, nmax, "pppmdispintel:pekx0");
         memory->create(particle_eky0, nmax, "pppmdispintel:peky0");
         memory->create(particle_ekz0, nmax, "pppmdispintel:pekz0");
@@ -246,7 +235,7 @@ void PPPMDispIntel::compute(int eflag, int vflag)
   // communication between processors
   // calculation of forces
 
-  if (function[0]) {
+  if (termflag[TERM_COUL]) {
 
     //perform calculations for coulomb interactions only
 
@@ -327,7 +316,7 @@ void PPPMDispIntel::compute(int eflag, int vflag)
     if (evflag_atom) fieldforce_c_peratom();
   }
 
-  if (function[1]) {
+  if (termflag[TERM_DISP_GEOM]) {
 
     //perform calculations for geometric mixing
 
@@ -354,7 +343,7 @@ void PPPMDispIntel::compute(int eflag, int vflag)
       make_rho_g_intel<float,float>(fix->get_single_buffers());
     }
 
-    gc6->reverse_comm(Grid3d::KSPACE,this,REVERSE_RHO_G,1,sizeof(FFT_SCALAR),
+    gc6->reverse_comm(Grid3d::KSPACE,this,REVERSE_RHO_GEOM,1,sizeof(FFT_SCALAR),
                       gc6_buf1,gc6_buf2,MPI_FFT_SCALAR);
 
     brick2fft(nxlo_in_6, nylo_in_6, nzlo_in_6, nxhi_in_6, nyhi_in_6, nzhi_in_6,
@@ -369,7 +358,7 @@ void PPPMDispIntel::compute(int eflag, int vflag)
                  virial_6, vg_6, vg2_6, u_brick_g, v0_brick_g, v1_brick_g,
                  v2_brick_g, v3_brick_g, v4_brick_g, v5_brick_g);
 
-      gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_AD_G,1,sizeof(FFT_SCALAR),
+      gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_AD_GEOM,1,sizeof(FFT_SCALAR),
                         gc6_buf1,gc6_buf2,MPI_FFT_SCALAR);
 
       if (fix->precision() == FixIntel::PREC_MODE_MIXED) {
@@ -381,7 +370,7 @@ void PPPMDispIntel::compute(int eflag, int vflag)
       }
 
       if (vflag_atom)
-        gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_AD_PERATOM_G,7,sizeof(FFT_SCALAR),
+        gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_AD_PERATOM_GEOM,6,sizeof(FFT_SCALAR),
                           gc6_buf1,gc6_buf2,MPI_FFT_SCALAR);
 
     } else {
@@ -394,7 +383,7 @@ void PPPMDispIntel::compute(int eflag, int vflag)
                  vdz_brick_g, virial_6, vg_6, vg2_6, u_brick_g, v0_brick_g,
                  v1_brick_g, v2_brick_g, v3_brick_g, v4_brick_g, v5_brick_g);
 
-      gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_IK_G,3,sizeof(FFT_SCALAR),
+      gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_IK_GEOM,3,sizeof(FFT_SCALAR),
                         gc6_buf1,gc6_buf2,MPI_FFT_SCALAR);
 
       if (fix->precision() == FixIntel::PREC_MODE_MIXED) {
@@ -406,14 +395,14 @@ void PPPMDispIntel::compute(int eflag, int vflag)
       }
 
       if (evflag_atom)
-        gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_IK_PERATOM_G,6,sizeof(FFT_SCALAR),
+        gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_IK_PERATOM_GEOM,7,sizeof(FFT_SCALAR),
                           gc6_buf1,gc6_buf2,MPI_FFT_SCALAR);
     }
 
     if (evflag_atom) fieldforce_g_peratom();
   }
 
-  if (function[2]) {
+  if (termflag[TERM_DISP_ARITH]) {
     //perform calculations for arithmetic mixing
 
     if (fix->precision() == FixIntel::PREC_MODE_MIXED) {
@@ -439,8 +428,8 @@ void PPPMDispIntel::compute(int eflag, int vflag)
       make_rho_a_intel<float,float>(fix->get_single_buffers());
     }
 
-    gc->reverse_comm(Grid3d::KSPACE,this,REVERSE_RHO_A,7,sizeof(FFT_SCALAR),
-                     gc_buf1,gc_buf2,MPI_FFT_SCALAR);
+    gc6->reverse_comm(Grid3d::KSPACE,this,REVERSE_RHO_ARITH,7,sizeof(FFT_SCALAR),
+                      gc6_buf1,gc6_buf2,MPI_FFT_SCALAR);
 
     brick2fft_a();
 
@@ -465,7 +454,7 @@ void PPPMDispIntel::compute(int eflag, int vflag)
                     v5_brick_a2, u_brick_a4, v0_brick_a4, v1_brick_a4,
                     v2_brick_a4, v3_brick_a4, v4_brick_a4, v5_brick_a4);
 
-      gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_AD_A,7,sizeof(FFT_SCALAR),
+      gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_AD_ARITH,7,sizeof(FFT_SCALAR),
                         gc6_buf1,gc6_buf2,MPI_FFT_SCALAR);
 
       if (fix->precision() == FixIntel::PREC_MODE_MIXED) {
@@ -477,7 +466,7 @@ void PPPMDispIntel::compute(int eflag, int vflag)
       }
 
       if (evflag_atom)
-        gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_AD_PERATOM_A,42,sizeof(FFT_SCALAR),
+        gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_AD_PERATOM_ARITH,42,sizeof(FFT_SCALAR),
                           gc6_buf1,gc6_buf2,MPI_FFT_SCALAR);
 
     }  else {
@@ -508,7 +497,7 @@ void PPPMDispIntel::compute(int eflag, int vflag)
                     u_brick_a4, v0_brick_a4, v1_brick_a4, v2_brick_a4,
                     v3_brick_a4, v4_brick_a4, v5_brick_a4);
 
-      gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_IK_A,18,sizeof(FFT_SCALAR),
+      gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_IK_ARITH,21,sizeof(FFT_SCALAR),
                         gc6_buf1,gc6_buf2,MPI_FFT_SCALAR);
 
       if (fix->precision() == FixIntel::PREC_MODE_MIXED) {
@@ -520,14 +509,14 @@ void PPPMDispIntel::compute(int eflag, int vflag)
       }
 
       if (evflag_atom)
-        gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_IK_PERATOM_A,49,sizeof(FFT_SCALAR),
+        gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_IK_PERATOM_ARITH,49,sizeof(FFT_SCALAR),
                           gc6_buf1,gc6_buf2,MPI_FFT_SCALAR);
     }
 
     if (evflag_atom) fieldforce_a_peratom();
   }
 
-  if (function[3]) {
+  if (termflag[TERM_DISP_NONE]) {
 
     // perform calculations if no mixing rule applies
 
@@ -554,8 +543,8 @@ void PPPMDispIntel::compute(int eflag, int vflag)
       make_rho_none_intel<float,float>(fix->get_single_buffers());
     }
 
-    gc->reverse_comm(Grid3d::KSPACE,this,REVERSE_RHO_NONE,1,sizeof(FFT_SCALAR),
-                     gc_buf1,gc_buf2,MPI_FFT_SCALAR);
+    gc6->reverse_comm(Grid3d::KSPACE,this,REVERSE_RHO_NONE,nsplit_alloc,sizeof(FFT_SCALAR),
+                      gc6_buf1,gc6_buf2,MPI_FFT_SCALAR);
 
     brick2fft_none();
 
@@ -570,7 +559,7 @@ void PPPMDispIntel::compute(int eflag, int vflag)
         n += 2;
       }
 
-      gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_AD_NONE,1,sizeof(FFT_SCALAR),
+      gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_AD_NONE,1*nsplit_alloc,sizeof(FFT_SCALAR),
                         gc6_buf1,gc6_buf2,MPI_FFT_SCALAR);
 
       if (fix->precision() == FixIntel::PREC_MODE_MIXED) {
@@ -582,7 +571,7 @@ void PPPMDispIntel::compute(int eflag, int vflag)
       }
 
       if (vflag_atom)
-        gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_AD_PERATOM_NONE,6,sizeof(FFT_SCALAR),
+        gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_AD_PERATOM_NONE,6*nsplit_alloc,sizeof(FFT_SCALAR),
                           gc6_buf1,gc6_buf2,MPI_FFT_SCALAR);
 
     } else {
@@ -599,7 +588,7 @@ void PPPMDispIntel::compute(int eflag, int vflag)
         n += 2;
       }
 
-      gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_IK_NONE,3,sizeof(FFT_SCALAR),
+      gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_IK_NONE,3*nsplit_alloc,sizeof(FFT_SCALAR),
                         gc6_buf1,gc6_buf2,MPI_FFT_SCALAR);
 
       if (fix->precision() == FixIntel::PREC_MODE_MIXED) {
@@ -611,7 +600,7 @@ void PPPMDispIntel::compute(int eflag, int vflag)
       }
 
       if (evflag_atom)
-        gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_IK_PERATOM_NONE,7,sizeof(FFT_SCALAR),
+        gc6->forward_comm(Grid3d::KSPACE,this,FORWARD_IK_PERATOM_NONE,7*nsplit_alloc,sizeof(FFT_SCALAR),
                           gc6_buf1,gc6_buf2,MPI_FFT_SCALAR);
     }
 
@@ -653,7 +642,7 @@ void PPPMDispIntel::compute(int eflag, int vflag)
     for (i = 0; i < 6; i++) virial[i] = 0.5*qscale*volume*virial_all[i];
     MPI_Allreduce(virial_6,virial_all,6,MPI_DOUBLE,MPI_SUM,world);
     for (i = 0; i < 6; i++) virial[i] += 0.5*volume*virial_all[i];
-    if (function[1]+function[2]+function[3]) {
+    if (termflag[TERM_DISP_GEOM]+termflag[TERM_DISP_ARITH]+termflag[TERM_DISP_NONE]) {
       double a =  MY_PI*MY_PIS/(6*volume)*std::pow(g_ewald_6,3)*csumij;
       virial[0] -= a;
       virial[1] -= a;
@@ -662,14 +651,14 @@ void PPPMDispIntel::compute(int eflag, int vflag)
   }
 
   if (eflag_atom) {
-    if (function[0]) {
+    if (termflag[TERM_COUL]) {
       double *q = atom->q;
       for (i = 0; i < atom->nlocal; i++) {
         eatom[i] -= qscale*g_ewald*q[i]*q[i]/MY_PIS + qscale*MY_PI2*q[i]*
           qsum / (g_ewald*g_ewald*volume); //coulomb self energy correction
       }
     }
-    if (function[1] + function[2] + function[3]) {
+    if (termflag[TERM_DISP_GEOM] + termflag[TERM_DISP_ARITH] + termflag[TERM_DISP_NONE]) {
       int tmp;
       for (i = 0; i < atom->nlocal; i++) {
         tmp = atom->type[i];
@@ -680,7 +669,7 @@ void PPPMDispIntel::compute(int eflag, int vflag)
   }
 
   if (vflag_atom) {
-    if (function[1] + function[2] + function[3]) {
+    if (termflag[TERM_DISP_GEOM] + termflag[TERM_DISP_ARITH] + termflag[TERM_DISP_NONE]) {
       int tmp;
       for (i = 0; i < atom->nlocal; i++) {
         tmp = atom->type[i];
@@ -695,8 +684,8 @@ void PPPMDispIntel::compute(int eflag, int vflag)
   // 2d slab correction
 
   if (slabflag) slabcorr(eflag);
-  if (function[0]) energy += energy_1;
-  if (function[1] + function[2] + function[3]) energy += energy_6;
+  if (termflag[TERM_COUL]) energy += energy_1;
+  if (termflag[TERM_DISP_GEOM] + termflag[TERM_DISP_ARITH] + termflag[TERM_DISP_NONE]) energy += energy_6;
 
   // convert atoms back from lamda to box coords
 
@@ -1075,7 +1064,7 @@ void PPPMDispIntel::make_rho_g_intel(IntelBuffers<flt_t,acc_t> * /*buffers*/)
 #endif
           #pragma loop_count min(2), max(INTEL_P3M_ALIGNED_MAXORDER), avg(7)
           #endif
-          for (int l = 0; l < order; l++) {
+          for (int l = 0; l < order_6; l++) {
             int mzyx = l + mzy;
             my_density[mzyx] += x0*rho[0][l];
           }
@@ -1227,7 +1216,7 @@ void PPPMDispIntel::make_rho_a_intel(IntelBuffers<flt_t,acc_t> * /*buffers*/)
 #endif
 #pragma loop_count min(2), max(INTEL_P3M_ALIGNED_MAXORDER), avg(7)
 #endif
-        for (int l = 0; l < order; l++) {
+        for (int l = 0; l < order_6; l++) {
           int mx = l + nxsum;
           FFT_SCALAR w = x0*rho[0][l];
           density_brick_a0[mz][my][mx] += w*B[7*type];
@@ -1269,6 +1258,7 @@ void PPPMDispIntel::make_rho_none_intel(IntelBuffers<flt_t,acc_t> * /*buffers*/)
     shared(nthr, nlocal, global_density) if (!_use_lrt)
   #endif
   {
+    int type;
     double **x = atom->x;
 
     const int nix = nxhi_out_6 - nxlo_out_6 + 1;
@@ -1287,8 +1277,8 @@ void PPPMDispIntel::make_rho_none_intel(IntelBuffers<flt_t,acc_t> * /*buffers*/)
     IP_PRE_omp_range_id(ifrom, ito, tid, nlocal, nthr);
     FFT_SCALAR * _noalias my_density = tid == 0 ? global_density :
       perthread_density[tid - 1];
-    // clear 3d density array
-    memset(my_density, 0, ngrid_6 * sizeof(FFT_SCALAR));
+    // clear 3d density arrays
+    memset(my_density, 0, ngrid_6 * nsplit_alloc * sizeof(FFT_SCALAR));
 
     for (int i = ifrom; i < ito; i++) {
 
@@ -1348,6 +1338,7 @@ void PPPMDispIntel::make_rho_none_intel(IntelBuffers<flt_t,acc_t> * /*buffers*/)
         }
       }
 
+      type = atom->type[i];
       FFT_SCALAR z0 = fdelvolinv;
 
       #if defined(LMP_SIMD_COMPILER)
@@ -1370,10 +1361,10 @@ void PPPMDispIntel::make_rho_none_intel(IntelBuffers<flt_t,acc_t> * /*buffers*/)
 #endif
           #pragma loop_count min(2), max(INTEL_P3M_ALIGNED_MAXORDER), avg(7)
           #endif
-          for (int l = 0; l < order; l++) {
+          for (int l = 0; l < order_6; l++) {
             int mzyx = l + mzy;
             for (int k = 0; k < nsplit; k++)
-              my_density[mzyx + k*ngrid_6] += x0*rho[0][l];
+              my_density[mzyx + k*ngrid_6] += x0*rho[0][l]*B[nsplit*type + k];
           }
         }
       }
@@ -1910,7 +1901,7 @@ void PPPMDispIntel::fieldforce_g_ik_intel(IntelBuffers<flt_t,acc_t> * /*buffers*
 #endif
           #pragma loop_count min(2), max(INTEL_P3M_ALIGNED_MAXORDER), avg(7)
           #endif
-          for (int l = 0; l < order; l++) {
+          for (int l = 0; l < order_6; l++) {
             int mx = l+nxsum;
             FFT_SCALAR x0 = y0*rho0[l];
               ekx_arr[l] -= x0*vdx_brick_g[mz][my][mx];
@@ -1924,7 +1915,7 @@ void PPPMDispIntel::fieldforce_g_ik_intel(IntelBuffers<flt_t,acc_t> * /*buffers*
       FFT_SCALAR ekx, eky, ekz;
       ekx = eky = ekz = ZEROF;
 
-      for (int l = 0; l < order; l++) {
+      for (int l = 0; l < order_6; l++) {
         ekx += ekx_arr[l];
         eky += eky_arr[l];
         ekz += ekz_arr[l];
@@ -2099,7 +2090,7 @@ void PPPMDispIntel::fieldforce_g_ad_intel(IntelBuffers<flt_t,acc_t> * /*buffers*
 #endif
           #pragma loop_count min(2), max(INTEL_P3M_ALIGNED_MAXORDER), avg(7)
           #endif
-          for (int l = 0; l < order; l++) {
+          for (int l = 0; l < order_6; l++) {
             int mx = l + nxsum;
             ekx[l] += drho[0][l] * ekx_p * u_brick_g[mz][my][mx];
             eky[l] +=  rho[0][l] * eky_p * u_brick_g[mz][my][mx];
@@ -2111,7 +2102,7 @@ void PPPMDispIntel::fieldforce_g_ad_intel(IntelBuffers<flt_t,acc_t> * /*buffers*
       #if defined(LMP_SIMD_COMPILER)
       #pragma loop_count min(2), max(INTEL_P3M_ALIGNED_MAXORDER), avg(7)
       #endif
-      for (int l = 0; l < order; l++) {
+      for (int l = 0; l < order_6; l++) {
         particle_ekx[i] += ekx[l];
         particle_eky[i] += eky[l];
         particle_ekz[i] += ekz[l];
@@ -2298,7 +2289,7 @@ void PPPMDispIntel::fieldforce_a_ik_intel(IntelBuffers<flt_t,acc_t> * /*buffers*
 #endif
           #pragma loop_count min(2), max(INTEL_P3M_ALIGNED_MAXORDER), avg(7)
           #endif
-          for (int l = 0; l < order; l++) {
+          for (int l = 0; l < order_6; l++) {
             int mx = l+nxsum;
             FFT_SCALAR x0 = y0*rho0[l];
               ekx0_arr[l] -= x0*vdx_brick_a0[mz][my][mx];
@@ -2337,7 +2328,7 @@ void PPPMDispIntel::fieldforce_a_ik_intel(IntelBuffers<flt_t,acc_t> * /*buffers*
       ekx5 = eky5 = ekz5 = ZEROF;
       ekx6 = eky6 = ekz6 = ZEROF;
 
-      for (int l = 0; l < order; l++) {
+      for (int l = 0; l < order_6; l++) {
         ekx0 += ekx0_arr[l];
         eky0 += eky0_arr[l];
         ekz0 += ekz0_arr[l];
@@ -2583,7 +2574,7 @@ void PPPMDispIntel::fieldforce_a_ad_intel(IntelBuffers<flt_t,acc_t> * /*buffers*
 #endif
           #pragma loop_count min(2), max(INTEL_P3M_ALIGNED_MAXORDER), avg(7)
           #endif
-          for (int l = 0; l < order; l++) {
+          for (int l = 0; l < order_6; l++) {
             int mx = l + nxsum;
             FFT_SCALAR x0 = drho[0][l] * ekx_p;
             FFT_SCALAR y0 = rho[0][l] * eky_p;
@@ -2617,7 +2608,7 @@ void PPPMDispIntel::fieldforce_a_ad_intel(IntelBuffers<flt_t,acc_t> * /*buffers*
       #if defined(LMP_SIMD_COMPILER)
       #pragma loop_count min(2), max(INTEL_P3M_ALIGNED_MAXORDER), avg(7)
       #endif
-      for (int l = 0; l < order; l++) {
+      for (int l = 0; l < order_6; l++) {
         particle_ekx0[i] += ekx0[l];
         particle_eky0[i] += eky0[l];
         particle_ekz0[i] += ekz0[l];
@@ -2841,7 +2832,7 @@ void PPPMDispIntel::fieldforce_none_ik_intel(IntelBuffers<flt_t,acc_t> * /*buffe
 #endif
             #pragma loop_count min(2), max(INTEL_P3M_ALIGNED_MAXORDER), avg(7)
             #endif
-            for (int l = 0; l < order; l++) {
+            for (int l = 0; l < order_6; l++) {
               int mx = l+nxsum;
               FFT_SCALAR x0 = y0*rho0[l];
               ekx_arr[k*INTEL_P3M_ALIGNED_MAXORDER + l] -=
@@ -2862,7 +2853,7 @@ void PPPMDispIntel::fieldforce_none_ik_intel(IntelBuffers<flt_t,acc_t> * /*buffe
         ekx[k] = eky[k] = ekz[k] = ZEROF;
       }
 
-      for (int l = 0; l < order; l++) {
+      for (int l = 0; l < order_6; l++) {
         for (int k = 0; k < nsplit; k++) {
           ekx[k] += ekx_arr[k*INTEL_P3M_ALIGNED_MAXORDER + l];
           eky[k] += eky_arr[k*INTEL_P3M_ALIGNED_MAXORDER + l];
@@ -3041,7 +3032,7 @@ void PPPMDispIntel::fieldforce_none_ad_intel(IntelBuffers<flt_t,acc_t> * /*buffe
 #endif
             #pragma loop_count min(2), max(INTEL_P3M_ALIGNED_MAXORDER), avg(7)
             #endif
-            for (int l = 0; l < order; l++) {
+            for (int l = 0; l < order_6; l++) {
               int mx = l + nxsum;
               ekx[k*INTEL_P3M_ALIGNED_MAXORDER+l] += drho[0][l] * ekx_p *
                 u_brick_none[k][mz][my][mx];
@@ -3064,7 +3055,7 @@ void PPPMDispIntel::fieldforce_none_ad_intel(IntelBuffers<flt_t,acc_t> * /*buffe
       #if defined(LMP_SIMD_COMPILER)
       #pragma loop_count min(2), max(INTEL_P3M_ALIGNED_MAXORDER), avg(7)
       #endif
-      for (int l = 0; l < order; l++) {
+      for (int l = 0; l < order_6; l++) {
         for (int k = 0; k < nsplit; k++) {
           ekx_tot[k] += ekx[k*INTEL_P3M_ALIGNED_MAXORDER+l];
           eky_tot[k] += eky[k*INTEL_P3M_ALIGNED_MAXORDER+l];
@@ -3117,7 +3108,7 @@ void PPPMDispIntel::precompute_rho()
   half_rho_scale = (rho_points - 1.)/2.;
   half_rho_scale_plus = half_rho_scale + 0.5;
 
-  if (function[0]) {
+  if (termflag[TERM_COUL]) {
     for (int i = 0; i < rho_points; i++) {
       FFT_SCALAR dx = -1. + 1./half_rho_scale * (FFT_SCALAR)i;
       #if defined(LMP_SIMD_COMPILER)
@@ -3159,7 +3150,7 @@ void PPPMDispIntel::precompute_rho()
     }
   }
 
-  if (function[1]+function[2]+function[3]) {
+  if (termflag[TERM_DISP_GEOM]+termflag[TERM_DISP_ARITH]+termflag[TERM_DISP_NONE]) {
     for (int i = 0; i < rho_points; i++) {
       FFT_SCALAR dx = -1. + 1./half_rho_scale * (FFT_SCALAR)i;
       #if defined(LMP_SIMD_COMPILER)
@@ -3203,11 +3194,6 @@ void PPPMDispIntel::precompute_rho()
 }
 
 /* ----------------------------------------------------------------------
-   Returns 0 if Intel optimizations for PPPM ignored due to offload
+   Returns 0 if Intel optimizations for PPPM are not in use
 ------------------------------------------------------------------------- */
 
-#ifdef _LMP_INTEL_OFFLOAD
-int PPPMDispIntel::use_base() {
-  return _use_base;
-}
-#endif

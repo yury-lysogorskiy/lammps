@@ -15,6 +15,7 @@
 #include "atom.h"
 #include "info.h"
 #include "lammps.h"
+#include "library.h"
 #include "molecule.h"
 #include "platform.h"
 #include "gmock/gmock.h"
@@ -537,6 +538,7 @@ TEST_F(MoleculeFileTest, twomols)
 
 TEST_F(MoleculeFileTest, tenmols)
 {
+    if (!Info::has_package("MOLECULE")) GTEST_SKIP();
     BEGIN_CAPTURE_OUTPUT();
     run_mol_cmd(test_name, "",
                 "Comment\n10 atoms\n\n"
@@ -616,6 +618,8 @@ TEST_F(MoleculeFileTest, twofiles)
 
 TEST_F(MoleculeFileTest, labelmap)
 {
+    // label maps are currently not supported with the KOKKOS package
+    if (lmp->suffix_enable) GTEST_SKIP() << "label maps are not supported with an accelerator suffix";
     if (!info->has_style("atom", "full")) GTEST_SKIP();
     BEGIN_CAPTURE_OUTPUT();
     command("atom_style full");
@@ -787,6 +791,9 @@ TEST_F(MoleculeFileTest, auto_invalidopt)
 
 TEST_F(MoleculeFileTest, auto_angle_dihedral)
 {
+    // label maps are currently not supported with the KOKKOS package
+    if (lmp->suffix_enable) GTEST_SKIP() << "label maps are not supported with an accelerator suffix";
+    if (!info->has_style("atom", "full")) GTEST_SKIP();
     command("atom_style full");
     command("region box block 0 2 0 2 0 2");
     command("create_box 4 box bond/types 1 angle/types 1 dihedral/types 1 "
@@ -815,6 +822,9 @@ TEST_F(MoleculeFileTest, auto_angle_dihedral)
 
 TEST_F(MoleculeFileTest, auto_angle_improper)
 {
+    // label maps are currently not supported with the KOKKOS package
+    if (lmp->suffix_enable) GTEST_SKIP() << "label maps are not supported with an accelerator suffix";
+    if (!info->has_style("atom", "full")) GTEST_SKIP();
     command("atom_style full");
     command("region box block 0 2 0 2 0 2");
     command("create_box 4 box bond/types 1 angle/types 1 improper/types 1 "
@@ -859,6 +869,13 @@ int main(int argc, char **argv)
     if ((argc > 1) && (strcmp(argv[1], "-v") == 0)) verbose = true;
 
     int rv = RUN_ALL_TESTS();
+
+    // finalize the KOKKOS package explicitly: otherwise Kokkos is torn down by
+    // static destructors at program exit, leading to segfaults in some cases
+    // same workaround as the force-style and FFT3d test drivers
+
+    lammps_kokkos_finalize();
+
     MPI_Finalize();
     return rv;
 }

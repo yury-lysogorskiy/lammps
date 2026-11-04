@@ -376,6 +376,7 @@ FixPIMDLangevin::~FixPIMDLangevin()
     memory->destroy(displacements);
   }
 
+  memory->sfree(lam);
   memory->destroy(M_x2xp);
   memory->destroy(M_xp2x);
   memory->destroy(xc);
@@ -417,7 +418,7 @@ void FixPIMDLangevin::init()
   masstotal = group->mass(igroup);
 
   double planck = sp * force->hplanck;
-  hbar = planck / (MY_2PI);
+  hbar = planck / MY_2PI;
   beta = 1.0 / (force->boltz * temp);
   double _fbond = 1.0 * np * np / (beta * beta * hbar * hbar);
 
@@ -445,6 +446,9 @@ void FixPIMDLangevin::init()
 
   comm_init();
 
+  // init() runs once per run command, so release the array of the previous one
+
+  delete[] mass;
   mass = new double[atom->ntypes + 1];
 
   nmpimd_init();
@@ -1134,6 +1138,13 @@ void FixPIMDLangevin::o_step()
 
 void FixPIMDLangevin::nmpimd_init()
 {
+  // init() calls this once per run, so release what an earlier run allocated
+
+  memory->destroy(M_x2xp);
+  memory->destroy(M_xp2x);
+  memory->sfree(lam);
+  lam = nullptr;
+
   memory->create(M_x2xp, np, np, "fix_feynman:M_x2xp");
   memory->create(M_xp2x, np, np, "fix_feynman:M_xp2x");
 
@@ -1244,9 +1255,9 @@ void FixPIMDLangevin::spring_force()
       double dy = dely1 + dely2;
       double dz = delz1 + delz2;
 
-      f[i][0] += (dx) *ff;
-      f[i][1] += (dy) *ff;
-      f[i][2] += (dz) *ff;
+      f[i][0] += dx*ff;
+      f[i][1] += dy*ff;
+      f[i][2] += dz*ff;
 
       spring_energy += 0.5 * ff * (delx2 * delx2 + dely2 * dely2 + delz2 * delz2);
     }
@@ -1264,6 +1275,9 @@ void FixPIMDLangevin::comm_init()
 
   int nlocal = atom->nlocal;
   if (cmode == SINGLE_PROC) {
+    // init() calls this once per run, so release what an earlier run allocated
+    memory->destroy(counts);
+    memory->destroy(displacements);
     memory->create(counts, nreplica, "FixPIMDLangevin:counts");
     memory->create(displacements, nreplica, "FixPIMDLangevin:displacements");
     for (int i = 0; i < nreplica; i++) counts[i] = 3*nlocal;
@@ -1273,6 +1287,7 @@ void FixPIMDLangevin::comm_init()
   if (sizeplan) {
     delete[] plansend;
     delete[] planrecv;
+    delete[] modeindex;
   }
 
   sizeplan = np - 1;

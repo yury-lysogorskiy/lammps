@@ -25,6 +25,7 @@
 #include "atom_masks.h"
 #include "comm.h"
 #include "comm_kokkos.h"
+#include "comm_tiled_kokkos.h"
 #include "error.h"
 #include "force.h"
 #include "kokkos.h"
@@ -427,18 +428,22 @@ void PairGRACERuntimeKokkos<DeviceType>::pair_exchange(bool reverse, ToHost &&to
 {
   // CommKokkos packs on the device: in legacy pair-comm mode (GPU-aware MPI off, several ranks) through
   // *_comm_pair_device (only the packed rows of the swaps with another rank go through the host), otherwise through
-  // the usual comm call. Any other comm (comm_style tiled: CommTiledKokkos is not a CommKokkos) calls the host
-  // pack / unpack, which read and write the host copy of the rows.
+  // the usual comm call. CommTiledKokkos (comm_style tiled) packs on the device too, except in legacy pair-comm mode
+  // or for a pair style on the host; then, as any other comm, it calls the host pack / unpack, which read and write
+  // the host copy of the rows.
   auto *ck = dynamic_cast<CommKokkos *>(comm);
-  if (ck && (reverse ? lmp->kokkos->reverse_pair_comm_legacy : lmp->kokkos->forward_pair_comm_legacy)) {
+  const bool legacy = reverse ? lmp->kokkos->reverse_pair_comm_legacy : lmp->kokkos->forward_pair_comm_legacy;
+  if (ck && legacy) {
     if (reverse) ck->reverse_comm_pair_device(this);
     else ck->forward_comm_pair_device(this);
     return;
   }
-  if (!ck) to_host();
+  const bool host = !ck && (legacy || !dynamic_cast<CommTiledKokkos *>(comm) || execution_space == Host ||
+                            execution_space == HostKK);
+  if (host) to_host();
   if (reverse) comm->reverse_comm(this);
   else comm->forward_comm(this);
-  if (!ck) from_host();
+  if (host) from_host();
 }
 
 template<class DeviceType> void PairGRACERuntimeKokkos<DeviceType>::Exchange2::forward()

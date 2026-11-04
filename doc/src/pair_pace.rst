@@ -22,10 +22,14 @@ Syntax
 
   .. parsed-literal::
 
-     keyword = *product* or *recursive* or *chunksize*
+     keyword = *product* or *recursive* or *chunksize* or *neigh*
        *product* = use product algorithm for basis functions
        *recursive* = use recursive algorithm for basis functions
        *chunksize* value = number of atoms in each pass
+       *neigh* value = *auto* or *shared* or *global*
+         *auto* = select the team scratch memory level automatically (default)
+         *shared* = force on-chip (level 0) shared memory scratch
+         *global* = force global (level 1) memory scratch
 
 .. code-block:: LAMMPS
 
@@ -87,6 +91,20 @@ atomic cluster expansion and is used to avoid running out of memory.
 For example if there are 8192 atoms in the simulation and the
 *chunksize* is set to 4096, the ACE calculation will be broken up into
 two passes (running on a single GPU).
+
+The keyword *neigh* is only applicable when using the pair styles *pace*
+and *pace/extrapolation* with the KOKKOS package on GPUs and is ignored
+otherwise, so that the same input file can be used with and without the
+KOKKOS package.  It selects the level of Kokkos team scratch memory that
+holds the short neighbor list.  Level 0 is fast on-chip shared memory,
+but it is limited and can be exceeded when atoms have many neighbors,
+which would otherwise abort the run with an error such as "Requested too
+much scratch memory on level 0".  Level 1 is (much larger) global memory,
+at the cost of slower access.  With the default *auto*, the pair style
+queries the shared memory available on the device and falls back to
+level 1 when the request does not fit, with a warning the first time.
+*shared* forces level 0 and *global* forces level 1; the latter also
+silences the warning.
 
 Extrapolation grade
 """""""""""""""""""
@@ -198,7 +216,7 @@ Related commands
 Default
 """""""
 
-recursive, chunksize = 4096,
+recursive, chunksize = 4096, neigh = auto
 
 .. _Drautz20191:
 
